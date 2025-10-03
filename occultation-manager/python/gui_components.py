@@ -1,0 +1,129 @@
+import clr
+clr.AddReference("System.Windows.Forms")
+clr.AddReference("System.Drawing")
+
+import webbrowser
+from System.Drawing import Font, FontStyle
+from System.Windows.Forms import *
+
+class EventsDataGrid(DataGridView):
+    """Enhanced DataGridView for displaying occultation events with all requested columns"""
+    
+    def __init__(self):
+        DataGridView.__init__(self)
+        self.events = []
+        self.setup_grid()
+    
+    def setup_grid(self):
+        """Setup the enhanced data grid columns and properties"""
+        self.AutoGenerateColumns = False
+        self.AllowUserToAddRows = False
+        self.AllowUserToDeleteRows = False
+        self.SelectionMode = DataGridViewSelectionMode.FullRowSelect
+        self.MultiSelect = True
+        
+        # Enhanced column layout with all requested fields
+        columns = [
+            ("Selected", "Selected", 60, True),
+            ("Event Name", "EventName", 200, False),
+            ("Station", "StationName", 120, False),  # Added station name column
+            ("Date/Time UTC", "DateTime", 120, False),
+            ("Star Mag", "StarMag", 70, False),
+            ("Comb Mag", "CombMag", 70, False),
+            ("Mag Drop", "MagDrop", 70, False),
+            ("Exposure (ms)", "ExposureMs", 90, False),
+            ("Recording Time (s)", "RecordingTime", 100, False),  # Changed name as requested
+            ("Max Duration (s)", "MaxDuration", 100, False),      # Added as requested
+            ("Time Error (s)", "TimeError", 90, False),           # Added as requested
+            ("Alt", "Altitude", 60, False),                       # Added as requested
+            ("Az", "Azimuth", 60, False),                         # Added as requested
+            ("Coordinates", "Coordinates", 120, False),
+            ("OWC", "OWCLink", 50, False),                        # Added as requested
+            ("Status", "Status", 100, False)
+        ]
+        
+        for name, data_name, width, editable in columns:
+            if name == "Selected":
+                col = DataGridViewCheckBoxColumn()
+            elif name == "OWC":
+                col = DataGridViewLinkColumn()
+            else:
+                col = DataGridViewTextBoxColumn()
+            
+            col.Name = data_name
+            col.HeaderText = name
+            col.Width = width
+            col.ReadOnly = not editable
+            self.Columns.Add(col)
+        
+        # Handle cell events
+        self.CellDoubleClick += self.cell_double_click
+        self.CellContentClick += self.cell_content_click
+    
+    def cell_double_click(self, sender, e):
+        """Handle cell double click for exposure editing"""
+        if e.RowIndex >= 0 and e.ColumnIndex >= 0:
+            if self.Columns[e.ColumnIndex].Name == "ExposureMs":
+                event = self.Rows[e.RowIndex].Tag
+                if event:
+                    parent_form = self.FindForm()
+                    if hasattr(parent_form, 'edit_event_exposure'):
+                        parent_form.edit_event_exposure(event)
+    
+    def cell_content_click(self, sender, e):
+        """Handle cell content click for OWC links"""
+        if e.RowIndex >= 0 and e.ColumnIndex >= 0:
+            if self.Columns[e.ColumnIndex].Name == "OWCLink":
+                event = self.Rows[e.RowIndex].Tag
+                if event and hasattr(event, 'owcloudurl') and event.owcloudurl:
+                    try:
+                        webbrowser.open(event.owcloudurl)
+                    except Exception as ex:
+                        MessageBox.Show(f"Cannot open URL: {event.owcloudurl}\nError: {ex}", "Error", 
+                                      MessageBoxButtons.OK, MessageBoxIcon.Error)
+    
+    def update_events(self, events):
+        """Update the grid with enhanced events data"""
+        self.events = events
+        self.Rows.Clear()
+        
+        for event in events:
+            row = self.Rows[self.Rows.Add()]
+            row.Cells["Selected"].Value = event.selected
+            row.Cells["EventName"].Value = event.get_asteroid_display_name()  # Using enhanced name resolution
+            row.Cells["StationName"].Value = event.station_name  # Added station name data
+            row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}" if event.event_date else "N/A"
+            row.Cells["StarMag"].Value = f"{event.star_mag:.1f}" if event.star_mag > 0 else "N/A"
+            row.Cells["CombMag"].Value = f"{event.comb_mag:.1f}" if event.comb_mag > 0 else "N/A"
+            row.Cells["MagDrop"].Value = f"{event.mag_drop:.1f}" if event.mag_drop > 0 else "N/A"
+            
+            # Show custom exposure indicator
+            exposure_text = str(event.exposure_ms)
+            if event.has_custom_exposure():
+                exposure_text += "*"
+            row.Cells["ExposureMs"].Value = exposure_text
+            
+            row.Cells["RecordingTime"].Value = str(event.recording_duration)
+            row.Cells["MaxDuration"].Value = f"{event.max_duration_seconds:.1f}" if event.max_duration_seconds > 0 else "N/A"
+            row.Cells["TimeError"].Value = f"{event.uncertainty_seconds:.1f}" if event.uncertainty_seconds > 0 else "N/A"
+            row.Cells["Altitude"].Value = f"{event.star_alt:.1f}°" if event.star_alt > 0 else "N/A"
+            row.Cells["Azimuth"].Value = f"{event.star_az:.1f}°" if event.star_az > 0 else "N/A"
+            row.Cells["Coordinates"].Value = event.get_coordinates_string()
+            row.Cells["OWCLink"].Value = "OWC" if hasattr(event, 'owcloudurl') and event.owcloudurl else ""
+            row.Cells["Status"].Value = event.get_status_info()
+            row.Tag = event
+    
+    def get_selected_events(self):
+        """Get list of selected events"""
+        selected = []
+        for row in self.Rows:
+            if row.Cells["Selected"].Value:
+                selected.append(row.Tag)
+        return selected
+    
+    def select_all_events(self, select=True):
+        """Select or deselect all events"""
+        for row in self.Rows:
+            row.Cells["Selected"].Value = select
+            if row.Tag:
+                row.Tag.selected = select
