@@ -61,7 +61,7 @@ class OccultationManagerGUI(Form):
         
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
-        self.events_grid.Location = Point(10, 110)
+        self.events_grid.Location = Point(10, 132)
         self.events_grid.Size = Size(1360, 450)
         self.events_grid.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
         main_panel.Controls.Add(self.events_grid)
@@ -99,7 +99,7 @@ class OccultationManagerGUI(Form):
     def create_enhanced_toolbar(self):
         """Create the enhanced main toolbar"""
         toolbar = Panel()
-        toolbar.Height = 55  # Increased height slightly
+        toolbar.Height = 65  # Increased height slightly
         toolbar.Dock = DockStyle.Top
         toolbar.BackColor = SystemColors.Control
         
@@ -119,7 +119,7 @@ class OccultationManagerGUI(Form):
         toolbar.Controls.Add(btn_refresh)
         
         btn_tonight = Button()
-        btn_tonight.Text = "Tonight's Events"
+        btn_tonight.Text = "Run Tonight's Events"
         btn_tonight.Size = Size(100, 25)
         btn_tonight.Location = Point(185, 8)  # Changed from 5 to 8
         btn_tonight.Click += self.download_and_run_tonight_click
@@ -157,21 +157,21 @@ class OccultationManagerGUI(Form):
         btn_create_sequences = Button()
         btn_create_sequences.Text = "Create Sequences"
         btn_create_sequences.Size = Size(110, 25)
-        btn_create_sequences.Location = Point(5, 28)  # Changed from 25 to 28
+        btn_create_sequences.Location = Point(5, 36)  # Changed from 25 to 28
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
         
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
         btn_run_sequences.Size = Size(100, 25)
-        btn_run_sequences.Location = Point(120, 28)  # Changed from 25 to 28
+        btn_run_sequences.Location = Point(120, 36)  # Changed from 25 to 28
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
         
         btn_combined_script = Button()
         btn_combined_script.Text = "Combined Script"
         btn_combined_script.Size = Size(110, 25)
-        btn_combined_script.Location = Point(225, 28)  # Changed from 25 to 28
+        btn_combined_script.Location = Point(225, 36)  # Changed from 25 to 28
         btn_combined_script.Click += self.generate_combined_script_click
         toolbar.Controls.Add(btn_combined_script)
 
@@ -1116,9 +1116,9 @@ class OccultationManagerGUI(Form):
         """Apply event parameters to SharpCap interface"""
         try:
             # Try to access SharpCap
-            import clr
-            clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
-            from SharpCap import *
+            # import clr
+            # clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
+            # from SharpCap import *
             
             # Set exposure time
             if SharpCap.Cameras.SelectedCamera:

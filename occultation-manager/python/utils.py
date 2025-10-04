@@ -65,15 +65,15 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             event_time=occ_dict.get('event_time', ''),
             start_time=occ_dict.get('start_time', ''),
             goto_time=occ_dict.get('goto_time', ''),
-            recording_duration=occ_dict.get('recording_duration', 0),
-            star_mag=occ_dict.get('star_mag', 0),
-            comb_mag=occ_dict.get('comb_mag', 0),
-            mag_drop=occ_dict.get('mag_drop', 0),
-            time_error=occ_dict.get('event_uncertainty', 0),
-            ra=occ_dict.get('ra', 0),
-            dec=occ_dict.get('dec', 0),
+            recording_duration=format(occ_dict.get('recording_duration', 0),'.0f'),
+            star_mag= format(occ_dict.get('star_mag', 0),'.1f'),
+            comb_mag= format(occ_dict.get('comb_mag', 0),'.1f'),
+            mag_drop= format(occ_dict.get('mag_drop', 0),'.1f'),
+            time_error= format(occ_dict.get('event_uncertainty', 0),'.1f'),
+            ra= format(occ_dict.get('ra', 0),'.6f'),
+            dec= format(occ_dict.get('dec', 0),'.6f'),
             asteroid_name=occ_dict.get('object_name', ''),
-            exposure=occ_dict.get('exposure', 0),
+            exposure= format(occ_dict.get('exposure', 0),'.3f'),
             # Add local time template variables
             event_time_local=occ_dict.get('event_time_local', ''),
             start_time_local=occ_dict.get('start_time_local', ''),
@@ -93,9 +93,9 @@ def simple_goto_event(event):
     """Simple GOTO function for testing - returns success status"""
     try:
         # Try to access SharpCap
-        import clr
-        clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
-        from SharpCap import *
+        # import clr
+        # clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
+        # from SharpCap import *
         
         # Check if mount is connected
         if hasattr(SharpCap, 'Mounts') and SharpCap.Mounts.SelectedMount:

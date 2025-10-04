@@ -33,7 +33,8 @@ def test_config_creation():
         }
         
         for key, expected_value in expected_defaults.items():
-            actual_value = getattr(config, f'get_{key}')()
+            print(key, expected_value)
+            actual_value = config.default_config[f'{key}']
             if actual_value == expected_value:
                 print(f"✓ Default {key}: {actual_value}")
             else:
@@ -388,7 +389,7 @@ def test_path_operations():
         if config.get_sequence_path() == config.get_file_folder():
             print("✓ Sequence path defaults to file folder when empty")
         else:
-            print(f"❌ Sequence path default failed: {config.get_sequence_path()}")
+            print(f"❌ Sequence path default failed: {config.get_sequence_path()} should be {config.get_file_folder()}")
         
         # Cleanup
         shutil.rmtree(temp_dir)

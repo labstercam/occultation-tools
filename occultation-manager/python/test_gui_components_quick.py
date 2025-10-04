@@ -4,19 +4,21 @@ import os
 import sys
 from datetime import datetime, timedelta
 
+
+# Import GUI libraries
+import clr
+clr.AddReference("System.Windows.Forms")
+clr.AddReference("System.Drawing")
+
+from System.Windows.Forms import *
+from System.Drawing import Size
+
 def quick_test():
     """Quick GUI components test"""
     print("Quick GUI Components Test")
     print("=" * 30)
     
     try:
-        # Import GUI libraries
-        import clr
-        clr.AddReference("System.Windows.Forms")
-        clr.AddReference("System.Drawing")
-        
-        from System.Windows.Forms import *
-        from System.Drawing import Size
         
         # Mock event for testing
         class MockEvent:

@@ -311,188 +311,188 @@ class OccultationEvent:
                 duration_delta = self.end_time - self.start_time
                 self.recording_duration = int(duration_delta.total_seconds())
         
-        def set_custom_exposure(self, exposure_ms):
-            """Set custom exposure in milliseconds"""
-            self.custom_exposure = exposure_ms / 1000.0
-            self.exposure_ms = exposure_ms
+    def set_custom_exposure(self, exposure_ms):
+        """Set custom exposure in milliseconds"""
+        self.custom_exposure = exposure_ms / 1000.0
+        self.exposure_ms = exposure_ms
         
-        def get_exposure_seconds(self):
-            """Get exposure in seconds for template substitution"""
-            return self.exposure_ms / 1000.0
-        
-        def has_custom_exposure(self):
-            """Check if event has custom exposure setting"""
-            return self.custom_exposure is not None
-        
-        def _parse_iso_datetime(self, iso_string):
-            """Parse ISO format datetime string"""
-            if not iso_string:
-                return None
-                
-            try:
-                formats = [
-                    "%Y-%m-%dT%H:%M:%S",
-                    "%Y-%m-%dT%H:%M:%S.%f",
-                    "%Y-%m-%dT%H:%M:%SZ",
-                    "%Y-%m-%dT%H:%M:%S.%fZ",
-                    "%Y-%m-%d %H:%M:%S",
-                ]
-                
-                clean_string = iso_string.replace('Z', '')
-                
-                for fmt in formats:
-                    try:
-                        return datetime.strptime(clean_string, fmt)
-                    except ValueError:
-                        continue
-                
-                print(f"Could not parse datetime: {iso_string}")
-                return None
-                
-            except Exception as ex:
-                print(f"Error parsing datetime '{iso_string}': {ex}")
-                return None
-        
-        def get_coordinates_string(self):
-            """Get formatted coordinate string"""
-            return f"{self.ra:.4f}h, {self.dec:.4f}°"
-        
-        def get_status_info(self):
-            """Get event status information"""
-            if not self.event_datetime:
-                return "Invalid Date"
+    def get_exposure_seconds(self):
+        """Get exposure in seconds for template substitution"""
+        return self.exposure_ms / 1000.0
+    
+    def has_custom_exposure(self):
+        """Check if event has custom exposure setting"""
+        return self.custom_exposure is not None
+    
+    def _parse_iso_datetime(self, iso_string):
+        """Parse ISO format datetime string"""
+        if not iso_string:
+            return None
             
-            now = datetime.utcnow()
-            if self.event_datetime < now:
-                return "Past Event"
+        try:
+            formats = [
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S.%f",
+                "%Y-%m-%dT%H:%M:%SZ",
+                "%Y-%m-%dT%H:%M:%S.%fZ",
+                "%Y-%m-%d %H:%M:%S",
+            ]
             
-            time_to_event = self.event_datetime - now
-            if time_to_event.total_seconds() < self.config.get_goto_lead_time():
-                return "Starting Soon"
+            clean_string = iso_string.replace('Z', '')
             
-            days = time_to_event.days
-            hours = time_to_event.seconds // 3600
-            return f"{days}d {hours}h"
-        
-        def get_asteroid_display_name(self):
-            """Get proper asteroid name, preferring named asteroids over designations"""
-            name = self.object_name
-            
-            # Common asteroid name mappings (expandable)
-            asteroid_names = {
-                "2002 WY15": "Asteroid 2002 WY15",
-                "4 Vesta": "4 Vesta",
-                "1 Ceres": "1 Ceres",
-                "2 Pallas": "2 Pallas",
-                "3 Juno": "3 Juno",
-                # Add more mappings as discovered
-            }
-            
-            # Try to find a better name
-            if name in asteroid_names:
-                return asteroid_names[name]
-            
-            # If it looks like a designation, format it nicely
-            if name and len(name) > 4 and name[:4].isdigit():
-                return f"Asteroid {name}"
-            
-            # Try to extract numbered asteroid names
-            if name and name.split():
-                parts = name.split()
+            for fmt in formats:
                 try:
-                    # Check if first part is a number (numbered asteroid)
-                    num = int(parts[0])
-                    if len(parts) > 1:
-                        return f"{num} {' '.join(parts[1:])}"
+                    return datetime.strptime(clean_string, fmt)
                 except ValueError:
-                    pass
+                    continue
             
-            return name or "Unknown Object"
+            print(f"Could not parse datetime: {iso_string}")
+            return None
+            
+        except Exception as ex:
+            print(f"Error parsing datetime '{iso_string}': {ex}")
+            return None
+    
+    def get_coordinates_string(self):
+        """Get formatted coordinate string"""
+        return f"{self.ra:.4f}h, {self.dec:.4f}°"
+    
+    def get_status_info(self):
+        """Get event status information"""
+        if not self.event_datetime:
+            return "Invalid Date"
+        
+        now = datetime.utcnow()
+        if self.event_datetime < now:
+            return "Past Event"
+        
+        time_to_event = self.event_datetime - now
+        if time_to_event.total_seconds() < self.config.get_goto_lead_time():
+            return "Starting Soon"
+        
+        days = time_to_event.days
+        hours = time_to_event.seconds // 3600
+        return f"{days}d {hours}h"
+    
+    def get_asteroid_display_name(self):
+        """Get proper asteroid name, preferring named asteroids over designations"""
+        name = self.object_name
+        
+        # Common asteroid name mappings (expandable)
+        asteroid_names = {
+            "2002 WY15": "Asteroid 2002 WY15",
+            "4 Vesta": "4 Vesta",
+            "1 Ceres": "1 Ceres",
+            "2 Pallas": "2 Pallas",
+            "3 Juno": "3 Juno",
+            # Add more mappings as discovered
+        }
+        
+        # Try to find a better name
+        if name in asteroid_names:
+            return asteroid_names[name]
+        
+        # If it looks like a designation, format it nicely
+        if name and len(name) > 4 and name[:4].isdigit():
+            return f"Asteroid {name}"
+        
+        # Try to extract numbered asteroid names
+        if name and name.split():
+            parts = name.split()
+            try:
+                # Check if first part is a number (numbered asteroid)
+                num = int(parts[0])
+                if len(parts) > 1:
+                    return f"{num} {' '.join(parts[1:])}"
+            except ValueError:
+                pass
+        
+        return name or "Unknown Object"
 
-    class OccultationManager:
-        """Core manager class for GUI"""
+class OccultationManager:
+    """Core manager class for GUI"""
+    
+    def __init__(self, config):
+        self.config = config
+        self.events = []
+        self.all_events = []
+        self.selected_events = set()
+        self.station_filter = ""
+        self.running = False
         
-        def __init__(self, config):
-            self.config = config
-            self.events = []
-            self.all_events = []
-            self.selected_events = set()
-            self.station_filter = ""
-            self.running = False
-            
-            self.event_processor = EventProcessor(config)
+        self.event_processor = EventProcessor(config)
+    
+    def load_events_from_files(self):
+        """Load events from saved JSON files"""
+        events_data = EventProcessor.load_occultations(self.config.get_latest_occultations_file(), self.config)
+        if not events_data:
+            events_data = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
         
-        def load_events_from_files(self):
-            """Load events from saved JSON files"""
-            events_data = EventProcessor.load_occultations(self.config.get_latest_occultations_file(), self.config)
-            if not events_data:
-                events_data = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
-            
+        if events_data:
+            self.all_events = [OccultationEvent(event, self.config) for event in events_data]
+            self.events = self.all_events[:]
+            self.sort_events()
+            return True
+        return False
+    
+    def download_events_from_cloud(self):
+        """Download events from OW Cloud"""
+        try:
+            events_data = self.event_processor.update_ow_cloud_events()
             if events_data:
                 self.all_events = [OccultationEvent(event, self.config) for event in events_data]
                 self.events = self.all_events[:]
                 self.sort_events()
-                return True
-            return False
-        
-        def download_events_from_cloud(self):
-            """Download events from OW Cloud"""
-            try:
-                events_data = self.event_processor.update_ow_cloud_events()
-                if events_data:
-                    self.all_events = [OccultationEvent(event, self.config) for event in events_data]
-                    self.events = self.all_events[:]
-                    self.sort_events()
-                    return len(self.events)
-                return 0
-            except Exception as e:
-                print(f"Error downloading events: {e}")
-                return -1
-        
-        def sort_events(self):
-            """Sort events by event time"""
-            self.events.sort(key=lambda x: x.event_datetime if x.event_datetime else datetime.min)
-        
-        def get_filtered_events(self):
-            """Get events filtered by station"""
-            if self.station_filter:
-                return [e for e in self.events if self.station_filter.lower() in e.station_name.lower()]
-            return self.events
-        
-        def set_station_filter(self, filter_text):
-            """Set station filter"""
-            self.station_filter = filter_text
-        
-        def clear_station_filter(self):
-            """Clear station filter"""
-            self.station_filter = ""
-            self.events = self.all_events[:]
-        
-        def select_all_events(self):
-            """Select all filtered events"""
-            filtered_events = self.get_filtered_events()
-            self.selected_events.update(filtered_events)
-            return len(filtered_events)
-        
-        def select_no_events(self):
-            """Deselect all events"""
-            self.selected_events.clear()
-        
-        def toggle_event_selection(self, event_indices):
-            """Toggle selection of specific events by index"""
-            filtered_events = self.get_filtered_events()
-            for idx in event_indices:
-                if 0 <= idx < len(filtered_events):
-                    event = filtered_events[idx]
-                    if event in self.selected_events:
-                        self.selected_events.remove(event)
-                    else:
-                        self.selected_events.add(event)
-        
-        def get_all_stations(self):
-            """Get list of all station names"""
-            stations = set()
-            for event in self.all_events:
-                if event.station_name:
-                    stations.add(event.station_name)
-            return sorted(list(stations))    
+                return len(self.events)
+            return 0
+        except Exception as e:
+            print(f"Error downloading events: {e}")
+            return -1
+    
+    def sort_events(self):
+        """Sort events by event time"""
+        self.events.sort(key=lambda x: x.event_datetime if x.event_datetime else datetime.min)
+    
+    def get_filtered_events(self):
+        """Get events filtered by station"""
+        if self.station_filter:
+            return [e for e in self.events if self.station_filter.lower() in e.station_name.lower()]
+        return self.events
+    
+    def set_station_filter(self, filter_text):
+        """Set station filter"""
+        self.station_filter = filter_text
+    
+    def clear_station_filter(self):
+        """Clear station filter"""
+        self.station_filter = ""
+        self.events = self.all_events[:]
+    
+    def select_all_events(self):
+        """Select all filtered events"""
+        filtered_events = self.get_filtered_events()
+        self.selected_events.update(filtered_events)
+        return len(filtered_events)
+    
+    def select_no_events(self):
+        """Deselect all events"""
+        self.selected_events.clear()
+    
+    def toggle_event_selection(self, event_indices):
+        """Toggle selection of specific events by index"""
+        filtered_events = self.get_filtered_events()
+        for idx in event_indices:
+            if 0 <= idx < len(filtered_events):
+                event = filtered_events[idx]
+                if event in self.selected_events:
+                    self.selected_events.remove(event)
+                else:
+                    self.selected_events.add(event)
+    
+    def get_all_stations(self):
+        """Get list of all station names"""
+        stations = set()
+        for event in self.all_events:
+            if event.station_name:
+                stations.add(event.station_name)
+        return sorted(list(stations))    

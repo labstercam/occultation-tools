@@ -23,7 +23,7 @@ class ThemeManager:
             'grid_foreground': SystemColors.WindowText,
             'grid_selection': SystemColors.Highlight,
             'button_background': SystemColors.ButtonFace,
-            'button_text': SystemColors.ButtonText,
+            'button_text': SystemColors.ControlText,
             'status_background': SystemColors.ControlDark,
             'status_text': SystemColors.ControlText,
             'groupbox_background': SystemColors.Control,
