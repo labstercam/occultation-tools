@@ -39,7 +39,7 @@ class ExposureEditDialog(Form):
         self.Controls.Add(lbl_event)
         
         lbl_star = Label()
-        lbl_star.Text = f"Star: {self.event.star_name} (Mag: {self.event.star_mag:.1f})"
+        lbl_star.Text = f"Mag: {self.event.star_mag:.1f}, Mag Drop: {self.event.mag_drop:.1f}, Max Dur: {self.event.max_duration_seconds:.1f}s"
         lbl_star.Location = Point(20, 45)
         lbl_star.Size = Size(350, 20)
         self.Controls.Add(lbl_star)
@@ -51,37 +51,37 @@ class ExposureEditDialog(Form):
         else:
             current_text += " (Calculated)"
         lbl_current.Text = current_text
-        lbl_current.Location = Point(20, 70)
+        lbl_current.Location = Point(20, 80)
         lbl_current.Size = Size(350, 20)
         self.Controls.Add(lbl_current)
         
         # Exposure input
         lbl_new_exposure = Label()
         lbl_new_exposure.Text = "New Exposure (ms):"
-        lbl_new_exposure.Location = Point(20, 110)
+        lbl_new_exposure.Location = Point(20, 105)
         lbl_new_exposure.Size = Size(120, 20)
         self.Controls.Add(lbl_new_exposure)
         
         self.txt_exposure = TextBox()
         self.txt_exposure.Text = str(self.event.exposure_ms)
-        self.txt_exposure.Location = Point(150, 110)
+        self.txt_exposure.Location = Point(150, 105)
         self.txt_exposure.Size = Size(100, 20)
         self.Controls.Add(self.txt_exposure)
         
         # Quick exposure buttons
         lbl_quick = Label()
         lbl_quick.Text = "Quick Settings:"
-        lbl_quick.Location = Point(20, 150)
+        lbl_quick.Location = Point(20, 130)
         lbl_quick.Size = Size(100, 20)
         self.Controls.Add(lbl_quick)
         
-        quick_exposures = [10, 20, 40, 80, 100, 200, 500, 1000]
+        quick_exposures = [40, 60, 80, 120, 160, 240, 320, 480]
         x_pos = 20
-        y_pos = 175
+        y_pos = 155
         
         for i, exp in enumerate(quick_exposures):
             btn = Button()
-            btn.Text = f"{exp}ms"
+            btn.Text = f"{exp}"
             btn.Size = Size(45, 25)
             btn.Location = Point(x_pos, y_pos)
             btn.Tag = exp
@@ -97,7 +97,7 @@ class ExposureEditDialog(Form):
         btn_ok = Button()
         btn_ok.Text = "OK"
         btn_ok.DialogResult = DialogResult.OK
-        btn_ok.Location = Point(220, 240)
+        btn_ok.Location = Point(220, 220)
         btn_ok.Size = Size(75, 25)
         btn_ok.Click += self.ok_click
         self.Controls.Add(btn_ok)
@@ -105,13 +105,13 @@ class ExposureEditDialog(Form):
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
         btn_cancel.DialogResult = DialogResult.Cancel
-        btn_cancel.Location = Point(305, 240)
+        btn_cancel.Location = Point(305, 220)
         btn_cancel.Size = Size(75, 25)
         self.Controls.Add(btn_cancel)
         
         btn_reset = Button()
         btn_reset.Text = "Reset to Calculated"
-        btn_reset.Location = Point(20, 240)
+        btn_reset.Location = Point(20, 220)
         btn_reset.Size = Size(120, 25)
         btn_reset.Click += self.reset_click
         self.Controls.Add(btn_reset)
@@ -740,7 +740,7 @@ class TemplateSelectionDialog(Form):
             # Show preview with proper line breaks - FIXED
             if template_content:
                 # Don't truncate, let scrollbars handle the content
-                self.txt_preview.Text = template_content
+                self.txt_preview.Text = template_content.replace('\n','\r\n')
             else:
                 self.txt_preview.Text = "Could not load template content"
     

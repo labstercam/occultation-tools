@@ -37,7 +37,7 @@ class MockThemeManager:
                 'background': SystemColors.Control,
                 'text_foreground': SystemColors.ControlText,
                 'button_background': SystemColors.ButtonFace,
-                'button_text': SystemColors.ButtonText
+                'button_text': SystemColors.ControlText
             }
     
     def toggle_night_mode(self):
@@ -185,6 +185,7 @@ def test_help_content():
         
         for topic in test_topics:
             try:
+                print(topic)
                 content = help_dialog.get_help_content(topic)
                 print(f"✓ {topic}: {len(content)} characters")
                 

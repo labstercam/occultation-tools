@@ -81,9 +81,9 @@ class SequenceRunner:
             
             # Try to connect to SharpCap
             try:
-                import clr
-                clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
-                from SharpCap import *
+                # import clr
+                # clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
+                # from SharpCap import *
                 
                 # Run the sequence
                 if status_callback:
