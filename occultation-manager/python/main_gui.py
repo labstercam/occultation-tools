@@ -22,18 +22,21 @@ from help import HelpManager
 class OccultationManagerGUI(Form):
     """Enhanced main GUI window for occultation management with all requested features"""
     
-    def __init__(self, config, theme_manager):
+    def __init__(self, config, theme_manager,sharpcap_instance=None):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
         self.station_filter = ""
-        self.sequence_runner = SequenceRunner(config)
+        self.sequence_runner = SequenceRunner(config,sharpcap_instance)
         #self.template_manager = TemplateManager(config)
         self.setup_ui()
         self.load_initial_data()
         self.apply_current_theme() # Apply normal or night mode theme
+        clr.AddReference("SharpCap")
+        self.sharpcap = sharpcap_instance
+       
     
     def setup_ui(self):
         """Setup the enhanced user interface"""
@@ -1115,11 +1118,7 @@ class OccultationManagerGUI(Form):
     def apply_event_parameters_to_sharpcap(self, event):
         """Apply event parameters to SharpCap interface"""
         try:
-            # Try to access SharpCap
-            # import clr
-            # clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
-            # from SharpCap import *
-            
+                       
             # Set exposure time
             if SharpCap.Cameras.SelectedCamera:
                 camera = SharpCap.Cameras.SelectedCamera

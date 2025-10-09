@@ -30,10 +30,17 @@ from config import ConfigManager
 from theme import ThemeManager
 from main_gui import OccultationManagerGUI
 
-# Ensure the module directory is in Python path
-module_dir = os.path.dirname(os.path.abspath(__file__))
-if module_dir not in sys.path:
-    sys.path.insert(0, module_dir)
+################################
+
+
+
+
+
+
+
+
+
+############################
 
 def main():
     """Main entry point"""
@@ -43,7 +50,8 @@ def main():
     
     print(f"Configuration loaded from: {config.get_config_path()}")
     print(f"Working directory: {config.get_file_folder()}")
-    
+
+
     # Validate configuration
     errors = config.validate_config()
     if errors:
@@ -51,11 +59,13 @@ def main():
         for error in errors:
             print(f"  - {error}")
         print("Please check your configuration settings.")
-    
+
+
     try:
         print("Starting Enhanced GUI mode...")
-        app = OccultationManagerGUI(config, theme_manager)
+        app = OccultationManagerGUI(config, theme_manager,SharpCap)
         Application.EnableVisualStyles()
+        #Application.Run(app)
         app.ShowDialog()  # Changed from Application.Run(app) so shouldn't lock the main SharpCap interface.
     except Exception as ex:
         print(f"GUI failed to start: {ex}")

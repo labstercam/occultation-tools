@@ -5,6 +5,17 @@ import tempfile
 import shutil
 from datetime import datetime, timedelta
 
+# Test the SharpCap detection logic
+try:
+    import clr
+    clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
+    from SharpCap import *
+    print("✓ SharpCap libraries accessible")
+except:
+    print("✓ SharpCap libraries not available (expected in test environment)")
+
+
+
 def test_sharpcap_integration():
     """Test SharpCap integration aspects"""
     print("SharpCap Integration Test")
@@ -35,7 +46,7 @@ def test_sharpcap_integration():
         # Create a test sequence file
         start_time = datetime.strptime(event.start_time_str, '%Y-%m-%dT%H:%M:%S')
         clean_name = "".join(c for c in event.name if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
-        seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.seq'
+        seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
         sequence_file_path = os.path.join(config.get_sequence_path(), seq_name)
         
         with open(sequence_file_path, 'w') as f:
@@ -92,7 +103,7 @@ Sequence Runner Module Standalone Test
 ✓ Current sequence: None
 
 === Testing Sequence File Detection ===
-✓ Created mock sequence file: 20241215 Future Event - Test Station.seq
+✓ Created mock sequence file: 20241215 Future Event - Test Station.scs
 ✓ Sequence file exists and is accessible
 ✓ Sequence file contains correct event data
 
@@ -118,7 +129,7 @@ Sequence Runner Module Standalone Test
 ✓ Created sequence for Quick Event 2
 ✓ Starting sequence execution test...
   [0.0s] Status: Running sequence 1/2: Quick Event 1
-  [0.1s] Status: Starting SharpCap sequence: 20241215 Quick Event 1 - Test Station.seq
+  [0.1s] Status: Starting SharpCap sequence: 20241215 Quick Event 1 - Test Station.scs
   [0.1s] Status: SharpCap error for Quick Event 1: No module named 'SharpCap'
   [1.1s] Status: Running sequence 2/2: Quick Event 2
   [1.2s] Status: Starting SharpCap sequence: 20241215 Quick Event 2 - Test Station.

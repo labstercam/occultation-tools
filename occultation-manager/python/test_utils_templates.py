@@ -96,7 +96,7 @@ Utils Module Standalone Test
 
 === Testing save_occultation_sequence (Event Object) ===
 ✓ Save with event object: Success
-✓ Sequence file created: 20241215 Test Asteroid - Test Station.seq
+✓ Sequence file created: 20241215 Test Asteroid - Test Station.scs
 ✓ File size: 387 characters
 ✓ Template substitution - object name: Test Asteroid
 ✓ Template substitution - RA coordinate: 15.5
@@ -107,7 +107,7 @@ Utils Module Standalone Test
 
 === Testing save_occultation_sequence (Dictionary) ===
 ✓ Save with dictionary: Success
-✓ Dictionary sequence file created: 20241215 Dictionary Asteroid - Station XYZ.seq
+✓ Dictionary sequence file created: 20241215 Dictionary Asteroid - Station XYZ.scs
 ✓ Local time fields handled (may be empty)
 
 === Testing simple_goto_event ===
@@ -120,11 +120,11 @@ Utils Module Standalone Test
 ✓ Invalid event data handled: Failed as expected
 
 === Testing Filename Generation ===
-✓ Normal event name: 'Normal Asteroid - Station ABC' → '20241215 Normal Asteroid - Station ABC.seq'
-✓ Numbered asteroid: '(433) Eros - Observatory XYZ' → '20241215 (433) Eros - Observatory XYZ.seq'
-✓ Designation with special chars: '2024 AB1 - Site-123' → '20241215 2024 AB1 - Site-123.seq'
-✓ Special characters: 'Test/Event\With:Bad*Chars - Station' → '20241215 TestEventWithBadChars - Station.seq'
-✓ Extra spaces: '   Asteroid With Spaces   - Station   ' → '20241215 Asteroid With Spaces   - Station.seq'
+✓ Normal event name: 'Normal Asteroid - Station ABC' → '20241215 Normal Asteroid - Station ABC.scs'
+✓ Numbered asteroid: '(433) Eros - Observatory XYZ' → '20241215 (433) Eros - Observatory XYZ.scs'
+✓ Designation with special chars: '2024 AB1 - Site-123' → '20241215 2024 AB1 - Site-123.scs'
+✓ Special characters: 'Test/Event\With:Bad*Chars - Station' → '20241215 TestEventWithBadChars - Station.scs'
+✓ Extra spaces: '   Asteroid With Spaces   - Station   ' → '20241215 Asteroid With Spaces   - Station.scs'
 
 === Testing Custom Template Path ===
 ✓ Custom template created: custom_template.txt

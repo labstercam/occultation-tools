@@ -70,7 +70,7 @@ def quick_test():
         
         # Check file creation
         files = os.listdir(config.temp_dir)
-        seq_files = [f for f in files if f.endswith('.seq')]
+        seq_files = [f for f in files if f.endswith('.scs')]
         print(f"✓ Sequence files created: {len(seq_files)}")
         
         # Cleanup

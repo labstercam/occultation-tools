@@ -56,7 +56,7 @@ def create_mock_sequence_file(config, event):
     """Create a mock sequence file for testing"""
     start_time = datetime.strptime(event.start_time_str, '%Y-%m-%dT%H:%M:%S')
     clean_name = "".join(c for c in event.name if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
-    seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.seq'
+    seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
     sequence_file_path = os.path.join(config.get_sequence_path(), seq_name)
     
     # Create mock sequence file content
@@ -307,7 +307,7 @@ def test_single_sequence_execution():
         print(f"✓ Single sequence execution: {'Success' if success else 'Failed (expected without SharpCap)'}")
         
         # Test with non-existent file
-        fake_path = os.path.join(config.get_sequence_path(), "nonexistent.seq")
+        fake_path = os.path.join(config.get_sequence_path(), "nonexistent.scs")
         success = runner.run_single_sequence(fake_path, event, capture_status)
         print(f"✓ Non-existent file handling: {'Failed as expected' if not success else 'Unexpected success'}")
         
@@ -478,7 +478,7 @@ def test_error_handling_scenarios():
         
         # Test 2: Invalid sequence file path
         valid_event = MockOccultationEvent("Valid Event")
-        invalid_path = "/invalid/path/to/nowhere.seq"
+        invalid_path = "/invalid/path/to/nowhere.scs"
         
         success = runner.run_single_sequence(invalid_path, valid_event, capture_all_status)
         print(f"✓ Invalid path handled: {'Failed as expected' if not success else 'Unexpected success'}")

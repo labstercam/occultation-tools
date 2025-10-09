@@ -142,7 +142,7 @@ def test_save_occultation_sequence_with_event_object():
             # Check if file was created
             start_time = datetime.strptime(event.start_time_str, '%Y-%m-%dT%H:%M:%S')
             clean_name = "".join(c for c in event.name if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
-            expected_filename = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.seq'
+            expected_filename = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
             expected_path = os.path.join(config.get_sequence_path(), expected_filename)
             
             if os.path.exists(expected_path):
@@ -225,7 +225,7 @@ def test_save_occultation_sequence_with_dict():
             # Check if file was created
             start_time = datetime.strptime(event_dict['start_time'], '%Y-%m-%dT%H:%M:%S')
             clean_name = "".join(c for c in event_dict['name'] if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
-            expected_filename = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.seq'
+            expected_filename = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
             expected_path = os.path.join(config.get_sequence_path(), expected_filename)
             
             if os.path.exists(expected_path):
@@ -348,7 +348,7 @@ def test_filename_generation():
                 
                 if success:
                     # Check what filename was created
-                    files = [f for f in os.listdir(config.get_sequence_path()) if f.endswith('.seq')]
+                    files = [f for f in os.listdir(config.get_sequence_path()) if f.endswith('.scs')]
                     if files:
                         latest_file = max(files, key=lambda f: os.path.getctime(os.path.join(config.get_sequence_path(), f)))
                         print(f"✓ {description}: '{event_name}' → '{latest_file}'")
@@ -422,7 +422,7 @@ CUSTOM_RECORD {recording_duration}
         
         if success:
             # Find and check the generated file
-            files = [f for f in os.listdir(config.get_sequence_path()) if f.endswith('.seq')]
+            files = [f for f in os.listdir(config.get_sequence_path()) if f.endswith('.scs')]
             if files:
                 seq_file = files[0]
                 seq_path = os.path.join(config.get_sequence_path(), seq_file)
@@ -488,7 +488,7 @@ def test_performance():
         print(f"✓ Average time per sequence: {avg_time:.3f} seconds")
         
         # Check files were created
-        files = [f for f in os.listdir(config.get_sequence_path()) if f.endswith('.seq')]
+        files = [f for f in os.listdir(config.get_sequence_path()) if f.endswith('.scs')]
         print(f"✓ Files created: {len(files)}")
         
         # Cleanup

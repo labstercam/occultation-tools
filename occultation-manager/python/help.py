@@ -244,7 +244,7 @@ class HelpDialog(Form):
         1. Select events using checkboxes in the events grid
         2. Click "Create Sequences" button in toolbar
         3. Choose template from Template Selection dialog
-        4. Application generates individual .seq files for each selected event
+        4. Application generates individual .scs files for each selected event
         5. Files saved to configured Sequence Path
         6. Ready for manual loading or automated execution
 
@@ -271,8 +271,8 @@ class HelpDialog(Form):
 
         FILE NAMING
         -----------
-        Automatic naming format: YYYYMMDD [Event Name].seq
-        Example: 20241215 433 Eros - Station ABC.seq
+        Automatic naming format: YYYYMMDD [Event Name].scs
+        Example: 20241215 433 Eros - Station ABC.scs
 
         BATCH GENERATION
         ----------------
@@ -287,7 +287,7 @@ class HelpDialog(Form):
         • Creates single file containing multiple events
         • Chronologically ordered execution
         • Automatic transitions between events
-        • Named: YYYYMMDD_[StationName]_Combined_Sequences.seq
+        • Named: YYYYMMDD_[StationName]_Combined_Sequences.scs
 
         TIMING COORDINATION
         -------------------
@@ -300,7 +300,7 @@ class HelpDialog(Form):
         EXECUTION OPTIONS
         -----------------
         Manual Execution:
-        • Load .seq files directly in SharpCap
+        • Load .scs files directly in SharpCap
         • User controls timing and start
 
         Automated Execution:
@@ -308,7 +308,7 @@ class HelpDialog(Form):
         • Application manages timing and execution automatically
         • Background processing with status updates
 
-        The sequence generation system creates SharpCap-compatible .seq files with precise timing and complete automation commands for reliable occultation recording."""
+        The sequence generation system creates SharpCap-compatible .scs files with precise timing and complete automation commands for reliable occultation recording."""
 
 
     def get_overview_content(self):
@@ -326,7 +326,7 @@ class HelpDialog(Form):
         2. DOWNLOAD: Click "Download Events" to retrieve assigned events from OWC
         3. FILTER: Use Station Filter and Quick Filters to show desired events
         4. PREPARE: Use bottom panel tools for interactive setup and verification
-        5. GENERATE: Click "Create Sequences" to generate SharpCap .seq files
+        5. GENERATE: Click "Create Sequences" to generate SharpCap .scs files
         6. EXECUTE: Use "Run Sequences" for automation or "Run Tonight's Events" for complete automation
 
         KEY FEATURES
@@ -366,7 +366,7 @@ class HelpDialog(Form):
         ---------
         1. Click "Download Events" to get your assigned events
         2. Select an event and click "Event Details" to review
-        3. Try "Create Sequences" to generate a test .seq file
+        3. Try "Create Sequences" to generate a test .scs file
         4. Use preparation tools to test GOTO and plate solving
 
         Note: Only basic functions are provided by the default sequence template. You will need to modify or setup your own to suit your setups
@@ -397,7 +397,7 @@ class HelpDialog(Form):
         ------------------
         Tools → Configuration → File Paths tab:
         • File Folder: Where event data and templates are stored
-        • Sequence Path: Where .seq files are generated
+        • Sequence Path: Where .scs files are generated
         • Both folders created automatically if they don't exist
 
         STEP 4: RECORDING PARAMETERS
@@ -434,7 +434,7 @@ class HelpDialog(Form):
         FILE PATHS TAB
         --------------
         • File Folder: Storage for event data and templates
-        • Sequence Path: Where .seq files are saved
+        • Sequence Path: Where .scs files are saved
         • Occultations File: Master event database filename
         • Latest File: Temporary download filename
 
@@ -476,12 +476,12 @@ class HelpDialog(Form):
         ------------------------
         • Select one or more events using checkboxes
         • Click "Create Sequences"
-        • Choose template and generate .seq files
+        • Choose template and generate .scs files
         • Check files are created in Sequence Path
 
         STEP 5: VERIFY SETUP
         --------------------
-        • Open .seq file in text editor to verify content
+        • Open .scs file in text editor to verify content
         • Test loading sequence in SharpCap
         • Confirm coordinates and timing are correct"""
 
@@ -537,7 +537,7 @@ class HelpDialog(Form):
 
         SEQUENCES MENU
         --------------
-        • Create Sequences: Generate .seq files
+        • Create Sequences: Generate .scs files
         • Generate Combined Script: Single sequence for multiple events
         • Run Selected Sequences: Automated execution
 
@@ -573,7 +573,7 @@ class HelpDialog(Form):
 
         BOTTOM ROW - SEQUENCES
         ----------------------
-        • Create Sequences: Generate .seq files
+        • Create Sequences: Generate .scs files
         • Run Sequences: Automated execution
         • Combined Script: Multi-event sequence file
 
@@ -653,7 +653,7 @@ class HelpDialog(Form):
 
         CONFIGURATION SECTION
         ----------------------
-        • Sequence Path: Shows current path for .seq file generation
+        • Sequence Path: Shows current path for .scs file generation
         • Browse button to select different folder
         • Path automatically used for all sequence creation
 
@@ -862,14 +862,14 @@ class HelpDialog(Form):
         return """CREATING SEQUENCES
         ==================
 
-        Generating SharpCap .seq files from selected events.
+        Generating SharpCap .scs files from selected events.
 
         SEQUENCE CREATION
         -----------------
         1. Select events using checkboxes
         2. Click "Create Sequences" button
         3. Choose template from selection dialog
-        4. Application generates individual .seq file for each event
+        4. Application generates individual .scs file for each event
         5. Files saved to configured Sequence Path
 
         TEMPLATE SYSTEM
@@ -881,7 +881,7 @@ class HelpDialog(Form):
 
         GENERATED FILES
         ---------------
-        • Named: YYYYMMDD [Event Name].seq
+        • Named: YYYYMMDD [Event Name].scs
         • Contains complete SharpCap commands for automation
         • Includes timing, coordinates, and recording parameters
         • Ready for manual loading or automated execution
@@ -945,14 +945,14 @@ class HelpDialog(Form):
         1. Select multiple events using checkboxes
         2. Click "Combined Script" button
         3. Choose template for sequence generation
-        4. Application creates single .seq file with all events
+        4. Application creates single .scs file with all events
 
         COMBINED FILE FEATURES
         ----------------------
         • Events ordered chronologically by GOTO time
         • Complete timing coordination between events
         • Single file for simplified execution
-        • Named: YYYYMMDD_[StationName]_Combined_Sequences.seq
+        • Named: YYYYMMDD_[StationName]_Combined_Sequences.scs
 
         WHEN TO USE
         -----------
@@ -978,7 +978,7 @@ class HelpDialog(Form):
         EXECUTION METHODS
         -----------------
         Manual Execution:
-        • Load .seq files directly in SharpCap
+        • Load .scs files directly in SharpCap
         • User controls timing and start
 
         Automated Execution:
@@ -1322,7 +1322,7 @@ class HelpDialog(Form):
     • Chronological ordering of selected events
     • Automatic transitions between events
     • Single file for all-night automation
-    • Named: YYYYMMDD_[StationName]_Combined_Sequences.seq
+    • Named: YYYYMMDD_[StationName]_Combined_Sequences.scs
 
     BATCH PROCESSING
     ----------------

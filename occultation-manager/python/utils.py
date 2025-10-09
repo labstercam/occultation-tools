@@ -17,7 +17,7 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
     if hasattr(occ, 'start_time_str'):  # It's an OccultationEvent object
         start_time = datetime.strptime(occ.start_time_str, '%Y-%m-%dT%H:%M:%S')
         clean_name = "".join(c for c in occ.name if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
-        seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.seq'
+        seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
         
         occ_dict = {
             'object_name': occ.object_name,
@@ -43,7 +43,7 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
     else:  # It's a dictionary (legacy format)
         start_time = datetime.strptime(occ['start_time'], '%Y-%m-%dT%H:%M:%S')
         clean_name = "".join(c for c in occ['name'] if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
-        seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.seq'
+        seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
         occ_dict = occ
         # Add empty local time fields if not present
         if 'event_time_local' not in occ_dict:
