@@ -30,20 +30,25 @@ class ThemeManager:
             'textbox_background': SystemColors.Window
         }
         
-        # Night mode (SharpCap red theme for night vision preservation)
+        # Night mode (SharpCap orange/black theme for night vision preservation)
+        # Based on SharpCap 3.2+ night mode color scheme
+        # Reference: https://www.sharpcap.co.uk/sharpcap/whats-new-in-sharpcap-3-2
+        # "The use of an orange colour for text and controls instead of the more 
+        # traditional red makes text legibility much better without adding 
+        # significantly to the screen brightness."
         self.night_theme = {
-            'background': Color.FromArgb(40, 0, 0),        # Very dark red
-            'panel_background': Color.FromArgb(60, 0, 0),   # Dark red
-            'text_foreground': Color.FromArgb(255, 200, 200), # Light red/pink
-            'grid_background': Color.FromArgb(50, 0, 0),    # Dark red
-            'grid_foreground': Color.FromArgb(255, 180, 180), # Light red
-            'grid_selection': Color.FromArgb(120, 40, 40),  # Medium red
-            'button_background': Color.FromArgb(80, 20, 20), # Red button
-            'button_text': Color.FromArgb(255, 200, 200),   # Light red text
-            'status_background': Color.FromArgb(30, 0, 0),   # Very dark red
-            'status_text': Color.FromArgb(255, 180, 180),   # Light red
-            'groupbox_background': Color.FromArgb(45, 0, 0), # Dark red for groups
-            'textbox_background': Color.FromArgb(70, 10, 10) # Slightly lighter red
+            'background': Color.FromArgb(25, 20, 15),          # Very dark (almost black)
+            'panel_background': Color.FromArgb(40, 30, 20),    # Dark brown-black
+            'text_foreground': Color.FromArgb(255, 180, 80),   # Orange text (SharpCap style)
+            'grid_background': Color.FromArgb(30, 25, 18),     # Dark background
+            'grid_foreground': Color.FromArgb(255, 170, 70),   # Orange text
+            'grid_selection': Color.FromArgb(150, 90, 30),     # Dark orange selection
+            'button_background': Color.FromArgb(60, 45, 25),   # Medium dark button
+            'button_text': Color.FromArgb(255, 190, 90),       # Bright orange text
+            'status_background': Color.FromArgb(20, 15, 10),   # Nearly black
+            'status_text': Color.FromArgb(255, 160, 60),       # Orange
+            'groupbox_background': Color.FromArgb(35, 28, 20), # Dark for groupboxes
+            'textbox_background': Color.FromArgb(50, 38, 25)   # Input fields dark
         }
     
     def get_current_theme(self):
