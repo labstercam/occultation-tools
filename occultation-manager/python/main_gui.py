@@ -1153,7 +1153,7 @@ class OccultationManagerGUI(Form):
                 # Set exposure (convert ms to seconds)
                 #exposure_seconds = round(event.exposure_ms / 1000.0,3)
                 if hasattr(camera.Controls, 'Exposure'):
-                    camera.Controls.Exposure.Value = event.exposure_ms
+                    camera.Controls.Exposure.ExposureMs = event.exposure_ms
                     print(f"Set exposure to {event.exposure_ms:.0f} ms")
             
             # Set target name/coordinates in SharpCap (if supported)
