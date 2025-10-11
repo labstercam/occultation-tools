@@ -6,9 +6,11 @@ import os
 import threading
 import time
 from datetime import datetime, timedelta
-from System.Drawing import Point, Size, Color, SystemColors, Font, FontStyle, Pen
+from System.Drawing import Point, Size, Color, SystemColors, Font, FontStyle, Pen, PointF
 from System.Windows.Forms import *
 import System
+
+from System.Threading import CancellationToken
 
 from theme import apply_theme_to_control
 from events import OccultationManager
@@ -16,13 +18,13 @@ from sequence_runner import SequenceRunner
 from gui_components import EventsDataGrid
 from gui_dialogs import ExposureEditDialog, EventDetailsDialog, ConfigurationDialog, TemplateSelectionDialog
 from templates import TemplateManager
-from utils import save_occultation_sequence, simple_goto_event
+from utils import save_occultation_sequence
 from help import HelpManager
 
 class OccultationManagerGUI(Form):
     """Enhanced main GUI window for occultation management with all requested features"""
     
-    def __init__(self, config, theme_manager,sharpcap_instance=None):
+    def __init__(self, config, theme_manager,sharpcap_instance=None, plate_solve_purpose=None):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
@@ -36,6 +38,7 @@ class OccultationManagerGUI(Form):
         self.apply_current_theme() # Apply normal or night mode theme
         clr.AddReference("SharpCap")
         self.sharpcap = sharpcap_instance
+        self.plate_solve_purpose = plate_solve_purpose
        
     
     def setup_ui(self):
@@ -731,14 +734,38 @@ class OccultationManagerGUI(Form):
             return
         
         event = selected_events[0]
-        success = simple_goto_event(event)
+        success = self.execute_goto_command(event)
         
         if success:
             self.update_status(f"GOTO/Platesolve started for {event.event_name}")
         else:
             self.update_status("GOTO failed")
             MessageBox.Show("Failed to start GOTO sequence", "Error")
-            
+
+    def execute_goto_command(self, event):
+        """Execute the actual GOTO command"""
+        try:
+            # Check if mount control is available
+            if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
+                mount = self.sharpcap.Mounts.SelectedMount
+                mount.SlewTo(event.ra, event.dec)                
+             
+                print(f"GOTO command sent: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
+                return True
+            else:
+                # Show coordinates for manual GOTO
+                print(f"Manual GOTO required: RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
+                result = MessageBox.Show(f"No mount control available.\n\nPlease manually GOTO:\n\n" +
+                                    f"RA: {event.ra:.6f} hours\nDec: {event.dec:.6f}°\n\n" +
+                                    f"Click OK when GOTO is complete, or Cancel to stop.",
+                                    "Manual GOTO Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
+                return result == DialogResult.OK
+                
+        except Exception as e:
+            print(f"GOTO execution error: {e}")
+            return False
+
+
     def run_sequences_click(self, sender, e):
         """Run sequences for selected events - non-blocking version"""
         selected_events = self.get_displayed_selected_events()
@@ -1120,18 +1147,19 @@ class OccultationManagerGUI(Form):
         try:
                        
             # Set exposure time
-            if SharpCap.Cameras.SelectedCamera:
-                camera = SharpCap.Cameras.SelectedCamera
+            if self.sharpcap.SelectedCamera:
+                camera = self.sharpcap.SelectedCamera
                 
                 # Set exposure (convert ms to seconds)
-                exposure_seconds = event.exposure_ms / 1000.0
+                #exposure_seconds = round(event.exposure_ms / 1000.0,3)
                 if hasattr(camera.Controls, 'Exposure'):
-                    camera.Controls.Exposure.Value = exposure_seconds
-                    print(f"Set exposure to {exposure_seconds}s")
+                    camera.Controls.Exposure.Value = event.exposure_ms
+                    print(f"Set exposure to {event.exposure_ms:.0f} ms")
             
             # Set target name/coordinates in SharpCap (if supported)
             try:
                 target_name = f"{event.get_asteroid_display_name()}_{event.station_name}"
+                self.sharpcap.TargetName = target_name
                 print(f"Target: {target_name} at RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
             except:
                 pass
@@ -1177,16 +1205,16 @@ class OccultationManagerGUI(Form):
         try:
             # Step 1: GOTO
             self.update_status("Step 1: Executing GOTO...")
-            goto_success = simple_goto_event(event)
+            goto_success = self.execute_goto_command(event)
             
             if not goto_success:
                 return False
             
             # Step 2: Wait and plate solve
-            self.update_status("Step 2: Plate solving...")
+#            self.update_status("Step 2: Plate solving...")
             time.sleep(3)  # Wait for mount to settle
             
-            # Basic verification that we're in the right area
+            # Basic verification that we're in the right area - not done yet
             return True
             
         except Exception as e:
@@ -1205,20 +1233,106 @@ class OccultationManagerGUI(Form):
         try:
             self.update_status("Plate solving and labeling target...")
             
-            # Simplified plate solve operation
-            MessageBox.Show(f"Plate solve initiated for:\n\n" +
-                        f"Object: {event.get_asteroid_display_name()}\n" +
-                        f"Coordinates: RA {event.ra:.4f}h, Dec {event.dec:.4f}°\n" +
-                        f"Star Magnitude: {event.star_mag:.1f}\n\n" +
-                        f"Use SharpCap's plate solving tools to verify target position.",
-                        "Plate Solve Info", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            # Execute plate solve with target marking
+            success = self.plate_solve_and_mark_star(event, checkStarInFOV=True)
             
-            self.update_status(f"Target info displayed: {event.get_asteroid_display_name()}")
+            if success == True:
+                self.update_status(f"Target labeled: {event.get_asteroid_display_name()}")
+                MessageBox.Show(f"Target star labeled successfully!\n\n" +
+                            f"Object: {event.get_asteroid_display_name()}\n" +
+                            f"Coordinates: RA {event.ra:.4f}h, Dec {event.dec:.4f}°\n" +
+                            f"Star Magnitude: {event.star_mag:.1f}",
+                            "Target Labeled", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            elif isinstance(success, str):
+                self.update_status(f"Plate solve failed: {success}")
+                MessageBox.Show(f"Plate solve failed: {success}", "Plate Solve Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+            else:
+                self.update_status("Target not found or outside field of view")
                 
         except Exception as ex:
             self.update_status(f"Plate solve error: {ex}")
             MessageBox.Show(f"Plate solve error: {ex}", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+
+    def plate_solve_and_mark_star(self, event, checkStarInFOV = False):
+        """Plate solve current image and add reticle to mark a specific star position. If showWarnings will pop up message boxes, otherwise continues for automatation"""
+
+        # Capture a frame and plate solve
+        if not self.sharpcap.SelectedCamera:
+            MessageBox.Show("Camera is not selected", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return False
+        if (not self.sharpcap.DeepSkyAnnotation.IsActive):
+            self.update_status("Activating Deep Sky Annotation...")
+            self.sharpcap.DeepSkyAnnotation.Activate()        
+
+
+        try:
+            result = self.sharpcap.SafeGetAsyncResult(self.sharpcap.BlindSolver.SolveAsync(self.plate_solve_purpose.Annotation, CancellationToken()))
+            #result = self.sharpcap.SafeWaitForAsync(self.sharpcap.BlindSolver.SolveAsync(PlateSolvePurpose.Annotation, CancellationToken()))
+            print("Plate Solve result:", result)
+            self.update_status(result)
+            # if (result == None):
+            #     print("Plate Solve is not installed or configurated")
+            #     self.update_status("Plate Solve is not installed or configurated")
+            #     MessageBox.Show("Failed to Plate Solve - adjust configure or exposure and try again", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            #     return
+        except Exception as ex:
+            if(str(type(result)) != "<class 'RADecPosition'>"):                  
+                print("Plate Solve Failure:", result, ex)
+                self.update_status(f"Plate Solve is not installed or configurated: {result} {ex}")
+                MessageBox.Show(f"Failed to Plate Solve - adjust configure or exposure and try again {ex}", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+        
+        
+        res  = self.sharpcap.SelectedCamera.Controls.Resolution.Value.Split("x")
+        result = self.sharpcap.PixelPositionProvider.MapPixel(PointF(int(float(res[0])/2), int(float(res[1])/2)))
+        Event_Annotation = event.event_time + "|" + event.asteroid_name + "| " + "" + "|"
+        Event_Annotation = Event_Annotation + f"{event.ra:.4f}" + "|" + f"{event.dec:.4f}" + "||||"
+        
+        System.Windows.Forms.Clipboard.SetText(Event_Annotation)
+
+        self.sharpcap.DeepSkyAnnotation.PasteClipboardDataAsCustom()        
+        return
+        
+        # Convert RA/Dec to pixel coordinates using the WCS
+        pixel_coords = solve_result.WCS.WorldToPixel(target_ra_hours * 15.0, target_dec_degrees)
+        x, y = pixel_coords.X, pixel_coords.Y
+        if checkStarInFOV:
+            # Check if star is in the field of view
+            if x < 0 or x > frame.Width or y < 0 or y > frame.Height:
+                MessageBox.Show("Target star is not in the FOV", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return False
+            
+            # Check if star is well centered (within 50% of frame radius from center)
+            center_x, center_y = frame.Width / 2.0, frame.Height / 2.0
+            distance_from_center = ((x - center_x)**2 + (y - center_y)**2)**0.5
+            frame_radius = ((frame.Width**2 + frame.Height**2)**0.5) / 2.0
+            max_centered_distance = frame_radius * 0.5
+            
+            if distance_from_center > max_centered_distance:
+                MessageBox.Show("Target star is not well centered", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            
+        # Add the reticle overlay
+        self.add_reticle_overlay(x, y)
+        return True
+
+    def add_reticle_overlay(self, x, y, reticle_size = 50,overlay_name = "occultation_reticule"):
+        """    Add a reticle overlay at the specified pixel coordinates    """
+        # Remove existing overlay if it exists
+        if self.sharpcap.Overlays.ContainsKey(overlay_name):
+            self.sharpcap.Overlays.Remove(overlay_name)
+        
+        # Create new overlay
+        overlay = self.sharpcap.Overlays.Add(overlay_name)
+        overlay.AddCircle(x - reticle_size/2, y - reticle_size/2, reticle_size, Pen(Color.Red, 2))
+
+    def clear_all_reticles(self, overlay_name = "occultation_reticule"):
+        """Remove all star reticle overlays"""
+        overlays_to_remove = [key for key in self.sharpcap.Overlays.Keys if key.startswith(overlay_name)]
+        for key in overlays_to_remove:
+            self.sharpcap.Overlays.Remove(key)
 
     def clear_labels_click(self, sender, e):
         """Clear all star labels/overlays"""

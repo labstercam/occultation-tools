@@ -29,9 +29,13 @@ from System.Windows.Forms import *
 from config import ConfigManager
 from theme import ThemeManager
 from main_gui import OccultationManagerGUI
+from SharpCap.Interfaces import PlateSolvePurpose   
 
 ################################
-
+# Various Global Setup
+#################################
+# Check Version of SharpCap
+SharpCapVersion = SharpCap.AppName.Split("v")[1].Split(",")[0]
 
 
 
@@ -47,7 +51,11 @@ def main():
     # Create global instances
     config = ConfigManager()
     theme_manager = ThemeManager()
-    
+
+    if (SharpCapVersion.CompareTo("4.1.13") <= 0):
+        MessageBox.Show("SharpCap Version too old - use 4.1.13 or later", "Version Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        return
+
     print(f"Configuration loaded from: {config.get_config_path()}")
     print(f"Working directory: {config.get_file_folder()}")
 
@@ -63,7 +71,7 @@ def main():
 
     try:
         print("Starting Enhanced GUI mode...")
-        app = OccultationManagerGUI(config, theme_manager,SharpCap)
+        app = OccultationManagerGUI(config, theme_manager,SharpCap,PlateSolvePurpose)
         Application.EnableVisualStyles()
         #Application.Run(app)
         app.ShowDialog()  # Changed from Application.Run(app) so shouldn't lock the main SharpCap interface.

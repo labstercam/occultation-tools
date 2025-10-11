@@ -89,23 +89,3 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
         print(f"Error creating sequence: {e}")
         return False
 
-def simple_goto_event(event):
-    """Simple GOTO function for testing - returns success status"""
-    try:
-        # Try to access SharpCap
-        # import clr
-        # clr.AddReference(r"C:\Program Files\SharpCap 4.1\SharpCap.exe")
-        # from SharpCap import *
-        
-        # Check if mount is connected
-        if hasattr(SharpCap, 'Mounts') and SharpCap.Mounts.SelectedMount:
-            mount = SharpCap.Mounts.SelectedMount
-            mount.SlewToCoordinates(event.ra, event.dec)
-            return True
-        else:
-            print(f"Manual GOTO required: RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
-            return False
-            
-    except Exception as e:
-        print(f"GOTO error: {e}")
-        return False
