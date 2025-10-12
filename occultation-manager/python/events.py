@@ -300,12 +300,12 @@ class OccultationEvent:
             self.end_time = self._parse_iso_datetime(self.end_time_str)
             self.goto_time = self._parse_iso_datetime(self.goto_time_str)
         
-            # Add local time strings (HH:MM:SS format) for use in the sequence, as can use the simpler WAIT UNTIL LOCALTIME Sharpcap command    
+            # Add local time strings (HH:MM:SS format) for use in the sequence, as can use the simpler WAIT UNTIL <TIme of Day> Sharpcap command    
             import time
             local_offset = time.timezone if time.daylight == 0 else time.altzone
-            self.event_time_local = (self.event_datetime + timedelta(seconds=-local_offset)).strftime("%H:%M:%S") or ""
-            self.start_time_local = (self.start_time + timedelta(seconds=-local_offset)).strftime("%H:%M:%S") or ""
-            self.goto_time_local = (self.goto_time + timedelta(seconds=-local_offset)).strftime("%H:%M:%S")
+            self.event_time_local = (self.event_datetime + timedelta(seconds=-local_offset)).strftime("%I:%M:%S %p") or ""
+            self.start_time_local = (self.start_time + timedelta(seconds=-local_offset)).strftime("%I:%M:%S %p") or ""
+            self.goto_time_local = (self.goto_time + timedelta(seconds=-local_offset)).strftime("%I:%M:%S %p")
                     
             if self.recording_duration == 0 and self.start_time and self.end_time:
                 duration_delta = self.end_time - self.start_time
