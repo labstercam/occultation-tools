@@ -23,6 +23,7 @@ class ConfigManager:
             'base_duration': 60,
             'goto_lead_time': 240,
             'mag_for_40ms_exposure': 12.0,
+            'sync_mount': True,
             
             # API configuration
             'host': 'https://www.occultwatcher.net:443',
@@ -173,7 +174,13 @@ class ConfigManager:
     
     def set_mag_for_40ms_exposure(self, magnitude):
         self.config['mag_for_40ms_exposure'] = float(magnitude)
-    
+
+    def get_sync_mount(self):
+        return self.config['sync_mount']
+
+    def set_sync_mount(self, enabled):
+        self.config['sync_mount'] = enabled
+
     # API configuration
     def get_host(self):
         return self.config['host']
@@ -242,7 +249,10 @@ class ConfigManager:
         
         if self.config['mag_for_40ms_exposure'] <= 0:
             errors.append("Magnitude for 40ms exposure must be positive")
-        
+
+        if not isinstance(self.config['sync_mount'], bool):
+            errors.append("Sync mount must be a boolean value")    
+                
         return errors
 
     def get_night_mode(self):

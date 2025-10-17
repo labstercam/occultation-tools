@@ -30,6 +30,8 @@ from config import ConfigManager
 from theme import ThemeManager
 from main_gui import OccultationManagerGUI
 from SharpCap.Interfaces import PlateSolvePurpose   
+from  SharpCap.Base import CoordinateParser, RADecPosition, Epoch
+
 
 ################################
 # Various Global Setup
@@ -71,7 +73,7 @@ def main():
 
     try:
         print("Starting Enhanced GUI mode...")
-        app = OccultationManagerGUI(config, theme_manager,SharpCap,PlateSolvePurpose)
+        app = OccultationManagerGUI(config, theme_manager,SharpCap,PlateSolvePurpose,CoordinateParser)
         Application.EnableVisualStyles()
         #Application.Run(app)
         app.ShowDialog()  # Changed from Application.Run(app) so shouldn't lock the main SharpCap interface.

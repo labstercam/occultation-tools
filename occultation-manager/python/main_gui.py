@@ -24,7 +24,7 @@ from help import HelpManager
 class OccultationManagerGUI(Form):
     """Enhanced main GUI window for occultation management with all requested features"""
     
-    def __init__(self, config, theme_manager,sharpcap_instance=None, plate_solve_purpose=None):
+    def __init__(self, config, theme_manager,sharpcap_instance=None, plate_solve_purpose=None,coordinateParser = None):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
@@ -39,6 +39,7 @@ class OccultationManagerGUI(Form):
         clr.AddReference("SharpCap")
         self.sharpcap = sharpcap_instance
         self.plate_solve_purpose = plate_solve_purpose
+        self.CoordinateParser = coordinateParser
        
     
     def setup_ui(self):
@@ -744,12 +745,19 @@ class OccultationManagerGUI(Form):
 
     def execute_goto_command(self, event):
         """Execute the actual GOTO command"""
+        coordinates = self.CoordinateParser.Parse(f"{event.ra:.6f};{event.dec:.6f}", True)
+
         try:
             # Check if mount control is available
             if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
                 mount = self.sharpcap.Mounts.SelectedMount
-                mount.SlewTo(event.ra, event.dec)                
-             
+                #mount.SlewTo(event.ra, event.dec)
+                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates,CancellationToken()))
+                time.sleep(2)
+                if self.config.get_sync_mount():
+                    mount.SolveAndSync() 
+                time.sleep(1)
+                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates,CancellationToken()))
                 print(f"GOTO command sent: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
                 return True
             else:
@@ -1129,7 +1137,7 @@ class OccultationManagerGUI(Form):
                 self.update_status(f"SharpCap configured for {event.event_name}")
                 MessageBox.Show(f"SharpCap setup complete for:\n\n" +
                             f"Event: {event.get_asteroid_display_name()}\n" +
-                            f"Exposure: {event.exposure_ms}ms\n" +
+                            f"Exposure Set to : {event.exposure_ms}ms\n" +
                             f"Recording Duration: {event.recording_duration}s\n" +
                             f"Target: RA {event.ra:.4f}h, Dec {event.dec:.4f}°\n\n" +
                             f"Use SharpCap interface for recording when ready.",

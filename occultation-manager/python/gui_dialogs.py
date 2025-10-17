@@ -525,7 +525,21 @@ class ConfigurationDialog(Form):
         self.txt_mag_exposure.Location = Point(150, 90)
         self.txt_mag_exposure.Size = Size(100, 20)
         tab.Controls.Add(self.txt_mag_exposure)
+
+        self.chk_sync_mount = CheckBox()
+        self.chk_sync_mount.Text = "Sync Mount with GOTO"       
+        self.chk_sync_mount.Location = Point(20, 120)
+        self.chk_sync_mount.Size = Size(200, 20)    
+        tab.Controls.Add(self.chk_sync_mount)
+
+        self.chk_sync_mount.Checked = self.config.get_sync_mount()
+        self.chk_sync_mount.CheckedChanged += self.sync_mount_checked_changed
     
+    def sync_mount_checked_changed(self, sender, e):
+        """Handle sync mount checkbox change"""
+        self.config.set_sync_mount(self.chk_sync_mount.Checked) 
+
+
     def setup_api_tab(self, tab):
         """Setup API settings tab"""
         lbl_host = Label()
@@ -561,6 +575,7 @@ class ConfigurationDialog(Form):
         self.txt_base_duration.Text = str(self.config.get_base_duration())
         self.txt_goto_lead.Text = str(self.config.get_goto_lead_time())
         self.txt_mag_exposure.Text = str(self.config.get_mag_for_40ms_exposure())
+        self.chk_sync_mount.Checked = self.config.get_sync_mount()
         self.txt_host.Text = self.config.get_host()
         self.txt_api_key.Text = self.config.get_api_key()
     
@@ -591,6 +606,7 @@ class ConfigurationDialog(Form):
             self.config.set_base_duration(int(self.txt_base_duration.Text))
             self.config.set_goto_lead_time(int(self.txt_goto_lead.Text))
             self.config.set_mag_for_40ms_exposure(float(self.txt_mag_exposure.Text))
+            self.config.set_sync_mount(self.chk_sync_mount.Checked)
             self.config.set_host(self.txt_host.Text)
             self.config.set_api_key(self.txt_api_key.Text)
             
