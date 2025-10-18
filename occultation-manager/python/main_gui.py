@@ -64,7 +64,8 @@ class OccultationManagerGUI(Form):
         
         # Station filter panel
         filter_panel = self.create_station_filter_panel()
-        filter_panel.Parent = main_panel
+#        filter_panel.Parent = main_panel
+        toolbar.Controls.Add( filter_panel)
         
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
@@ -110,6 +111,7 @@ class OccultationManagerGUI(Form):
         toolbar.Dock = DockStyle.Top
         toolbar.BackColor = SystemColors.Control
         
+
         # Row 1 - Main operations (moved down)
         btn_download = Button()
         btn_download.Text = "Download Events"
@@ -130,21 +132,7 @@ class OccultationManagerGUI(Form):
         btn_tonight.Size = Size(100, 25)
         btn_tonight.Location = Point(185, 8)  # Changed from 5 to 8
         btn_tonight.Click += self.download_and_run_tonight_click
-        toolbar.Controls.Add(btn_tonight)
-        
-        btn_select_all = Button()
-        btn_select_all.Text = "Select All"
-        btn_select_all.Size = Size(70, 25)
-        btn_select_all.Location = Point(295, 8)  # Changed from 5 to 8
-        btn_select_all.Click += self.select_all_click
-        toolbar.Controls.Add(btn_select_all)
-        
-        btn_select_none = Button()
-        btn_select_none.Text = "Select None"
-        btn_select_none.Size = Size(80, 25)
-        btn_select_none.Location = Point(370, 8)  # Changed from 5 to 8
-        btn_select_none.Click += self.select_none_click
-        toolbar.Controls.Add(btn_select_none)
+        #toolbar.Controls.Add(btn_tonight)
         
         btn_event_details = Button()
         btn_event_details.Text = "Event Details"
@@ -171,24 +159,16 @@ class OccultationManagerGUI(Form):
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
         btn_run_sequences.Size = Size(100, 25)
-        btn_run_sequences.Location = Point(120, 36)  # Changed from 25 to 28
+        btn_run_sequences.Location = Point(230, 36)  # Changed from 25 to 28
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
         
         btn_combined_script = Button()
         btn_combined_script.Text = "Combined Script"
         btn_combined_script.Size = Size(110, 25)
-        btn_combined_script.Location = Point(225, 36)  # Changed from 25 to 28
+        btn_combined_script.Location = Point(120, 36)  # Changed from 25 to 28
         btn_combined_script.Click += self.generate_combined_script_click
-        toolbar.Controls.Add(btn_combined_script)
-
-        # Add GOTO button
-        btn_goto = Button()
-        btn_goto.Text = "Test GOTO & Solve"
-        btn_goto.Size = Size(90, 25)
-        btn_goto.Location = Point(660, 8)  # Position after other buttons
-        btn_goto.Click += self.goto_selected_event
-        toolbar.Controls.Add(btn_goto)        
+        toolbar.Controls.Add(btn_combined_script)  
 
         # Night Mode button
         self.btn_night_mode = Button()
@@ -255,24 +235,17 @@ class OccultationManagerGUI(Form):
         
         lbl_station = Label()
         lbl_station.Text = "Station Filter:"
-        lbl_station.Location = Point(10, 7)
+        lbl_station.Location = Point(185, 8)
         lbl_station.Size = Size(80, 20)
         panel.Controls.Add(lbl_station)
         
         self.cbo_stations = ComboBox()
-        self.cbo_stations.Location = Point(95, 5)
+        self.cbo_stations.Location = Point(275, 8)
         self.cbo_stations.Size = Size(150, 25)
         self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
         self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed
         panel.Controls.Add(self.cbo_stations)
-        
-        btn_clear_filter = Button()
-        btn_clear_filter.Text = "Clear Filter"
-        btn_clear_filter.Location = Point(250, 4)
-        btn_clear_filter.Size = Size(80, 23)
-        btn_clear_filter.Click += self.clear_station_filter_click
-        panel.Controls.Add(btn_clear_filter)
-        
+             
         return panel
     
     def create_enhanced_bottom_panel(self):
@@ -292,7 +265,7 @@ class OccultationManagerGUI(Form):
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
         actions_group.Location = Point(10, 5)  # Moved down
-        actions_group.Size = Size(200, 45)      # Made smaller
+        actions_group.Size = Size(200, 70)      
         panel.Controls.Add(actions_group)
         
         # Quick filter buttons (single row)
@@ -304,7 +277,7 @@ class OccultationManagerGUI(Form):
         actions_group.Controls.Add(btn_filter_today)
         
         btn_filter_upcoming = Button()
-        btn_filter_upcoming.Text = "Upcoming"
+        btn_filter_upcoming.Text = "Future"
         btn_filter_upcoming.Location = Point(65, 15)
         btn_filter_upcoming.Size = Size(60, 25)
         btn_filter_upcoming.Click += self.filter_upcoming_click
@@ -316,19 +289,20 @@ class OccultationManagerGUI(Form):
         btn_show_all.Size = Size(35, 25)
         btn_show_all.Click += self.show_all_click
         actions_group.Controls.Add(btn_show_all)
-        
-        # Existing selection summary (repositioned and resized)
-        summary_group = GroupBox()
-        summary_group.Text = "Selection Summary"
-        summary_group.Location = Point(20, 80)
-        summary_group.Size = Size(200, 35)
-        panel.Controls.Add(summary_group)
+
+        btn_select_none = Button()
+        btn_select_none.Text = "None"
+        btn_select_none.Size = Size(80, 25)
+        btn_select_none.Location = Point(200, 15)  # Changed from 5 to 8
+        btn_select_none.Click += self.select_none_click
+        actions_group.Controls.Add(btn_select_none)
+
         
         self.lbl_selection_summary = Label()
         self.lbl_selection_summary.Text = "No events selected"
-        self.lbl_selection_summary.Location = Point(10, 15)
+        self.lbl_selection_summary.Location = Point(5, 45)
         self.lbl_selection_summary.Size = Size(180, 15)
-        summary_group.Controls.Add(self.lbl_selection_summary)
+        actions_group.Controls.Add(self.lbl_selection_summary)
         
         self.events_grid.SelectionChanged += self.grid_selection_changed
         
@@ -337,7 +311,7 @@ class OccultationManagerGUI(Form):
     def create_observation_preparation_group(self):
         """Create the observation preparation control group"""
         obs_group = GroupBox()
-        obs_group.Text = "Observation Preparation - Interactive Setup & Testing"
+        obs_group.Text = "Observation Preparation - Interactive Setup + Testing"
         obs_group.Size = Size(600, 110)
         
         # Current event display
@@ -359,7 +333,7 @@ class OccultationManagerGUI(Form):
         
         # Row 1: Setup and Navigation
         btn_setup_event = Button()
-        btn_setup_event.Text = "Setup for Event"
+        btn_setup_event.Text = "Setup"
         btn_setup_event.Size = Size(90, 25)
         btn_setup_event.Location = Point(10, 45)
         btn_setup_event.Click += self.setup_for_event_click
@@ -367,7 +341,7 @@ class OccultationManagerGUI(Form):
         obs_group.Controls.Add(btn_setup_event)
         
         btn_goto_target = Button()
-        btn_goto_target.Text = "GOTO & Center"
+        btn_goto_target.Text = "GOTO"
         btn_goto_target.Size = Size(90, 25)
         btn_goto_target.Location = Point(110, 45)
         btn_goto_target.Click += self.goto_and_center_click
@@ -942,13 +916,7 @@ class OccultationManagerGUI(Form):
             
             self.refresh_display()
     
-    def clear_station_filter_click(self, sender, e):
-        """Clear station filter"""
-        self.cbo_stations.SelectedIndex = 0  # "All Stations"
-        self.station_filter = ""
-        self.manager.clear_station_filter()
-        self.refresh_display()
-    
+   
     def get_displayed_selected_events(self):
         """Get events that are both displayed and selected"""
         displayed_events = self.manager.get_filtered_events()
@@ -962,10 +930,11 @@ class OccultationManagerGUI(Form):
     
     def filter_today_click(self, sender, e):
         """Filter events for today"""
+        from datetime import timezone
         today = datetime.utcnow().date()
         filtered_events = []
         for event in self.manager.all_events:
-            if event.event_datetime and event.event_datetime.date() == today:
+            if event.event_datetime and (event.event_datetime.replace(tzinfo=timezone.utc).astimezone() - timedelta(hours = 12)).date() == today:
                 filtered_events.append(event)
         
         self.manager.events = filtered_events
