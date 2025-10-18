@@ -38,7 +38,8 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             # Add simple local time strings
             'event_time_local': occ.event_time_local,
             'start_time_local': occ.start_time_local,
-            'goto_time_local': occ.goto_time_local            
+            'goto_time_local': occ.goto_time_local,
+            'pre_goto_time_local': occ.pre_goto_time_local           
         }
     else:  # It's a dictionary (legacy format)
         start_time = datetime.strptime(occ['start_time'], '%Y-%m-%dT%H:%M:%S')
@@ -50,7 +51,8 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             occ_dict.update({
                 'event_time_local': '',
                 'start_time_local': '',
-                'goto_time_local': ''
+                'goto_time_local': '',
+                'pre_goto_time_local': ''
             })        
     
     try:
@@ -77,7 +79,8 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             # Add local time template variables
             event_time_local=occ_dict.get('event_time_local', ''),
             start_time_local=occ_dict.get('start_time_local', ''),
-            goto_time_local=occ_dict.get('goto_time_local', '') 
+            goto_time_local=occ_dict.get('goto_time_local', ''),
+            pre_goto_time_local=occ_dict.get('pre_goto_time_local', '') 
         )
         
         with open(full_seq_path, 'w') as f:

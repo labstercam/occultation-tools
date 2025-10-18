@@ -282,31 +282,6 @@ class OccultationManagerGUI(Form):
         panel.Dock = DockStyle.Bottom
         panel.BackColor = SystemColors.Control
         
-        # Existing configuration group (make smaller)
-        config_group = GroupBox()
-        config_group.Text = "Configuration"
-        config_group.Location = Point(10, 5)
-        config_group.Size = Size(250, 70)
-        panel.Controls.Add(config_group)
-        
-        lbl_seq_path = Label()
-        lbl_seq_path.Text = "Sequence Path:"
-        lbl_seq_path.Location = Point(10, 20)
-        lbl_seq_path.Size = Size(80, 20)
-        config_group.Controls.Add(lbl_seq_path)
-        
-        self.txt_sequence_path = TextBox()
-        self.txt_sequence_path.Text = self.config.get_sequence_path()
-        self.txt_sequence_path.Location = Point(10, 40)
-        self.txt_sequence_path.Size = Size(150, 20)
-        config_group.Controls.Add(self.txt_sequence_path)
-        
-        btn_browse = Button()
-        btn_browse.Text = "Browse"
-        btn_browse.Location = Point(170, 39)
-        btn_browse.Size = Size(60, 22)
-        btn_browse.Click += self.browse_sequence_path_click
-        config_group.Controls.Add(btn_browse)
         
         # NEW: Observation Preparation Group
         obs_prep_group = self.create_observation_preparation_group()
@@ -316,36 +291,36 @@ class OccultationManagerGUI(Form):
         # Existing actions group (repositioned)
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
-        actions_group.Location = Point(10, 80)  # Moved down
-        actions_group.Size = Size(200, 35)      # Made smaller
+        actions_group.Location = Point(10, 5)  # Moved down
+        actions_group.Size = Size(200, 45)      # Made smaller
         panel.Controls.Add(actions_group)
         
         # Quick filter buttons (single row)
         btn_filter_today = Button()
         btn_filter_today.Text = "Today"
         btn_filter_today.Location = Point(10, 15)
-        btn_filter_today.Size = Size(50, 20)
+        btn_filter_today.Size = Size(50, 25)
         btn_filter_today.Click += self.filter_today_click
         actions_group.Controls.Add(btn_filter_today)
         
         btn_filter_upcoming = Button()
         btn_filter_upcoming.Text = "Upcoming"
         btn_filter_upcoming.Location = Point(65, 15)
-        btn_filter_upcoming.Size = Size(60, 20)
+        btn_filter_upcoming.Size = Size(60, 25)
         btn_filter_upcoming.Click += self.filter_upcoming_click
         actions_group.Controls.Add(btn_filter_upcoming)
         
         btn_show_all = Button()
         btn_show_all.Text = "All"
         btn_show_all.Location = Point(130, 15)
-        btn_show_all.Size = Size(35, 20)
+        btn_show_all.Size = Size(35, 25)
         btn_show_all.Click += self.show_all_click
         actions_group.Controls.Add(btn_show_all)
         
         # Existing selection summary (repositioned and resized)
         summary_group = GroupBox()
         summary_group.Text = "Selection Summary"
-        summary_group.Location = Point(220, 80)
+        summary_group.Location = Point(20, 80)
         summary_group.Size = Size(200, 35)
         panel.Controls.Add(summary_group)
         
@@ -407,13 +382,7 @@ class OccultationManagerGUI(Form):
         btn_plate_solve.BackColor = Color.LightCyan
         obs_group.Controls.Add(btn_plate_solve)
         
-        btn_clear_labels = Button()
-        btn_clear_labels.Text = "Clear Labels"
-        btn_clear_labels.Size = Size(80, 25)
-        btn_clear_labels.Location = Point(320, 45)
-        btn_clear_labels.Click += self.clear_labels_click
-        obs_group.Controls.Add(btn_clear_labels)
-        
+                
         # Event details display
         self.lbl_event_details = Label()
         self.lbl_event_details.Text = ""
@@ -877,7 +846,7 @@ class OccultationManagerGUI(Form):
             date_str = datetime.utcnow().strftime('%Y%m%d')
             stations = set(event.station_name for event in events)
             station_name = list(stations)[0] if len(stations) == 1 else "MultiStation"
-            combined_filename = f"{date_str}_{station_name}_Combined_Sequences.seq"
+            combined_filename = f"{date_str}_{station_name}_Combined_Sequences.scs"
             combined_path = os.path.join(self.config.get_sequence_path(), combined_filename)
             
             # Build combined sequence content
@@ -954,7 +923,8 @@ class OccultationManagerGUI(Form):
                 # Add simple local time variables
                 event_time_local=event.event_time_local,
                 start_time_local=event.start_time_local,
-                goto_time_local=event.goto_time_local
+                goto_time_local=event.goto_time_local,
+                pre_goto_time_local =   event.pre_goto_time_local
             )
         except Exception as e:
             return f"# Error formatting template: {e}"
@@ -1303,51 +1273,3 @@ class OccultationManagerGUI(Form):
 
         self.sharpcap.DeepSkyAnnotation.PasteClipboardDataAsCustom()        
         return
-        
-        # Convert RA/Dec to pixel coordinates using the WCS
-        pixel_coords = solve_result.WCS.WorldToPixel(target_ra_hours * 15.0, target_dec_degrees)
-        x, y = pixel_coords.X, pixel_coords.Y
-        if checkStarInFOV:
-            # Check if star is in the field of view
-            if x < 0 or x > frame.Width or y < 0 or y > frame.Height:
-                MessageBox.Show("Target star is not in the FOV", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-                return False
-            
-            # Check if star is well centered (within 50% of frame radius from center)
-            center_x, center_y = frame.Width / 2.0, frame.Height / 2.0
-            distance_from_center = ((x - center_x)**2 + (y - center_y)**2)**0.5
-            frame_radius = ((frame.Width**2 + frame.Height**2)**0.5) / 2.0
-            max_centered_distance = frame_radius * 0.5
-            
-            if distance_from_center > max_centered_distance:
-                MessageBox.Show("Target star is not well centered", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            
-        # Add the reticle overlay
-        self.add_reticle_overlay(x, y)
-        return True
-
-    def add_reticle_overlay(self, x, y, reticle_size = 50,overlay_name = "occultation_reticule"):
-        """    Add a reticle overlay at the specified pixel coordinates    """
-        # Remove existing overlay if it exists
-        if self.sharpcap.Overlays.ContainsKey(overlay_name):
-            self.sharpcap.Overlays.Remove(overlay_name)
-        
-        # Create new overlay
-        overlay = self.sharpcap.Overlays.Add(overlay_name)
-        overlay.AddCircle(x - reticle_size/2, y - reticle_size/2, reticle_size, Pen(Color.Red, 2))
-
-    def clear_all_reticles(self, overlay_name = "occultation_reticule"):
-        """Remove all star reticle overlays"""
-        overlays_to_remove = [key for key in self.sharpcap.Overlays.Keys if key.startswith(overlay_name)]
-        for key in overlays_to_remove:
-            self.sharpcap.Overlays.Remove(key)
-
-    def clear_labels_click(self, sender, e):
-        """Clear all star labels/overlays"""
-        try:
-            self.update_status("All star labels cleared")
-            MessageBox.Show("Clear any overlays using SharpCap's interface", "Clear Labels", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Information)
-            
-        except Exception as ex:
-            self.update_status(f"Error clearing labels: {ex}")

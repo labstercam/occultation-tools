@@ -307,6 +307,7 @@ class OccultationEvent:
             self.event_time_local = (self.event_datetime.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
             self.start_time_local = (self.start_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
             self.goto_time_local = (self.goto_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
+            self.pre_goto_time_local = (self.goto_time.replace(tzinfo=timezone.utc).astimezone() -timedelta(seconds = 90)).strftime("%I:%M:%S %p") or ""
                     
             if self.recording_duration == 0 and self.start_time and self.end_time:
                 duration_delta = self.end_time - self.start_time
