@@ -7,7 +7,12 @@ import threading
 import time
 from datetime import datetime, timedelta
 from System.Drawing import Point, Size, Color, SystemColors, Font, FontStyle, Pen, PointF
-from System.Windows.Forms import *
+from System.Windows.Forms import (
+    Form, Panel, MenuStrip, Button, Label, ComboBox, ComboBoxStyle,
+    ToolStripMenuItem, ToolStripSeparator, FolderBrowserDialog, GroupBox,
+    TextBox, DataGridView, AnchorStyles, DockStyle, Padding, Application,
+    MessageBox, MessageBoxButtons, MessageBoxIcon, DialogResult, FormStartPosition
+)
 import System
 
 from System.Threading import CancellationToken
@@ -110,71 +115,80 @@ class OccultationManagerGUI(Form):
         toolbar.Height = 65  # Increased height slightly
         toolbar.Dock = DockStyle.Top
         toolbar.BackColor = SystemColors.Control
-        
 
-        # Row 1 - Main operations (moved down)
+        # Row 1 - Primary workflow (left-to-right)
         btn_download = Button()
         btn_download.Text = "Download Events"
         btn_download.Size = Size(100, 25)
-        btn_download.Location = Point(5, 8)  # Changed from 5 to 8
+        btn_download.Location = Point(6, 8)
         btn_download.Click += self.download_events_click
         toolbar.Controls.Add(btn_download)
-        
+
         btn_refresh = Button()
         btn_refresh.Text = "Refresh"
         btn_refresh.Size = Size(70, 25)
-        btn_refresh.Location = Point(110, 8)  # Changed from 5 to 8
+        btn_refresh.Location = Point(112, 8)
         btn_refresh.Click += self.refresh_events_click
         toolbar.Controls.Add(btn_refresh)
-        
-        btn_tonight = Button()
-        btn_tonight.Text = "Run Tonight's Events"
-        btn_tonight.Size = Size(100, 25)
-        btn_tonight.Location = Point(185, 8)  # Changed from 5 to 8
-        btn_tonight.Click += self.download_and_run_tonight_click
-        #toolbar.Controls.Add(btn_tonight)
-        
+
+        # Selection shortcuts
+        # btn_select_all = Button()
+        # btn_select_all.Text = "Select All"
+        # btn_select_all.Size = Size(70, 25)
+        # btn_select_all.Location = Point(188, 8)
+        # btn_select_all.Click += self.select_all_click
+        # toolbar.Controls.Add(btn_select_all)
+
+        # btn_select_none = Button()
+        # btn_select_none.Text = "Select None"
+        # btn_select_none.Size = Size(74, 25)
+        # btn_select_none.Location = Point(264, 8)
+        # btn_select_none.Click += self.select_none_click
+        # toolbar.Controls.Add(btn_select_none)
+
         btn_event_details = Button()
         btn_event_details.Text = "Event Details"
         btn_event_details.Size = Size(90, 25)
-        btn_event_details.Location = Point(460, 8)  # Changed from 5 to 8
+        btn_event_details.Location = Point(340, 8)
         btn_event_details.Click += self.show_event_details_click
         toolbar.Controls.Add(btn_event_details)
-        
+
         btn_edit_exposure = Button()
         btn_edit_exposure.Text = "Edit Exposure"
         btn_edit_exposure.Size = Size(90, 25)
-        btn_edit_exposure.Location = Point(560, 8)  # Changed from 5 to 8
+        btn_edit_exposure.Location = Point(436, 8)
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
-        
-        # Row 2 - Sequence operations (moved down)
+
+        # Sequence operations
         btn_create_sequences = Button()
         btn_create_sequences.Text = "Create Sequences"
         btn_create_sequences.Size = Size(110, 25)
-        btn_create_sequences.Location = Point(5, 36)  # Changed from 25 to 28
+        btn_create_sequences.Location = Point(532, 8)
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
-        
+
+
+        btn_combined_script = Button()
+        btn_combined_script.Text = "Combined Seqs"
+        btn_combined_script.Size = Size(110, 25)
+        btn_combined_script.Location = Point(652, 8)
+        btn_combined_script.Click += self.generate_combined_script_click
+        toolbar.Controls.Add(btn_combined_script)
+
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
         btn_run_sequences.Size = Size(100, 25)
-        btn_run_sequences.Location = Point(230, 36)  # Changed from 25 to 28
+        btn_run_sequences.Location = Point(768, 8)
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
-        
-        btn_combined_script = Button()
-        btn_combined_script.Text = "Combined Script"
-        btn_combined_script.Size = Size(110, 25)
-        btn_combined_script.Location = Point(120, 36)  # Changed from 25 to 28
-        btn_combined_script.Click += self.generate_combined_script_click
-        toolbar.Controls.Add(btn_combined_script)  
 
-        # Night Mode button
+
+        # Night Mode (global)
         self.btn_night_mode = Button()
         self.btn_night_mode.Text = "Night Mode"
         self.btn_night_mode.Size = Size(80, 25)
-        self.btn_night_mode.Location = Point(760, 8)  # Adjust X position as needed
+        self.btn_night_mode.Location = Point(900, 8)
         self.btn_night_mode.Click += self.toggle_night_mode_click
         toolbar.Controls.Add(self.btn_night_mode)
 
@@ -234,13 +248,13 @@ class OccultationManagerGUI(Form):
         panel.BackColor = SystemColors.ControlLight
         
         lbl_station = Label()
-        lbl_station.Text = "Station Filter:"
+        lbl_station.Text = "Station:"
         lbl_station.Location = Point(185, 8)
-        lbl_station.Size = Size(80, 20)
+        lbl_station.Size = Size(50, 20)
         panel.Controls.Add(lbl_station)
         
         self.cbo_stations = ComboBox()
-        self.cbo_stations.Location = Point(275, 8)
+        self.cbo_stations.Location = Point(255, 8)
         self.cbo_stations.Size = Size(150, 25)
         self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
         self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed

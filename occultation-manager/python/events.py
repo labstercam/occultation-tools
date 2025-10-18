@@ -469,7 +469,7 @@ class OccultationManager:
         """Clear station filter"""
         self.station_filter = ""
         self.events = self.all_events[:]
-        self.refresh_display()
+        #self.refresh_display()
     
     def select_all_events(self):
         """Select all filtered events"""
