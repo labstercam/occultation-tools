@@ -481,17 +481,22 @@ class OccultationManager:
         """Deselect all events"""
         self.selected_events.clear()
     
-    def toggle_event_selection(self, event_indices):
-        """Toggle selection of specific events by index"""
+    def toggle_event_selection(self):
+        """Toggle selection of specific events by index. Toggle all On/Off based on first event."""
+
         filtered_events = self.get_filtered_events()
-        for idx in event_indices:
-            if 0 <= idx < len(filtered_events):
-                event = filtered_events[idx]
-                if event in self.selected_events:
-                    self.selected_events.remove(event)
-                else:
-                    self.selected_events.add(event)
-    
+        if len(filtered_events) >0:
+            status = filtered_events[0] in self.selected_events
+        else:
+            return False
+        
+        for event in filtered_events:
+            if status :
+                self.selected_events.remove(event)
+            else:
+                self.selected_events.add(event)
+        return not status
+
     def get_all_stations(self):
         """Get list of all station names"""
         stations = set()

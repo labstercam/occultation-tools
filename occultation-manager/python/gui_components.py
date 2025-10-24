@@ -127,3 +127,13 @@ class EventsDataGrid(DataGridView):
             row.Cells["Selected"].Value = select
             if row.Tag:
                 row.Tag.selected = select
+
+    def toggle_all_events(self,status=False):
+        """Select or deselect all events based on status"""
+        print(
+            f"Toggling all events to {'selected' if status else 'deselected'}"
+        )
+        for row in self.Rows:
+            row.Cells["Selected"].Value = status
+            if row.Tag:
+                row.Tag.selected = status

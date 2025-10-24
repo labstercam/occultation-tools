@@ -279,7 +279,7 @@ class OccultationManagerGUI(Form):
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
         actions_group.Location = Point(10, 5)  # Moved down
-        actions_group.Size = Size(200, 70)      
+        actions_group.Size = Size(280, 70)      
         panel.Controls.Add(actions_group)
         
         # Quick filter buttons (single row)
@@ -309,7 +309,14 @@ class OccultationManagerGUI(Form):
         btn_select_none.Size = Size(80, 25)
         btn_select_none.Location = Point(200, 15)  # Changed from 5 to 8
         btn_select_none.Click += self.select_none_click
-        actions_group.Controls.Add(btn_select_none)
+        #actions_group.Controls.Add(btn_select_none)
+
+        btn_select_toggle = Button()
+        btn_select_toggle.Text = "On/Off"
+        btn_select_toggle.Size = Size(80, 25)
+        btn_select_toggle.Location = Point(200, 15)  # Changed from 5 to 8
+        btn_select_toggle .Click += self.select_toggle_click
+        actions_group.Controls.Add(btn_select_toggle)
 
         
         self.lbl_selection_summary = Label()
@@ -498,7 +505,14 @@ class OccultationManagerGUI(Form):
         self.events_grid.select_all_events(False)
         self.manager.selected_events.clear()
         self.update_selection_summary()
-    
+
+    def select_toggle_click(self, sender, e):
+        """Handle toggle button click"""
+        status = self.manager.toggle_event_selection()
+        self.events_grid.toggle_all_events(status=status)
+        self.update_selection_summary()
+
+
     def download_and_run_tonight_click(self, sender, e):
         """Download events and automatically run tonight's events"""
         if MessageBox.Show("This will download all events and automatically run tonight's events.\n\nContinue?", 
@@ -708,13 +722,13 @@ class OccultationManagerGUI(Form):
             # Check if mount control is available
             if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
                 mount = self.sharpcap.Mounts.SelectedMount
-                #mount.SlewTo(event.ra, event.dec)
-                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates,CancellationToken()))
-                time.sleep(2)
                 if self.config.get_sync_mount():
                     mount.SolveAndSync() 
+                
+                mount.SlewTo(coordinates)
                 time.sleep(1)
                 result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates,CancellationToken()))
+
                 print(f"GOTO command sent: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
                 return True
             else:
