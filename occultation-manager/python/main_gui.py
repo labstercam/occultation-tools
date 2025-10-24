@@ -65,23 +65,27 @@ class OccultationManagerGUI(Form):
         
         # Enhanced toolbar
         toolbar = self.create_enhanced_toolbar()
-        toolbar.Parent = main_panel
         
         # Station filter panel
         filter_panel = self.create_station_filter_panel()
 #        filter_panel.Parent = main_panel
         toolbar.Controls.Add( filter_panel)
-        
+
+
+
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
-        self.events_grid.Location = Point(10, 132)
+        self.events_grid.Location = Point(10, 170)
         self.events_grid.Size = Size(1360, 450)
         self.events_grid.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
-        main_panel.Controls.Add(self.events_grid)
         
         # Bottom panel (smaller now)
         bottom_panel = self.create_enhanced_bottom_panel()
+
+
         bottom_panel.Parent = main_panel
+        toolbar.Parent = main_panel
+        main_panel.Controls.Add(self.events_grid)
         
         # Status bar
         status_bar = self.create_status_bar()
@@ -112,7 +116,7 @@ class OccultationManagerGUI(Form):
     def create_enhanced_toolbar(self):
         """Create the enhanced main toolbar"""
         toolbar = Panel()
-        toolbar.Height = 65  # Increased height slightly
+        toolbar.Height = 40  # Increased height slightly
         toolbar.Dock = DockStyle.Top
         toolbar.BackColor = SystemColors.Control
 
@@ -265,8 +269,8 @@ class OccultationManagerGUI(Form):
     def create_enhanced_bottom_panel(self):
         """Create the enhanced bottom control panel with Observation Preparation"""
         panel = Panel()
-        panel.Height = 120  # Increased height for new section
-        panel.Dock = DockStyle.Bottom
+        panel.Height = 90  # Increased height for new section
+        panel.Dock = DockStyle.Top
         panel.BackColor = SystemColors.Control
         
         
@@ -279,7 +283,7 @@ class OccultationManagerGUI(Form):
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
         actions_group.Location = Point(10, 5)  # Moved down
-        actions_group.Size = Size(280, 70)      
+        actions_group.Size = Size(380, 73)      
         panel.Controls.Add(actions_group)
         
         # Quick filter buttons (single row)
@@ -307,14 +311,14 @@ class OccultationManagerGUI(Form):
         btn_select_none = Button()
         btn_select_none.Text = "None"
         btn_select_none.Size = Size(80, 25)
-        btn_select_none.Location = Point(200, 15)  # Changed from 5 to 8
+        btn_select_none.Location = Point(170, 15)  # Changed from 5 to 8
         btn_select_none.Click += self.select_none_click
         #actions_group.Controls.Add(btn_select_none)
 
         btn_select_toggle = Button()
         btn_select_toggle.Text = "On/Off"
         btn_select_toggle.Size = Size(80, 25)
-        btn_select_toggle.Location = Point(200, 15)  # Changed from 5 to 8
+        btn_select_toggle.Location = Point(170, 15)  # Changed from 5 to 8
         btn_select_toggle .Click += self.select_toggle_click
         actions_group.Controls.Add(btn_select_toggle)
 
@@ -333,12 +337,12 @@ class OccultationManagerGUI(Form):
         """Create the observation preparation control group"""
         obs_group = GroupBox()
         obs_group.Text = "Observation Preparation - Interactive Setup + Testing"
-        obs_group.Size = Size(600, 110)
+        obs_group.Size = Size(660, 73)
         
         # Current event display
         self.lbl_current_event = Label()
         self.lbl_current_event.Text = "No event loaded for preparation"
-        self.lbl_current_event.Location = Point(10, 20)
+        self.lbl_current_event.Location = Point(395, 15)
         self.lbl_current_event.Size = Size(480, 15)
         self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
         obs_group.Controls.Add(self.lbl_current_event)
@@ -347,24 +351,17 @@ class OccultationManagerGUI(Form):
         btn_load_event = Button()
         btn_load_event.Text = "Load Event"
         btn_load_event.Size = Size(80, 25)
-        btn_load_event.Location = Point(500, 15)
+        btn_load_event.Location = Point(10, 15)
         btn_load_event.Click += self.load_event_for_prep_click
         btn_load_event.BackColor = Color.LightYellow
         obs_group.Controls.Add(btn_load_event)
         
         # Row 1: Setup and Navigation
-        btn_setup_event = Button()
-        btn_setup_event.Text = "Setup"
-        btn_setup_event.Size = Size(90, 25)
-        btn_setup_event.Location = Point(10, 45)
-        btn_setup_event.Click += self.setup_for_event_click
-        btn_setup_event.BackColor = Color.LightGreen
-        obs_group.Controls.Add(btn_setup_event)
         
         btn_goto_target = Button()
         btn_goto_target.Text = "GOTO"
         btn_goto_target.Size = Size(90, 25)
-        btn_goto_target.Location = Point(110, 45)
+        btn_goto_target.Location = Point(95, 15)
         btn_goto_target.Click += self.goto_and_center_click
         btn_goto_target.BackColor = Color.LightBlue
         obs_group.Controls.Add(btn_goto_target)
@@ -372,16 +369,23 @@ class OccultationManagerGUI(Form):
         btn_plate_solve = Button()
         btn_plate_solve.Text = "Plate Solve & Label"
         btn_plate_solve.Size = Size(100, 25)
-        btn_plate_solve.Location = Point(210, 45)
+        btn_plate_solve.Location = Point(190, 15)
         btn_plate_solve.Click += self.plate_solve_label_click
         btn_plate_solve.BackColor = Color.LightCyan
         obs_group.Controls.Add(btn_plate_solve)
         
+        btn_setup_event = Button()
+        btn_setup_event.Text = "Setup"
+        btn_setup_event.Size = Size(90, 25)
+        btn_setup_event.Location = Point(295, 15)
+        btn_setup_event.Click += self.setup_for_event_click
+        btn_setup_event.BackColor = Color.LightGreen
+        obs_group.Controls.Add(btn_setup_event)
                 
         # Event details display
         self.lbl_event_details = Label()
         self.lbl_event_details.Text = ""
-        self.lbl_event_details.Location = Point(10, 80)
+        self.lbl_event_details.Location = Point(10, 45)
         self.lbl_event_details.Size = Size(570, 25)
         self.lbl_event_details.Font = Font("Microsoft Sans Serif", 8)
         obs_group.Controls.Add(self.lbl_event_details)
@@ -1053,7 +1057,7 @@ class OccultationManagerGUI(Form):
         event = self._preparation_event
         if event:
             # Update event label
-            self.lbl_current_event.Text = f"Prep Event: {event.get_asteroid_display_name()} at {event.event_time} UTC"
+            self.lbl_current_event.Text = f"{event.get_asteroid_display_name()} at {event.event_time} UTC"
             
             # Update details
             details = (f"RA: {event.ra:.4f}h, Dec: {event.dec:.4f}° | "
