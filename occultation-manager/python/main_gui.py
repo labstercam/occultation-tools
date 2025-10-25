@@ -571,26 +571,19 @@ class OccultationManagerGUI(Form):
         if not events:
             return
         # First create sequences
-        # Ask whether to apply one template to all events or select per-event.
-        choice = MessageBox.Show(
-            "Apply the same template to all selected events?\n\nYes = Use for All, No = Use for One (select per-event), Cancel = Abort",
-            "Template Application Mode",
-            MessageBoxButtons.YesNoCancel,
-            MessageBoxIcon.Question
-        )
-
-        if choice == DialogResult.Cancel:
+        # Show the template selection dialog once. The dialog contains a checkbox
+        # 'Apply to All Events' which controls whether the chosen template should
+        # be applied to every selected event or only to the first (and prompt for
+        # each subsequent event).
+        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+        if template_dialog.ShowDialog() != DialogResult.OK:
             return
 
-        if choice == DialogResult.Yes:
-            # Use for All: show template dialog once
-            template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-            if template_dialog.ShowDialog() != DialogResult.OK:
-                return
+        template_path = template_dialog.get_selected_template_path()
+        apply_all = getattr(template_dialog, 'apply_for_all', False)
 
-            template_path = template_dialog.get_selected_template_path()
-
-            # Create sequences for all events
+        if apply_all:
+            # Create sequences for all events using the selected template
             self.manager.selected_events = set(events)
             success_count, error_count, message = self.generate_sequences_for_events(template_path)
 
@@ -607,16 +600,21 @@ class OccultationManagerGUI(Form):
                 MessageBox.Show(f"Failed to create sequences: {message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error)
         else:
-            # Use for One: prompt per-event
+            # Apply the initially chosen template to the first event, then prompt
+            # for each subsequent event individually.
             success_events = []
-            for ev in events:
-                per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-                per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
-                if per_dialog.ShowDialog() != DialogResult.OK:
-                    # User cancelled per-event selection; stop processing further
-                    break
+            for idx, ev in enumerate(events):
+                if idx == 0:
+                    # Use the template chosen in the initial dialog for the first event
+                    per_template = template_path
+                else:
+                    per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                    per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
+                    if per_dialog.ShowDialog() != DialogResult.OK:
+                        # User cancelled per-event selection; stop processing further
+                        break
+                    per_template = per_dialog.get_selected_template_path()
 
-                per_template = per_dialog.get_selected_template_path()
                 # Attempt to save sequence for this single event
                 try:
                     ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequence_path(), self.config)
@@ -827,37 +825,36 @@ class OccultationManagerGUI(Form):
         
         self.manager.selected_events = set(selected_events)
         
-        # Ask whether to apply one template to all events or select per-event.
-        choice = MessageBox.Show(
-            "Apply the same template to all selected events?\n\nYes = Use for All, No = Use for One (select per-event), Cancel = Abort",
-            "Template Application Mode",
-            MessageBoxButtons.YesNoCancel,
-            MessageBoxIcon.Question
-        )
-
-        if choice == DialogResult.Cancel:
+        # Show the template selection dialog once. The dialog contains a
+        # checkbox 'Apply to All Events' which controls whether the chosen
+        # template should be applied to every selected event or only to the
+        # first (and prompt for each subsequent event).
+        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+        if template_dialog.ShowDialog() != DialogResult.OK:
             return
 
-        if choice == DialogResult.Yes:
-            # Use for All: show template dialog once
-            template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-            if template_dialog.ShowDialog() != DialogResult.OK:
-                return
+        template_path = template_dialog.get_selected_template_path()
+        apply_all = getattr(template_dialog, 'apply_for_all', False)
 
-            template_path = template_dialog.get_selected_template_path()
+        if apply_all:
+            # Create sequences for all events using the selected template
             self.create_sequences_for_events(template_path)
         else:
-            # Use for One: prompt per-event
+            # Apply the initially chosen template to the first event, then
+            # prompt for each subsequent event individually.
             success = 0
             errors = 0
-            for ev in selected_events:
-                per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-                per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
-                if per_dialog.ShowDialog() != DialogResult.OK:
-                    # User cancelled per-event selection; abort remaining events
-                    break
+            for idx, ev in enumerate(selected_events):
+                if idx == 0:
+                    per_template = template_path
+                else:
+                    per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                    per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
+                    if per_dialog.ShowDialog() != DialogResult.OK:
+                        # User cancelled per-event selection; abort remaining events
+                        break
+                    per_template = per_dialog.get_selected_template_path()
 
-                per_template = per_dialog.get_selected_template_path()
                 try:
                     ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequence_path(), self.config)
                     if ok:

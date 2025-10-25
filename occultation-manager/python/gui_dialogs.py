@@ -702,44 +702,39 @@ class TemplateSelectionDialog(Form):
         self.txt_preview.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         self.Controls.Add(self.txt_preview)
         
-        # Buttons
-        # Use for All button (same behaviour as previous OK)
-        btn_use_all = Button()
-        btn_use_all.Text = "Use for All"
-        btn_use_all.DialogResult = DialogResult.OK
-        btn_use_all.Location = Point(560, 540)
-        btn_use_all.Size = Size(90, 25)
-        btn_use_all.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
-        btn_use_all.Click += self.use_for_all_click
-        self.Controls.Add(btn_use_all)
-
-        # Use for One button (prompt per-event selection behaviour triggers in caller)
-        btn_use_one = Button()
-        btn_use_one.Text = "Use for One"
-        btn_use_one.DialogResult = DialogResult.OK
-        btn_use_one.Location = Point(655, 540)
-        btn_use_one.Size = Size(90, 25)
-        btn_use_one.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
-        btn_use_one.Click += self.use_for_one_click
-        self.Controls.Add(btn_use_one)
+        # Buttons: standard OK/Cancel plus an 'Apply to All Events' checkbox
+        btn_ok = Button()
+        btn_ok.Text = "OK"
+        btn_ok.DialogResult = DialogResult.OK
+        btn_ok.Location = Point(600, 533)
+        btn_ok.Size = Size(75, 25)
+        btn_ok.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+        self.Controls.Add(btn_ok)
 
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
         btn_cancel.DialogResult = DialogResult.Cancel
-        btn_cancel.Location = Point(750, 540)
+        btn_cancel.Location = Point(685, 533)
         btn_cancel.Size = Size(75, 25)
         btn_cancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         self.Controls.Add(btn_cancel)
 
+        # Checkbox to indicate whether the chosen template should be applied to all events
+        self.chk_apply_all = CheckBox()
+        self.chk_apply_all.Text = "Apply to All Events"
+        self.chk_apply_all.Location = Point(350, 533)
+        self.chk_apply_all.Size = Size(200, 24)
+        self.chk_apply_all.Checked = False
+        self.chk_apply_all.CheckedChanged += lambda s, e: setattr(self, 'apply_for_all', s.Checked)
+        self.Controls.Add(self.chk_apply_all)
+
         # Wire events
         self.lst_templates.SelectedIndexChanged += self.template_selected
 
-        # Default apply mode is 'all' when user clicks Use for All. Callers
-        # can inspect `dialog.apply_for_all` after ShowDialog() to determine
-        # whether they should prompt per-event (apply_for_all == False)
-        self.apply_for_all = True
+        # Default: do not apply to all unless user checks the box
+        self.apply_for_all = False
 
-        self.AcceptButton = btn_use_all
+        self.AcceptButton = btn_ok
         self.CancelButton = btn_cancel
     
     def load_templates(self):
@@ -785,16 +780,4 @@ class TemplateSelectionDialog(Form):
     def get_selected_template_path(self):
         """Get the selected template path"""
         return self.selected_template_path
-
-    def use_for_all_click(self, sender, e):
-        """Handler for 'Use for All' - set mode and allow dialog to close with OK."""
-        # Ensure selected template path is set (may be empty for default)
-        # apply_for_all True indicates caller should apply the chosen template to all events
-        self.apply_for_all = True
-        # DialogResult already set on the button; no further action required.
-
-    def use_for_one_click(self, sender, e):
-        """Handler for 'Use for One' - set mode so caller will prompt per-event."""
-        # apply_for_all False indicates caller should prompt the user for each event
-        self.apply_for_all = False
-        # DialogResult already set on the button; no further action required.
+    
