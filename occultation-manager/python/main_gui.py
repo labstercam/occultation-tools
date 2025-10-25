@@ -587,26 +587,33 @@ class OccultationManagerGUI(Form):
         if create_combined:
             if apply_all:
                 # Create combined for all events using selected template
-                success = self.create_combined_sequence_file(events, template_path)
-                if success:
-                    MessageBox.Show("Combined sequence file created successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                combined_path = self.create_combined_sequence_file(events, template_path)
+                if combined_path:
+                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 else:
                     MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
             else:
-                # In per-event mode combined requires single template. Ask user
-                # whether to use the chosen template for all events for the combined file.
-                use_first = MessageBox.Show(
-                    "Creating a single combined sequence requires one template for all events.\n\nUse the template selected above for the combined file?",
-                    "Combined Sequence Requires Single Template",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question
-                )
-                if use_first != DialogResult.Yes:
+                # Per-event templates for combined file: collect a map of per-event templates
+                templates_map = {}
+                for idx, ev in enumerate(events):
+                    if idx == 0:
+                        templates_map[ev.event_id] = template_path
+                    else:
+                        per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                        per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
+                        if per_dialog.ShowDialog() != DialogResult.OK:
+                            # User cancelled; abort combined creation
+                            templates_map = None
+                            break
+                        templates_map[ev.event_id] = per_dialog.get_selected_template_path()
+
+                if not templates_map:
                     return
-                success = self.create_combined_sequence_file(events, template_path)
-                if success:
-                    MessageBox.Show("Combined sequence file created successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+
+                combined_path = self.create_combined_sequence_file(events, templates_map)
+                if combined_path:
+                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 else:
                     MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
@@ -865,13 +872,49 @@ class OccultationManagerGUI(Form):
 
         template_path = template_dialog.get_selected_template_path()
         apply_all = getattr(template_dialog, 'apply_for_all', False)
+        create_combined = getattr(template_dialog, 'create_combined', False)
 
+        # If user requested a single combined file
+        if create_combined:
+            if apply_all:
+                # Create combined for all selected events using the chosen template
+                combined_path = self.create_combined_sequence_file(selected_events, template_path)
+                if combined_path:
+                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                else:
+                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                return
+            else:
+                # Per-event templates for combined file: collect a map of per-event templates
+                templates_map = {}
+                for idx, ev in enumerate(selected_events):
+                    if idx == 0:
+                        templates_map[ev.event_id] = template_path
+                    else:
+                        per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                        per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
+                        if per_dialog.ShowDialog() != DialogResult.OK:
+                            # User cancelled; abort combined creation
+                            templates_map = None
+                            break
+                        templates_map[ev.event_id] = per_dialog.get_selected_template_path()
+
+                if not templates_map:
+                    return
+
+                combined_path = self.create_combined_sequence_file(selected_events, templates_map)
+                if combined_path:
+                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                else:
+                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                return
+
+        # Not creating combined: fall back to existing behaviour
         if apply_all:
             # Create sequences for all events using the selected template
             self.create_sequences_for_events(template_path)
         else:
-            # Apply the initially chosen template to the first event, then
-            # prompt for each subsequent event individually.
+            # Apply the initially chosen template to the first event, then prompt for each subsequent event individually.
             success = 0
             errors = 0
             for idx, ev in enumerate(selected_events):
@@ -941,86 +984,98 @@ class OccultationManagerGUI(Form):
             return
         
         template_path = template_dialog.get_selected_template_path()
-        success = self.create_combined_sequence_file(selected_events, template_path)
-        
-        if success:
-            MessageBox.Show("Combined sequence file generated successfully!", "Success", 
+        combined_path = self.create_combined_sequence_file(selected_events, template_path)
+
+        if combined_path:
+            MessageBox.Show(f"Combined sequence file generated: {os.path.basename(combined_path)}", "Success", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information)
         else:
             MessageBox.Show("Failed to generate combined sequence file.", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
 
-    def create_combined_sequence_file(self, events, template_path):
-        """Create a single sequence file with all events in time order"""
+    def create_combined_sequence_file(self, events, template_path_or_map):
+        """Create a single sequence file with all events in time order.
+
+        template_path_or_map may be either:
+        - a single template path (string) to use for all events, or
+        - a dict mapping event identifiers (event.event_id) to template paths to
+          allow per-event templates within the single combined file.
+        """
         if not events:
             return False
-        
+
         try:
             # Sort events by GOTO time
             sorted_events = sorted(events, key=lambda x: x.goto_time if x.goto_time else datetime.max)
-            
-            # Load template content
-            template_content = TemplateManager.load_template(template_path, self.config)
-            if not template_content:
-                self.update_status("Template not found or empty")
-                return False
-            
+
             # Generate filename
             date_str = datetime.utcnow().strftime('%Y%m%d')
             stations = set(event.station_name for event in events)
             station_name = list(stations)[0] if len(stations) == 1 else "MultiStation"
             combined_filename = f"{date_str}_{station_name}_Combined_Sequences.scs"
             combined_path = os.path.join(self.config.get_sequence_path(), combined_filename)
-            
+
             # Build combined sequence content
             combined_content = []
-            
+
             # Add header
             combined_content.append("# Combined Sequence File")
             combined_content.append(f"# Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
             combined_content.append(f"# Events: {len(sorted_events)}")
             combined_content.append(f"# Station(s): {', '.join(stations)}")
             combined_content.append("#")
-            
+
             # Add event summary
             combined_content.append("# Event Schedule:")
             for i, event in enumerate(sorted_events, 1):
                 combined_content.append(f"# {i:2d}. {event.event_time} UTC - {event.get_asteroid_display_name()}")
-            combined_content.append("#" + "="*70)
+            combined_content.append("#" + "=" * 70)
             combined_content.append("")
-            
+
             # Process each event and add its sequence content
             for i, event in enumerate(sorted_events, 1):
                 self.update_status(f"Processing event {i}/{len(sorted_events)}: {event.event_name}")
-                
+
                 # Add event separator
                 combined_content.append(f"# Event {i}: {event.get_asteroid_display_name()}")
                 combined_content.append(f"# Time: {event.event_time} UTC")
-                combined_content.append(f"# GOTO: {event.goto_time_str} UTC") 
+                combined_content.append(f"# GOTO: {event.goto_time_str} UTC")
                 combined_content.append(f"# Duration: {event.recording_duration}s")
-                combined_content.append("#" + "-"*50)
-                
-                # Generate sequence content for this event
-                try:
-                    event_sequence = self.format_template(template_content, event)
-                    combined_content.append(event_sequence)
-                except Exception as e:
-                    combined_content.append(f"# ERROR: Could not generate sequence for {event.event_name}: {e}")
-                    print(f"Error generating sequence for {event.event_name}: {e}")
-                
+                combined_content.append("#" + "-" * 50)
+
+                # Determine the template to use for this event
+                if isinstance(template_path_or_map, dict):
+                    tpl_path = template_path_or_map.get(event.event_id) or template_path_or_map.get(event.event_name) or ""
+                else:
+                    tpl_path = template_path_or_map or ""
+
+                # Load template content for this event
+                template_content = TemplateManager.load_template(tpl_path, self.config) if tpl_path else None
+                if not template_content:
+                    # If no template available for this event, add a comment and continue
+                    combined_content.append(f"# WARNING: Template not found for {event.get_asteroid_display_name()} (path: {tpl_path})")
+                else:
+                    try:
+                        event_sequence = self.format_template(template_content, event)
+                        combined_content.append(event_sequence)
+                    except Exception as e:
+                        combined_content.append(f"# ERROR: Could not generate sequence for {event.event_name}: {e}")
+                        print(f"Error generating sequence for {event.event_name}: {e}")
+
                 # Add spacing between events (except for last one)
                 if i < len(sorted_events):
                     combined_content.append("")
-                    combined_content.append("#" + "="*70)
+                    combined_content.append("#" + "=" * 70)
                     combined_content.append("")
-            
+
             # Write combined file
-            with open(combined_path, 'w') as f:
+            with open(combined_path, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(combined_content))
-            
+
             self.update_status(f"Combined sequence saved: {combined_filename}")
-            return True
-            
+            # Return the path to the generated combined file for callers
+            return combined_path
+
         except Exception as e:
             self.update_status(f"Error creating combined sequence: {e}")
             print(f"Error creating combined sequence: {e}")
