@@ -571,14 +571,23 @@ class OccultationManagerGUI(Form):
         if not events:
             return
         # First create sequences
-        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-        if template_dialog.ShowDialog() != DialogResult.OK:
+        # Ask whether to apply one template to all events or select per-event.
+        choice = MessageBox.Show(
+            "Apply the same template to all selected events?\n\nYes = Use for All, No = Use for One (select per-event), Cancel = Abort",
+            "Template Application Mode",
+            MessageBoxButtons.YesNoCancel,
+            MessageBoxIcon.Question
+        )
+
+        if choice == DialogResult.Cancel:
             return
 
-        # If the user selected "Use for All" proceed as before. If they chose
-        # "Use for One" (apply_for_all == False) the caller must prompt for
-        # a template per-event; do that here by showing the dialog once per event.
-        if getattr(template_dialog, 'apply_for_all', True):
+        if choice == DialogResult.Yes:
+            # Use for All: show template dialog once
+            template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+            if template_dialog.ShowDialog() != DialogResult.OK:
+                return
+
             template_path = template_dialog.get_selected_template_path()
 
             # Create sequences for all events
@@ -598,9 +607,7 @@ class OccultationManagerGUI(Form):
                 MessageBox.Show(f"Failed to create sequences: {message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error)
         else:
-            # Per-event prompting: show the template dialog for each event and
-            # create sequence files individually. If the user cancels any per-event
-            # dialog, abort the remaining operations.
+            # Use for One: prompt per-event
             success_events = []
             for ev in events:
                 per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
@@ -820,15 +827,27 @@ class OccultationManagerGUI(Form):
         
         self.manager.selected_events = set(selected_events)
         
-        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-        if template_dialog.ShowDialog() != DialogResult.OK:
+        # Ask whether to apply one template to all events or select per-event.
+        choice = MessageBox.Show(
+            "Apply the same template to all selected events?\n\nYes = Use for All, No = Use for One (select per-event), Cancel = Abort",
+            "Template Application Mode",
+            MessageBoxButtons.YesNoCancel,
+            MessageBoxIcon.Question
+        )
+
+        if choice == DialogResult.Cancel:
             return
 
-        if getattr(template_dialog, 'apply_for_all', True):
+        if choice == DialogResult.Yes:
+            # Use for All: show template dialog once
+            template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+            if template_dialog.ShowDialog() != DialogResult.OK:
+                return
+
             template_path = template_dialog.get_selected_template_path()
             self.create_sequences_for_events(template_path)
         else:
-            # Per-event prompting: prompt for a template for each selected event
+            # Use for One: prompt per-event
             success = 0
             errors = 0
             for ev in selected_events:
@@ -854,8 +873,17 @@ class OccultationManagerGUI(Form):
     
     def create_sequences_for_events(self, template_path):
         """Create sequence files for selected events"""
-        sequence_path = self.txt_sequence_path.Text
-        self.config.set_sequence_path(sequence_path)
+        # `txt_sequence_path` is created by the configuration UI; guard in case
+        # the main form doesn't have that control (fixes attribute errors).
+        if hasattr(self, 'txt_sequence_path') and self.txt_sequence_path is not None:
+            sequence_path = self.txt_sequence_path.Text
+            # Persist the chosen path to config
+            try:
+                self.config.set_sequence_path(sequence_path)
+            except Exception:
+                pass
+        else:
+            sequence_path = self.config.get_sequence_path()
         
         success_count, error_count, message = self.generate_sequences_for_events(template_path)
         
