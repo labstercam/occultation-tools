@@ -728,6 +728,15 @@ class TemplateSelectionDialog(Form):
         self.chk_apply_all.CheckedChanged += lambda s, e: setattr(self, 'apply_for_all', s.Checked)
         self.Controls.Add(self.chk_apply_all)
 
+        # Checkbox to request a single combined sequence file instead of separate files
+        self.chk_create_combined = CheckBox()
+        self.chk_create_combined.Text = "Create single combined sequence"
+        self.chk_create_combined.Location = Point(350, 560)
+        self.chk_create_combined.Size = Size(240, 24)
+        self.chk_create_combined.Checked = False
+        self.chk_create_combined.CheckedChanged += lambda s, e: setattr(self, 'create_combined', s.Checked)
+        self.Controls.Add(self.chk_create_combined)
+
         # Wire events
         self.lst_templates.SelectedIndexChanged += self.template_selected
 

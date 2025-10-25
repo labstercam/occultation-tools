@@ -581,7 +581,37 @@ class OccultationManagerGUI(Form):
 
         template_path = template_dialog.get_selected_template_path()
         apply_all = getattr(template_dialog, 'apply_for_all', False)
+        create_combined = getattr(template_dialog, 'create_combined', False)
 
+        # If the user requested a single combined sequence file
+        if create_combined:
+            if apply_all:
+                # Create combined for all events using selected template
+                success = self.create_combined_sequence_file(events, template_path)
+                if success:
+                    MessageBox.Show("Combined sequence file created successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                else:
+                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                return
+            else:
+                # In per-event mode combined requires single template. Ask user
+                # whether to use the chosen template for all events for the combined file.
+                use_first = MessageBox.Show(
+                    "Creating a single combined sequence requires one template for all events.\n\nUse the template selected above for the combined file?",
+                    "Combined Sequence Requires Single Template",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                )
+                if use_first != DialogResult.Yes:
+                    return
+                success = self.create_combined_sequence_file(events, template_path)
+                if success:
+                    MessageBox.Show("Combined sequence file created successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                else:
+                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                return
+
+        # Not creating combined: fall back to existing create-per-event/create-all logic
         if apply_all:
             # Create sequences for all events using the selected template
             self.manager.selected_events = set(events)
@@ -600,8 +630,8 @@ class OccultationManagerGUI(Form):
                 MessageBox.Show(f"Failed to create sequences: {message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error)
         else:
-            # Apply the initially chosen template to the first event, then prompt
-            # for each subsequent event individually.
+            # Apply the initially chosen template to the first event, then
+            # prompt for each subsequent event individually.
             success_events = []
             for idx, ev in enumerate(events):
                 if idx == 0:
