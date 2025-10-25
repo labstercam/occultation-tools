@@ -207,8 +207,6 @@ class OccultationManagerGUI(Form):
         menu_file.DropDownItems.Add(ToolStripMenuItem("Download Events", None, self.download_events_click))
         menu_file.DropDownItems.Add(ToolStripMenuItem("Refresh Events", None, self.refresh_events_click))
         menu_file.DropDownItems.Add(ToolStripSeparator())
-        menu_file.DropDownItems.Add(ToolStripMenuItem("Download && Run Tonight's Events", None, self.download_and_run_tonight_click))
-        menu_file.DropDownItems.Add(ToolStripSeparator())
         menu_file.DropDownItems.Add(ToolStripMenuItem("Exit", None, self.exit_click))
         menu_bar.Items.Add(menu_file)
         
@@ -517,54 +515,9 @@ class OccultationManagerGUI(Form):
         self.update_selection_summary()
 
 
-    def download_and_run_tonight_click(self, sender, e):
-        """Download events and automatically run tonight's events"""
-        if MessageBox.Show("This will download all events and automatically run tonight's events.\n\nContinue?", 
-                         "Confirm Auto-Run", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes:
-            return
-        
-        # Download events
-        self.update_status("Downloading events from OW Cloud...")
-        try:
-            result = self.manager.download_events_from_cloud()
-            if result <= 0:
-                MessageBox.Show("No events downloaded or error occurred.", "Error", 
-                              MessageBoxButtons.OK, MessageBoxIcon.Error)
-                return
-            
-            self.refresh_display()
-            self.populate_station_filter()
-            self.update_status(f"Downloaded {result} events")
-            
-            # Filter for tonight's events
-            tonight_events = self.get_tonights_events()
-            if not tonight_events:
-                MessageBox.Show("No events found for tonight.", "No Events", 
-                              MessageBoxButtons.OK, MessageBoxIcon.Information)
-                return
-            
-            # Select tonight's events
-            self.manager.selected_events = set(tonight_events)
-            self.refresh_display()
-            
-            # Create sequences and run them
-            self.create_and_run_sequences(tonight_events)
-            
-        except Exception as ex:
-            self.update_status(f"Error: {ex}")
-            MessageBox.Show(f"Error: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
-    
-    def get_tonights_events(self):
-        """Get events for tonight (next 24 hours)"""
-        now = datetime.utcnow()
-        tomorrow = now + timedelta(days=1)
-        
-        tonight_events = []
-        for event in self.manager.get_filtered_events():
-            if event.event_datetime and now <= event.event_datetime <= tomorrow:
-                tonight_events.append(event)
-        
-        return tonight_events
+    # "Download & Run Tonight" flow removed per user request.
+    # The UI and handlers for downloading and auto-running tonight's events
+    # have been intentionally removed to simplify the menu and flows.
 
     def create_and_run_sequences(self, events):
         """Create sequences and run them for the given events"""
@@ -1005,8 +958,16 @@ class OccultationManagerGUI(Form):
             return False
 
         try:
-            # Sort events by GOTO time
-            sorted_events = sorted(events, key=lambda x: x.goto_time if x.goto_time else datetime.max)
+            # Sort events by event time (preferred) and fall back to GOTO time if event time unavailable
+            # This ensures the combined sequence lists events in chronological event-time order.
+            sorted_events = sorted(
+                events,
+                key=lambda x: (
+                    x.event_datetime if getattr(x, 'event_datetime', None) else (
+                        x.goto_time if getattr(x, 'goto_time', None) else datetime.max
+                    )
+                )
+            )
 
             # Generate filename
             date_str = datetime.utcnow().strftime('%Y%m%d')

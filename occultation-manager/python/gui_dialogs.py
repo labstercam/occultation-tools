@@ -382,8 +382,10 @@ class ConfigurationDialog(Form):
         # API Settings Tab
         tab_api = TabPage()
         tab_api.Text = "API Settings"
-        self.setup_api_tab(tab_api)
-        tab_control.TabPages.Add(tab_api)
+        #self.setup_api_tab(tab_api)
+        self.setup_api_tab(tab_credentials)
+        
+        #tab_control.TabPages.Add(tab_api)
         
         # Buttons
         btn_ok = Button()
@@ -549,23 +551,23 @@ class ConfigurationDialog(Form):
         """Setup API settings tab"""
         lbl_host = Label()
         lbl_host.Text = "API Host:"
-        lbl_host.Location = Point(20, 30)
+        lbl_host.Location = Point(20, 90)
         lbl_host.Size = Size(100, 20)
         tab.Controls.Add(lbl_host)
         
         self.txt_host = TextBox()
-        self.txt_host.Location = Point(130, 30)
+        self.txt_host.Location = Point(130, 90)
         self.txt_host.Size = Size(300, 20)
         tab.Controls.Add(self.txt_host)
         
         lbl_api_key = Label()
         lbl_api_key.Text = "API Key:"
-        lbl_api_key.Location = Point(20, 60)
+        lbl_api_key.Location = Point(20, 120)
         lbl_api_key.Size = Size(100, 20)
         tab.Controls.Add(lbl_api_key)
         
         self.txt_api_key = TextBox()
-        self.txt_api_key.Location = Point(130, 60)
+        self.txt_api_key.Location = Point(130, 120)
         self.txt_api_key.Size = Size(300, 20)
         tab.Controls.Add(self.txt_api_key)
     
@@ -724,15 +726,18 @@ class TemplateSelectionDialog(Form):
         self.chk_apply_all.Text = "Apply to All Events"
         self.chk_apply_all.Location = Point(350, 533)
         self.chk_apply_all.Size = Size(200, 24)
-        self.chk_apply_all.Checked = False
+        self.chk_apply_all.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+
+        self.chk_apply_all.Checked = True
         self.chk_apply_all.CheckedChanged += lambda s, e: setattr(self, 'apply_for_all', s.Checked)
         self.Controls.Add(self.chk_apply_all)
 
         # Checkbox to request a single combined sequence file instead of separate files
         self.chk_create_combined = CheckBox()
         self.chk_create_combined.Text = "Create single combined sequence"
-        self.chk_create_combined.Location = Point(350, 560)
+        self.chk_create_combined.Location = Point(10, 533)
         self.chk_create_combined.Size = Size(240, 24)
+        self.chk_create_combined.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         self.chk_create_combined.Checked = False
         self.chk_create_combined.CheckedChanged += lambda s, e: setattr(self, 'create_combined', s.Checked)
         self.Controls.Add(self.chk_create_combined)
