@@ -362,15 +362,15 @@ class OccultationEvent:
     def get_status_info(self):
         """Get event status information"""
         if not self.event_datetime:
-            return "Invalid Date"
+            return "Invalid"
         
         now = datetime.utcnow()
         if self.event_datetime < now:
-            return "Past Event"
-        
+            return "Past"
+                
         time_to_event = self.event_datetime - now
         if time_to_event.total_seconds() < self.config.get_goto_lead_time():
-            return "Starting Soon"
+            return "Now..."
         
         days = time_to_event.days
         hours = time_to_event.seconds // 3600

@@ -4,7 +4,11 @@ clr.AddReference("System.Drawing")
 
 import webbrowser
 from System.Drawing import Font, FontStyle
-from System.Windows.Forms import *
+from System.Windows.Forms import (
+    DataGridView, DataGridViewSelectionMode, DataGridViewCheckBoxColumn,
+    DataGridViewLinkColumn, DataGridViewTextBoxColumn, MessageBox,
+    MessageBoxButtons, MessageBoxIcon
+)
 
 class EventsDataGrid(DataGridView):
     """Enhanced DataGridView for displaying occultation events with all requested columns"""
@@ -21,29 +25,37 @@ class EventsDataGrid(DataGridView):
         self.AllowUserToDeleteRows = False
         self.SelectionMode = DataGridViewSelectionMode.FullRowSelect
         self.MultiSelect = True
+        # Hide the row header column (left-most header) to remove the small
+        # index/selector column and make the grid cleaner.
+        try:
+            self.RowHeadersVisible = False
+            # some environments may still show a thin border; set width to 0
+            self.RowHeadersWidth = 0
+        except Exception:
+            pass
         
         # Enhanced column layout with all requested fields
         columns = [
-            ("Selected", "Selected", 60, True),
-            ("Event Name", "EventName", 200, False),
+            ("Select", "Selected", 50, True),
+            ("Event Name", "EventName", 140, False),
             ("Station", "StationName", 120, False),  # Added station name column
             ("Date/Time UTC", "DateTime", 120, False),
             ("Star Mag", "StarMag", 70, False),
             ("Comb Mag", "CombMag", 70, False),
             ("Mag Drop", "MagDrop", 70, False),
-            ("Exposure (ms)", "ExposureMs", 90, False),
-            ("Recording Time (s)", "RecordingTime", 100, False),  # Changed name as requested
-            ("Max Duration (s)", "MaxDuration", 100, False),      # Added as requested
-            ("Time Error (s)", "TimeError", 90, False),           # Added as requested
-            ("Alt", "Altitude", 60, False),                       # Added as requested
-            ("Az", "Azimuth", 60, False),                         # Added as requested
+            ("Exp (ms)", "ExposureMs", 70, False),
+            ("Record (s)", "RecordingTime", 70, False),  # Changed name as requested
+            ("Max Dur (s)", "MaxDuration", 70, False),      # Added as requested
+            ("Error (s)", "TimeError", 60, False),           # Added as requested
+            ("Alt", "Altitude", 50, False),                       # Added as requested
+            ("Az", "Azimuth", 55, False),                         # Added as requested
             ("Coordinates", "Coordinates", 120, False),
             ("OWC", "OWCLink", 50, False),                        # Added as requested
-            ("Status", "Status", 100, False)
+            ("Status", "Status", 80, False)
         ]
         
         for name, data_name, width, editable in columns:
-            if name == "Selected":
+            if name == "Select":
                 col = DataGridViewCheckBoxColumn()
             elif name == "OWC":
                 col = DataGridViewLinkColumn()
@@ -59,6 +71,7 @@ class EventsDataGrid(DataGridView):
         # Handle cell events
         self.CellDoubleClick += self.cell_double_click
         self.CellContentClick += self.cell_content_click
+        
     
     def cell_double_click(self, sender, e):
         """Handle cell double click for exposure editing"""

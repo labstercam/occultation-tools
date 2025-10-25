@@ -186,11 +186,23 @@ def apply_datagrid_theme(grid, theme_colors):
         grid.ForeColor = theme_colors['grid_foreground']
         grid.DefaultCellStyle.BackColor = theme_colors['grid_background']
         grid.DefaultCellStyle.ForeColor = theme_colors['grid_foreground']
-        grid.DefaultCellStyle.SelectionBackColor = theme_colors['grid_selection']
-        grid.DefaultCellStyle.SelectionForeColor = theme_colors['text_foreground']
+#        grid.DefaultCellStyle.SelectionBackColor = theme_colors['grid_selection']
+#        grid.DefaultCellStyle.SelectionForeColor = theme_colors['text_foreground']
+        grid.DefaultCellStyle.SelectionBackColor = theme_colors['grid_background']
+        grid.DefaultCellStyle.SelectionForeColor = theme_colors['grid_foreground']
         grid.ColumnHeadersDefaultCellStyle.BackColor = theme_colors['button_background']
         grid.ColumnHeadersDefaultCellStyle.ForeColor = theme_colors['button_text']
+        grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = theme_colors['button_background']
+        grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = theme_colors['button_text']
+
+        grid.RowHeadersDefaultCellStyle.BackColor = theme_colors['button_background']
+        grid.RowHeadersDefaultCellStyle.ForeColor = theme_colors['button_text']
+        grid.RowHeadersDefaultCellStyle.SelectionBackColor = theme_colors['button_background']
+        grid.RowHeadersDefaultCellStyle.SelectionForeColor = theme_colors['button_text']
+
+
         grid.EnableHeadersVisualStyles = False  # Required for custom header colors
         grid.GridColor = theme_colors['text_foreground']
+
     except Exception as e:
         print(f"Error applying DataGrid theme: {e}")

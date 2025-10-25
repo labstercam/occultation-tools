@@ -5,7 +5,12 @@ clr.AddReference("System.Drawing")
 import os
 import webbrowser
 from System.Drawing import Point, Size, Color, Font, FontStyle
-from System.Windows.Forms import *
+from System.Windows.Forms import (
+    Form, Label, TextBox, Button, MessageBox, MessageBoxButtons, MessageBoxIcon,
+    DialogResult, FormStartPosition, FormBorderStyle, Panel, GroupBox, LinkLabel,
+    TabControl, TabPage, ListBox, ScrollBars, SelectionMode, AnchorStyles,
+    CheckBox, FolderBrowserDialog, DockStyle
+)
 from theme import apply_theme_to_control
 from templates import TemplateManager
 
@@ -698,26 +703,43 @@ class TemplateSelectionDialog(Form):
         self.Controls.Add(self.txt_preview)
         
         # Buttons
-        btn_ok = Button()
-        btn_ok.Text = "OK"
-        btn_ok.DialogResult = DialogResult.OK
-        btn_ok.Location = Point(630, 540)
-        btn_ok.Size = Size(75, 25)
-        btn_ok.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
-        self.Controls.Add(btn_ok)
-        
+        # Use for All button (same behaviour as previous OK)
+        btn_use_all = Button()
+        btn_use_all.Text = "Use for All"
+        btn_use_all.DialogResult = DialogResult.OK
+        btn_use_all.Location = Point(560, 540)
+        btn_use_all.Size = Size(90, 25)
+        btn_use_all.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+        btn_use_all.Click += self.use_for_all_click
+        self.Controls.Add(btn_use_all)
+
+        # Use for One button (prompt per-event selection behaviour triggers in caller)
+        btn_use_one = Button()
+        btn_use_one.Text = "Use for One"
+        btn_use_one.DialogResult = DialogResult.OK
+        btn_use_one.Location = Point(655, 540)
+        btn_use_one.Size = Size(90, 25)
+        btn_use_one.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+        btn_use_one.Click += self.use_for_one_click
+        self.Controls.Add(btn_use_one)
+
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
         btn_cancel.DialogResult = DialogResult.Cancel
-        btn_cancel.Location = Point(715, 540)
+        btn_cancel.Location = Point(750, 540)
         btn_cancel.Size = Size(75, 25)
         btn_cancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         self.Controls.Add(btn_cancel)
-        
+
         # Wire events
         self.lst_templates.SelectedIndexChanged += self.template_selected
-        
-        self.AcceptButton = btn_ok
+
+        # Default apply mode is 'all' when user clicks Use for All. Callers
+        # can inspect `dialog.apply_for_all` after ShowDialog() to determine
+        # whether they should prompt per-event (apply_for_all == False)
+        self.apply_for_all = True
+
+        self.AcceptButton = btn_use_all
         self.CancelButton = btn_cancel
     
     def load_templates(self):
@@ -763,3 +785,16 @@ class TemplateSelectionDialog(Form):
     def get_selected_template_path(self):
         """Get the selected template path"""
         return self.selected_template_path
+
+    def use_for_all_click(self, sender, e):
+        """Handler for 'Use for All' - set mode and allow dialog to close with OK."""
+        # Ensure selected template path is set (may be empty for default)
+        # apply_for_all True indicates caller should apply the chosen template to all events
+        self.apply_for_all = True
+        # DialogResult already set on the button; no further action required.
+
+    def use_for_one_click(self, sender, e):
+        """Handler for 'Use for One' - set mode so caller will prompt per-event."""
+        # apply_for_all False indicates caller should prompt the user for each event
+        self.apply_for_all = False
+        # DialogResult already set on the button; no further action required.

@@ -50,7 +50,7 @@ class OccultationManagerGUI(Form):
     def setup_ui(self):
         """Setup the enhanced user interface"""
         self.Text = "Occultation Manager - SharpCap Integration"
-        self.Size = Size(1400, 800)
+        self.Size = Size(1300, 675)
         self.StartPosition = FormStartPosition.CenterScreen
         
         # Create menu bar
@@ -75,7 +75,7 @@ class OccultationManagerGUI(Form):
 
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
-        self.events_grid.Location = Point(10, 170)
+        self.events_grid.Location = Point(10, 165)
         self.events_grid.Size = Size(1360, 450)
         self.events_grid.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
         
@@ -570,28 +570,63 @@ class OccultationManagerGUI(Form):
         """Create sequences and run them for the given events"""
         if not events:
             return
-        
         # First create sequences
         template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-        if template_dialog.ShowDialog() == DialogResult.OK:
+        if template_dialog.ShowDialog() != DialogResult.OK:
+            return
+
+        # If the user selected "Use for All" proceed as before. If they chose
+        # "Use for One" (apply_for_all == False) the caller must prompt for
+        # a template per-event; do that here by showing the dialog once per event.
+        if getattr(template_dialog, 'apply_for_all', True):
             template_path = template_dialog.get_selected_template_path()
-            
+
             # Create sequences for all events
             self.manager.selected_events = set(events)
             success_count, error_count, message = self.generate_sequences_for_events(template_path)
-            
+
             if success_count > 0:
                 self.update_status("Sequences created, starting execution...")
                 # Run the sequences
                 def run_in_background():
                     self.sequence_runner.run_sequences(events, self.update_status_safe)
-                
+
                 thread = threading.Thread(target=run_in_background)
                 thread.IsBackground = True
                 thread.start()
             else:
                 MessageBox.Show(f"Failed to create sequences: {message}", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error)
+        else:
+            # Per-event prompting: show the template dialog for each event and
+            # create sequence files individually. If the user cancels any per-event
+            # dialog, abort the remaining operations.
+            success_events = []
+            for ev in events:
+                per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
+                if per_dialog.ShowDialog() != DialogResult.OK:
+                    # User cancelled per-event selection; stop processing further
+                    break
+
+                per_template = per_dialog.get_selected_template_path()
+                # Attempt to save sequence for this single event
+                try:
+                    ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequence_path(), self.config)
+                    if ok:
+                        success_events.append(ev)
+                except Exception as ex:
+                    print(f"Error creating sequence for {ev.event_name}: {ex}")
+
+            if success_events:
+                # Run only the sequences that were created successfully
+                self.update_status("Per-event sequences created, starting execution...")
+                def run_in_background():
+                    self.sequence_runner.run_sequences(success_events, self.update_status_safe)
+
+                thread = threading.Thread(target=run_in_background)
+                thread.IsBackground = True
+                thread.start()
     
     def generate_sequences_for_events(self, template_path):
         """Generate sequence files for selected events - internal method"""
@@ -786,9 +821,36 @@ class OccultationManagerGUI(Form):
         self.manager.selected_events = set(selected_events)
         
         template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
-        if template_dialog.ShowDialog() == DialogResult.OK:
+        if template_dialog.ShowDialog() != DialogResult.OK:
+            return
+
+        if getattr(template_dialog, 'apply_for_all', True):
             template_path = template_dialog.get_selected_template_path()
             self.create_sequences_for_events(template_path)
+        else:
+            # Per-event prompting: prompt for a template for each selected event
+            success = 0
+            errors = 0
+            for ev in selected_events:
+                per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
+                if per_dialog.ShowDialog() != DialogResult.OK:
+                    # User cancelled per-event selection; abort remaining events
+                    break
+
+                per_template = per_dialog.get_selected_template_path()
+                try:
+                    ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequence_path(), self.config)
+                    if ok:
+                        success += 1
+                    else:
+                        errors += 1
+                except Exception as ex:
+                    errors += 1
+                    print(f"Error creating sequence for {ev.event_name}: {ex}")
+
+            MessageBox.Show(f"Successfully created {success} of {success + errors} sequence files.", 
+                           "Sequence Creation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
     
     def create_sequences_for_events(self, template_path):
         """Create sequence files for selected events"""
