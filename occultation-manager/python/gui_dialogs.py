@@ -343,6 +343,21 @@ class ConfigurationDialog(Form):
         self.theme_manager = theme_manager
         self.setup_ui()
         self.load_current_config()
+        # Snapshot key config values so we can detect changes that
+        # require re-processing of OWC events (goto lead, base duration,
+        # and mag reference for 40ms exposure).
+        try:
+            self._orig_goto_lead = self.config.get_goto_lead_time()
+        except Exception:
+            self._orig_goto_lead = None
+        try:
+            self._orig_base_duration = self.config.get_base_duration()
+        except Exception:
+            self._orig_base_duration = None
+        try:
+            self._orig_mag_ref = self.config.get_mag_for_40ms_exposure()
+        except Exception:
+            self._orig_mag_ref = None
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
     
@@ -657,6 +672,78 @@ class ConfigurationDialog(Form):
                     owner = getattr(self, 'Owner', None)
                     if owner and hasattr(owner, 'refresh_display'):
                         owner.refresh_display()
+                except Exception:
+                    pass
+                # If certain config values changed, reprocess the loaded OWC
+                # events so recording duration, goto times and exposure are
+                # recalculated according to the new settings.
+                try:
+                    new_goto = self.config.get_goto_lead_time()
+                    new_base = self.config.get_base_duration()
+                    new_mag = self.config.get_mag_for_40ms_exposure()
+                    changed = (
+                        (self._orig_goto_lead is not None and new_goto != self._orig_goto_lead) or
+                        (self._orig_base_duration is not None and new_base != self._orig_base_duration) or
+                        (self._orig_mag_ref is not None and new_mag != self._orig_mag_ref)
+                    )
+                except Exception:
+                    changed = False
+
+                if changed:
+                    try:
+                        owner = getattr(self, 'Owner', None)
+                        if owner and hasattr(owner, 'manager') and hasattr(owner, 'update_status'):
+                            owner.update_status("Reprocessing events with new configuration...")
+                            # Recalculate derived values for each in-memory event so
+                            # recording duration, goto times and exposure are updated
+                            # according to the new configuration. Preserve any
+                            # user-set custom exposure values.
+                            try:
+                                for ev in owner.manager.all_events:
+                                    # If the event has a pre-calculated exposure from
+                                    # the original processing, clear it so recalculation
+                                    # uses the current config. Keep custom_exposure.
+                                    try:
+                                        ev.precalc_exposure = 0
+                                    except Exception:
+                                        pass
+                                    # Force recording duration recalculation
+                                    try:
+                                        ev.recording_duration = 0
+                                    except Exception:
+                                        pass
+                                    # Recompute derived values using the updated config
+                                    try:
+                                        ev._calculate_derived_values()
+                                    except Exception:
+                                        # Don't stop on single-event failure
+                                        pass
+                                # Keep the same filtered/active event list but ensure
+                                # sorting and display are refreshed.
+                                try:
+                                    owner.manager.sort_events()
+                                except Exception:
+                                    pass
+                                owner.refresh_display()
+                                owner.update_status("Reprocessing complete")
+                            except Exception:
+                                # Fall back to reloading from files if in-memory
+                                # reprocessing fails for some reason.
+                                try:
+                                    owner.manager.load_events_from_files()
+                                    owner.refresh_display()
+                                    owner.update_status("Reprocessing complete")
+                                except Exception:
+                                    owner.update_status("Reprocessing failed")
+                    except Exception:
+                        # Don't propagate UI errors
+                        pass
+
+                # Update our snapshot so further saves compare correctly
+                try:
+                    self._orig_goto_lead = self.config.get_goto_lead_time()
+                    self._orig_base_duration = self.config.get_base_duration()
+                    self._orig_mag_ref = self.config.get_mag_for_40ms_exposure()
                 except Exception:
                     pass
             else:

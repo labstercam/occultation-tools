@@ -294,24 +294,78 @@ class OccultationEvent:
                         self.exposure_ms = 1000
                 else:
                     self.exposure_ms = 40
-            
+            # Parse the main event datetime from the stored ISO string
             self.event_datetime = self._parse_iso_datetime(self.event_time)
-            self.start_time = self._parse_iso_datetime(self.start_time_str)
-            self.end_time = self._parse_iso_datetime(self.end_time_str)
-            self.goto_time = self._parse_iso_datetime(self.goto_time_str)
-        
-            # Add local time strings (HH:MM:SS format) for use in the sequence, as can use the simpler WAIT UNTIL <TIme of Day> Sharpcap command    
-            import time
-            from datetime import timezone
 
-            self.event_time_local = (self.event_datetime.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
-            self.start_time_local = (self.start_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
-            self.goto_time_local = (self.goto_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
-            self.pre_goto_time_local = (self.goto_time.replace(tzinfo=timezone.utc).astimezone() -timedelta(seconds = 90)).strftime("%I:%M:%S %p") or ""
-                    
-            if self.recording_duration == 0 and self.start_time and self.end_time:
-                duration_delta = self.end_time - self.start_time
-                self.recording_duration = int(duration_delta.total_seconds())
+            # Recompute recording duration and timing windows using current config
+            try:
+                base_dur = int(self.config.get_base_duration())
+            except Exception:
+                base_dur = 0
+
+            # Use the stored event_duration and uncertainty to compute recording duration
+            try:
+                rec_dur = round(base_dur + (self.event_duration if self.event_duration > 5 else 0) + 6 * (self.event_uncertainty if self.event_uncertainty > 2 else 0))
+                self.recording_duration = int(rec_dur)
+            except Exception:
+                # Fallback: keep existing recording_duration if present
+                pass
+
+            # Compute start/end/goto times from event_datetime and updated recording_duration/goto lead
+            if self.event_datetime:
+                try:
+                    eventCenterTime = self.event_datetime
+                    startTime = eventCenterTime - timedelta(seconds=self.recording_duration / 2.0)
+                    endTime = eventCenterTime + timedelta(seconds=self.recording_duration / 2.0)
+                    try:
+                        goto_lead = int(self.config.get_goto_lead_time())
+                    except Exception:
+                        goto_lead = 0
+                    gotoTime = eventCenterTime - timedelta(seconds=self.recording_duration / 2.0 + goto_lead)
+
+                    # Store ISO strings and parsed datetimes
+                    self.start_time_str = startTime.strftime("%Y-%m-%dT%H:%M:%S")
+                    self.end_time_str = endTime.strftime("%Y-%m-%dT%H:%M:%S")
+                    self.goto_time_str = gotoTime.strftime("%Y-%m-%dT%H:%M:%S")
+
+                    self.start_time = startTime
+                    self.end_time = endTime
+                    self.goto_time = gotoTime
+                except Exception:
+                    # If anything fails, try to parse existing strings
+                    self.start_time = self._parse_iso_datetime(self.start_time_str)
+                    self.end_time = self._parse_iso_datetime(self.end_time_str)
+                    self.goto_time = self._parse_iso_datetime(self.goto_time_str)
+            else:
+                # Event datetime missing: fall back to parsing stored strings
+                self.start_time = self._parse_iso_datetime(self.start_time_str)
+                self.end_time = self._parse_iso_datetime(self.end_time_str)
+                self.goto_time = self._parse_iso_datetime(self.goto_time_str)
+
+            # Add local time strings for use in UI/sequence templates
+            try:
+                import time
+                from datetime import timezone
+
+                if self.event_datetime:
+                    self.event_time_local = (self.event_datetime.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
+                else:
+                    self.event_time_local = ""
+
+                if self.start_time:
+                    self.start_time_local = (self.start_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
+                else:
+                    self.start_time_local = ""
+
+                if self.goto_time:
+                    self.goto_time_local = (self.goto_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
+                    self.pre_goto_time_local = (self.goto_time.replace(tzinfo=timezone.utc).astimezone() - timedelta(seconds=90)).strftime("%I:%M:%S %p") or ""
+                else:
+                    self.goto_time_local = ""
+                    self.pre_goto_time_local = ""
+            except Exception:
+                # ignore localization failures
+                pass
         
     def set_custom_exposure(self, exposure_ms):
         """Set custom exposure in milliseconds"""
