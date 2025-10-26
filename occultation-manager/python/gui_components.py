@@ -139,7 +139,8 @@ class EventsDataGrid(DataGridView):
                             local_date = event.event_date
                         # event.event_time_local is prepared in OccultationEvent
                         local_time = getattr(event, 'event_time_local', '')
-                        row.Cells["DateTime"].Value = f"{local_date} {local_time}"
+#                        row.Cells["DateTime"].Value = f"{local_date} {local_time}"
+                        row.Cells["DateTime"].Value = local_dt.strftime('%Y-%m-%d %H:%M:%S')
                 except Exception:
                     row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}"
             row.Cells["StarMag"].Value = f"{event.star_mag:.1f}" if event.star_mag > 0 else "N/A"

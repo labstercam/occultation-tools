@@ -557,7 +557,16 @@ class ConfigurationDialog(Form):
 
     def display_utc_checked_changed(self, sender, e):
         """Handle UTC diplay checkbox change"""
-        self.config.set_display_utc(self.display_utc.Checked) 
+        self.config.set_display_utc(self.display_utc.Checked)
+        # If this dialog was opened with an owner (main GUI), refresh the
+        # events display immediately so the grid updates to UTC/local view.
+        try:
+            owner = getattr(self, 'Owner', None)
+            if owner and hasattr(owner, 'refresh_display'):
+                owner.refresh_display()
+        except Exception:
+            # Defensive: do not raise from UI handler
+            pass
 
 
     def setup_api_tab(self, tab):
@@ -642,6 +651,14 @@ class ConfigurationDialog(Form):
             if self.config.save_config():
                 MessageBox.Show("Configuration saved successfully!", "Success", 
                               MessageBoxButtons.OK, MessageBoxIcon.Information)
+                # Refresh owner UI immediately so changes (e.g., Display UTC)
+                # take effect without closing the dialog.
+                try:
+                    owner = getattr(self, 'Owner', None)
+                    if owner and hasattr(owner, 'refresh_display'):
+                        owner.refresh_display()
+                except Exception:
+                    pass
             else:
                 MessageBox.Show("Failed to save configuration!", "Error", 
                               MessageBoxButtons.OK, MessageBoxIcon.Error)

@@ -1135,7 +1135,9 @@ class OccultationManagerGUI(Form):
     def show_configuration_click(self, sender, e):
         """Show configuration dialog"""
         config_dialog = ConfigurationDialog(self.config, self.theme_manager)
-        config_dialog.ShowDialog()
+        # Pass self as owner so the configuration dialog can refresh the
+        # main UI immediately when settings (like display_utc) are changed.
+        config_dialog.ShowDialog(self)
     
     def show_template_manager_click(self, sender, e):
         """Show template manager"""
