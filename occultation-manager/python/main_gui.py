@@ -178,12 +178,12 @@ class OccultationManagerGUI(Form):
         btn_combined_script.Size = Size(110, 25)
         btn_combined_script.Location = Point(652, 8)
         btn_combined_script.Click += self.generate_combined_script_click
-        toolbar.Controls.Add(btn_combined_script)
+        #toolbar.Controls.Add(btn_combined_script)
 
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
         btn_run_sequences.Size = Size(100, 25)
-        btn_run_sequences.Location = Point(768, 8)
+        btn_run_sequences.Location = Point(647, 8)
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
 
@@ -192,7 +192,7 @@ class OccultationManagerGUI(Form):
         self.btn_night_mode = Button()
         self.btn_night_mode.Text = "Night Mode"
         self.btn_night_mode.Size = Size(80, 25)
-        self.btn_night_mode.Location = Point(900, 8)
+        self.btn_night_mode.Location = Point(752, 8)
         self.btn_night_mode.Click += self.toggle_night_mode_click
         toolbar.Controls.Add(self.btn_night_mode)
 
@@ -225,7 +225,7 @@ class OccultationManagerGUI(Form):
         menu_sequences.DropDownItems.Add(ToolStripMenuItem("Generate Combined Script", None, self.generate_combined_script_click))
         menu_sequences.DropDownItems.Add(ToolStripSeparator())
         menu_sequences.DropDownItems.Add(ToolStripMenuItem("Run Selected Sequences", None, self.run_sequences_click))
-        menu_bar.Items.Add(menu_sequences)
+        #menu_bar.Items.Add(menu_sequences)
         
         # Tools menu
         menu_tools = ToolStripMenuItem("Tools")
@@ -341,7 +341,7 @@ class OccultationManagerGUI(Form):
         self.lbl_current_event = Label()
         self.lbl_current_event.Text = "No event loaded for preparation"
         self.lbl_current_event.Location = Point(395, 15)
-        self.lbl_current_event.Size = Size(480, 15)
+        self.lbl_current_event.Size = Size(430, 15)
         self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
         obs_group.Controls.Add(self.lbl_current_event)
         

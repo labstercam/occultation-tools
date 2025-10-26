@@ -289,17 +289,28 @@ class OccultationEvent:
             else:
                 if self.star_mag > 0:
                     mag_ref = self.config.get_mag_for_40ms_exposure()
-                    self.exposure_ms = max(10, int(40 * (2.5 ** (self.star_mag - mag_ref))))
-                    if self.exposure_ms > 1000:
-                        self.exposure_ms = 1000
+                    extinction_mag = min(2, -0.5 + 0.5/math.cos((90-self.star_alt)*2*math.pi/360))
+                    self.exposure_ms = round(max(40, 40 * pow(2, round(self.comb_mag + extinction_mag - mag_ref + 0.5, 0)))/20)*20
+
                 else:
                     self.exposure_ms = 40
             # Parse the main event datetime from the stored ISO string
             self.event_datetime = self._parse_iso_datetime(self.event_time)
 
             # Recompute recording duration and timing windows using current config
+            # Read base duration from config; be defensive about types so
+            # that strings or None don't cause the value to fall back to 0.
             try:
-                base_dur = int(self.config.get_base_duration())
+                base_dur = self.config.get_base_duration()
+                if base_dur is None:
+                    base_dur = 0
+                else:
+                    try:
+                        base_dur = float(base_dur)
+                    except Exception:
+                        # If conversion fails, fall back to 0 but don't
+                        # crash the whole recalculation.
+                        base_dur = 0
             except Exception:
                 base_dur = 0
 
@@ -311,6 +322,102 @@ class OccultationEvent:
                 # Fallback: keep existing recording_duration if present
                 pass
 
+            # Compute start/end/goto times (datetimes and ISO strings) and
+            # prepare local-time display strings used by templates/UI.
+            try:
+                if self.event_datetime:
+                    eventCenterTime = self.event_datetime
+                    startTime = eventCenterTime - timedelta(seconds=self.recording_duration / 2.0)
+                    endTime = eventCenterTime + timedelta(seconds=self.recording_duration / 2.0)
+                    try:
+                        goto_lead = self.config.get_goto_lead_time()
+                        if goto_lead is None:
+                            goto_lead = 0
+                        else:
+                            try:
+                                goto_lead = float(goto_lead)
+                            except Exception:
+                                goto_lead = 0
+                    except Exception:
+                        goto_lead = 0
+
+                    gotoTime = eventCenterTime - timedelta(seconds=self.recording_duration / 2.0 + goto_lead)
+
+                    # Store ISO strings and parsed datetimes
+                    self.start_time_str = startTime.strftime("%Y-%m-%dT%H:%M:%S")
+                    self.end_time_str = endTime.strftime("%Y-%m-%dT%H:%M:%S")
+                    self.goto_time_str = gotoTime.strftime("%Y-%m-%dT%H:%M:%S")
+
+                    self.start_time = startTime
+                    self.end_time = endTime
+                    self.goto_time = gotoTime
+                else:
+                    # If event datetime is not available, parse any existing strings
+                    self.start_time = self._parse_iso_datetime(self.start_time_str)
+                    self.end_time = self._parse_iso_datetime(self.end_time_str)
+                    self.goto_time = self._parse_iso_datetime(self.goto_time_str)
+            except Exception:
+                # Ensure attributes exist even on failure
+                self.start_time = getattr(self, 'start_time', None)
+                self.end_time = getattr(self, 'end_time', None)
+                self.goto_time = getattr(self, 'goto_time', None)
+
+            # Add local time strings for use in UI/sequence templates
+            try:
+                from datetime import timezone
+
+                if self.event_datetime:
+                    self.event_time_local = (self.event_datetime.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
+                else:
+                    self.event_time_local = ""
+
+                if self.start_time:
+                    self.start_time_local = (self.start_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
+                else:
+                    self.start_time_local = ""
+
+                if self.goto_time:
+                    self.goto_time_local = (self.goto_time.replace(tzinfo=timezone.utc).astimezone()).strftime("%I:%M:%S %p") or ""
+                    # Pre-goto display (90s before goto) for some templates
+                    try:
+                        pre_goto = (self.goto_time.replace(tzinfo=timezone.utc).astimezone() - timedelta(seconds=90))
+                        self.pre_goto_time_local = pre_goto.strftime("%I:%M:%S %p") or ""
+                    except Exception:
+                        self.pre_goto_time_local = ""
+                else:
+                    self.goto_time_local = ""
+                    self.pre_goto_time_local = ""
+            except Exception:
+                # ignore localization failures but ensure attributes exist
+                self.event_time_local = getattr(self, 'event_time_local', "")
+                self.start_time_local = getattr(self, 'start_time_local', "")
+                self.goto_time_local = getattr(self, 'goto_time_local', "")
+                self.pre_goto_time_local = getattr(self, 'pre_goto_time_local', "")
+
+    def recompute_timing(self):
+        """Public helper to force recalculation of timing and exposure using
+        the current configuration. Preserves user custom exposure but clears
+        any stored precalc_exposure so recalculation uses live config values.
+        """
+        try:
+            # Clear any precalculated exposure so exposure calculation uses
+            # the current config (but keep custom_exposure intact).
+            try:
+                self.precalc_exposure = 0
+            except Exception:
+                pass
+
+            # Force recording duration recomputation
+            try:
+                self.recording_duration = 0
+            except Exception:
+                pass
+
+            # Recompute derived values (exposure, times, local strings)
+            self._calculate_derived_values()
+        except Exception as ex:
+            print(f"Error recomputing timing for {getattr(self, 'event_name', '')}: {ex}")
+
             # Compute start/end/goto times from event_datetime and updated recording_duration/goto lead
             if self.event_datetime:
                 try:
@@ -318,7 +425,14 @@ class OccultationEvent:
                     startTime = eventCenterTime - timedelta(seconds=self.recording_duration / 2.0)
                     endTime = eventCenterTime + timedelta(seconds=self.recording_duration / 2.0)
                     try:
-                        goto_lead = int(self.config.get_goto_lead_time())
+                        goto_lead = self.config.get_goto_lead_time()
+                        if goto_lead is None:
+                            goto_lead = 0
+                        else:
+                            try:
+                                goto_lead = float(goto_lead)
+                            except Exception:
+                                goto_lead = 0
                     except Exception:
                         goto_lead = 0
                     gotoTime = eventCenterTime - timedelta(seconds=self.recording_duration / 2.0 + goto_lead)

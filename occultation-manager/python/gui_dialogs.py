@@ -700,21 +700,14 @@ class ConfigurationDialog(Form):
                             # user-set custom exposure values.
                             try:
                                 for ev in owner.manager.all_events:
-                                    # If the event has a pre-calculated exposure from
-                                    # the original processing, clear it so recalculation
-                                    # uses the current config. Keep custom_exposure.
+                                    # Use the public helper to recompute timing/exposure
+                                    # so we don't duplicate logic here.
                                     try:
-                                        ev.precalc_exposure = 0
-                                    except Exception:
-                                        pass
-                                    # Force recording duration recalculation
-                                    try:
-                                        ev.recording_duration = 0
-                                    except Exception:
-                                        pass
-                                    # Recompute derived values using the updated config
-                                    try:
-                                        ev._calculate_derived_values()
+                                        if hasattr(ev, 'recompute_timing'):
+                                            ev.recompute_timing()
+                                        else:
+                                            # Backwards compatible fallback
+                                            ev._calculate_derived_values()
                                     except Exception:
                                         # Don't stop on single-event failure
                                         pass
@@ -847,7 +840,11 @@ class TemplateSelectionDialog(Form):
         self.chk_apply_all.Size = Size(200, 24)
         self.chk_apply_all.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
 
-        self.chk_apply_all.Checked = True
+        # Default: do not apply to all unless the user explicitly checks the box
+        self.chk_apply_all.Checked = False
+        # Keep the attribute in sync with the checkbox state even if the user
+        # never toggles it (avoid relying solely on CheckedChanged firing).
+        self.apply_for_all = self.chk_apply_all.Checked
         self.chk_apply_all.CheckedChanged += lambda s, e: setattr(self, 'apply_for_all', s.Checked)
         self.Controls.Add(self.chk_apply_all)
 
@@ -864,8 +861,7 @@ class TemplateSelectionDialog(Form):
         # Wire events
         self.lst_templates.SelectedIndexChanged += self.template_selected
 
-        # Default: do not apply to all unless user checks the box
-        self.apply_for_all = False
+        # `apply_for_all` is initialized from the checkbox above so no-op here
 
         self.AcceptButton = btn_ok
         self.CancelButton = btn_cancel
