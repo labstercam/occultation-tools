@@ -4,6 +4,7 @@ clr.AddReference("System.Drawing")
 
 import webbrowser
 from System.Drawing import Font, FontStyle
+from datetime import timezone
 from System.Windows.Forms import (
     DataGridView, DataGridViewSelectionMode, DataGridViewCheckBoxColumn,
     DataGridViewLinkColumn, DataGridViewTextBoxColumn, MessageBox,
@@ -99,13 +100,48 @@ class EventsDataGrid(DataGridView):
         """Update the grid with enhanced events data"""
         self.events = events
         self.Rows.Clear()
-        
+        # Determine display preference (UTC vs Local) from parent form config if available
+        display_utc = True
+        parent_form = self.FindForm()
+        if parent_form and hasattr(parent_form, 'config'):
+            try:
+                display_utc = parent_form.config.get_display_utc()
+            except Exception:
+                display_utc = True
+
+        # Update column header to reflect whether UTC or Local is shown
+        try:
+            if display_utc:
+                self.Columns["DateTime"].HeaderText = "Date/Time UTC"
+            else:
+                self.Columns["DateTime"].HeaderText = "Date/Time Local"
+        except Exception:
+            pass
+
         for event in events:
             row = self.Rows[self.Rows.Add()]
             row.Cells["Selected"].Value = event.selected
             row.Cells["EventName"].Value = event.get_asteroid_display_name()  # Using enhanced name resolution
             row.Cells["StationName"].Value = event.station_name  # Added station name data
-            row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}" if event.event_date else "N/A"
+            # Show UTC or Local time according to config
+            if not event.event_date:
+                row.Cells["DateTime"].Value = "N/A"
+            else:
+                try:
+                    if display_utc:
+                        row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}"
+                    else:
+                        # Compute local date from stored event_datetime (assumed UTC)
+                        if getattr(event, 'event_datetime', None):
+                            local_dt = event.event_datetime.replace(tzinfo=timezone.utc).astimezone()
+                            local_date = local_dt.strftime('%Y-%m-%d')
+                        else:
+                            local_date = event.event_date
+                        # event.event_time_local is prepared in OccultationEvent
+                        local_time = getattr(event, 'event_time_local', '')
+                        row.Cells["DateTime"].Value = f"{local_date} {local_time}"
+                except Exception:
+                    row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}"
             row.Cells["StarMag"].Value = f"{event.star_mag:.1f}" if event.star_mag > 0 else "N/A"
             row.Cells["CombMag"].Value = f"{event.comb_mag:.1f}" if event.comb_mag > 0 else "N/A"
             row.Cells["MagDrop"].Value = f"{event.mag_drop:.1f}" if event.mag_drop > 0 else "N/A"

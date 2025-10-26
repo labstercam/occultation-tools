@@ -24,6 +24,7 @@ class ConfigManager:
             'goto_lead_time': 240,
             'mag_for_40ms_exposure': 12.0,
             'sync_mount': True,
+            'display_utc': True,
             
             # API configuration
             'host': 'https://www.occultwatcher.net:443',
@@ -181,6 +182,12 @@ class ConfigManager:
     def set_sync_mount(self, enabled):
         self.config['sync_mount'] = enabled
 
+    def get_display_utc(self):
+        return self.config['display_utc']
+
+    def set_display_utc(self, enabled):
+        self.config['display_utc'] = enabled
+
     # API configuration
     def get_host(self):
         return self.config['host']
@@ -252,7 +259,11 @@ class ConfigManager:
 
         if not isinstance(self.config['sync_mount'], bool):
             errors.append("Sync mount must be a boolean value")    
+
+        if not isinstance(self.config['display_utc'], bool):
+            errors.append("Display UTC must be a boolean value")    
                 
+
         return errors
 
     def get_night_mode(self):

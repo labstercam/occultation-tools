@@ -375,7 +375,7 @@ class ConfigurationDialog(Form):
         
         # Recording Settings Tab
         tab_recording = TabPage()
-        tab_recording.Text = "Recording"
+        tab_recording.Text = "User Settings"
         self.setup_recording_tab(tab_recording)
         tab_control.TabPages.Add(tab_recording)
         
@@ -541,10 +541,23 @@ class ConfigurationDialog(Form):
 
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
         self.chk_sync_mount.CheckedChanged += self.sync_mount_checked_changed
+
+        self.display_utc = CheckBox()
+        self.display_utc.Text = "Display UTC in Grid"       
+        self.display_utc.Location = Point(20, 150)
+        self.display_utc.Size = Size(200, 20)    
+        tab.Controls.Add(self.display_utc)
+
+        self.display_utc.Checked = self.config.get_display_utc()
+        self.display_utc.CheckedChanged += self.display_utc_checked_changed
     
     def sync_mount_checked_changed(self, sender, e):
         """Handle sync mount checkbox change"""
         self.config.set_sync_mount(self.chk_sync_mount.Checked) 
+
+    def display_utc_checked_changed(self, sender, e):
+        """Handle UTC diplay checkbox change"""
+        self.config.set_display_utc(self.display_utc.Checked) 
 
 
     def setup_api_tab(self, tab):
@@ -583,6 +596,7 @@ class ConfigurationDialog(Form):
         self.txt_goto_lead.Text = str(self.config.get_goto_lead_time())
         self.txt_mag_exposure.Text = str(self.config.get_mag_for_40ms_exposure())
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
+        self.display_utc.Checked = self.config.get_display_utc()
         self.txt_host.Text = self.config.get_host()
         self.txt_api_key.Text = self.config.get_api_key()
     
@@ -614,6 +628,7 @@ class ConfigurationDialog(Form):
             self.config.set_goto_lead_time(int(self.txt_goto_lead.Text))
             self.config.set_mag_for_40ms_exposure(float(self.txt_mag_exposure.Text))
             self.config.set_sync_mount(self.chk_sync_mount.Checked)
+            self.config.set_display_utc(self.display_utc.Checked)
             self.config.set_host(self.txt_host.Text)
             self.config.set_api_key(self.txt_api_key.Text)
             
