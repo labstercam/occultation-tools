@@ -3,7 +3,7 @@ clr.AddReference("System.Windows.Forms")
 clr.AddReference("System.Drawing")
 
 import webbrowser
-from System.Drawing import Font, FontStyle
+from System.Drawing import Font, FontStyle, SystemColors
 from datetime import timezone
 from System.Windows.Forms import (
     DataGridView, DataGridViewSelectionMode, DataGridViewCheckBoxColumn,
@@ -40,19 +40,19 @@ class EventsDataGrid(DataGridView):
             ("Select", "Selected", 50, True),
             ("Event Name", "EventName", 140, False),
             ("Station", "StationName", 120, False),  # Added station name column
-            ("Date/Time UTC", "DateTime", 120, False),
+            ("Date/Time UTC", "DateTime", 140, False),
             ("Star Mag", "StarMag", 70, False),
             ("Comb Mag", "CombMag", 70, False),
             ("Mag Drop", "MagDrop", 70, False),
             ("Exp (ms)", "ExposureMs", 70, False),
             ("Record (s)", "RecordingTime", 70, False),  # Changed name as requested
             ("Max Dur (s)", "MaxDuration", 70, False),      # Added as requested
-            ("Error (s)", "TimeError", 60, False),           # Added as requested
-            ("Alt", "Altitude", 50, False),                       # Added as requested
-            ("Az", "Azimuth", 55, False),                         # Added as requested
-            ("Coordinates", "Coordinates", 120, False),
+#            ("Error (s)", "TimeError", 60, False),           # Added as requested
+            ("Alt-Az", "Altitude", 60, False),                       # Added as requested
+#            ("Az", "Azimuth", 55, False),                         # Added as requested
+#            ("Coordinates", "Coordinates", 120, False),
             ("OWC", "OWCLink", 50, False),                        # Added as requested
-            ("Status", "Status", 80, False)
+            ("Status", "Status", 60, False)
         ]
         
         for name, data_name, width, editable in columns:
@@ -60,6 +60,18 @@ class EventsDataGrid(DataGridView):
                 col = DataGridViewCheckBoxColumn()
             elif name == "OWC":
                 col = DataGridViewLinkColumn()
+                # Ensure the link remains visible when the row is selected by
+                # using the system highlight text color for selection foreground
+                try:
+                    col.LinkColor = SystemColors.MenuHighlight
+                    col.ActiveLinkColor = SystemColors.Highlight
+                    col.VisitedLinkColor = SystemColors.GrayText
+                    # Use the system highlight text color so the link text contrasts
+                    # with the selection background set by the OS/theme.
+                    col.DefaultCellStyle.SelectionForeColor = SystemColors.HighlightText
+                except Exception:
+                    # Defensive: ignore if any of these properties are unavailable
+                    pass
             else:
                 col = DataGridViewTextBoxColumn()
             
@@ -127,9 +139,10 @@ class EventsDataGrid(DataGridView):
             if not event.event_date:
                 row.Cells["DateTime"].Value = "N/A"
             else:
+                time_error = f"±{event.uncertainty_seconds:.0f}s"
                 try:
                     if display_utc:
-                        row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}"
+                        row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}{time_error}" 
                     else:
                         # Compute local date from stored event_datetime (assumed UTC)
                         if getattr(event, 'event_datetime', None):
@@ -140,9 +153,9 @@ class EventsDataGrid(DataGridView):
                         # event.event_time_local is prepared in OccultationEvent
                         local_time = getattr(event, 'event_time_local', '')
 #                        row.Cells["DateTime"].Value = f"{local_date} {local_time}"
-                        row.Cells["DateTime"].Value = local_dt.strftime('%Y-%m-%d %H:%M:%S')
+                        row.Cells["DateTime"].Value = local_dt.strftime('%Y-%m-%d %H:%M:%S') + time_error
                 except Exception:
-                    row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}"
+                    row.Cells["DateTime"].Value = f"{event.event_date} {event.event_time_utc}{time_error}"
             row.Cells["StarMag"].Value = f"{event.star_mag:.1f}" if event.star_mag > 0 else "N/A"
             row.Cells["CombMag"].Value = f"{event.comb_mag:.1f}" if event.comb_mag > 0 else "N/A"
             row.Cells["MagDrop"].Value = f"{event.mag_drop:.1f}" if event.mag_drop > 0 else "N/A"
@@ -155,10 +168,12 @@ class EventsDataGrid(DataGridView):
             
             row.Cells["RecordingTime"].Value = str(event.recording_duration)
             row.Cells["MaxDuration"].Value = f"{event.max_duration_seconds:.1f}" if event.max_duration_seconds > 0 else "N/A"
-            row.Cells["TimeError"].Value = f"{event.uncertainty_seconds:.1f}" if event.uncertainty_seconds > 0 else "N/A"
-            row.Cells["Altitude"].Value = f"{event.star_alt:.1f}°" if event.star_alt > 0 else "N/A"
-            row.Cells["Azimuth"].Value = f"{event.star_az:.1f}°" if event.star_az > 0 else "N/A"
-            row.Cells["Coordinates"].Value = event.get_coordinates_string()
+#            row.Cells["TimeError"].Value = f"{event.uncertainty_seconds:.1f}" if event.uncertainty_seconds > 0 else "N/A"
+            row.Cells["Altitude"].Value = f"{event.star_alt:.0f}@{event.star_az:.0f}"
+            
+            #row.Cells["Altitude"].Value = f"{event.star_alt:.1f}°" if event.star_alt > 0 else "N/A"
+            #row.Cells["Azimuth"].Value = f"{event.star_az:.1f}°" if event.star_az > 0 else "N/A"
+#            row.Cells["Coordinates"].Value = event.get_coordinates_string()
             row.Cells["OWCLink"].Value = "OWC" if hasattr(event, 'owcloudurl') and event.owcloudurl else ""
             row.Cells["Status"].Value = event.get_status_info()
             row.Tag = event

@@ -50,7 +50,7 @@ class OccultationManagerGUI(Form):
     def setup_ui(self):
         """Setup the enhanced user interface"""
         self.Text = "Occultation Manager - SharpCap Integration"
-        self.Size = Size(1300, 675)
+        self.Size = Size(1090, 445)
         self.StartPosition = FormStartPosition.CenterScreen
         
         # Create menu bar
@@ -66,17 +66,10 @@ class OccultationManagerGUI(Form):
         # Enhanced toolbar
         toolbar = self.create_enhanced_toolbar()
         
-        # Station filter panel
-        filter_panel = self.create_station_filter_panel()
-#        filter_panel.Parent = main_panel
-        toolbar.Controls.Add( filter_panel)
-
-
-
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
         self.events_grid.Location = Point(10, 165)
-        self.events_grid.Size = Size(1360, 450)
+        self.events_grid.Size = Size(1045, 220)
         self.events_grid.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
         
         # Bottom panel (smaller now)
@@ -98,6 +91,61 @@ class OccultationManagerGUI(Form):
         
         # Force refresh
         self.Refresh()
+
+    def _layout_row(self, parent, controls, start_x=10, y=15, gap=4):
+        """Helper to lay out a row of controls with a fixed pixel gap.
+
+        parent: control whose coordinate space we use
+        controls: iterable of controls (must have .Size.Width set)
+        start_x, y: starting coordinates
+        gap: pixel gap between controls
+        """
+        x = start_x
+        for ctrl in controls:
+            try:
+                # If this is a button, auto-size it based on its label so widths
+                # are consistent with content. This uses a small off-screen
+                # bitmap to measure the rendered string in the control's font.
+                try:
+                    from System.Windows.Forms import Button, Label, ComboBox
+                    if isinstance(ctrl, Button) or isinstance(ctrl, Label) :
+                        self._autosize_button(ctrl)
+                except Exception:
+                    # ignore if Button isn't available/import fails
+                    pass
+
+                ctrl.Location = Point(x, y)
+            except Exception:
+                # If Location assignment fails, skip
+                pass
+            x += (ctrl.Size.Width if hasattr(ctrl, 'Size') else 0) + gap
+
+    def _autosize_button(self, btn, padding=14, min_width=40):
+        """Set button width to fit its text plus padding (in pixels).
+
+        Uses Graphics.MeasureString on a tiny bitmap so this works even when
+        controls haven't been shown/created with a window handle yet.
+        """
+        try:
+            from System.Drawing import Bitmap, Graphics
+            # Create a tiny bitmap and measure the text with the button's font
+            bmp = Bitmap(1, 1)
+            g = Graphics.FromImage(bmp)
+            try:
+                sizef = g.MeasureString(btn.Text or "", btn.Font)
+                measured = int(sizef.Width)
+            finally:
+                g.Dispose()
+                bmp.Dispose()
+
+            width = measured + padding
+            if width < min_width:
+                width = min_width
+            # Preserve current height
+            btn.Size = Size(width, btn.Size.Height)
+        except Exception:
+            # Non-fatal: leave existing size if measuring fails
+            pass
     
     def toggle_night_mode_click(self, sender, e):
         """Toggle night mode on/off"""
@@ -122,45 +170,53 @@ class OccultationManagerGUI(Form):
 
         # Row 1 - Primary workflow (left-to-right)
         btn_download = Button()
-        btn_download.Text = "Download Events"
-        btn_download.Size = Size(100, 25)
-        btn_download.Location = Point(6, 8)
+        btn_download.Text = "Download"
+        btn_download.Size = Size(73, 25)
         btn_download.Click += self.download_events_click
         toolbar.Controls.Add(btn_download)
 
         btn_refresh = Button()
         btn_refresh.Text = "Refresh"
-        btn_refresh.Size = Size(70, 25)
-        btn_refresh.Location = Point(112, 8)
+        btn_refresh.Size = Size(60, 25)
         btn_refresh.Click += self.refresh_events_click
         toolbar.Controls.Add(btn_refresh)
+
+        lbl_station = Label()
+        lbl_station.Text = "Station:"
+        lbl_station.Size = Size(50, 20)
+        toolbar.Controls.Add(lbl_station)
+        
+        self.cbo_stations = ComboBox()
+        self.cbo_stations.Size = Size(150, 25)
+        self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
+        self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed
+        toolbar.Controls.Add(self.cbo_stations)
+
 
         # Selection shortcuts
         # btn_select_all = Button()
         # btn_select_all.Text = "Select All"
         # btn_select_all.Size = Size(70, 25)
-        # btn_select_all.Location = Point(188, 8)
+        # btn_select_all.Location = Point(188, 7)
         # btn_select_all.Click += self.select_all_click
         # toolbar.Controls.Add(btn_select_all)
 
         # btn_select_none = Button()
         # btn_select_none.Text = "Select None"
         # btn_select_none.Size = Size(74, 25)
-        # btn_select_none.Location = Point(264, 8)
+        # btn_select_none.Location = Point(264, 7)
         # btn_select_none.Click += self.select_none_click
         # toolbar.Controls.Add(btn_select_none)
 
         btn_event_details = Button()
         btn_event_details.Text = "Event Details"
         btn_event_details.Size = Size(90, 25)
-        btn_event_details.Location = Point(340, 8)
         btn_event_details.Click += self.show_event_details_click
         toolbar.Controls.Add(btn_event_details)
 
         btn_edit_exposure = Button()
         btn_edit_exposure.Text = "Edit Exposure"
         btn_edit_exposure.Size = Size(90, 25)
-        btn_edit_exposure.Location = Point(436, 8)
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
 
@@ -168,22 +224,18 @@ class OccultationManagerGUI(Form):
         btn_create_sequences = Button()
         btn_create_sequences.Text = "Create Sequences"
         btn_create_sequences.Size = Size(110, 25)
-        btn_create_sequences.Location = Point(532, 8)
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
-
 
         btn_combined_script = Button()
         btn_combined_script.Text = "Combined Seqs"
         btn_combined_script.Size = Size(110, 25)
-        btn_combined_script.Location = Point(652, 8)
         btn_combined_script.Click += self.generate_combined_script_click
         #toolbar.Controls.Add(btn_combined_script)
 
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
         btn_run_sequences.Size = Size(100, 25)
-        btn_run_sequences.Location = Point(647, 8)
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
 
@@ -192,9 +244,14 @@ class OccultationManagerGUI(Form):
         self.btn_night_mode = Button()
         self.btn_night_mode.Text = "Night Mode"
         self.btn_night_mode.Size = Size(80, 25)
-        self.btn_night_mode.Location = Point(752, 8)
         self.btn_night_mode.Click += self.toggle_night_mode_click
         toolbar.Controls.Add(self.btn_night_mode)
+
+        # Layout the toolbar buttons with a fixed 4px gap
+        try:
+            self._layout_row(toolbar, [btn_download, btn_refresh, lbl_station, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=6, y=7, gap=4)
+        except Exception:
+            pass
 
         return toolbar
 
@@ -242,27 +299,6 @@ class OccultationManagerGUI(Form):
         
         return menu_bar
         
-    def create_station_filter_panel(self):
-        """Create station filtering panel"""
-        panel = Panel()
-        panel.Height = 30
-        panel.Dock = DockStyle.Top
-        panel.BackColor = SystemColors.ControlLight
-        
-        lbl_station = Label()
-        lbl_station.Text = "Station:"
-        lbl_station.Location = Point(185, 8)
-        lbl_station.Size = Size(50, 20)
-        panel.Controls.Add(lbl_station)
-        
-        self.cbo_stations = ComboBox()
-        self.cbo_stations.Location = Point(255, 8)
-        self.cbo_stations.Size = Size(150, 25)
-        self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
-        self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed
-        panel.Controls.Add(self.cbo_stations)
-             
-        return panel
     
     def create_enhanced_bottom_panel(self):
         """Create the enhanced bottom control panel with Observation Preparation"""
@@ -287,21 +323,18 @@ class OccultationManagerGUI(Form):
         # Quick filter buttons (single row)
         btn_filter_today = Button()
         btn_filter_today.Text = "Today"
-        btn_filter_today.Location = Point(10, 15)
         btn_filter_today.Size = Size(50, 25)
         btn_filter_today.Click += self.filter_today_click
         actions_group.Controls.Add(btn_filter_today)
         
         btn_filter_upcoming = Button()
         btn_filter_upcoming.Text = "Future"
-        btn_filter_upcoming.Location = Point(65, 15)
         btn_filter_upcoming.Size = Size(60, 25)
         btn_filter_upcoming.Click += self.filter_upcoming_click
         actions_group.Controls.Add(btn_filter_upcoming)
         
         btn_show_all = Button()
         btn_show_all.Text = "All"
-        btn_show_all.Location = Point(130, 15)
         btn_show_all.Size = Size(35, 25)
         btn_show_all.Click += self.show_all_click
         actions_group.Controls.Add(btn_show_all)
@@ -309,16 +342,20 @@ class OccultationManagerGUI(Form):
         btn_select_none = Button()
         btn_select_none.Text = "None"
         btn_select_none.Size = Size(80, 25)
-        btn_select_none.Location = Point(170, 15)  # Changed from 5 to 8
         btn_select_none.Click += self.select_none_click
         #actions_group.Controls.Add(btn_select_none)
 
         btn_select_toggle = Button()
         btn_select_toggle.Text = "On/Off"
         btn_select_toggle.Size = Size(80, 25)
-        btn_select_toggle.Location = Point(170, 15)  # Changed from 5 to 8
         btn_select_toggle .Click += self.select_toggle_click
         actions_group.Controls.Add(btn_select_toggle)
+
+        # Layout quick-filter buttons with 4px gaps
+        try:
+            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=15, gap=4)
+        except Exception:
+            pass
 
         
         self.lbl_selection_summary = Label()
@@ -340,7 +377,7 @@ class OccultationManagerGUI(Form):
         # Current event display
         self.lbl_current_event = Label()
         self.lbl_current_event.Text = "No event loaded for preparation"
-        self.lbl_current_event.Location = Point(395, 15)
+        self.lbl_current_event.Location = Point(340, 25)
         self.lbl_current_event.Size = Size(430, 15)
         self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
         obs_group.Controls.Add(self.lbl_current_event)
@@ -349,7 +386,6 @@ class OccultationManagerGUI(Form):
         btn_load_event = Button()
         btn_load_event.Text = "Load Event"
         btn_load_event.Size = Size(80, 25)
-        btn_load_event.Location = Point(10, 15)
         btn_load_event.Click += self.load_event_for_prep_click
         btn_load_event.BackColor = Color.LightYellow
         obs_group.Controls.Add(btn_load_event)
@@ -359,15 +395,13 @@ class OccultationManagerGUI(Form):
         btn_goto_target = Button()
         btn_goto_target.Text = "GOTO"
         btn_goto_target.Size = Size(90, 25)
-        btn_goto_target.Location = Point(95, 15)
         btn_goto_target.Click += self.goto_and_center_click
         btn_goto_target.BackColor = Color.LightBlue
         obs_group.Controls.Add(btn_goto_target)
         
         btn_plate_solve = Button()
-        btn_plate_solve.Text = "Plate Solve & Label"
+        btn_plate_solve.Text = "Plate Solve"
         btn_plate_solve.Size = Size(100, 25)
-        btn_plate_solve.Location = Point(190, 15)
         btn_plate_solve.Click += self.plate_solve_label_click
         btn_plate_solve.BackColor = Color.LightCyan
         obs_group.Controls.Add(btn_plate_solve)
@@ -375,10 +409,15 @@ class OccultationManagerGUI(Form):
         btn_setup_event = Button()
         btn_setup_event.Text = "Setup"
         btn_setup_event.Size = Size(90, 25)
-        btn_setup_event.Location = Point(295, 15)
         btn_setup_event.Click += self.setup_for_event_click
         btn_setup_event.BackColor = Color.LightGreen
         obs_group.Controls.Add(btn_setup_event)
+
+        # Layout observation-prep row with a 4px gap
+        try:
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event], start_x=10, y=15, gap=4)
+        except Exception:
+            pass
                 
         # Event details display
         self.lbl_event_details = Label()
@@ -756,12 +795,12 @@ class OccultationManagerGUI(Form):
             # Check if mount control is available
             if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
                 mount = self.sharpcap.Mounts.SelectedMount
-                if self.config.get_sync_mount():
-                    mount.SolveAndSync() 
                 
                 mount.SlewTo(coordinates)
                 time.sleep(1)
                 result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates,CancellationToken()))
+                if self.config.get_sync_mount():
+                    mount.SolveAndSync() 
 
                 print(f"GOTO command sent: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
                 return True
@@ -1244,12 +1283,12 @@ class OccultationManagerGUI(Form):
                 MessageBox.Show(f"SharpCap setup complete for:\n\n" +
                             f"Event: {event.get_asteroid_display_name()}\n" +
                             f"Exposure Set to : {event.exposure_ms}ms\n" +
-                            f"Recording Duration: {event.recording_duration}s\n" +
-                            f"Target: RA {event.ra:.4f}h, Dec {event.dec:.4f}°\n\n" +
-                            f"Use SharpCap interface for recording when ready.",
+                            f"Coords copied to clipboard: RA {event.ra:.4f}h, Dec {event.dec:.4f}°\n\n" +
+                            f"Continue with testing or use  SharpCap interface when ready.",
                             "Setup Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
             else:
                 self.update_status("Failed to configure SharpCap")
+                
                 
         except Exception as ex:
             self.update_status(f"Error during setup: {ex}")
@@ -1263,9 +1302,6 @@ class OccultationManagerGUI(Form):
             # Set exposure time
             if self.sharpcap.SelectedCamera:
                 camera = self.sharpcap.SelectedCamera
-                
-                # Set exposure (convert ms to seconds)
-                #exposure_seconds = round(event.exposure_ms / 1000.0,3)
                 if hasattr(camera.Controls, 'Exposure'):
                     camera.Controls.Exposure.ExposureMs = event.exposure_ms
                     print(f"Set exposure to {event.exposure_ms:.0f} ms")
@@ -1277,7 +1313,9 @@ class OccultationManagerGUI(Form):
                 print(f"Target: {target_name} at RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
             except:
                 pass
-            
+            print(f"Target coords copied to clipboard: {target_name} at RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
+            System.Windows.Forms.Clipboard.SetText(f"{event.ra:.6f}, {event.dec:.6f}")
+
             return True
             
         except Exception as e:
