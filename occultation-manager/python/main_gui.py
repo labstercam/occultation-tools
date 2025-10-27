@@ -103,11 +103,11 @@ class OccultationManagerGUI(Form):
         x = start_x
         for ctrl in controls:
             try:
-                # If this is a button, auto-size it based on its label so widths
+                # If this is a button or label, auto-size it based on its label so widths
                 # are consistent with content. This uses a small off-screen
                 # bitmap to measure the rendered string in the control's font.
                 try:
-                    from System.Windows.Forms import Button, Label, ComboBox
+                    from System.Windows.Forms import Button, Label
                     if isinstance(ctrl, Button) or isinstance(ctrl, Label) :
                         self._autosize_button(ctrl)
                 except Exception:
@@ -192,22 +192,6 @@ class OccultationManagerGUI(Form):
         self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed
         toolbar.Controls.Add(self.cbo_stations)
 
-
-        # Selection shortcuts
-        # btn_select_all = Button()
-        # btn_select_all.Text = "Select All"
-        # btn_select_all.Size = Size(70, 25)
-        # btn_select_all.Location = Point(188, 7)
-        # btn_select_all.Click += self.select_all_click
-        # toolbar.Controls.Add(btn_select_all)
-
-        # btn_select_none = Button()
-        # btn_select_none.Text = "Select None"
-        # btn_select_none.Size = Size(74, 25)
-        # btn_select_none.Location = Point(264, 7)
-        # btn_select_none.Click += self.select_none_click
-        # toolbar.Controls.Add(btn_select_none)
-
         btn_event_details = Button()
         btn_event_details.Text = "Event Details"
         btn_event_details.Size = Size(90, 25)
@@ -226,12 +210,6 @@ class OccultationManagerGUI(Form):
         btn_create_sequences.Size = Size(110, 25)
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
-
-        btn_combined_script = Button()
-        btn_combined_script.Text = "Combined Seqs"
-        btn_combined_script.Size = Size(110, 25)
-        btn_combined_script.Click += self.generate_combined_script_click
-        #toolbar.Controls.Add(btn_combined_script)
 
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
@@ -307,20 +285,18 @@ class OccultationManagerGUI(Form):
         panel.Dock = DockStyle.Top
         panel.BackColor = SystemColors.Control
         
-        
-        # NEW: Observation Preparation Group
+        # Observation Preparation Group
         obs_prep_group = self.create_observation_preparation_group()
         obs_prep_group.Location = Point(270, 5)
         panel.Controls.Add(obs_prep_group)
         
-        # Existing actions group (repositioned)
+        # Quick Filter Actions actions group 
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
-        actions_group.Location = Point(10, 5)  # Moved down
+        actions_group.Location = Point(10, 5)
         actions_group.Size = Size(380, 73)      
         panel.Controls.Add(actions_group)
         
-        # Quick filter buttons (single row)
         btn_filter_today = Button()
         btn_filter_today.Text = "Today"
         btn_filter_today.Size = Size(50, 25)
@@ -339,12 +315,6 @@ class OccultationManagerGUI(Form):
         btn_show_all.Click += self.show_all_click
         actions_group.Controls.Add(btn_show_all)
 
-        btn_select_none = Button()
-        btn_select_none.Text = "None"
-        btn_select_none.Size = Size(80, 25)
-        btn_select_none.Click += self.select_none_click
-        #actions_group.Controls.Add(btn_select_none)
-
         btn_select_toggle = Button()
         btn_select_toggle.Text = "On/Off"
         btn_select_toggle.Size = Size(80, 25)
@@ -356,8 +326,7 @@ class OccultationManagerGUI(Form):
             self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=15, gap=4)
         except Exception:
             pass
-
-        
+   
         self.lbl_selection_summary = Label()
         self.lbl_selection_summary.Text = "No events selected"
         self.lbl_selection_summary.Location = Point(5, 45)
@@ -1206,62 +1175,29 @@ class OccultationManagerGUI(Form):
         self.update_selection_summary()
 
     # Observation Preparation Methods
-    def get_first_selected_event(self):
-        """Get the first selected event from the grid"""
-        selected_events = self.get_displayed_selected_events()
-        if selected_events:
-            return selected_events[0]
-        return None
 
     def load_event_for_prep_click(self, sender, e):
         """Load the first selected event for preparation"""
-        event = self.get_first_selected_event()
-        if not event:
-            MessageBox.Show("Please select an event from the grid first", "No Event Selected", 
+        selected_events = self.get_displayed_selected_events()
+        if len(selected_events) != 1:
+            MessageBox.Show("Please select exactly one event from the grid", "Invalid Selection", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
+        event = selected_events[0]
         
         # Load event for preparation
         self._preparation_event = event
-        self.update_preparation_display()
         self.update_status(f"Loaded event for preparation: {event.get_asteroid_display_name()}")
 
-    def update_preparation_display(self):
         """Update the observation preparation display with current event info"""
         event = self._preparation_event
-        if event:
-            # Update event label
-            self.lbl_current_event.Text = f"{event.get_asteroid_display_name()} at {event.event_time} UTC"
-            
-            # Update details
-            details = (f"RA: {event.ra:.4f}h, Dec: {event.dec:.4f}° | "
-                    f"Exposure: {event.exposure_ms}ms | Duration: {event.recording_duration}s | "
-                    f"Star Mag: {event.star_mag:.1f}")
-            self.lbl_event_details.Text = details
-            
-            # Enable buttons
-            self.enable_preparation_buttons(True)
-        else:
-            self.lbl_current_event.Text = "No event loaded for preparation"
-            self.lbl_event_details.Text = ""
-            self.enable_preparation_buttons(False)
-
-    def enable_preparation_buttons(self, enabled):
-        """Enable or disable preparation buttons based on event loading"""
-        # Find buttons in the observation preparation group
-        obs_group = None
-        for control in self.Controls:
-            if isinstance(control, Panel):
-                for child in control.Controls:
-                    if isinstance(child, GroupBox) and "Observation Preparation" in child.Text:
-                        obs_group = child
-                        break
-        
-        if obs_group:
-            for control in obs_group.Controls:
-                if (isinstance(control, Button) and 
-                    control.Text not in ["Clear Labels", "Load Event"]):
-                    control.Enabled = enabled
+        self.lbl_current_event.Text = f"{event.get_asteroid_display_name()} at {event.event_time} UTC"
+       
+        # Update details
+        details = (f"RA: {event.ra:.4f}h, Dec: {event.dec:.4f}° | "
+                f"Exposure: {event.exposure_ms}ms | Duration: {event.recording_duration}s | "
+                f"Star Mag: {event.star_mag:.1f}")
+        self.lbl_event_details.Text = details
 
     def setup_for_event_click(self, sender, e):
         """Setup SharpCap interface for the loaded event"""
@@ -1284,7 +1220,7 @@ class OccultationManagerGUI(Form):
                             f"Event: {event.get_asteroid_display_name()}\n" +
                             f"Exposure Set to : {event.exposure_ms}ms\n" +
                             f"Coords copied to clipboard: RA {event.ra:.4f}h, Dec {event.dec:.4f}°\n\n" +
-                            f"Continue with testing or use  SharpCap interface when ready.",
+                            f"Continue with testing or use SharpCap interface if you want to record manually.",
                             "Setup Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
             else:
                 self.update_status("Failed to configure SharpCap")
