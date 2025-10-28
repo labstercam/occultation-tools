@@ -120,7 +120,7 @@ class OccultationManagerGUI(Form):
                 pass
             x += (ctrl.Size.Width if hasattr(ctrl, 'Size') else 0) + gap
 
-    def _autosize_button(self, btn, padding=14, min_width=40):
+    def _autosize_button(self, btn, padding=14, min_width=40 ,height=25):
         """Set button width to fit its text plus padding (in pixels).
 
         Uses Graphics.MeasureString on a tiny bitmap so this works even when
@@ -142,7 +142,7 @@ class OccultationManagerGUI(Form):
             if width < min_width:
                 width = min_width
             # Preserve current height
-            btn.Size = Size(width, btn.Size.Height)
+            btn.Size = Size(width, height if btn.Size.Height == 23 else btn.Size.Height)
         except Exception:
             # Non-fatal: leave existing size if measuring fails
             pass
@@ -161,6 +161,7 @@ class OccultationManagerGUI(Form):
         
         self.update_status("Night mode " + ("enabled" if is_night else "disabled"))
 
+       
     def create_enhanced_toolbar(self):
         """Create the enhanced main toolbar"""
         toolbar = Panel()
@@ -171,21 +172,14 @@ class OccultationManagerGUI(Form):
         # Row 1 - Primary workflow (left-to-right)
         btn_download = Button()
         btn_download.Text = "Download"
-        btn_download.Size = Size(73, 25)
         btn_download.Click += self.download_events_click
         toolbar.Controls.Add(btn_download)
 
         btn_refresh = Button()
         btn_refresh.Text = "Refresh"
-        btn_refresh.Size = Size(60, 25)
         btn_refresh.Click += self.refresh_events_click
         toolbar.Controls.Add(btn_refresh)
 
-        lbl_station = Label()
-        lbl_station.Text = "Station:"
-        lbl_station.Size = Size(50, 20)
-        toolbar.Controls.Add(lbl_station)
-        
         self.cbo_stations = ComboBox()
         self.cbo_stations.Size = Size(150, 25)
         self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
@@ -194,26 +188,22 @@ class OccultationManagerGUI(Form):
 
         btn_event_details = Button()
         btn_event_details.Text = "Event Details"
-        btn_event_details.Size = Size(90, 25)
         btn_event_details.Click += self.show_event_details_click
         toolbar.Controls.Add(btn_event_details)
 
         btn_edit_exposure = Button()
         btn_edit_exposure.Text = "Edit Exposure"
-        btn_edit_exposure.Size = Size(90, 25)
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
 
         # Sequence operations
         btn_create_sequences = Button()
         btn_create_sequences.Text = "Create Sequences"
-        btn_create_sequences.Size = Size(110, 25)
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
 
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
-        btn_run_sequences.Size = Size(100, 25)
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
 
@@ -221,13 +211,12 @@ class OccultationManagerGUI(Form):
         # Night Mode (global)
         self.btn_night_mode = Button()
         self.btn_night_mode.Text = "Night Mode"
-        self.btn_night_mode.Size = Size(80, 25)
         self.btn_night_mode.Click += self.toggle_night_mode_click
         toolbar.Controls.Add(self.btn_night_mode)
 
         # Layout the toolbar buttons with a fixed 4px gap
         try:
-            self._layout_row(toolbar, [btn_download, btn_refresh, lbl_station, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=6, y=7, gap=4)
+            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=6, y=7, gap=4)
         except Exception:
             pass
 
@@ -294,30 +283,26 @@ class OccultationManagerGUI(Form):
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
         actions_group.Location = Point(10, 5)
-        actions_group.Size = Size(380, 73)      
+        actions_group.Size = Size(310, 66)      
         panel.Controls.Add(actions_group)
         
         btn_filter_today = Button()
         btn_filter_today.Text = "Today"
-        btn_filter_today.Size = Size(50, 25)
         btn_filter_today.Click += self.filter_today_click
         actions_group.Controls.Add(btn_filter_today)
         
         btn_filter_upcoming = Button()
         btn_filter_upcoming.Text = "Future"
-        btn_filter_upcoming.Size = Size(60, 25)
         btn_filter_upcoming.Click += self.filter_upcoming_click
         actions_group.Controls.Add(btn_filter_upcoming)
         
         btn_show_all = Button()
         btn_show_all.Text = "All"
-        btn_show_all.Size = Size(35, 25)
         btn_show_all.Click += self.show_all_click
         actions_group.Controls.Add(btn_show_all)
 
         btn_select_toggle = Button()
         btn_select_toggle.Text = "On/Off"
-        btn_select_toggle.Size = Size(80, 25)
         btn_select_toggle .Click += self.select_toggle_click
         actions_group.Controls.Add(btn_select_toggle)
 
@@ -330,7 +315,7 @@ class OccultationManagerGUI(Form):
         self.lbl_selection_summary = Label()
         self.lbl_selection_summary.Text = "No events selected"
         self.lbl_selection_summary.Location = Point(5, 45)
-        self.lbl_selection_summary.Size = Size(180, 15)
+        self.lbl_selection_summary.Size = Size(180, 12)
         actions_group.Controls.Add(self.lbl_selection_summary)
         
         self.events_grid.SelectionChanged += self.grid_selection_changed
@@ -341,12 +326,12 @@ class OccultationManagerGUI(Form):
         """Create the observation preparation control group"""
         obs_group = GroupBox()
         obs_group.Text = "Observation Preparation - Interactive Setup + Testing"
-        obs_group.Size = Size(660, 73)
+        obs_group.Size = Size(660, 66)
         
         # Current event display
         self.lbl_current_event = Label()
         self.lbl_current_event.Text = "No event loaded for preparation"
-        self.lbl_current_event.Location = Point(340, 25)
+        self.lbl_current_event.Location = Point(290, 25)
         self.lbl_current_event.Size = Size(430, 15)
         self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
         obs_group.Controls.Add(self.lbl_current_event)
@@ -354,7 +339,6 @@ class OccultationManagerGUI(Form):
         # Load Event button
         btn_load_event = Button()
         btn_load_event.Text = "Load Event"
-        btn_load_event.Size = Size(80, 25)
         btn_load_event.Click += self.load_event_for_prep_click
         btn_load_event.BackColor = Color.LightYellow
         obs_group.Controls.Add(btn_load_event)
@@ -363,21 +347,18 @@ class OccultationManagerGUI(Form):
         
         btn_goto_target = Button()
         btn_goto_target.Text = "GOTO"
-        btn_goto_target.Size = Size(90, 25)
         btn_goto_target.Click += self.goto_and_center_click
         btn_goto_target.BackColor = Color.LightBlue
         obs_group.Controls.Add(btn_goto_target)
         
         btn_plate_solve = Button()
         btn_plate_solve.Text = "Plate Solve"
-        btn_plate_solve.Size = Size(100, 25)
         btn_plate_solve.Click += self.plate_solve_label_click
         btn_plate_solve.BackColor = Color.LightCyan
         obs_group.Controls.Add(btn_plate_solve)
         
         btn_setup_event = Button()
         btn_setup_event.Text = "Setup"
-        btn_setup_event.Size = Size(90, 25)
         btn_setup_event.Click += self.setup_for_event_click
         btn_setup_event.BackColor = Color.LightGreen
         obs_group.Controls.Add(btn_setup_event)
@@ -392,7 +373,7 @@ class OccultationManagerGUI(Form):
         self.lbl_event_details = Label()
         self.lbl_event_details.Text = ""
         self.lbl_event_details.Location = Point(10, 45)
-        self.lbl_event_details.Size = Size(570, 25)
+        self.lbl_event_details.Size = Size(570, 12)
         self.lbl_event_details.Font = Font("Microsoft Sans Serif", 8)
         obs_group.Controls.Add(self.lbl_event_details)
         

@@ -37,13 +37,13 @@ class EventsDataGrid(DataGridView):
         
         # Enhanced column layout with all requested fields
         columns = [
-            ("Select", "Selected", 50, True),
-            ("Event Name", "EventName", 140, False),
-            ("Station", "StationName", 120, False),  # Added station name column
+            ("", "Selected", 35, True),
+            ("Event Name", "EventName", 130, False),
+            ("Station", "StationName", 110, False),  # Added station name column
             ("Date/Time UTC", "DateTime", 140, False),
-            ("Star Mag", "StarMag", 70, False),
-            ("Comb Mag", "CombMag", 70, False),
-            ("Mag Drop", "MagDrop", 70, False),
+            ("Mag", "StarMag", 45, False),
+            ("Comb", "CombMag", 45, False),
+            ("Drop", "MagDrop", 45, False),
             ("Exp (ms)", "ExposureMs", 70, False),
             ("Record (s)", "RecordingTime", 70, False),  # Changed name as requested
             ("Max Dur (s)", "MaxDuration", 70, False),      # Added as requested
@@ -52,11 +52,11 @@ class EventsDataGrid(DataGridView):
 #            ("Az", "Azimuth", 55, False),                         # Added as requested
 #            ("Coordinates", "Coordinates", 120, False),
             ("OWC", "OWCLink", 50, False),                        # Added as requested
-            ("Status", "Status", 60, False)
+            ("Status", "Status", 55, False)
         ]
         
         for name, data_name, width, editable in columns:
-            if name == "Select":
+            if data_name == "Selected":
                 col = DataGridViewCheckBoxColumn()
             elif name == "OWC":
                 col = DataGridViewLinkColumn()
