@@ -51,14 +51,14 @@ class EventsDataGrid(DataGridView):
             ("Alt-Az", "Altitude", 60, False),                       # Added as requested
 #            ("Az", "Azimuth", 55, False),                         # Added as requested
 #            ("Coordinates", "Coordinates", 120, False),
-            ("OWC", "OWCLink", 50, False),                        # Added as requested
+      #      ("OWC", "OWCLink", 50, False),                        # Added as requested
             ("Status", "Status", 55, False)
         ]
         
         for name, data_name, width, editable in columns:
             if data_name == "Selected":
                 col = DataGridViewCheckBoxColumn()
-            elif name == "OWC":
+            elif name in ("Event Name","OWC"):
                 col = DataGridViewLinkColumn()
                 # Ensure the link remains visible when the row is selected by
                 # using the system highlight text color for selection foreground
@@ -99,7 +99,7 @@ class EventsDataGrid(DataGridView):
     def cell_content_click(self, sender, e):
         """Handle cell content click for OWC links"""
         if e.RowIndex >= 0 and e.ColumnIndex >= 0:
-            if self.Columns[e.ColumnIndex].Name == "OWCLink":
+            if self.Columns[e.ColumnIndex].Name in ("EventName", "OWCLink"):
                 event = self.Rows[e.RowIndex].Tag
                 if event and hasattr(event, 'owcloudurl') and event.owcloudurl:
                     try:
@@ -174,7 +174,7 @@ class EventsDataGrid(DataGridView):
             #row.Cells["Altitude"].Value = f"{event.star_alt:.1f}°" if event.star_alt > 0 else "N/A"
             #row.Cells["Azimuth"].Value = f"{event.star_az:.1f}°" if event.star_az > 0 else "N/A"
 #            row.Cells["Coordinates"].Value = event.get_coordinates_string()
-            row.Cells["OWCLink"].Value = "OWC" if hasattr(event, 'owcloudurl') and event.owcloudurl else ""
+#            row.Cells["OWCLink"].Value = "OWC" if hasattr(event, 'owcloudurl') and event.owcloudurl else ""
             row.Cells["Status"].Value = event.get_status_info()
             row.Tag = event
     
