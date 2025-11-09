@@ -68,6 +68,11 @@ class OccultationManagerGUI(Form):
             'toolbar_start_x': 6,
             # Move toolbar buttons down a couple of pixels to avoid crowding the menu
             'toolbar_start_y': 18,
+            # Fixed pixel nudge (not scaled) to ensure toolbar buttons sit below
+            # the MenuStrip regardless of font metrics. Adjust if overlap occurs.
+            'toolbar_fixed_nudge': 6,
+            # Extra button height (px) to avoid clipped button borders at high DPI
+            'toolbar_button_extra': 4,
         }
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
@@ -113,8 +118,11 @@ class OccultationManagerGUI(Form):
         # the central size_constants so the toolbar's internal layout places
         # its row below the MenuStrip without moving the MenuStrip itself.
         try:
-            top_nudge = int(round((self.Font.Height or 16) / 2.0))
-            self.size_constants['toolbar_start_y'] = int(self.size_constants.get('toolbar_start_y', 18)) + top_nudge
+            # Use a fixed pixel nudge (not scaled) so the Download/toolbar row
+            # sits clearly below the MenuStrip. This avoids moving the MenuStrip
+            # itself and provides consistent behavior across fonts.
+            fixed = int(self.size_constants.get('toolbar_fixed_nudge', 6))
+            self.size_constants['toolbar_start_y'] = int(self.size_constants.get('toolbar_start_y', 18)) + fixed
         except Exception:
             pass
 
@@ -300,6 +308,8 @@ class OccultationManagerGUI(Form):
         toolbar.BackColor = SystemColors.Control
         sf = getattr(self, '_scale_factor', 1.0)
         btn_h = int(round(self.size_constants.get('button_height', int(round(25 * sf)))))
+        # Add a small extra to button height to avoid clipped borders at high DPI
+        extra_h = int(self.size_constants.get('toolbar_button_extra', 4))
         gap = int(self.size_constants.get('gap', 4))
         start_x = int(self.size_constants.get('toolbar_start_x', 6))
         start_y = int(self.size_constants.get('toolbar_start_y', 7))
@@ -309,7 +319,7 @@ class OccultationManagerGUI(Form):
         btn_download.Click += self.download_events_click
         toolbar.Controls.Add(btn_download)
         try:
-            self._autosize_button(btn_download, height=btn_h)
+            self._autosize_button(btn_download, height=btn_h + extra_h)
         except Exception:
             pass
         btn_refresh = Button()
@@ -317,16 +327,17 @@ class OccultationManagerGUI(Form):
         btn_refresh.Click += self.refresh_events_click
         toolbar.Controls.Add(btn_refresh)
         try:
-            self._autosize_button(btn_refresh, height=btn_h)
+            self._autosize_button(btn_refresh, height=btn_h + extra_h)
         except Exception:
             pass
 
         self.cbo_stations = ComboBox()
         try:
             cbo_w = int(round(150 * sf))
-            self.cbo_stations.Size = Size(cbo_w, btn_h)
+            # Make combobox a bit taller to align with increased button height
+            self.cbo_stations.Size = Size(cbo_w, btn_h + extra_h)
         except Exception:
-            self.cbo_stations.Size = Size(150, 25)
+            self.cbo_stations.Size = Size(150, 25 + extra_h)
         self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
         self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed
         toolbar.Controls.Add(self.cbo_stations)
@@ -336,7 +347,7 @@ class OccultationManagerGUI(Form):
         btn_event_details.Click += self.show_event_details_click
         toolbar.Controls.Add(btn_event_details)
         try:
-            self._autosize_button(btn_event_details, height=btn_h)
+            self._autosize_button(btn_event_details, height=btn_h + extra_h)
         except Exception:
             pass
 
@@ -345,7 +356,7 @@ class OccultationManagerGUI(Form):
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
         try:
-            self._autosize_button(btn_edit_exposure, height=btn_h)
+            self._autosize_button(btn_edit_exposure, height=btn_h + extra_h)
         except Exception:
             pass
 
@@ -355,7 +366,7 @@ class OccultationManagerGUI(Form):
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
         try:
-            self._autosize_button(btn_create_sequences, height=btn_h)
+            self._autosize_button(btn_create_sequences, height=btn_h + extra_h)
         except Exception:
             pass
 
@@ -364,7 +375,7 @@ class OccultationManagerGUI(Form):
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
         try:
-            self._autosize_button(btn_run_sequences, height=btn_h)
+            self._autosize_button(btn_run_sequences, height=btn_h + extra_h)
         except Exception:
             pass
 
@@ -375,13 +386,21 @@ class OccultationManagerGUI(Form):
         self.btn_night_mode.Click += self.toggle_night_mode_click
         toolbar.Controls.Add(self.btn_night_mode)
         try:
-            self._autosize_button(self.btn_night_mode, height=btn_h)
+            self._autosize_button(self.btn_night_mode, height=btn_h + extra_h)
         except Exception:
             pass
 
         # Layout the toolbar buttons with a fixed 4px gap
         try:
             self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=start_x, y=start_y, gap=gap)
+        except Exception:
+            pass
+
+        # Ensure the toolbar height is sufficient to show the buttons fully
+        try:
+            min_needed = start_y + (btn_h + extra_h) + 6
+            if toolbar.Height < min_needed:
+                toolbar.Height = int(min_needed)
         except Exception:
             pass
 
