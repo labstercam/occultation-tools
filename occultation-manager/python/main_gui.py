@@ -97,6 +97,14 @@ class OccultationManagerGUI(Form):
         except Exception:
             pass
         self.MainMenuStrip = menu_bar
+        # Move the menu down slightly (about half the font height) so it doesn't
+        # sit flush against the Windows title bar at high DPI
+        try:
+            top_nudge = int(round((self.Font.Height or 16) / 2.0))
+            # Apply padding on the form so docked controls (MenuStrip) are offset
+            self.Padding = Padding(0, top_nudge, 0, 0)
+        except Exception:
+            pass
         self.Controls.Add(menu_bar)
         
         main_panel = Panel()
@@ -423,9 +431,12 @@ class OccultationManagerGUI(Form):
     def create_enhanced_bottom_panel(self):
         """Create the enhanced bottom control panel with Observation Preparation"""
         panel = Panel()
-        # Height derived from central constants (DPI-aware)
+        # Height derived from central constants (DPI-aware). Reduce by half the
+        # form font height so the bottom panel is a bit less tall at high DPI.
         try:
-            panel.Height = int(self.size_constants.get('bottom_reserved_height', 90))
+            base_h = int(self.size_constants.get('bottom_reserved_height', 90))
+            reduce_by = int(round((self.Font.Height or 16) / 2.0))
+            panel.Height = max(32, base_h - reduce_by)
         except Exception:
             panel.Height = 90
         panel.Dock = DockStyle.Top
