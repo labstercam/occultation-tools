@@ -8,7 +8,8 @@ from datetime import timezone
 from System.Windows.Forms import (
     DataGridView, DataGridViewSelectionMode, DataGridViewCheckBoxColumn,
     DataGridViewLinkColumn, DataGridViewTextBoxColumn, MessageBox,
-    MessageBoxButtons, MessageBoxIcon
+    MessageBoxButtons, MessageBoxIcon,
+    DataGridViewAutoSizeColumnsMode, DataGridViewAutoSizeColumnMode
 )
 
 class EventsDataGrid(DataGridView):
@@ -80,6 +81,20 @@ class EventsDataGrid(DataGridView):
             col.Width = width
             col.ReadOnly = not editable
             self.Columns.Add(col)
+
+        # Enable autosizing: default to sizing to cell contents, but allow
+        # certain important columns to fill remaining space so the grid looks
+        # balanced on large windows / high-DPI displays.
+        try:
+            self.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells
+            # Make EventName and DateTime expand to use remaining space
+            if "EventName" in self.Columns:
+                self.Columns["EventName"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+            if "DateTime" in self.Columns:
+                self.Columns["DateTime"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+        except Exception:
+            # Non-fatal: if the DataGridView sizing enums aren't available, skip autosize setup
+            pass
         
         # Handle cell events
         self.CellDoubleClick += self.cell_double_click
@@ -177,6 +192,16 @@ class EventsDataGrid(DataGridView):
 #            row.Cells["OWCLink"].Value = "OWC" if hasattr(event, 'owcloudurl') and event.owcloudurl else ""
             row.Cells["Status"].Value = event.get_status_info()
             row.Tag = event
+
+        # After populating rows, perform a resize pass so column widths reflect
+        # current content and DPI. Wrapped in try/except to be defensive.
+        try:
+            # Ensure cell-based autosizing occurs
+            self.AutoResizeColumns()
+            # Trigger a layout refresh
+            self.Refresh()
+        except Exception:
+            pass
     
     def get_selected_events(self):
         """Get list of selected events"""

@@ -14,6 +14,7 @@ from System.Windows.Forms import (
     MessageBox, MessageBoxButtons, MessageBoxIcon, DialogResult, FormStartPosition
 )
 import System
+import ctypes
 
 from System.Threading import CancellationToken
 
@@ -53,9 +54,35 @@ class OccultationManagerGUI(Form):
         self.Size = Size(1090, 445)
         self.StartPosition = FormStartPosition.CenterScreen
         
+        # Try to enable process DPI awareness so window chrome and system
+        # fonts scale correctly on high-DPI displays. This is best-effort and
+        # wrapped in try/except because it may not be available or effective
+        # in all environments. Ideally this is set before any windows are
+        # created, but we'll attempt it here early in UI setup.
+        try:
+            if hasattr(ctypes, 'windll'):
+                # Older Windows: SetProcessDPIAware
+                try:
+                    ctypes.windll.user32.SetProcessDPIAware()
+                except Exception:
+                    # Newer API may be available on recent Windows versions
+                    try:
+                        ctypes.windll.user32.SetProcessDpiAwarenessContext(-4)  # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
         # Create menu bar
         menu_bar = self.create_enhanced_menu_bar()
-        self.MainMenuStrip = menu_bar
+        # Use the system menu font to help ToolStrip/Menu items match OS scaling
+        try:
+            menu_bar.Font = System.Drawing.SystemFonts.MenuFont
+            self.MainMenuStrip = menu_bar
+            self.MainMenuStrip.Font = System.Drawing.SystemFonts.MenuFont
+        except Exception:
+            # Non-fatal if SystemFonts or MenuFont isn't available
+            self.MainMenuStrip = menu_bar
         self.Controls.Add(menu_bar)
         
         main_panel = Panel()
@@ -65,24 +92,55 @@ class OccultationManagerGUI(Form):
         
         # Enhanced toolbar
         toolbar = self.create_enhanced_toolbar()
-        
+
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
-        self.events_grid.Location = Point(10, 165)
-        self.events_grid.Size = Size(1045, 220)
-        self.events_grid.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
-        
+        # Use Dock = Fill so it occupies the available middle area and
+        # doesn't overlap the status bar which is docked to Bottom.
+        self.events_grid.Dock = DockStyle.Fill
+
         # Bottom panel (smaller now)
         bottom_panel = self.create_enhanced_bottom_panel()
 
-
-        bottom_panel.Parent = main_panel
-        toolbar.Parent = main_panel
+        # Add controls to main_panel in an order that guarantees DockStyle.Fill
+        # (the events grid) occupies the center area without being covered by
+        # top/bottom docked controls. Add the Fill control first, then top
+        # docked controls, and finally the bottom-docked status bar.
         main_panel.Controls.Add(self.events_grid)
-        
+        main_panel.Controls.Add(bottom_panel)
+        main_panel.Controls.Add(toolbar)
+
+        # Ensure grid is visible and on top of the remaining client area
+        try:
+            self.events_grid.Visible = True
+            self.events_grid.BringToFront()
+        except Exception:
+            pass
+
         # Status bar
         status_bar = self.create_status_bar()
-        status_bar.Parent = main_panel
+        main_panel.Controls.Add(status_bar)
+
+        # Try to enable DPI autoscaling and use the system UI font so controls
+        # scale nicely on high-DPI displays. Wrapped in try/except to be safe
+        # on environments where these members may not be available.
+        try:
+            # Set form-level autoscaling to DPI
+            self.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi
+            # Use the system default UI font for consistent scaling
+            self.Font = System.Drawing.SystemFonts.DefaultFont
+
+        #     # Apply system font to a couple of key status controls explicitly
+        #     # try:
+        #     #     if hasattr(self, 'lbl_status') and self.lbl_status is not None:
+        #     #         self.lbl_status.Font = System.Drawing.SystemFonts.DefaultFont
+            #     #     if hasattr(self, 'lbl_event_count') and self.lbl_event_count is not None:
+            #     #         self.lbl_event_count.Font = System.Drawing.SystemFonts.DefaultFont
+            #     # except Exception:
+            #     #     pass
+        except Exception:
+            # Non-fatal if the environment doesn't support AutoScaleMode or SystemFonts
+            pass
 
     def apply_current_theme(self):
         """Apply the current theme to all controls"""
