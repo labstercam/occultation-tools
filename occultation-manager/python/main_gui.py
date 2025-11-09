@@ -97,14 +97,9 @@ class OccultationManagerGUI(Form):
         except Exception:
             pass
         self.MainMenuStrip = menu_bar
-        # Move the menu down slightly (about half the font height) so it doesn't
-        # sit flush against the Windows title bar at high DPI
-        try:
-            top_nudge = int(round((self.Font.Height or 16) / 2.0))
-            # Apply padding on the form so docked controls (MenuStrip) are offset
-            self.Padding = Padding(0, top_nudge, 0, 0)
-        except Exception:
-            pass
+        # Keep the MenuStrip flush with the Windows title bar. Instead, nudge
+        # the toolbar downward by about half the font height so its buttons are
+        # not overlapped by the menu at high DPI.
         self.Controls.Add(menu_bar)
         
         main_panel = Panel()
@@ -114,6 +109,15 @@ class OccultationManagerGUI(Form):
         self.Controls.Add(main_panel)
         
         # Enhanced toolbar
+        # Compute a small vertical nudge (half the font height) and add it to
+        # the central size_constants so the toolbar's internal layout places
+        # its row below the MenuStrip without moving the MenuStrip itself.
+        try:
+            top_nudge = int(round((self.Font.Height or 16) / 2.0))
+            self.size_constants['toolbar_start_y'] = int(self.size_constants.get('toolbar_start_y', 18)) + top_nudge
+        except Exception:
+            pass
+
         toolbar = self.create_enhanced_toolbar()
         
         # Events grid (moved up under buttons as requested)
