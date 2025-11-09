@@ -53,7 +53,7 @@ class OccultationManagerGUI(Form):
 
         self.size_constants = {
             # Heights
-            'toolbar_height': int(round(40 * sf)),
+            'toolbar_height': int(round(44 * sf)),
             'bottom_reserved_height': int(round(90 * sf)),
             'status_height': int(round(25 * sf)),
             'button_height': int(round(25 * sf)),
@@ -67,7 +67,7 @@ class OccultationManagerGUI(Form):
             'start_x': 10,
             'toolbar_start_x': 6,
             # Move toolbar buttons down a couple of pixels to avoid crowding the menu
-            'toolbar_start_y': 14,
+            'toolbar_start_y': 18,
         }
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
@@ -115,11 +115,18 @@ class OccultationManagerGUI(Form):
         
         # Bottom panel (smaller now)
         bottom_panel = self.create_enhanced_bottom_panel()
-        # Add controls to the main panel in top-to-bottom order so Docking behaves predictably:
-        # toolbar (Top), bottom_panel (Top), events_grid (Fill)
-        main_panel.Controls.Add(toolbar)
+        # Add controls so toolbar sits above bottom_panel and events_grid fills remaining area.
+        # For DockStyle.Top controls, the control added later is placed closer to the top,
+        # so add bottom_panel first, then toolbar, then events_grid last (Fill).
         main_panel.Controls.Add(bottom_panel)
+        main_panel.Controls.Add(toolbar)
         main_panel.Controls.Add(self.events_grid)
+        # Ensure the events grid is visible and filling the remaining space
+        try:
+            self.events_grid.Visible = True
+            self.events_grid.BringToFront()
+        except Exception:
+            pass
 
         # Status bar
         status_bar = self.create_status_bar()
