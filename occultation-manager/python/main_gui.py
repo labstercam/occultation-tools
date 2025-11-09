@@ -66,7 +66,8 @@ class OccultationManagerGUI(Form):
             'gap': 4,
             'start_x': 10,
             'toolbar_start_x': 6,
-            'toolbar_start_y': 7,
+            # Move toolbar buttons down a couple of pixels to avoid crowding the menu
+            'toolbar_start_y': 10,
         }
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
@@ -103,18 +104,17 @@ class OccultationManagerGUI(Form):
         
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
-        self.events_grid.Location = Point(10, 165)
-        self.events_grid.Size = Size(1045, 220)
-        self.events_grid.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+        # Dock the events grid to fill remaining space under top-docked controls
+        self.events_grid.Dock = DockStyle.Fill
         
         # Bottom panel (smaller now)
         bottom_panel = self.create_enhanced_bottom_panel()
-
-
-        bottom_panel.Parent = main_panel
-        toolbar.Parent = main_panel
+        # Add controls to the main panel in order so Docking behaves predictably:
+        # toolbar (Top), bottom_panel (Top), events_grid (Fill)
+        main_panel.Controls.Add(toolbar)
+        main_panel.Controls.Add(bottom_panel)
         main_panel.Controls.Add(self.events_grid)
-        
+
         # Status bar
         status_bar = self.create_status_bar()
         status_bar.Parent = main_panel
@@ -468,7 +468,8 @@ class OccultationManagerGUI(Form):
             btn_h = int(round(25 * sf))
 
         try:
-            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=int(round(15 * sf)), gap=gap)
+            # Nudge quick-filter row down by 1 pixel for visual spacing
+            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=int(round(15 * sf)) + 1, gap=gap)
             for b in (btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle):
                 try:
                     self._autosize_button(b, height=btn_h)
@@ -534,7 +535,9 @@ class OccultationManagerGUI(Form):
 
         # Layout observation-prep row with a 4px gap
         try:
-            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event], start_x=10, y=15, gap=4)
+            # Use the same Y offset as quick filters so rows align; apply scale
+            sf = getattr(self, '_scale_factor', 1.0)
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
                 
