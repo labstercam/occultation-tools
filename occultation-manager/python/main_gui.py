@@ -33,6 +33,41 @@ class OccultationManagerGUI(Form):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
+        # Ensure a control handle exists early so we can reliably detect DPI
+        try:
+            # CreateControl is harmless if handle already exists; it helps Graphics.FromHwnd succeed
+            self.CreateControl()
+        except Exception:
+            pass
+
+        # Detect current scale factor and category (100/125/150)
+        self._scale_factor, self._scale_category = self._detect_scale()
+
+        # Centralized size constants — use these in later layout changes so all values
+        # are derived from a single source of truth. Values are base (100%) pixels
+        # multiplied by detected scale factor.
+        try:
+            sf = float(self._scale_factor)
+        except Exception:
+            sf = 1.0
+
+        self.size_constants = {
+            # Heights
+            'toolbar_height': int(round(40 * sf)),
+            'bottom_reserved_height': int(round(90 * sf)),
+            'status_height': int(round(25 * sf)),
+            'button_height': int(round(25 * sf)),
+
+            # Widths
+            'quick_group_width': int(round(310 * sf)),
+            'obs_group_width': int(round(660 * sf)),
+
+            # Layout
+            'gap': 4,
+            'start_x': 10,
+            'toolbar_start_x': 6,
+            'toolbar_start_y': 7,
+        }
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
         self.station_filter = ""
@@ -146,6 +181,46 @@ class OccultationManagerGUI(Form):
         except Exception:
             # Non-fatal: leave existing size if measuring fails
             pass
+    
+    def _detect_scale(self):
+        """Detect the current display DPI and return (scale_factor, category).
+
+        scale_factor: float (e.g. 1.0, 1.25, 1.5)
+        category: int (100, 125, 150)
+
+        Uses Graphics.FromHwnd(self.Handle) when available and falls back to 96 DPI.
+        """
+        try:
+            # Ensure a handle exists to query DPI
+            if not getattr(self, 'IsHandleCreated', False):
+                try:
+                    self.CreateControl()
+                except Exception:
+                    pass
+
+            # Use System.Drawing.Graphics.FromHwnd for DPI if possible
+            try:
+                from System.Drawing import Graphics
+                g = Graphics.FromHwnd(self.Handle)
+                try:
+                    dpi = float(g.DpiX)
+                finally:
+                    g.Dispose()
+            except Exception:
+                # Fallback to classic 96 DPI
+                dpi = 96.0
+
+            sf = dpi / 96.0
+            if dpi < 110:
+                cat = 100
+            elif dpi < 140:
+                cat = 125
+            else:
+                cat = 150
+
+            return (sf, cat)
+        except Exception:
+            return (1.0, 100)
     
     def toggle_night_mode_click(self, sender, e):
         """Toggle night mode on/off"""
