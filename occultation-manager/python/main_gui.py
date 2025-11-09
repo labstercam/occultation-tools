@@ -67,7 +67,7 @@ class OccultationManagerGUI(Form):
             'start_x': 10,
             'toolbar_start_x': 6,
             # Move toolbar buttons down a couple of pixels to avoid crowding the menu
-            'toolbar_start_y': 10,
+            'toolbar_start_y': 14,
         }
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
@@ -91,12 +91,18 @@ class OccultationManagerGUI(Form):
         
         # Create menu bar
         menu_bar = self.create_enhanced_menu_bar()
+        # Dock the menu bar to the top so it occupies its own space
+        try:
+            menu_bar.Dock = DockStyle.Top
+        except Exception:
+            pass
         self.MainMenuStrip = menu_bar
         self.Controls.Add(menu_bar)
         
         main_panel = Panel()
         main_panel.Dock = DockStyle.Fill
-        main_panel.Padding = Padding(0, 25, 0, 0)  # Add top padding for menu bar
+        # No manual top padding needed when MenuStrip is docked to Top
+        main_panel.Padding = Padding(0, 0, 0, 0)
         self.Controls.Add(main_panel)
         
         # Enhanced toolbar
@@ -109,19 +115,11 @@ class OccultationManagerGUI(Form):
         
         # Bottom panel (smaller now)
         bottom_panel = self.create_enhanced_bottom_panel()
-        # Add controls to the main panel in order so Docking behaves predictably:
-        # Add the Fill control first, then top-docked panels. This ensures
-        # top-docked controls (toolbar, bottom_panel) reserve space above the grid.
-        main_panel.Controls.Add(self.events_grid)
-        main_panel.Controls.Add(bottom_panel)
+        # Add controls to the main panel in top-to-bottom order so Docking behaves predictably:
+        # toolbar (Top), bottom_panel (Top), events_grid (Fill)
         main_panel.Controls.Add(toolbar)
-        # Ensure correct z-order
-        try:
-            toolbar.BringToFront()
-            bottom_panel.BringToFront()
-            self.events_grid.SendToBack()
-        except Exception:
-            pass
+        main_panel.Controls.Add(bottom_panel)
+        main_panel.Controls.Add(self.events_grid)
 
         # Status bar
         status_bar = self.create_status_bar()
