@@ -266,23 +266,42 @@ class OccultationManagerGUI(Form):
     def create_enhanced_toolbar(self):
         """Create the enhanced main toolbar"""
         toolbar = Panel()
-        toolbar.Height = 40  # Increased height slightly
+        # Use central size constant for toolbar height (DPI-aware)
+        try:
+            toolbar.Height = int(self.size_constants.get('toolbar_height', 40))
+        except Exception:
+            toolbar.Height = 40
         toolbar.Dock = DockStyle.Top
         toolbar.BackColor = SystemColors.Control
-
+        sf = getattr(self, '_scale_factor', 1.0)
+        btn_h = int(round(self.size_constants.get('button_height', int(round(25 * sf)))))
+        gap = int(self.size_constants.get('gap', 4))
+        start_x = int(self.size_constants.get('toolbar_start_x', 6))
+        start_y = int(self.size_constants.get('toolbar_start_y', 7))
         # Row 1 - Primary workflow (left-to-right)
         btn_download = Button()
         btn_download.Text = "Download"
         btn_download.Click += self.download_events_click
         toolbar.Controls.Add(btn_download)
-
+        try:
+            self._autosize_button(btn_download, height=btn_h)
+        except Exception:
+            pass
         btn_refresh = Button()
         btn_refresh.Text = "Refresh"
         btn_refresh.Click += self.refresh_events_click
         toolbar.Controls.Add(btn_refresh)
+        try:
+            self._autosize_button(btn_refresh, height=btn_h)
+        except Exception:
+            pass
 
         self.cbo_stations = ComboBox()
-        self.cbo_stations.Size = Size(150, 25)
+        try:
+            cbo_w = int(round(150 * sf))
+            self.cbo_stations.Size = Size(cbo_w, btn_h)
+        except Exception:
+            self.cbo_stations.Size = Size(150, 25)
         self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
         self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed
         toolbar.Controls.Add(self.cbo_stations)
@@ -291,22 +310,38 @@ class OccultationManagerGUI(Form):
         btn_event_details.Text = "Event Details"
         btn_event_details.Click += self.show_event_details_click
         toolbar.Controls.Add(btn_event_details)
+        try:
+            self._autosize_button(btn_event_details, height=btn_h)
+        except Exception:
+            pass
 
         btn_edit_exposure = Button()
         btn_edit_exposure.Text = "Edit Exposure"
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
+        try:
+            self._autosize_button(btn_edit_exposure, height=btn_h)
+        except Exception:
+            pass
 
         # Sequence operations
         btn_create_sequences = Button()
         btn_create_sequences.Text = "Create Sequences"
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
+        try:
+            self._autosize_button(btn_create_sequences, height=btn_h)
+        except Exception:
+            pass
 
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
+        try:
+            self._autosize_button(btn_run_sequences, height=btn_h)
+        except Exception:
+            pass
 
 
         # Night Mode (global)
@@ -314,10 +349,14 @@ class OccultationManagerGUI(Form):
         self.btn_night_mode.Text = "Night Mode"
         self.btn_night_mode.Click += self.toggle_night_mode_click
         toolbar.Controls.Add(self.btn_night_mode)
+        try:
+            self._autosize_button(self.btn_night_mode, height=btn_h)
+        except Exception:
+            pass
 
         # Layout the toolbar buttons with a fixed 4px gap
         try:
-            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=6, y=7, gap=4)
+            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=start_x, y=start_y, gap=gap)
         except Exception:
             pass
 
@@ -371,20 +410,35 @@ class OccultationManagerGUI(Form):
     def create_enhanced_bottom_panel(self):
         """Create the enhanced bottom control panel with Observation Preparation"""
         panel = Panel()
-        panel.Height = 90  # Increased height for new section
+        # Height derived from central constants (DPI-aware)
+        try:
+            panel.Height = int(self.size_constants.get('bottom_reserved_height', 90))
+        except Exception:
+            panel.Height = 90
         panel.Dock = DockStyle.Top
         panel.BackColor = SystemColors.Control
-        
+        sf = getattr(self, '_scale_factor', 1.0)
+        gap = int(self.size_constants.get('gap', 4))
+        start_x = int(self.size_constants.get('start_x', 10))
+
         # Observation Preparation Group
         obs_prep_group = self.create_observation_preparation_group()
-        obs_prep_group.Location = Point(270, 5)
+        # Place observation group to the right of quick filters
+        try:
+            obs_x = start_x + int(self.size_constants.get('quick_group_width', 310)) + gap
+            obs_prep_group.Location = Point(obs_x, 5)
+        except Exception:
+            obs_prep_group.Location = Point(270, 5)
         panel.Controls.Add(obs_prep_group)
-        
-        # Quick Filter Actions actions group 
+
+        # Quick Filter Actions group
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
-        actions_group.Location = Point(10, 5)
-        actions_group.Size = Size(310, 66)      
+        actions_group.Location = Point(start_x, 5)
+        try:
+            actions_group.Size = Size(int(self.size_constants.get('quick_group_width', 310)), int(max(66, panel.Height - 24)))
+        except Exception:
+            actions_group.Size = Size(310, 66)
         panel.Controls.Add(actions_group)
         
         btn_filter_today = Button()
@@ -407,20 +461,34 @@ class OccultationManagerGUI(Form):
         btn_select_toggle .Click += self.select_toggle_click
         actions_group.Controls.Add(btn_select_toggle)
 
-        # Layout quick-filter buttons with 4px gaps
+        # Give filter buttons scaled height
         try:
-            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=15, gap=4)
+            btn_h = int(self.size_constants.get('button_height', int(round(25 * sf))))
+        except Exception:
+            btn_h = int(round(25 * sf))
+
+        try:
+            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=int(round(15 * sf)), gap=gap)
+            for b in (btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle):
+                try:
+                    self._autosize_button(b, height=btn_h)
+                except Exception:
+                    pass
         except Exception:
             pass
-   
+
         self.lbl_selection_summary = Label()
         self.lbl_selection_summary.Text = "No events selected"
-        self.lbl_selection_summary.Location = Point(5, 45)
-        self.lbl_selection_summary.Size = Size(180, 12)
+        try:
+            self.lbl_selection_summary.Location = Point(5, int(round(panel.Height * 0.45)))
+            self.lbl_selection_summary.Size = Size(int(round(self.size_constants.get('quick_group_width', 310) * 0.55)), int(round(12 * sf)))
+        except Exception:
+            self.lbl_selection_summary.Location = Point(5, 45)
+            self.lbl_selection_summary.Size = Size(180, 12)
         actions_group.Controls.Add(self.lbl_selection_summary)
-        
+
         self.events_grid.SelectionChanged += self.grid_selection_changed
-        
+
         return panel
     
     def create_observation_preparation_group(self):
