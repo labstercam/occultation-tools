@@ -110,10 +110,18 @@ class OccultationManagerGUI(Form):
         # Bottom panel (smaller now)
         bottom_panel = self.create_enhanced_bottom_panel()
         # Add controls to the main panel in order so Docking behaves predictably:
-        # toolbar (Top), bottom_panel (Top), events_grid (Fill)
-        main_panel.Controls.Add(toolbar)
-        main_panel.Controls.Add(bottom_panel)
+        # Add the Fill control first, then top-docked panels. This ensures
+        # top-docked controls (toolbar, bottom_panel) reserve space above the grid.
         main_panel.Controls.Add(self.events_grid)
+        main_panel.Controls.Add(bottom_panel)
+        main_panel.Controls.Add(toolbar)
+        # Ensure correct z-order
+        try:
+            toolbar.BringToFront()
+            bottom_panel.BringToFront()
+            self.events_grid.SendToBack()
+        except Exception:
+            pass
 
         # Status bar
         status_bar = self.create_status_bar()
@@ -421,14 +429,9 @@ class OccultationManagerGUI(Form):
         gap = int(self.size_constants.get('gap', 4))
         start_x = int(self.size_constants.get('start_x', 10))
 
-        # Observation Preparation Group
+        # Observation Preparation Group (create it, but size/height will be aligned
+        # to the Quick Filters group below)
         obs_prep_group = self.create_observation_preparation_group()
-        # Place observation group to the right of quick filters
-        try:
-            obs_x = start_x + int(self.size_constants.get('quick_group_width', 310)) + gap
-            obs_prep_group.Location = Point(obs_x, 5)
-        except Exception:
-            obs_prep_group.Location = Point(270, 5)
         panel.Controls.Add(obs_prep_group)
 
         # Quick Filter Actions group
@@ -440,6 +443,21 @@ class OccultationManagerGUI(Form):
         except Exception:
             actions_group.Size = Size(310, 66)
         panel.Controls.Add(actions_group)
+
+        # Make Observation Preparation group the same height as Quick Filters
+        try:
+            obs_w = int(self.size_constants.get('obs_group_width', 660))
+            obs_h = actions_group.Size.Height
+            # Place to the right of quick filters
+            obs_x = start_x + actions_group.Size.Width + gap
+            obs_prep_group.Location = Point(obs_x, actions_group.Location.Y)
+            obs_prep_group.Size = Size(obs_w, obs_h)
+        except Exception:
+            # fallback to previous placement
+            try:
+                obs_prep_group.Location = Point(270, 5)
+            except Exception:
+                pass
         
         btn_filter_today = Button()
         btn_filter_today.Text = "Today"
