@@ -118,11 +118,13 @@ class OccultationManagerGUI(Form):
         # the central size_constants so the toolbar's internal layout places
         # its row below the MenuStrip without moving the MenuStrip itself.
         try:
-            # Use a fixed pixel nudge (not scaled) so the Download/toolbar row
-            # sits clearly below the MenuStrip. This avoids moving the MenuStrip
-            # itself and provides consistent behavior across fonts.
-            fixed = int(self.size_constants.get('toolbar_fixed_nudge', 6))
-            self.size_constants['toolbar_start_y'] = int(self.size_constants.get('toolbar_start_y', 18)) + fixed
+            # Use a small scaled nudge so the toolbar moves down slightly at
+            # higher DPI instead of a fixed pixel amount. Add 2 extra pixels
+            # for a bit more separation (per request).
+            sf = getattr(self, '_scale_factor', 1.0)
+            base_nudge = int(self.size_constants.get('toolbar_fixed_nudge', 6))
+            scaled = int(round(sf * base_nudge)) + 2
+            self.size_constants['toolbar_start_y'] = int(self.size_constants.get('toolbar_start_y', 18)) + scaled
         except Exception:
             pass
 
