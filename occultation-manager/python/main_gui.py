@@ -155,13 +155,29 @@ class OccultationManagerGUI(Form):
                 pass
             x += (ctrl.Size.Width if hasattr(ctrl, 'Size') else 0) + gap
 
-    def _autosize_button(self, btn, padding=14, min_width=40 ,height=25):
-        """Set button width to fit its text plus padding (in pixels).
+    def _autosize_button(self, btn, padding=None, min_width=None, height=None):
+        """Set button width to fit its text plus padding (DPI-aware).
 
         Uses Graphics.MeasureString on a tiny bitmap so this works even when
         controls haven't been shown/created with a window handle yet.
+        Padding/min_width/height default to values derived from
+        self._scale_factor / self.size_constants when available.
         """
         try:
+            sf = getattr(self, '_scale_factor', 1.0)
+            # Derive sensible defaults from the central size_constants if present
+            try:
+                default_btn_h = int(round(self.size_constants.get('button_height', int(round(25 * sf)))))
+            except Exception:
+                default_btn_h = int(round(25 * sf))
+
+            if padding is None:
+                padding = int(round(14 * sf))
+            if min_width is None:
+                min_width = int(round(40 * sf))
+            if height is None:
+                height = default_btn_h
+
             from System.Drawing import Bitmap, Graphics
             # Create a tiny bitmap and measure the text with the button's font
             bmp = Bitmap(1, 1)
@@ -176,8 +192,18 @@ class OccultationManagerGUI(Form):
             width = measured + padding
             if width < min_width:
                 width = min_width
-            # Preserve current height
-            btn.Size = Size(width, height if btn.Size.Height == 23 else btn.Size.Height)
+
+            # If the control already has a non-default height, preserve it; otherwise set scaled height
+            try:
+                current_h = btn.Size.Height
+                if current_h == 23:
+                    new_h = height
+                else:
+                    new_h = current_h
+            except Exception:
+                new_h = height
+
+            btn.Size = Size(width, new_h)
         except Exception:
             # Non-fatal: leave existing size if measuring fails
             pass
