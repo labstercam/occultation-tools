@@ -10,6 +10,7 @@ from System.Windows.Forms import (
     DataGridViewLinkColumn, DataGridViewTextBoxColumn, MessageBox,
     MessageBoxButtons, MessageBoxIcon
 )
+from System.Windows.Forms import DataGridViewAutoSizeColumnMode
 
 class EventsDataGrid(DataGridView):
     """Enhanced DataGridView for displaying occultation events with all requested columns"""
@@ -80,7 +81,30 @@ class EventsDataGrid(DataGridView):
             col.Width = width
             col.ReadOnly = not editable
             self.Columns.Add(col)
-        
+        # Set sensible per-column autosize modes so columns grow to fit their
+        # content (headers + cell text) and respect DPI/font scaling.
+        try:
+            for col in self.Columns:
+                try:
+                    # Keep the selection checkbox a fixed small column
+                    if col.Name == "Selected":
+                        # 'None' is a reserved Python name; fetch the enum member by name
+                        try:
+                            none_mode = getattr(DataGridViewAutoSizeColumnMode, 'None')
+                        except Exception:
+                            none_mode = None
+                        if none_mode is not None:
+                            col.AutoSizeMode = none_mode
+                        # Keep the specified fixed width
+                        col.Width = max(24, col.Width)
+                    else:
+                        # For text columns, size to content so font scaling is respected
+                        col.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells
+                except Exception:
+                    # If per-column property assignment fails, ignore
+                    pass
+        except Exception:
+            pass
         # Handle cell events
         self.CellDoubleClick += self.cell_double_click
         self.CellContentClick += self.cell_content_click
@@ -177,6 +201,28 @@ class EventsDataGrid(DataGridView):
 #            row.Cells["OWCLink"].Value = "OWC" if hasattr(event, 'owcloudurl') and event.owcloudurl else ""
             row.Cells["Status"].Value = event.get_status_info()
             row.Tag = event
+
+        # After populating rows, perform an autosize pass so column widths are
+        # adjusted based on the actual rendered text and current font (DPI-aware).
+        try:
+            # Auto-resize columns based on content for displayed cells
+            self.AutoResizeColumns()
+            # Some columns (like DateTime or EventName) may benefit from keeping
+            # a little extra space; ensure a minimum width scaled by font height
+            try:
+                min_extra = int(round((self.Font.Height or 12) * 1.5))
+            except Exception:
+                min_extra = 18
+            for col in self.Columns:
+                try:
+                    # Give a bit of breathing room to text columns
+                    if getattr(col, 'AutoSizeMode', None) == DataGridViewAutoSizeColumnMode.AllCells:
+                        col.Width = max(col.Width + min_extra, col.Width)
+                except Exception:
+                    pass
+        except Exception:
+            # Non-fatal if autosize fails in some environments
+            pass
     
     def get_selected_events(self):
         """Get list of selected events"""

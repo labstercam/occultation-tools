@@ -33,6 +33,48 @@ class OccultationManagerGUI(Form):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
+        # Ensure a control handle exists early so we can reliably detect DPI
+        try:
+            # CreateControl is harmless if handle already exists; it helps Graphics.FromHwnd succeed
+            self.CreateControl()
+        except Exception:
+            pass
+
+        # Detect current scale factor and category (100/125/150)
+        self._scale_factor, self._scale_category = self._detect_scale()
+
+        # Centralized size constants — use these in later layout changes so all values
+        # are derived from a single source of truth. Values are base (100%) pixels
+        # multiplied by detected scale factor.
+        try:
+            sf = float(self._scale_factor)
+        except Exception:
+            sf = 1.0
+
+        self.size_constants = {
+            # Heights
+            'toolbar_height': int(round(44 * sf)),
+            'bottom_reserved_height': int(round(90 * sf)),
+            'status_height': int(round(25 * sf)),
+            'button_height': int(round(25 * sf)),
+
+            # Widths
+            'quick_group_width': int(round(310 * sf)),
+            'obs_group_width': int(round(660 * sf)),
+
+            # Layout
+            'gap': 4,
+            'start_x': 10,
+            'toolbar_start_x': 6,
+            # Move toolbar buttons down a couple of pixels to avoid crowding the menu
+            'toolbar_start_y': 18,
+            # Fixed pixel nudge (not scaled) to ensure toolbar buttons sit below
+            # the MenuStrip regardless of font metrics. Adjust if overlap occurs.
+            # Increased per user request from 6 -> 8 px for a stronger nudge.
+            'toolbar_fixed_nudge': 8,
+            # Extra button height (px) to avoid clipped button borders at high DPI
+            'toolbar_button_extra': 4,
+        }
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
         self.station_filter = ""
@@ -55,31 +97,60 @@ class OccultationManagerGUI(Form):
         
         # Create menu bar
         menu_bar = self.create_enhanced_menu_bar()
+        # Dock the menu bar to the top so it occupies its own space
+        try:
+            menu_bar.Dock = DockStyle.Top
+        except Exception:
+            pass
         self.MainMenuStrip = menu_bar
+        # Keep the MenuStrip flush with the Windows title bar. Instead, nudge
+        # the toolbar downward by about half the font height so its buttons are
+        # not overlapped by the menu at high DPI.
         self.Controls.Add(menu_bar)
         
         main_panel = Panel()
         main_panel.Dock = DockStyle.Fill
-        main_panel.Padding = Padding(0, 25, 0, 0)  # Add top padding for menu bar
+        # Small manual top padding needed when MenuStrip is docked to Top
+        main_panel.Padding = Padding(0, 10, 0, 0)
         self.Controls.Add(main_panel)
         
         # Enhanced toolbar
+        # Compute a small vertical nudge (half the font height) and add it to
+        # the central size_constants so the toolbar's internal layout places
+        # its row below the MenuStrip without moving the MenuStrip itself.
+        try:
+            # Use a small scaled nudge so the toolbar moves down slightly at
+            # higher DPI instead of a fixed pixel amount. Add 2 extra pixels
+            # for a bit more separation (per request).
+            sf = getattr(self, '_scale_factor', 1.0)
+            base_nudge = int(self.size_constants.get('toolbar_fixed_nudge', 6))
+            scaled = int(round(sf * base_nudge)) + 2
+            self.size_constants['toolbar_start_y'] = int(self.size_constants.get('toolbar_start_y', 18)) + scaled
+        except Exception:
+            pass
+
         toolbar = self.create_enhanced_toolbar()
         
         # Events grid (moved up under buttons as requested)
         self.events_grid = EventsDataGrid()
-        self.events_grid.Location = Point(10, 165)
-        self.events_grid.Size = Size(1045, 220)
-        self.events_grid.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+        # Dock the events grid to fill remaining space under top-docked controls
+        self.events_grid.Dock = DockStyle.Fill
         
         # Bottom panel (smaller now)
         bottom_panel = self.create_enhanced_bottom_panel()
-
-
-        bottom_panel.Parent = main_panel
-        toolbar.Parent = main_panel
+        # Add controls so toolbar sits above bottom_panel and events_grid fills remaining area.
+        # For DockStyle.Top controls, the control added later is placed closer to the top,
+        # so add bottom_panel first, then toolbar, then events_grid last (Fill).
+        main_panel.Controls.Add(bottom_panel)
+        main_panel.Controls.Add(toolbar)
         main_panel.Controls.Add(self.events_grid)
-        
+        # Ensure the events grid is visible and filling the remaining space
+        try:
+            self.events_grid.Visible = True
+            self.events_grid.BringToFront()
+        except Exception:
+            pass
+
         # Status bar
         status_bar = self.create_status_bar()
         status_bar.Parent = main_panel
@@ -120,13 +191,29 @@ class OccultationManagerGUI(Form):
                 pass
             x += (ctrl.Size.Width if hasattr(ctrl, 'Size') else 0) + gap
 
-    def _autosize_button(self, btn, padding=14, min_width=40 ,height=25):
-        """Set button width to fit its text plus padding (in pixels).
+    def _autosize_button(self, btn, padding=None, min_width=None, height=None):
+        """Set button width to fit its text plus padding (DPI-aware).
 
         Uses Graphics.MeasureString on a tiny bitmap so this works even when
         controls haven't been shown/created with a window handle yet.
+        Padding/min_width/height default to values derived from
+        self._scale_factor / self.size_constants when available.
         """
         try:
+            sf = getattr(self, '_scale_factor', 1.0)
+            # Derive sensible defaults from the central size_constants if present
+            try:
+                default_btn_h = int(round(self.size_constants.get('button_height', int(round(25 * sf)))))
+            except Exception:
+                default_btn_h = int(round(25 * sf))
+
+            if padding is None:
+                padding = int(round(14 * sf))
+            if min_width is None:
+                min_width = int(round(40 * sf))
+            if height is None:
+                height = default_btn_h
+
             from System.Drawing import Bitmap, Graphics
             # Create a tiny bitmap and measure the text with the button's font
             bmp = Bitmap(1, 1)
@@ -141,11 +228,61 @@ class OccultationManagerGUI(Form):
             width = measured + padding
             if width < min_width:
                 width = min_width
-            # Preserve current height
-            btn.Size = Size(width, height if btn.Size.Height == 23 else btn.Size.Height)
+
+            # If the control already has a non-default height, preserve it; otherwise set scaled height
+            try:
+                current_h = btn.Size.Height
+                if current_h == 23:
+                    new_h = height
+                else:
+                    new_h = current_h
+            except Exception:
+                new_h = height
+
+            btn.Size = Size(width, new_h)
         except Exception:
             # Non-fatal: leave existing size if measuring fails
             pass
+    
+    def _detect_scale(self):
+        """Detect the current display DPI and return (scale_factor, category).
+
+        scale_factor: float (e.g. 1.0, 1.25, 1.5)
+        category: int (100, 125, 150)
+
+        Uses Graphics.FromHwnd(self.Handle) when available and falls back to 96 DPI.
+        """
+        try:
+            # Ensure a handle exists to query DPI
+            if not getattr(self, 'IsHandleCreated', False):
+                try:
+                    self.CreateControl()
+                except Exception:
+                    pass
+
+            # Use System.Drawing.Graphics.FromHwnd for DPI if possible
+            try:
+                from System.Drawing import Graphics
+                g = Graphics.FromHwnd(self.Handle)
+                try:
+                    dpi = float(g.DpiX)
+                finally:
+                    g.Dispose()
+            except Exception:
+                # Fallback to classic 96 DPI
+                dpi = 96.0
+
+            sf = dpi / 96.0
+            if dpi < 110:
+                cat = 100
+            elif dpi < 140:
+                cat = 125
+            else:
+                cat = 150
+
+            return (sf, cat)
+        except Exception:
+            return (1.0, 100)
     
     def toggle_night_mode_click(self, sender, e):
         """Toggle night mode on/off"""
@@ -165,23 +302,45 @@ class OccultationManagerGUI(Form):
     def create_enhanced_toolbar(self):
         """Create the enhanced main toolbar"""
         toolbar = Panel()
-        toolbar.Height = 40  # Increased height slightly
+        # Use central size constant for toolbar height (DPI-aware)
+        try:
+            toolbar.Height = int(self.size_constants.get('toolbar_height', 40))
+        except Exception:
+            toolbar.Height = 40
         toolbar.Dock = DockStyle.Top
         toolbar.BackColor = SystemColors.Control
-
+        sf = getattr(self, '_scale_factor', 1.0)
+        btn_h = int(round(self.size_constants.get('button_height', int(round(25 * sf)))))
+        # Add a small extra to button height to avoid clipped borders at high DPI
+        extra_h = int(self.size_constants.get('toolbar_button_extra', 4))
+        gap = int(self.size_constants.get('gap', 4))
+        start_x = int(self.size_constants.get('toolbar_start_x', 6))
+        start_y = int(self.size_constants.get('toolbar_start_y', 7))
         # Row 1 - Primary workflow (left-to-right)
         btn_download = Button()
         btn_download.Text = "Download"
         btn_download.Click += self.download_events_click
         toolbar.Controls.Add(btn_download)
-
+        try:
+            self._autosize_button(btn_download, height=btn_h + extra_h)
+        except Exception:
+            pass
         btn_refresh = Button()
         btn_refresh.Text = "Refresh"
         btn_refresh.Click += self.refresh_events_click
         toolbar.Controls.Add(btn_refresh)
+        try:
+            self._autosize_button(btn_refresh, height=btn_h + extra_h)
+        except Exception:
+            pass
 
         self.cbo_stations = ComboBox()
-        self.cbo_stations.Size = Size(150, 25)
+        try:
+            cbo_w = int(round(150 * sf))
+            # Make combobox a bit taller to align with increased button height
+            self.cbo_stations.Size = Size(cbo_w, btn_h + extra_h)
+        except Exception:
+            self.cbo_stations.Size = Size(150, 25 + extra_h)
         self.cbo_stations.DropDownStyle = ComboBoxStyle.DropDownList
         self.cbo_stations.SelectionChangeCommitted += self.station_filter_changed
         toolbar.Controls.Add(self.cbo_stations)
@@ -190,22 +349,38 @@ class OccultationManagerGUI(Form):
         btn_event_details.Text = "Event Details"
         btn_event_details.Click += self.show_event_details_click
         toolbar.Controls.Add(btn_event_details)
+        try:
+            self._autosize_button(btn_event_details, height=btn_h + extra_h)
+        except Exception:
+            pass
 
         btn_edit_exposure = Button()
         btn_edit_exposure.Text = "Edit Exposure"
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
+        try:
+            self._autosize_button(btn_edit_exposure, height=btn_h + extra_h)
+        except Exception:
+            pass
 
         # Sequence operations
         btn_create_sequences = Button()
         btn_create_sequences.Text = "Create Sequences"
         btn_create_sequences.Click += self.create_sequences_click
         toolbar.Controls.Add(btn_create_sequences)
+        try:
+            self._autosize_button(btn_create_sequences, height=btn_h + extra_h)
+        except Exception:
+            pass
 
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
         btn_run_sequences.Click += self.run_sequences_click
         toolbar.Controls.Add(btn_run_sequences)
+        try:
+            self._autosize_button(btn_run_sequences, height=btn_h + extra_h)
+        except Exception:
+            pass
 
 
         # Night Mode (global)
@@ -213,10 +388,22 @@ class OccultationManagerGUI(Form):
         self.btn_night_mode.Text = "Night Mode"
         self.btn_night_mode.Click += self.toggle_night_mode_click
         toolbar.Controls.Add(self.btn_night_mode)
+        try:
+            self._autosize_button(self.btn_night_mode, height=btn_h + extra_h)
+        except Exception:
+            pass
 
         # Layout the toolbar buttons with a fixed 4px gap
         try:
-            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=6, y=7, gap=4)
+            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=start_x, y=start_y, gap=gap)
+        except Exception:
+            pass
+
+        # Ensure the toolbar height is sufficient to show the buttons fully
+        try:
+            min_needed = start_y + (btn_h + extra_h) + 6
+            if toolbar.Height < min_needed:
+                toolbar.Height = int(min_needed)
         except Exception:
             pass
 
@@ -270,21 +457,49 @@ class OccultationManagerGUI(Form):
     def create_enhanced_bottom_panel(self):
         """Create the enhanced bottom control panel with Observation Preparation"""
         panel = Panel()
-        panel.Height = 90  # Increased height for new section
+        # Height derived from central constants (DPI-aware). Reduce by half the
+        # form font height so the bottom panel is a bit less tall at high DPI.
+        try:
+            base_h = int(self.size_constants.get('bottom_reserved_height', 90))
+            reduce_by = int(round((self.Font.Height or 16) / 2.0))
+            panel.Height = max(32, base_h - reduce_by)
+        except Exception:
+            panel.Height = 90
         panel.Dock = DockStyle.Top
         panel.BackColor = SystemColors.Control
-        
-        # Observation Preparation Group
+        sf = getattr(self, '_scale_factor', 1.0)
+        gap = int(self.size_constants.get('gap', 4))
+        start_x = int(self.size_constants.get('start_x', 10))
+
+        # Observation Preparation Group (create it, but size/height will be aligned
+        # to the Quick Filters group below)
         obs_prep_group = self.create_observation_preparation_group()
-        obs_prep_group.Location = Point(270, 5)
         panel.Controls.Add(obs_prep_group)
-        
-        # Quick Filter Actions actions group 
+
+        # Quick Filter Actions group
         actions_group = GroupBox()
         actions_group.Text = "Quick Filters"
-        actions_group.Location = Point(10, 5)
-        actions_group.Size = Size(310, 66)      
+        actions_group.Location = Point(start_x, 5)
+        try:
+            actions_group.Size = Size(int(self.size_constants.get('quick_group_width', 310)), int(max(66, panel.Height - 24)))
+        except Exception:
+            actions_group.Size = Size(310, 66)
         panel.Controls.Add(actions_group)
+
+        # Make Observation Preparation group the same height as Quick Filters
+        try:
+            obs_w = int(self.size_constants.get('obs_group_width', 660))
+            obs_h = actions_group.Size.Height
+            # Place to the right of quick filters
+            obs_x = start_x + actions_group.Size.Width + gap
+            obs_prep_group.Location = Point(obs_x, actions_group.Location.Y)
+            obs_prep_group.Size = Size(obs_w, obs_h)
+        except Exception:
+            # fallback to previous placement
+            try:
+                obs_prep_group.Location = Point(270, 5)
+            except Exception:
+                pass
         
         btn_filter_today = Button()
         btn_filter_today.Text = "Today"
@@ -306,20 +521,35 @@ class OccultationManagerGUI(Form):
         btn_select_toggle .Click += self.select_toggle_click
         actions_group.Controls.Add(btn_select_toggle)
 
-        # Layout quick-filter buttons with 4px gaps
+        # Give filter buttons scaled height
         try:
-            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=15, gap=4)
+            btn_h = int(self.size_constants.get('button_height', int(round(25 * sf))))
+        except Exception:
+            btn_h = int(round(25 * sf))
+
+        try:
+            # Nudge quick-filter row down by 1 pixel for visual spacing
+            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=int(round(15 * sf)) + 1, gap=gap)
+            for b in (btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle):
+                try:
+                    self._autosize_button(b, height=btn_h)
+                except Exception:
+                    pass
         except Exception:
             pass
-   
+
         self.lbl_selection_summary = Label()
         self.lbl_selection_summary.Text = "No events selected"
-        self.lbl_selection_summary.Location = Point(5, 45)
-        self.lbl_selection_summary.Size = Size(180, 12)
+        try:
+            self.lbl_selection_summary.Location = Point(5, int(round(panel.Height * 0.45)))
+            self.lbl_selection_summary.Size = Size(int(round(self.size_constants.get('quick_group_width', 310) * 0.55)), int(round(12 * sf)))
+        except Exception:
+            self.lbl_selection_summary.Location = Point(5, 45)
+            self.lbl_selection_summary.Size = Size(180, 12)
         actions_group.Controls.Add(self.lbl_selection_summary)
-        
+
         self.events_grid.SelectionChanged += self.grid_selection_changed
-        
+
         return panel
     
     def create_observation_preparation_group(self):
@@ -365,7 +595,9 @@ class OccultationManagerGUI(Form):
 
         # Layout observation-prep row with a 4px gap
         try:
-            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event], start_x=10, y=15, gap=4)
+            # Use the same Y offset as quick filters so rows align; apply scale
+            sf = getattr(self, '_scale_factor', 1.0)
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
                 
@@ -385,20 +617,37 @@ class OccultationManagerGUI(Form):
     def create_status_bar(self):
         """Create the status bar"""
         status_bar = Panel()
-        status_bar.Height = 25
+        # Use DPI-aware status height when available and ensure a sensible
+        # minimum so label text does not get vertically clipped at high DPI.
+        try:
+            status_h = int(self.size_constants.get('status_height', 25))
+        except Exception:
+            status_h = 25
+        status_bar.Height = max(status_h, 28)
         status_bar.Dock = DockStyle.Bottom
         status_bar.BackColor = SystemColors.ControlDark
         
         self.lbl_status = Label()
         self.lbl_status.Text = "Ready"
-        self.lbl_status.Location = Point(10, 5)
-        self.lbl_status.Size = Size(400, 15)
+        try:
+            # Try to vertically center the label based on the form font height
+            lbl_h = int(round(self.Font.Height or 15))
+        except Exception:
+            lbl_h = 15
+        lbl_y = max(2, int((status_bar.Height - lbl_h) / 2))
+        self.lbl_status.Location = Point(10, lbl_y)
+        self.lbl_status.Size = Size(400, lbl_h)
         status_bar.Controls.Add(self.lbl_status)
         
         self.lbl_event_count = Label()
         self.lbl_event_count.Text = "0 events"
-        self.lbl_event_count.Location = Point(500, 5)
-        self.lbl_event_count.Size = Size(100, 15)
+        try:
+            lbl_h2 = int(round(self.Font.Height or 15))
+        except Exception:
+            lbl_h2 = 15
+        lbl_y2 = max(2, int((status_bar.Height - lbl_h2) / 2))
+        self.lbl_event_count.Location = Point(500, lbl_y2)
+        self.lbl_event_count.Size = Size(100, lbl_h2)
         status_bar.Controls.Add(self.lbl_event_count)
         
         return status_bar
