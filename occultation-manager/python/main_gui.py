@@ -70,7 +70,8 @@ class OccultationManagerGUI(Form):
             'toolbar_start_y': 18,
             # Fixed pixel nudge (not scaled) to ensure toolbar buttons sit below
             # the MenuStrip regardless of font metrics. Adjust if overlap occurs.
-            'toolbar_fixed_nudge': 6,
+            # Increased per user request from 6 -> 8 px for a stronger nudge.
+            'toolbar_fixed_nudge': 8,
             # Extra button height (px) to avoid clipped button borders at high DPI
             'toolbar_button_extra': 4,
         }
@@ -109,8 +110,8 @@ class OccultationManagerGUI(Form):
         
         main_panel = Panel()
         main_panel.Dock = DockStyle.Fill
-        # No manual top padding needed when MenuStrip is docked to Top
-        main_panel.Padding = Padding(0, 0, 0, 0)
+        # Small manual top padding needed when MenuStrip is docked to Top
+        main_panel.Padding = Padding(0, 10, 0, 0)
         self.Controls.Add(main_panel)
         
         # Enhanced toolbar
@@ -616,20 +617,37 @@ class OccultationManagerGUI(Form):
     def create_status_bar(self):
         """Create the status bar"""
         status_bar = Panel()
-        status_bar.Height = 25
+        # Use DPI-aware status height when available and ensure a sensible
+        # minimum so label text does not get vertically clipped at high DPI.
+        try:
+            status_h = int(self.size_constants.get('status_height', 25))
+        except Exception:
+            status_h = 25
+        status_bar.Height = max(status_h, 28)
         status_bar.Dock = DockStyle.Bottom
         status_bar.BackColor = SystemColors.ControlDark
         
         self.lbl_status = Label()
         self.lbl_status.Text = "Ready"
-        self.lbl_status.Location = Point(10, 5)
-        self.lbl_status.Size = Size(400, 15)
+        try:
+            # Try to vertically center the label based on the form font height
+            lbl_h = int(round(self.Font.Height or 15))
+        except Exception:
+            lbl_h = 15
+        lbl_y = max(2, int((status_bar.Height - lbl_h) / 2))
+        self.lbl_status.Location = Point(10, lbl_y)
+        self.lbl_status.Size = Size(400, lbl_h)
         status_bar.Controls.Add(self.lbl_status)
         
         self.lbl_event_count = Label()
         self.lbl_event_count.Text = "0 events"
-        self.lbl_event_count.Location = Point(500, 5)
-        self.lbl_event_count.Size = Size(100, 15)
+        try:
+            lbl_h2 = int(round(self.Font.Height or 15))
+        except Exception:
+            lbl_h2 = 15
+        lbl_y2 = max(2, int((status_bar.Height - lbl_h2) / 2))
+        self.lbl_event_count.Location = Point(500, lbl_y2)
+        self.lbl_event_count.Size = Size(100, lbl_h2)
         status_bar.Controls.Add(self.lbl_event_count)
         
         return status_bar
