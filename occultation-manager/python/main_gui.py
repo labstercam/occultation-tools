@@ -1073,7 +1073,7 @@ class OccultationManagerGUI(Form):
             MessageBox.Show("Failed to start GOTO sequence", "Error")
 
     def execute_goto_command(self, event):
-        """Execute the actual GOTO command"""
+        """Execute the actual GOTO command and wait for completion"""
         coordinates = self.CoordinateParser.Parse(f"{event.ra:.6f};{event.dec:.6f}", True)
 
         try:
@@ -1081,13 +1081,20 @@ class OccultationManagerGUI(Form):
             if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
                 mount = self.sharpcap.Mounts.SelectedMount
                 
-                mount.SlewTo(coordinates)
-                time.sleep(1)
-                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates,CancellationToken()))
+                # Use the async method with SafeGetAsyncResult to properly wait for completion
+                # SafeGetAsyncResult blocks until the async operation completes
+                print(f"Starting GOTO to: RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
+                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates, CancellationToken()))
+                
+                # Wait a moment for mount to settle after slew completes
+                time.sleep(2)
+                
+                # Optionally sync mount after GOTO
                 if self.config.get_sync_mount():
+                    print("Performing SolveAndSync...")
                     mount.SolveAndSync() 
 
-                print(f"GOTO command sent: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
+                print(f"GOTO completed: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
                 return True
             else:
                 # Show coordinates for manual GOTO
@@ -1607,18 +1614,20 @@ class OccultationManagerGUI(Form):
     def execute_complete_goto_sequence(self, event):
         """Execute the complete GOTO sequence with error handling"""
         try:
-            # Step 1: GOTO
+            # Step 1: GOTO (this will block until GOTO completes)
             self.update_status("Step 1: Executing GOTO...")
             goto_success = self.execute_goto_command(event)
             
             if not goto_success:
                 return False
             
-            # Step 2: Wait and plate solve
-#            self.update_status("Step 2: Plate solving...")
-            time.sleep(3)  # Wait for mount to settle
+            # Step 2: Additional wait for mount to fully settle
+            # GOTO has already completed, but we add extra time for mount stabilization
+            self.update_status("GOTO complete, waiting for mount to settle...")
+            time.sleep(3)  # Extra settling time after GOTO completes
             
-            # Basic verification that we're in the right area - not done yet
+            # Now ready for plate solving or other operations
+            self.update_status("Mount ready for plate solving")
             return True
             
         except Exception as e:
