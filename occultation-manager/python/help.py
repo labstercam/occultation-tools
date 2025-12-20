@@ -8,20 +8,47 @@ from System.Windows.Forms import TreeView, TreeNode, FormStartPosition, FormBord
 from System.Windows.Forms import MessageBox, MessageBoxButtons, MessageBoxIcon
 from theme import apply_theme_to_control
 
+def _detect_scale_factor():
+    """Detect current display DPI and return scale factor.
+    
+    Returns:
+        float: Scale factor (1.0 for 100%, 1.25 for 125%, 1.5 for 150%)
+    """
+    try:
+        from System.Drawing import Graphics, Bitmap
+        # Use a temporary form to get DPI
+        temp_form = Form()
+        try:
+            temp_form.CreateControl()
+            g = Graphics.FromHwnd(temp_form.Handle)
+            try:
+                dpi = float(g.DpiX)
+            finally:
+                g.Dispose()
+        finally:
+            temp_form.Dispose()
+        
+        return dpi / 96.0
+    except Exception:
+        return 1.0
+
 class HelpDialog(Form):
-    """Interactive help dialog for the Occultation Manager"""
+    """Interactive help dialog for the Occultation Manager with DPI scaling"""
     
     def __init__(self, theme_manager):
         Form.__init__(self)
         self.theme_manager = theme_manager
+        self._sf = _detect_scale_factor()
         self.setup_ui()
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
-        """Setup the help dialog UI"""
+        """Setup the help dialog UI with DPI scaling"""
+        sf = self._sf
+        
         self.Text = "Occultation Manager - Help & User Guide"
-        self.Size = Size(900, 700)
+        self.Size = Size(int(900 * sf), int(700 * sf))
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = FormBorderStyle.Sizable
         self.MaximizeBox = True
@@ -30,7 +57,7 @@ class HelpDialog(Form):
         # Create main split container
         main_split = SplitContainer()
         main_split.Dock = DockStyle.Fill
-        main_split.SplitterDistance = 200
+        main_split.SplitterDistance = int(200 * sf)
         main_split.FixedPanel = FixedPanel.Panel1
         self.Controls.Add(main_split)
         
@@ -48,18 +75,20 @@ class HelpDialog(Form):
         btn_close.Text = "Close"
         btn_close.DialogResult = DialogResult.OK
         btn_close.Dock = DockStyle.Bottom
-        btn_close.Height = 30
+        btn_close.Height = int(30 * sf)
         self.Controls.Add(btn_close)
         
         self.AcceptButton = btn_close
     
     def setup_help_topics(self, panel):
-        """Setup the help topics tree view"""
+        """Setup the help topics tree view with DPI scaling"""
+        sf = self._sf
+        
         lbl_topics = Label()
         lbl_topics.Text = "Help Topics:"
         lbl_topics.Dock = DockStyle.Top
-        lbl_topics.Height = 25
-        lbl_topics.Font = Font("Microsoft Sans Serif", 9, FontStyle.Bold)
+        lbl_topics.Height = int(25 * sf)
+        lbl_topics.Font = Font("Microsoft Sans Serif", 9 * sf, FontStyle.Bold)
         panel.Controls.Add(lbl_topics)
         
         self.tree_topics = TreeView()
@@ -71,13 +100,15 @@ class HelpDialog(Form):
         self.populate_help_topics()
     
     def setup_help_content(self, panel):
-        """Setup the help content display"""
+        """Setup the help content display with DPI scaling"""
+        sf = self._sf
+        
         self.txt_help_content = TextBox()
         self.txt_help_content.Multiline = True
         self.txt_help_content.ReadOnly = True
         self.txt_help_content.ScrollBars = ScrollBars.Vertical
         self.txt_help_content.WordWrap = True
-        self.txt_help_content.Font = Font("Microsoft Sans Serif", 10)
+        self.txt_help_content.Font = Font("Microsoft Sans Serif", 10 * sf)
         self.txt_help_content.Dock = DockStyle.Fill
         panel.Controls.Add(self.txt_help_content)
 
