@@ -14,22 +14,85 @@ from System.Windows.Forms import (
 from theme import apply_theme_to_control
 from templates import TemplateManager
 
+def _detect_scale_factor():
+    """Detect current display DPI and return scale factor.
+    
+    Returns:
+        float: Scale factor (1.0 for 100%, 1.25 for 125%, 1.5 for 150%)
+    """
+    try:
+        from System.Drawing import Graphics, Bitmap
+        # Use a temporary form to get DPI
+        temp_form = Form()
+        try:
+            temp_form.CreateControl()
+            g = Graphics.FromHwnd(temp_form.Handle)
+            try:
+                dpi = float(g.DpiX)
+            finally:
+                g.Dispose()
+        finally:
+            temp_form.Dispose()
+        
+        return dpi / 96.0
+    except Exception:
+        return 1.0
+
+def _autosize_button(btn, sf, padding=None, min_width=None, height=None):
+    """Auto-size button to fit text content with DPI scaling.
+    
+    Args:
+        btn: Button control to size
+        sf: Scale factor
+        padding: Horizontal padding (default: 20 * sf)
+        min_width: Minimum width (default: 60 * sf)
+        height: Button height (default: 25 * sf)
+    """
+    try:
+        from System.Drawing import Bitmap, Graphics
+        
+        if padding is None:
+            padding = int(round(20 * sf))
+        if min_width is None:
+            min_width = int(round(60 * sf))
+        if height is None:
+            height = int(round(25 * sf))
+        
+        # Measure text width
+        bmp = Bitmap(1, 1)
+        g = Graphics.FromImage(bmp)
+        try:
+            sizef = g.MeasureString(btn.Text or "", btn.Font)
+            measured = int(sizef.Width)
+        finally:
+            g.Dispose()
+            bmp.Dispose()
+        
+        width = max(measured + padding, min_width)
+        btn.Size = Size(width, height)
+    except Exception:
+        # Fallback to scaled default if measurement fails
+        btn.Size = Size(int(round(75 * sf)), int(round(25 * sf)))
+
 class ExposureEditDialog(Form):
-    """Dialog for editing event exposure - FIXED VERSION"""
+    """Dialog for editing event exposure - DPI-aware version"""
     
     def __init__(self, event, theme_manager):
         Form.__init__(self)
         self.event = event
         self.theme_manager = theme_manager
         self.new_exposure_ms = event.exposure_ms
+        self._sf = _detect_scale_factor()
         self.setup_ui()
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
-        """Setup exposure edit dialog UI"""
+        """Setup exposure edit dialog UI with DPI scaling"""
+        sf = self._sf
+        
         self.Text = f"Edit Exposure - {self.event.event_name}"
-        self.Size = Size(400, 300)
+        self.Size = Size(int(450 * sf), int(330 * sf))
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -38,15 +101,15 @@ class ExposureEditDialog(Form):
         # Event info
         lbl_event = Label()
         lbl_event.Text = f"Event: {self.event.event_name}"
-        lbl_event.Location = Point(20, 20)
-        lbl_event.Size = Size(350, 20)
-        lbl_event.Font = Font("Microsoft Sans Serif", 9, FontStyle.Bold)
+        lbl_event.Location = Point(int(20 * sf), int(20 * sf))
+        lbl_event.Size = Size(int(350 * sf), int(20 * sf))
+        lbl_event.Font = Font("Microsoft Sans Serif", 9 * sf, FontStyle.Bold)
         self.Controls.Add(lbl_event)
         
         lbl_star = Label()
         lbl_star.Text = f"Mag: {self.event.star_mag:.1f}, Mag Drop: {self.event.mag_drop:.1f}, Max Dur: {self.event.max_duration_seconds:.1f}s"
-        lbl_star.Location = Point(20, 45)
-        lbl_star.Size = Size(350, 20)
+        lbl_star.Location = Point(int(20 * sf), int(45 * sf))
+        lbl_star.Size = Size(int(350 * sf), int(20 * sf))
         self.Controls.Add(lbl_star)
         
         lbl_current = Label()
@@ -56,70 +119,76 @@ class ExposureEditDialog(Form):
         else:
             current_text += " (Calculated)"
         lbl_current.Text = current_text
-        lbl_current.Location = Point(20, 80)
-        lbl_current.Size = Size(350, 20)
+        lbl_current.Location = Point(int(20 * sf), int(80 * sf))
+        lbl_current.Size = Size(int(350 * sf), int(20 * sf))
         self.Controls.Add(lbl_current)
         
         # Exposure input
         lbl_new_exposure = Label()
         lbl_new_exposure.Text = "New Exposure (ms):"
-        lbl_new_exposure.Location = Point(20, 105)
-        lbl_new_exposure.Size = Size(120, 20)
+        lbl_new_exposure.Location = Point(int(20 * sf), int(105 * sf))
+        lbl_new_exposure.Size = Size(int(120 * sf), int(20 * sf))
         self.Controls.Add(lbl_new_exposure)
         
         self.txt_exposure = TextBox()
         self.txt_exposure.Text = str(self.event.exposure_ms)
-        self.txt_exposure.Location = Point(150, 105)
-        self.txt_exposure.Size = Size(100, 20)
+        self.txt_exposure.Location = Point(int(150 * sf), int(105 * sf))
+        self.txt_exposure.Size = Size(int(100 * sf), int(20 * sf))
         self.Controls.Add(self.txt_exposure)
         
         # Quick exposure buttons
         lbl_quick = Label()
         lbl_quick.Text = "Quick Settings:"
-        lbl_quick.Location = Point(20, 130)
-        lbl_quick.Size = Size(100, 20)
+        lbl_quick.Location = Point(int(20 * sf), int(130 * sf))
+        lbl_quick.Size = Size(int(100 * sf), int(20 * sf))
         self.Controls.Add(lbl_quick)
         
         quick_exposures = [40, 60, 80, 120, 160, 240, 320, 480]
-        x_pos = 20
-        y_pos = 155
+        x_pos = int(20 * sf)
+        y_pos = int(155 * sf)
+        gap = int(6 * sf)
         
         for i, exp in enumerate(quick_exposures):
             btn = Button()
             btn.Text = f"{exp}"
-            btn.Size = Size(45, 25)
             btn.Location = Point(x_pos, y_pos)
+            _autosize_button(btn, sf, padding=int(12 * sf), min_width=int(45 * sf))
             btn.Tag = exp
             btn.Click += self.quick_exposure_click
             self.Controls.Add(btn)
             
-            x_pos += 50
+            x_pos += btn.Width + gap
             if (i + 1) % 4 == 0:
-                x_pos = 20
-                y_pos += 30
+                x_pos = int(20 * sf)
+                y_pos += int(30 * sf)
         
-        # Buttons
-        btn_ok = Button()
-        btn_ok.Text = "OK"
-        btn_ok.DialogResult = DialogResult.OK
-        btn_ok.Location = Point(220, 220)
-        btn_ok.Size = Size(75, 25)
-        btn_ok.Click += self.ok_click
-        self.Controls.Add(btn_ok)
+        # Calculate button row Y position dynamically
+        button_y = y_pos + int(15 * sf)
+        
+        # Buttons - position them relative to form width
+        btn_reset = Button()
+        btn_reset.Text = "Reset to Calculated"
+        _autosize_button(btn_reset, sf, min_width=int(120 * sf))
+        btn_reset.Location = Point(int(20 * sf), button_y)
+        btn_reset.Click += self.reset_click
+        self.Controls.Add(btn_reset)
         
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
         btn_cancel.DialogResult = DialogResult.Cancel
-        btn_cancel.Location = Point(305, 220)
-        btn_cancel.Size = Size(75, 25)
+        _autosize_button(btn_cancel, sf, min_width=int(60 * sf))
+        # Position from right edge
+        btn_cancel.Location = Point(int(self.ClientSize.Width - btn_cancel.Width - 20 * sf), button_y)
         self.Controls.Add(btn_cancel)
         
-        btn_reset = Button()
-        btn_reset.Text = "Reset to Calculated"
-        btn_reset.Location = Point(20, 220)
-        btn_reset.Size = Size(120, 25)
-        btn_reset.Click += self.reset_click
-        self.Controls.Add(btn_reset)
+        btn_ok = Button()
+        btn_ok.Text = "OK"
+        btn_ok.DialogResult = DialogResult.OK
+        _autosize_button(btn_ok, sf, min_width=int(60 * sf))
+        # Position to left of Cancel button
+        btn_ok.Location = Point(int(btn_cancel.Location.X - btn_ok.Width - 10 * sf), button_y)
+        btn_ok.Click += self.ok_click
+        self.Controls.Add(btn_ok)
         
         self.AcceptButton = btn_ok
         self.CancelButton = btn_cancel
@@ -170,20 +239,23 @@ class ExposureEditDialog(Form):
         return self.new_exposure_ms
 
 class EventDetailsDialog(Form):
-    """Dialog for displaying detailed event information"""
+    """Dialog for displaying detailed event information with DPI scaling"""
     
     def __init__(self, event, theme_manager):
         Form.__init__(self)
         self.event = event
         self.theme_manager = theme_manager
+        self._sf = _detect_scale_factor()
         self.setup_ui()
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
-        """Setup event details dialog UI"""
+        """Setup event details dialog UI with DPI scaling"""
+        sf = self._sf
+        
         self.Text = f"Event Details - {self.event.get_asteroid_display_name()}"
-        self.Size = Size(600, 700)
+        self.Size = Size(int(650 * sf), int(700 * sf))
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = FormBorderStyle.Sizable
         self.MaximizeBox = True
@@ -195,16 +267,16 @@ class EventDetailsDialog(Form):
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
         
-        y_pos = 20
+        y_pos = int(20 * sf)
         
         # Event Information Group
         grp_event = GroupBox()
         grp_event.Text = "Event Information"
-        grp_event.Location = Point(10, y_pos)
-        grp_event.Size = Size(560, 120)
+        grp_event.Location = Point(int(10 * sf), y_pos)
+        grp_event.Size = Size(int(560 * sf), int(120 * sf))
         main_panel.Controls.Add(grp_event)
         
-        y_pos += 130
+        y_pos += int(130 * sf)
         
         self.add_detail_label(grp_event, "Event Name:", self.event.event_name, 10, 25)
         self.add_detail_label(grp_event, "Asteroid:", self.event.get_asteroid_display_name(), 10, 50)
@@ -216,19 +288,19 @@ class EventDetailsDialog(Form):
         if hasattr(self.event, 'owcloudurl') and self.event.owcloudurl:
             link_label = LinkLabel()
             link_label.Text = "View on OWC"
-            link_label.Location = Point(300, 75)
-            link_label.Size = Size(100, 20)
+            link_label.Location = Point(int(300 * sf), int(75 * sf))
+            link_label.Size = Size(int(100 * sf), int(20 * sf))
             link_label.LinkClicked += lambda s, e: webbrowser.open(self.event.owcloudurl)
             grp_event.Controls.Add(link_label)
         
         # Timing Information Group
         grp_timing = GroupBox()
         grp_timing.Text = "Timing Information"
-        grp_timing.Location = Point(10, y_pos)
-        grp_timing.Size = Size(560, 120)
+        grp_timing.Location = Point(int(10 * sf), y_pos)
+        grp_timing.Size = Size(int(560 * sf), int(120 * sf))
         main_panel.Controls.Add(grp_timing)
         
-        y_pos += 130
+        y_pos += int(130 * sf)
 
         self.add_detail_label(grp_timing, "Event Time (UTC):", self.event.event_time, 10, 25)
         self.add_detail_label(grp_timing, "GOTO Time (UTC):", self.event.goto_time_str, 10, 50)
@@ -240,11 +312,11 @@ class EventDetailsDialog(Form):
         # Recording Settings Group
         grp_recording = GroupBox()
         grp_recording.Text = "Recording Settings"
-        grp_recording.Location = Point(10, y_pos)
-        grp_recording.Size = Size(560, 120)
+        grp_recording.Location = Point(int(10 * sf), y_pos)
+        grp_recording.Size = Size(int(560 * sf), int(120 * sf))
         main_panel.Controls.Add(grp_recording)
         
-        y_pos += 130
+        y_pos += int(130 * sf)
         
         exposure_text = f"{self.event.exposure_ms} ms"
         if self.event.has_custom_exposure():
@@ -259,11 +331,11 @@ class EventDetailsDialog(Form):
         # Photometry Information Group
         grp_photometry = GroupBox()
         grp_photometry.Text = "Photometry Information"
-        grp_photometry.Location = Point(10, y_pos)
-        grp_photometry.Size = Size(560, 120)
+        grp_photometry.Location = Point(int(10 * sf), y_pos)
+        grp_photometry.Size = Size(int(560 * sf), int(120 * sf))
         main_panel.Controls.Add(grp_photometry)
         
-        y_pos += 130
+        y_pos += int(130 * sf)
         
         self.add_detail_label(grp_photometry, "Star Magnitude:", f"{self.event.star_mag:.1f}", 10, 25)
         self.add_detail_label(grp_photometry, "Combined Magnitude:", f"{self.event.comb_mag:.1f}", 10, 50)
@@ -272,11 +344,11 @@ class EventDetailsDialog(Form):
         # Position Information Group
         grp_position = GroupBox()
         grp_position.Text = "Position Information"
-        grp_position.Location = Point(10, y_pos)
-        grp_position.Size = Size(560, 120)
+        grp_position.Location = Point(int(10 * sf), y_pos)
+        grp_position.Size = Size(int(560 * sf), int(120 * sf))
         main_panel.Controls.Add(grp_position)
         
-        y_pos += 130
+        y_pos += int(130 * sf)
         
         self.add_detail_label(grp_position, "RA (J2000):", f"{self.event.ra:.6f} hours", 10, 25)
         self.add_detail_label(grp_position, "Dec (J2000):", f"{self.event.dec:.6f}°", 10, 50)
@@ -286,11 +358,11 @@ class EventDetailsDialog(Form):
         # Observer Location Group
         grp_location = GroupBox()
         grp_location.Text = "Observer Location"
-        grp_location.Location = Point(10, y_pos)
-        grp_location.Size = Size(560, 95)
+        grp_location.Location = Point(int(10 * sf), y_pos)
+        grp_location.Size = Size(int(560 * sf), int(95 * sf))
         main_panel.Controls.Add(grp_location)
         
-        y_pos += 105
+        y_pos += int(105 * sf)
         
         self.add_detail_label(grp_location, "Latitude:", f"{self.event.latitude:.6f}°", 10, 25)
         self.add_detail_label(grp_location, "Longitude:", f"{self.event.longitude:.6f}°", 10, 50)
@@ -298,11 +370,11 @@ class EventDetailsDialog(Form):
         # Technical Information Group
         grp_technical = GroupBox()
         grp_technical.Text = "Technical Information"
-        grp_technical.Location = Point(10, y_pos)
-        grp_technical.Size = Size(560, 95)
+        grp_technical.Location = Point(int(10 * sf), y_pos)
+        grp_technical.Size = Size(int(560 * sf), int(95 * sf))
         main_panel.Controls.Add(grp_technical)
         
-        y_pos += 105
+        y_pos += int(105 * sf)
         
         self.add_detail_label(grp_technical, "Event ID:", self.event.event_id, 10, 25)
         self.add_detail_label(grp_technical, "OW Event ID:", str(self.event.ow_eventid), 10, 50)
@@ -312,35 +384,37 @@ class EventDetailsDialog(Form):
         btn_close = Button()
         btn_close.Text = "Close"
         btn_close.DialogResult = DialogResult.OK
-        btn_close.Location = Point(500, y_pos + 20)
-        btn_close.Size = Size(75, 25)
+        btn_close.Location = Point(int(500 * sf), y_pos + int(20 * sf))
+        _autosize_button(btn_close, sf)
         main_panel.Controls.Add(btn_close)
         
         self.AcceptButton = btn_close
     
     def add_detail_label(self, parent, label_text, value_text, x, y):
-        """Helper to add label-value pairs"""
+        """Helper to add label-value pairs with DPI scaling"""
+        sf = self._sf
         lbl_name = Label()
         lbl_name.Text = label_text
-        lbl_name.Location = Point(x, y)
-        lbl_name.Size = Size(120, 20)
-        lbl_name.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
+        lbl_name.Location = Point(int(x * sf), int(y * sf))
+        lbl_name.Size = Size(int(120 * sf), int(20 * sf))
+        lbl_name.Font = Font("Microsoft Sans Serif", 8 * sf, FontStyle.Bold)
         parent.Controls.Add(lbl_name)
         
         lbl_value = Label()
         lbl_value.Text = str(value_text) if value_text is not None else "N/A"
-        lbl_value.Location = Point(x + 125, y)
-        lbl_value.Size = Size(150, 20)
-        lbl_value.Font = Font("Microsoft Sans Serif", 8)
+        lbl_value.Location = Point(int((x + 125) * sf), int(y * sf))
+        lbl_value.Size = Size(int(150 * sf), int(20 * sf))
+        lbl_value.Font = Font("Microsoft Sans Serif", 8 * sf)
         parent.Controls.Add(lbl_value)
 
 class ConfigurationDialog(Form):
-    """Configuration dialog for GUI"""
+    """Configuration dialog for GUI with DPI scaling"""
     
     def __init__(self, config, theme_manager):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
+        self._sf = _detect_scale_factor()
         self.setup_ui()
         self.load_current_config()
         # Snapshot key config values so we can detect changes that
@@ -362,9 +436,11 @@ class ConfigurationDialog(Form):
         apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
-        """Setup configuration dialog UI"""
+        """Setup configuration dialog UI with DPI scaling"""
+        sf = self._sf
+        
         self.Text = "Configuration Settings"
-        self.Size = Size(600, 700)
+        self.Size = Size(int(600 * sf), int(700 * sf))
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -372,8 +448,8 @@ class ConfigurationDialog(Form):
         
         # Create tabs
         tab_control = TabControl()
-        tab_control.Location = Point(10, 10)
-        tab_control.Size = Size(560, 600)
+        tab_control.Location = Point(int(10 * sf), int(10 * sf))
+        tab_control.Size = Size(int(560 * sf), int(600 * sf))
         self.Controls.Add(tab_control)
         
         # User Credentials Tab
@@ -406,22 +482,22 @@ class ConfigurationDialog(Form):
         btn_ok = Button()
         btn_ok.Text = "Save"
         btn_ok.DialogResult = DialogResult.OK
-        btn_ok.Location = Point(350, 630)
-        btn_ok.Size = Size(75, 25)
+        btn_ok.Location = Point(int(350 * sf), int(630 * sf))
+        _autosize_button(btn_ok, sf)
         btn_ok.Click += self.save_config_click
         self.Controls.Add(btn_ok)
         
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
         btn_cancel.DialogResult = DialogResult.Cancel
-        btn_cancel.Location = Point(435, 630)
-        btn_cancel.Size = Size(75, 25)
+        btn_cancel.Location = Point(int(435 * sf), int(630 * sf))
+        _autosize_button(btn_cancel, sf)
         self.Controls.Add(btn_cancel)
         
         btn_reset = Button()
         btn_reset.Text = "Reset to Defaults"
-        btn_reset.Location = Point(10, 630)
-        btn_reset.Size = Size(120, 25)
+        btn_reset.Location = Point(int(10 * sf), int(630 * sf))
+        _autosize_button(btn_reset, sf, min_width=int(140 * sf))
         btn_reset.Click += self.reset_defaults_click
         self.Controls.Add(btn_reset)
         
@@ -429,129 +505,135 @@ class ConfigurationDialog(Form):
         self.CancelButton = btn_cancel
     
     def setup_credentials_tab(self, tab):
-        """Setup credentials tab"""
+        """Setup credentials tab with DPI scaling"""
+        sf = self._sf
+        
         lbl_email = Label()
         lbl_email.Text = "OWC Email:"
-        lbl_email.Location = Point(20, 30)
-        lbl_email.Size = Size(100, 20)
+        lbl_email.Location = Point(int(20 * sf), int(30 * sf))
+        lbl_email.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_email)
         
         self.txt_email = TextBox()
-        self.txt_email.Location = Point(130, 30)
-        self.txt_email.Size = Size(300, 20)
+        self.txt_email.Location = Point(int(130 * sf), int(30 * sf))
+        self.txt_email.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_email)
         
         lbl_password = Label()
         lbl_password.Text = "OWC Password:"
-        lbl_password.Location = Point(20, 60)
-        lbl_password.Size = Size(100, 20)
+        lbl_password.Location = Point(int(20 * sf), int(60 * sf))
+        lbl_password.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_password)
         
         self.txt_password = TextBox()
-        self.txt_password.Location = Point(130, 60)
-        self.txt_password.Size = Size(300, 20)
+        self.txt_password.Location = Point(int(130 * sf), int(60 * sf))
+        self.txt_password.Size = Size(int(300 * sf), int(20 * sf))
         self.txt_password.UseSystemPasswordChar = True
         tab.Controls.Add(self.txt_password)
     
     def setup_paths_tab(self, tab):
-        """Setup file paths tab"""
+        """Setup file paths tab with DPI scaling"""
+        sf = self._sf
+        
         lbl_file_folder = Label()
         lbl_file_folder.Text = "File Folder:"
-        lbl_file_folder.Location = Point(20, 30)
-        lbl_file_folder.Size = Size(100, 20)
+        lbl_file_folder.Location = Point(int(20 * sf), int(30 * sf))
+        lbl_file_folder.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_file_folder)
         
         self.txt_file_folder = TextBox()
-        self.txt_file_folder.Location = Point(130, 30)
-        self.txt_file_folder.Size = Size(250, 20)
+        self.txt_file_folder.Location = Point(int(130 * sf), int(30 * sf))
+        self.txt_file_folder.Size = Size(int(250 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_file_folder)
         
         btn_browse_folder = Button()
         btn_browse_folder.Text = "Browse"
-        btn_browse_folder.Location = Point(390, 29)
-        btn_browse_folder.Size = Size(60, 22)
+        btn_browse_folder.Location = Point(int(390 * sf), int(29 * sf))
+        _autosize_button(btn_browse_folder, sf, height=int(22 * sf))
         btn_browse_folder.Click += self.browse_file_folder_click
         tab.Controls.Add(btn_browse_folder)
         
         lbl_sequence_path = Label()
         lbl_sequence_path.Text = "Sequence Path:"
-        lbl_sequence_path.Location = Point(20, 60)
-        lbl_sequence_path.Size = Size(100, 20)
+        lbl_sequence_path.Location = Point(int(20 * sf), int(60 * sf))
+        lbl_sequence_path.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_sequence_path)
         
         self.txt_sequence_path = TextBox()
-        self.txt_sequence_path.Location = Point(130, 60)
-        self.txt_sequence_path.Size = Size(250, 20)
+        self.txt_sequence_path.Location = Point(int(130 * sf), int(60 * sf))
+        self.txt_sequence_path.Size = Size(int(250 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_sequence_path)
         
         btn_browse_sequence = Button()
         btn_browse_sequence.Text = "Browse"
-        btn_browse_sequence.Location = Point(390, 59)
-        btn_browse_sequence.Size = Size(60, 22)
+        btn_browse_sequence.Location = Point(int(390 * sf), int(59 * sf))
+        _autosize_button(btn_browse_sequence, sf, height=int(22 * sf))
         btn_browse_sequence.Click += self.browse_sequence_path_click
         tab.Controls.Add(btn_browse_sequence)
         
         lbl_occ_file = Label()
         lbl_occ_file.Text = "Occultations File:"
-        lbl_occ_file.Location = Point(20, 90)
-        lbl_occ_file.Size = Size(100, 20)
+        lbl_occ_file.Location = Point(int(20 * sf), int(90 * sf))
+        lbl_occ_file.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_occ_file)
         
         self.txt_occ_file = TextBox()
-        self.txt_occ_file.Location = Point(130, 90)
-        self.txt_occ_file.Size = Size(300, 20)
+        self.txt_occ_file.Location = Point(int(130 * sf), int(90 * sf))
+        self.txt_occ_file.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_occ_file)
         
         lbl_latest_file = Label()
         lbl_latest_file.Text = "Latest File:"
-        lbl_latest_file.Location = Point(20, 120)
-        lbl_latest_file.Size = Size(100, 20)
+        lbl_latest_file.Location = Point(int(20 * sf), int(120 * sf))
+        lbl_latest_file.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_latest_file)
         
         self.txt_latest_file = TextBox()
-        self.txt_latest_file.Location = Point(130, 120)
-        self.txt_latest_file.Size = Size(300, 20)
+        self.txt_latest_file.Location = Point(int(130 * sf), int(120 * sf))
+        self.txt_latest_file.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_latest_file)
     
     def setup_recording_tab(self, tab):
-        """Setup recording settings tab"""
+        """Setup recording settings tab with DPI scaling"""
+        sf = self._sf
+        
         lbl_base_duration = Label()
         lbl_base_duration.Text = "Base Duration (s):"
-        lbl_base_duration.Location = Point(20, 30)
-        lbl_base_duration.Size = Size(120, 20)
+        lbl_base_duration.Location = Point(int(20 * sf), int(30 * sf))
+        lbl_base_duration.Size = Size(int(120 * sf), int(20 * sf))
         tab.Controls.Add(lbl_base_duration)
         
         self.txt_base_duration = TextBox()
-        self.txt_base_duration.Location = Point(150, 30)
-        self.txt_base_duration.Size = Size(100, 20)
+        self.txt_base_duration.Location = Point(int(150 * sf), int(30 * sf))
+        self.txt_base_duration.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_base_duration)
         
         lbl_goto_lead = Label()
         lbl_goto_lead.Text = "GOTO Lead Time (s):"
-        lbl_goto_lead.Location = Point(20, 60)
-        lbl_goto_lead.Size = Size(120, 20)
+        lbl_goto_lead.Location = Point(int(20 * sf), int(60 * sf))
+        lbl_goto_lead.Size = Size(int(120 * sf), int(20 * sf))
         tab.Controls.Add(lbl_goto_lead)
         
         self.txt_goto_lead = TextBox()
-        self.txt_goto_lead.Location = Point(150, 60)
-        self.txt_goto_lead.Size = Size(100, 20)
+        self.txt_goto_lead.Location = Point(int(150 * sf), int(60 * sf))
+        self.txt_goto_lead.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_goto_lead)
         
         lbl_mag_exposure = Label()
         lbl_mag_exposure.Text = "Mag for 40ms exp:"
-        lbl_mag_exposure.Location = Point(20, 90)
-        lbl_mag_exposure.Size = Size(120, 20)
+        lbl_mag_exposure.Location = Point(int(20 * sf), int(90 * sf))
+        lbl_mag_exposure.Size = Size(int(120 * sf), int(20 * sf))
         tab.Controls.Add(lbl_mag_exposure)
         
         self.txt_mag_exposure = TextBox()
-        self.txt_mag_exposure.Location = Point(150, 90)
-        self.txt_mag_exposure.Size = Size(100, 20)
+        self.txt_mag_exposure.Location = Point(int(150 * sf), int(90 * sf))
+        self.txt_mag_exposure.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_mag_exposure)
 
         self.chk_sync_mount = CheckBox()
         self.chk_sync_mount.Text = "Sync Mount with GOTO"       
-        self.chk_sync_mount.Location = Point(20, 120)
-        self.chk_sync_mount.Size = Size(200, 20)    
+        self.chk_sync_mount.Location = Point(int(20 * sf), int(120 * sf))
+        self.chk_sync_mount.Size = Size(int(200 * sf), int(20 * sf))    
         tab.Controls.Add(self.chk_sync_mount)
 
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
@@ -559,8 +641,8 @@ class ConfigurationDialog(Form):
 
         self.display_utc = CheckBox()
         self.display_utc.Text = "Display UTC in Grid"       
-        self.display_utc.Location = Point(20, 150)
-        self.display_utc.Size = Size(200, 20)    
+        self.display_utc.Location = Point(int(20 * sf), int(150 * sf))
+        self.display_utc.Size = Size(int(200 * sf), int(20 * sf))    
         tab.Controls.Add(self.display_utc)
 
         self.display_utc.Checked = self.config.get_display_utc()
@@ -585,27 +667,29 @@ class ConfigurationDialog(Form):
 
 
     def setup_api_tab(self, tab):
-        """Setup API settings tab"""
+        """Setup API settings tab with DPI scaling"""
+        sf = self._sf
+        
         lbl_host = Label()
         lbl_host.Text = "API Host:"
-        lbl_host.Location = Point(20, 90)
-        lbl_host.Size = Size(100, 20)
+        lbl_host.Location = Point(int(20 * sf), int(90 * sf))
+        lbl_host.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_host)
         
         self.txt_host = TextBox()
-        self.txt_host.Location = Point(130, 90)
-        self.txt_host.Size = Size(300, 20)
+        self.txt_host.Location = Point(int(130 * sf), int(90 * sf))
+        self.txt_host.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_host)
         
         lbl_api_key = Label()
         lbl_api_key.Text = "API Key:"
-        lbl_api_key.Location = Point(20, 120)
-        lbl_api_key.Size = Size(100, 20)
+        lbl_api_key.Location = Point(int(20 * sf), int(120 * sf))
+        lbl_api_key.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_api_key)
         
         self.txt_api_key = TextBox()
-        self.txt_api_key.Location = Point(130, 120)
-        self.txt_api_key.Size = Size(300, 20)
+        self.txt_api_key.Location = Point(int(130 * sf), int(120 * sf))
+        self.txt_api_key.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_api_key)
     
     def load_current_config(self):
@@ -760,22 +844,24 @@ class ConfigurationDialog(Form):
                           MessageBoxButtons.OK, MessageBoxIcon.Information)
 
 class TemplateSelectionDialog(Form):
-    """Enhanced dialog for selecting sequence template with proper preview"""
+    """Enhanced dialog for selecting sequence template with DPI scaling"""
     
     def __init__(self, config, theme_manager):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
         self.selected_template_path = ""
-        #self.template_manager = TemplateManager(config)
+        self._sf = _detect_scale_factor()
         self.setup_ui()
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
-        """Setup enhanced template selection UI with proper scrolling"""
+        """Setup enhanced template selection UI with DPI scaling"""
+        sf = self._sf
+        
         self.Text = "Select Sequence Template"
-        self.Size = Size(800, 600)
+        self.Size = Size(int(800 * sf), int(600 * sf))
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = FormBorderStyle.Sizable
         self.MaximizeBox = True
@@ -784,13 +870,13 @@ class TemplateSelectionDialog(Form):
         # Template list
         lbl_templates = Label()
         lbl_templates.Text = "Available Templates:"
-        lbl_templates.Location = Point(10, 10)
-        lbl_templates.Size = Size(200, 20)
+        lbl_templates.Location = Point(int(10 * sf), int(10 * sf))
+        lbl_templates.Size = Size(int(200 * sf), int(20 * sf))
         self.Controls.Add(lbl_templates)
         
         self.lst_templates = ListBox()
-        self.lst_templates.Location = Point(10, 35)
-        self.lst_templates.Size = Size(760, 150)
+        self.lst_templates.Location = Point(int(10 * sf), int(35 * sf))
+        self.lst_templates.Size = Size(int(760 * sf), int(150 * sf))
         self.lst_templates.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         self.lst_templates.SelectionMode = SelectionMode.One
         self.Controls.Add(self.lst_templates)
@@ -801,8 +887,8 @@ class TemplateSelectionDialog(Form):
         # Template preview with proper scrolling - FIXED
         lbl_preview = Label()
         lbl_preview.Text = "Template Preview:"
-        lbl_preview.Location = Point(10, 200)
-        lbl_preview.Size = Size(200, 20)
+        lbl_preview.Location = Point(int(10 * sf), int(200 * sf))
+        lbl_preview.Size = Size(int(200 * sf), int(20 * sf))
         self.Controls.Add(lbl_preview)
         
         self.txt_preview = TextBox()
@@ -810,9 +896,9 @@ class TemplateSelectionDialog(Form):
         self.txt_preview.ReadOnly = True
         self.txt_preview.ScrollBars = ScrollBars.Both  # Both horizontal and vertical scrollbars
         self.txt_preview.WordWrap = False  # FIXED: Disable word wrap for proper horizontal scrolling
-        self.txt_preview.Font = Font("Courier New", 9)  # Monospace font for better formatting
-        self.txt_preview.Location = Point(10, 225)
-        self.txt_preview.Size = Size(760, 300)
+        self.txt_preview.Font = Font("Courier New", 9 * sf)  # Monospace font with scaling
+        self.txt_preview.Location = Point(int(10 * sf), int(225 * sf))
+        self.txt_preview.Size = Size(int(760 * sf), int(300 * sf))
         self.txt_preview.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         self.Controls.Add(self.txt_preview)
         
@@ -820,24 +906,24 @@ class TemplateSelectionDialog(Form):
         btn_ok = Button()
         btn_ok.Text = "OK"
         btn_ok.DialogResult = DialogResult.OK
-        btn_ok.Location = Point(600, 533)
-        btn_ok.Size = Size(75, 25)
+        btn_ok.Location = Point(int(600 * sf), int(533 * sf))
+        _autosize_button(btn_ok, sf)
         btn_ok.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         self.Controls.Add(btn_ok)
 
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
         btn_cancel.DialogResult = DialogResult.Cancel
-        btn_cancel.Location = Point(685, 533)
-        btn_cancel.Size = Size(75, 25)
+        btn_cancel.Location = Point(int(685 * sf), int(533 * sf))
+        _autosize_button(btn_cancel, sf)
         btn_cancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         self.Controls.Add(btn_cancel)
 
         # Checkbox to indicate whether the chosen template should be applied to all events
         self.chk_apply_all = CheckBox()
         self.chk_apply_all.Text = "Apply to All Events"
-        self.chk_apply_all.Location = Point(350, 533)
-        self.chk_apply_all.Size = Size(200, 24)
+        self.chk_apply_all.Location = Point(int(350 * sf), int(533 * sf))
+        self.chk_apply_all.Size = Size(int(200 * sf), int(24 * sf))
         self.chk_apply_all.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
 
         # Default: do not apply to all unless the user explicitly checks the box
@@ -851,8 +937,8 @@ class TemplateSelectionDialog(Form):
         # Checkbox to request a single combined sequence file instead of separate files
         self.chk_create_combined = CheckBox()
         self.chk_create_combined.Text = "Create single combined sequence"
-        self.chk_create_combined.Location = Point(10, 533)
-        self.chk_create_combined.Size = Size(240, 24)
+        self.chk_create_combined.Location = Point(int(10 * sf), int(533 * sf))
+        self.chk_create_combined.Size = Size(int(240 * sf), int(24 * sf))
         self.chk_create_combined.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         self.chk_create_combined.Checked = False
         self.chk_create_combined.CheckedChanged += lambda s, e: setattr(self, 'create_combined', s.Checked)

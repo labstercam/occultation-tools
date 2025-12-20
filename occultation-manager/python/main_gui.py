@@ -33,6 +33,12 @@ class OccultationManagerGUI(Form):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
+        
+        # Disable automatic DPI scaling since we handle it manually
+        # Use integer value 0 instead of AutoScaleMode.None (which conflicts with Python's None keyword)
+        from System.Windows.Forms import AutoScaleMode
+        self.AutoScaleMode = 0  # AutoScaleMode.None = 0
+        
         # Ensure a control handle exists early so we can reliably detect DPI
         try:
             # CreateControl is harmless if handle already exists; it helps Graphics.FromHwnd succeed
@@ -60,20 +66,20 @@ class OccultationManagerGUI(Form):
 
             # Widths
             'quick_group_width': int(round(310 * sf)),
-            'obs_group_width': int(round(660 * sf)),
+            'obs_group_width': int(round(1150 * sf)),
 
-            # Layout
-            'gap': 4,
-            'start_x': 10,
-            'toolbar_start_x': 6,
+            # Layout - now scaled
+            'gap': int(round(4 * sf)),
+            'start_x': int(round(10 * sf)),
+            'toolbar_start_x': int(round(6 * sf)),
             # Move toolbar buttons down a couple of pixels to avoid crowding the menu
-            'toolbar_start_y': 18,
+            'toolbar_start_y': int(round(18 * sf)),
             # Fixed pixel nudge (not scaled) to ensure toolbar buttons sit below
             # the MenuStrip regardless of font metrics. Adjust if overlap occurs.
             # Increased per user request from 6 -> 8 px for a stronger nudge.
             'toolbar_fixed_nudge': 8,
             # Extra button height (px) to avoid clipped button borders at high DPI
-            'toolbar_button_extra': 4,
+            'toolbar_button_extra': int(round(4 * sf)),
         }
         self.help_manager = HelpManager(theme_manager)
         self.manager = OccultationManager(config)
@@ -89,10 +95,57 @@ class OccultationManagerGUI(Form):
         self.CoordinateParser = coordinateParser
        
     
+    def OnLoad(self, e):
+        """Override OnLoad to ensure proper DPI detection and window sizing after form is created"""
+        Form.OnLoad(self, e)
+        # Re-detect scale factor now that handle is definitely created
+        self._scale_factor, self._scale_category = self._detect_scale()
+        
+        # Calculate form size based on event grid column widths
+        try:
+            # Sum up all column widths from the events grid
+            total_grid_width = 0
+            for col in self.events_grid.Columns:
+                total_grid_width += col.Width
+            
+            # Add padding for scrollbar, borders, and margins
+            sf = getattr(self, '_scale_factor', 1.0)
+            scrollbar_width = int(round(20 * sf))
+            border_padding = int(round(40 * sf))
+            
+            # Calculate minimum width needed for the grid
+            min_form_width = total_grid_width + scrollbar_width + border_padding
+            
+            # Set a reasonable minimum and maximum
+            min_width = int(round(800 * sf))
+            max_width = int(round(2400 * sf))
+            
+            form_width = max(min_width, min(min_form_width, max_width))
+            
+            # Calculate height based on UI components
+            toolbar_h = int(self.size_constants.get('toolbar_height', int(round(44 * sf))))
+            bottom_panel_h = int(self.size_constants.get('bottom_reserved_height', int(round(90 * sf))))
+            status_h = int(self.size_constants.get('status_height', int(round(25 * sf))))
+            menu_h = int(round(24 * sf))
+            
+            # Default grid height for reasonable number of rows
+            grid_height = int(round(300 * sf))
+            
+            form_height = menu_h + toolbar_h + bottom_panel_h + grid_height + status_h
+            
+            # Apply the calculated size
+            self.Size = Size(form_width, form_height)
+        except Exception:
+            # Fallback to fixed size if calculation fails
+            sf = getattr(self, '_scale_factor', 1.0)
+            self.Size = Size(int(1500 * sf), int(445 * sf))
+    
     def setup_ui(self):
         """Setup the enhanced user interface"""
         self.Text = "Occultation Manager - SharpCap Integration"
-        self.Size = Size(1090, 445)
+        # Scale window size with DPI
+        sf = getattr(self, '_scale_factor', 1.0)
+        self.Size = Size(int(1500 * sf), int(445 * sf))
         self.StartPosition = FormStartPosition.CenterScreen
         
         # Create menu bar
@@ -253,24 +306,42 @@ class OccultationManagerGUI(Form):
         Uses Graphics.FromHwnd(self.Handle) when available and falls back to 96 DPI.
         """
         try:
-            # Ensure a handle exists to query DPI
-            if not getattr(self, 'IsHandleCreated', False):
-                try:
-                    self.CreateControl()
-                except Exception:
-                    pass
-
-            # Use System.Drawing.Graphics.FromHwnd for DPI if possible
+            # Try to get DPI from Graphics if handle is available
+            dpi = 96.0
             try:
-                from System.Drawing import Graphics
-                g = Graphics.FromHwnd(self.Handle)
-                try:
-                    dpi = float(g.DpiX)
-                finally:
-                    g.Dispose()
+                if hasattr(self, 'Handle') and self.Handle:
+                    from System.Drawing import Graphics
+                    g = Graphics.FromHwnd(self.Handle)
+                    try:
+                        dpi = float(g.DpiX)
+                    finally:
+                        g.Dispose()
+                else:
+                    # If no handle yet, try to create it
+                    if not getattr(self, 'IsHandleCreated', False):
+                        try:
+                            self.CreateControl()
+                            from System.Drawing import Graphics
+                            g = Graphics.FromHwnd(self.Handle)
+                            try:
+                                dpi = float(g.DpiX)
+                            finally:
+                                g.Dispose()
+                        except Exception:
+                            pass
             except Exception:
-                # Fallback to classic 96 DPI
-                dpi = 96.0
+                # Final fallback - try using DeviceContext or default to 96 DPI
+                try:
+                    from System.Drawing import Graphics
+                    # Get DPI from a temporary graphics context
+                    g = Graphics.FromHwnd(System.IntPtr.Zero)
+                    try:
+                        dpi = float(g.DpiX)
+                    finally:
+                        g.Dispose()
+                except Exception:
+                    # Ultimate fallback to classic 96 DPI
+                    dpi = 96.0
 
             sf = dpi / 96.0
             if dpi < 110:
@@ -487,8 +558,21 @@ class OccultationManagerGUI(Form):
         panel.Controls.Add(actions_group)
 
         # Make Observation Preparation group the same height as Quick Filters
+        # Calculate width based on event grid width minus Quick Filters width
         try:
-            obs_w = int(self.size_constants.get('obs_group_width', 660))
+            # Calculate total event grid width
+            total_grid_width = 0
+            for col in self.events_grid.Columns:
+                total_grid_width += col.Width
+            
+            # Obs prep width should be: grid width - quick filters width - gap
+            # This makes Quick Filters + gap + Obs Prep = grid width
+            obs_w = total_grid_width - actions_group.Size.Width - gap
+            
+            # Ensure it's wide enough for the event details label inside (640px base + margins)
+            min_content_width = int(round(660 * sf))
+            obs_w = max(min_content_width, obs_w)
+            
             obs_h = actions_group.Size.Height
             # Place to the right of quick filters
             obs_x = start_x + actions_group.Size.Width + gap
@@ -498,6 +582,7 @@ class OccultationManagerGUI(Form):
             # fallback to previous placement
             try:
                 obs_prep_group.Location = Point(270, 5)
+                obs_prep_group.Size = Size(600, 66)
             except Exception:
                 pass
         
@@ -541,11 +626,11 @@ class OccultationManagerGUI(Form):
         self.lbl_selection_summary = Label()
         self.lbl_selection_summary.Text = "No events selected"
         try:
-            self.lbl_selection_summary.Location = Point(5, int(round(panel.Height * 0.45)))
-            self.lbl_selection_summary.Size = Size(int(round(self.size_constants.get('quick_group_width', 310) * 0.55)), int(round(12 * sf)))
+            self.lbl_selection_summary.Location = Point(10, int(round(panel.Height * 0.50)))
+            self.lbl_selection_summary.Size = Size(int(round(self.size_constants.get('quick_group_width', 310) * 0.65)), int(round(18 * sf)))
         except Exception:
-            self.lbl_selection_summary.Location = Point(5, 45)
-            self.lbl_selection_summary.Size = Size(180, 12)
+            self.lbl_selection_summary.Location = Point(10, 45)
+            self.lbl_selection_summary.Size = Size(200, 18)
         actions_group.Controls.Add(self.lbl_selection_summary)
 
         self.events_grid.SelectionChanged += self.grid_selection_changed
@@ -554,17 +639,11 @@ class OccultationManagerGUI(Form):
     
     def create_observation_preparation_group(self):
         """Create the observation preparation control group"""
+        sf = getattr(self, '_scale_factor', 1.0)
+        
         obs_group = GroupBox()
         obs_group.Text = "Observation Preparation - Interactive Setup + Testing"
-        obs_group.Size = Size(660, 66)
-        
-        # Current event display
-        self.lbl_current_event = Label()
-        self.lbl_current_event.Text = "No event loaded for preparation"
-        self.lbl_current_event.Location = Point(290, 25)
-        self.lbl_current_event.Size = Size(430, 15)
-        self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
-        obs_group.Controls.Add(self.lbl_current_event)
+        # Size will be set dynamically by parent panel
         
         # Load Event button
         btn_load_event = Button()
@@ -592,20 +671,27 @@ class OccultationManagerGUI(Form):
         btn_setup_event.Click += self.setup_for_event_click
         btn_setup_event.BackColor = Color.LightGreen
         obs_group.Controls.Add(btn_setup_event)
+        
+        # Current event display - positioned after buttons
+        self.lbl_current_event = Label()
+        self.lbl_current_event.Text = "No event loaded for preparation"
+        self.lbl_current_event.Size = Size(int(200 * sf), int(22 * sf))
+        self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
+        obs_group.Controls.Add(self.lbl_current_event)
 
-        # Layout observation-prep row with a 4px gap
+        # Layout observation-prep row with buttons and label, using 4px gap
         try:
             # Use the same Y offset as quick filters so rows align; apply scale
             sf = getattr(self, '_scale_factor', 1.0)
-            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, self.lbl_current_event], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
                 
         # Event details display
         self.lbl_event_details = Label()
         self.lbl_event_details.Text = ""
-        self.lbl_event_details.Location = Point(10, 45)
-        self.lbl_event_details.Size = Size(570, 12)
+        self.lbl_event_details.Location = Point(10, int(42 * sf))
+        self.lbl_event_details.Size = Size(640, int(18 * sf))
         self.lbl_event_details.Font = Font("Microsoft Sans Serif", 8)
         obs_group.Controls.Add(self.lbl_event_details)
         
