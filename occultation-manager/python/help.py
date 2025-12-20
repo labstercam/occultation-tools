@@ -264,1396 +264,1286 @@ class HelpDialog(Form):
     
     def get_sequences_content(self):
             return """SEQUENCE GENERATION
-        ===================
+===================
 
-        Automated creation of SharpCap sequence files for occultation recording.
+Creating SharpCap .scs files for automated occultation recording.
 
-        Sequences are used rather than direct software control by the tool as it is easier for users to create templates for their own telescope setups, and the sequences can be used manually or sent to another station.
+OVERVIEW
+--------
+Sequences automate SharpCap operations. Sequences are used rather than direct control to allow template customization and manual execution.
 
-        SEQUENCE WORKFLOW
-        -----------------
-        1. Select events using checkboxes in the events grid
-        2. Click "Create Sequences" button in toolbar
-        3. Choose template from Template Selection dialog
-        4. Application generates individual .scs files for each selected event
-        5. Files saved to configured Sequence Path
-        6. Ready for manual loading or automated execution
+WORKFLOW
+--------
+1. Select events using checkboxes
+2. Click Create Sequences button
+3. Choose template from dialog
+4. Application generates .scs files
+5. Files saved to Sequence Path
+6. Load manually in SharpCap or use Run Sequences
 
-        TEMPLATE SYSTEM
-        ---------------
-        Templates define the structure and commands used in sequences:
-        • Built-in default template for standard operations
-        • Custom template support (.txt files in File Folder with "template" in name)
-        • Variable substitution for event-specific data
-        • Template preview and selection interface
+TEMPLATE SYSTEM
+---------------
+• Built-in default template for basic operations
+• Custom templates: .txt files with "template" in name in File Folder
+• Variable substitution for event data
+• Template preview in selection dialog
 
-        Available Template Variables:
-        • {object_name}: Asteroid name
-        • {event_time}: Occultation center time (UTC)
-        • {goto_time}: GOTO start time
-        • {start_time}: Recording start time
-        • {recording_duration}: Total recording seconds
-        • {exposure}: Camera exposure time in seconds
-        • {ra}, {dec}: Target coordinates
-        • {star_mag}, {comb_mag}: Brightness values
-        • {event_time_local}: Event time (local HH:MM:SS)
-        • {goto_time_local}: GOTO time (local HH:MM:SS)
-        • {start_time_local}: Start time (local HH:MM:SS)
+TEMPLATE VARIABLES
+------------------
+{object_name}: Asteroid name
+{event_time}: Event center time UTC
+{goto_time}: GOTO start time
+{start_time}: Recording start time
+{recording_duration}: Total recording seconds
+{exposure}: Camera exposure in seconds
+{ra}, {dec}: Target coordinates
+{star_mag}, {comb_mag}: Brightness values
+{event_time_local}, {goto_time_local}, {start_time_local}: Local times
 
-        FILE NAMING
-        -----------
-        Automatic naming format: YYYYMMDD [Event Name].scs
-        Example: 20241215 433 Eros - Station ABC.scs
+FILE NAMING
+-----------
+Format: YYYYMMDD [Event Name].scs
+Example: 20241215 433 Eros - Station ABC.scs
 
-        BATCH GENERATION
-        ----------------
-        • Select multiple events for simultaneous processing
-        • Each event gets individual sequence file
-        • Progress tracking during generation
-        • Summary report of success/failure counts
+BATCH GENERATION
+----------------
+• Multiple events create multiple files
+• Progress shown during generation
+• Summary report of success/failure
 
-        COMBINED SEQUENCES
-        ------------------
-        Alternative option: "Combined Script" button
-        • Creates single file containing multiple events
-        • Chronologically ordered execution
-        • Automatic transitions between events
-        • Named: YYYYMMDD_[StationName]_Combined_Sequences.scs
+TIMING COORDINATION
+-------------------
+Automatic calculations:
+• GOTO start time with configured lead time
+• Recording start based on uncertainty
+• Recording duration with base duration buffer
 
-        TIMING COORDINATION
-        -------------------
-        Automatic calculations:
-        • GOTO start time with configurable lead time (from Configuration)
-        • Recording start based on event uncertainty
-        • Recording duration including base duration buffer
-        • All times coordinated for precise execution
+EXECUTION OPTIONS
+-----------------
+Manual: Load .scs files in SharpCap
+Automated: Use Run Sequences for timed execution
 
-        EXECUTION OPTIONS
-        -----------------
-        Manual Execution:
-        • Load .scs files directly in SharpCap
-        • User controls timing and start
-
-        Automated Execution:
-        • Use "Run Sequences" button for selected events
-        • Application manages timing and execution automatically
-        • Background processing with status updates
-
-        The sequence generation system creates SharpCap-compatible .scs files with precise timing and complete automation commands for reliable occultation recording."""
+Default template provides basic functionality. Create custom templates for specific equipment."""
 
 
     def get_overview_content(self):
         return """OCCULTATION MANAGER FOR SHARPCAP
-        Author: Michael Camilleri
+Author: Michael Camilleri
 
-        OVERVIEW
-        ========
+OVERVIEW
+========
 
-        The Occultation Manager automates occultation observation workflows using SharpCap.
+A SharpCap integration tool for automated occultation observation management.
 
-        MAIN WORKFLOW
-        -------------
-        1. SETUP: Configure OWC credentials and file paths in Tools → Configuration
-        2. DOWNLOAD: Click "Download Events" to retrieve assigned events from OWC
-        3. FILTER: Use Station Filter and Quick Filters to show desired events
-        4. PREPARE: Use bottom panel tools for interactive setup and verification
-        5. GENERATE: Click "Create Sequences" to generate SharpCap .scs files
-        6. EXECUTE: Use "Run Sequences" for automation or "Run Tonight's Events" for complete automation
+MAIN WORKFLOW
+-------------
+1. Configure OWC credentials and paths (Tools → Configuration)
+2. Download assigned events from OccultWatcher Cloud
+3. Filter by station and date range
+4. Prepare events using interactive setup tools
+5. Generate SharpCap sequence files from templates
+6. Execute sequences with automated timing
 
-        KEY FEATURES
-        ------------
-        • Event download from OccultWatcher Cloud
-        • Station filtering and event organization
-        • Interactive preparation tools (GOTO, plate solving)
-        • Automated sequence generation from templates
-        • Background execution with precise timing
-        • Night vision preserving red theme
-        • Complete automation via "Tonight's Events" button
+KEY FEATURES
+------------
+• OccultWatcher Cloud event download and synchronization
+• Station-based filtering and event organization
+• Calculated exposure times based on star magnitudes
+• Interactive telescope positioning and plate solving
+• Template-based sequence generation (.scs files)
+• Automated sequence execution with precise timing
+• Night Mode theme for observing sessions
 
-        The tool handles everything from event download through automated execution."""
+The tool streamlines occultation workflows from event download through automated recording."""
 
     def get_getting_started_content(self):
         return """GETTING STARTED
-        ===============
+===============
 
-        Quick setup guide for new users.
+Quick setup guide for new users.
 
-        PREREQUISITES
-        -------------
-        • SharpCap 4.1 or later. Most recent version or recent version recommended
-        • OccultWatcher Cloud account with event assignments
-        • API Key assigned to your user in OWC
+PREREQUISITES
+-------------
+• SharpCap 4.1 or later (recent version recommended)
+• OccultWatcher Cloud account with station assignments
+• API Key from OWC user profile
 
-        SETUP CHECKLIST
-        ---------------
-        1. Go to Tools → Configuration
-        2. Enter OWC email/password in Credentials tab
-        3. Get API key from OWC User Profile and enter in API Settings tab
-        4. Set File Folder and Sequence Path in File Paths tab
-        5. Configure recording parameters in Recording tab
-        6. Click Save
+INITIAL CONFIGURATION
+---------------------
+1. Open Tools → Configuration
+2. Credentials tab: Enter OWC email and password
+3. API Settings tab: Paste API key from OWC profile
+4. File Paths tab: Set File Folder and Sequence Path
+5. Recording tab: Set Base Duration, GOTO Lead Time, exposure reference
+6. Click Save
 
-        FIRST USE
-        ---------
-        1. Click "Download Events" to get your assigned events
-        2. Select an event and click "Event Details" to review
-        3. Try "Create Sequences" to generate a test .scs file
-        4. Use preparation tools to test GOTO and plate solving
+FIRST EVENT WORKFLOW
+--------------------
+1. Click Download to retrieve assigned events
+2. Use station filter to select your location
+3. Select an event and click Event Details to review
+4. Use Quick Filters (Today/Future/All) to show relevant events
+5. Check an event checkbox and click Create Sequences
+6. Select a template to generate a .scs file
 
-        Note: Only basic functions are provided by the default sequence template. You will need to modify or setup your own to suit your setups
+The default template provides basic functions. Create custom templates for your specific equipment setup.
 
-        """
+TESTING PREPARATION TOOLS
+-------------------------
+1. Select an event in the grid
+2. Click Load Event in Observation Preparation panel
+3. Test Setup button to configure SharpCap
+4. Test GOTO button for telescope positioning
+5. Use Plate Solve to verify pointing accuracy
+
+Once configured, the tool automates event management and sequence generation."""
 
     def get_initial_setup_content(self):
         return """INITIAL SETUP
-        =============
+=============
 
-        Required configuration steps before first use.
+Configuration required before first use.
 
-        STEP 1: OWC CREDENTIALS
-        -----------------------
-        Tools → Configuration → Credentials tab:
-        • Enter your OccultWatcher Cloud email address
-        • Enter your OWC password
-        • These must match your active OWC account exactly
+CREDENTIALS
+-----------
+Tools → Configuration → Credentials tab:
+• OWC Email: Your OccultWatcher Cloud login email
+• OWC Password: Your account password
 
-        STEP 2: API KEY
-        ---------------
-        Tools → Configuration → API Settings tab:
-        • Log into https://cloud.occultwatcher.net
-        • Go to User Profile → User Permissions
-        • Copy your API key and paste it in the API Settings tab
+Must match active OWC account exactly.
 
-        STEP 3: FILE PATHS
-        ------------------
-        Tools → Configuration → File Paths tab:
-        • File Folder: Where event data and templates are stored
-        • Sequence Path: Where .scs files are generated
-        • Both folders created automatically if they don't exist
+API KEY
+-------
+Tools → Configuration → API Settings tab:
+• Log into https://cloud.occultwatcher.net
+• Navigate to User Profile → User Permissions
+• Copy API key and paste into API Settings
 
-        STEP 4: RECORDING PARAMETERS
-        ----------------------------
-        Tools → Configuration → Recording tab:
-        • Base Duration: Added to event duration (default: 60 seconds)
-        • GOTO Lead Time: How early to start GOTO (default: 240 seconds)
-        • Magnitude Reference: Star magnitude for 40ms exposure (default: 12.0)
+Email must be verified in OWC before API key will work.
 
-        VERIFICATION
-        ------------
-        1. Click "Download Events" - should retrieve your assigned events
-        2. Create a test sequence to verify file generation
-        3. Check that files appear in configured folders"""
+FILE PATHS
+----------
+Tools → Configuration → File Paths tab:
+• File Folder: Event data and template storage location
+• Sequence Path: .scs file output directory
+
+Folders are created automatically if they don't exist.
+
+RECORDING PARAMETERS
+--------------------
+Tools → Configuration → Recording tab:
+• Base Duration: Buffer time added to event duration (default: 60s)
+• GOTO Lead Time: Seconds before event to start positioning (default: 240s)
+• Magnitude Reference: Star magnitude producing 40ms exposure (default: 12.0)
+
+VERIFICATION
+------------
+Click Download to test configuration. Events should load into grid."""
 
     def get_configuration_content(self):
         return """CONFIGURATION
-        =============
+=============
 
-        Access via Tools → Configuration.
+Settings dialog accessed via Tools → Configuration.
 
-        CREDENTIALS TAB
-        ---------------
-        • OWC Email: Your OccultWatcher Cloud login email
-        • OWC Password: Your OWC account password
-        • Must match your active OWC account exactly
+CREDENTIALS TAB
+---------------
+• OWC Email: OccultWatcher Cloud login email
+• OWC Password: Account password
 
-        API SETTINGS TAB
-        ----------------
-        • API Host: OWC server URL (normally don't change)
-        • API Key: Get from OWC User Profile → User Permissions
-        • Email must be verified in OWC first
+API SETTINGS TAB
+----------------
+• API Host: OWC server URL (typically unchanged)
+• API Key: From OWC User Profile → User Permissions
 
-        FILE PATHS TAB
-        --------------
-        • File Folder: Storage for event data and templates
-        • Sequence Path: Where .scs files are saved
-        • Occultations File: Master event database filename
-        • Latest File: Temporary download filename
+FILE PATHS TAB
+--------------
+• File Folder: Event data and template storage
+• Sequence Path: .scs file output location
+• Occultations File: Master event database filename
+• Latest File: Temporary download filename
 
-        RECORDING TAB
-        -------------
-        • Base Duration: Minimum recording time added to event duration
-        • GOTO Lead Time: Seconds before recording to start GOTO
-        • Magnitude for 40ms Exposure: Reference for exposure calculation
+RECORDING TAB
+-------------
+• Base Duration: Buffer added to calculated recording time
+• GOTO Lead Time: Pre-event positioning time
+• Magnitude for 40ms Exposure: Reference for exposure calculations
 
-        All settings are saved automatically and validated when Save is clicked."""
+Settings are validated and saved when Save is clicked."""
 
     def get_first_use_content(self):
         return """FIRST USE
-        =========
+=========
 
-        Step-by-step first session guide.
+Step-by-step first session workflow.
 
-        STEP 1: DOWNLOAD EVENTS
-        -----------------------
-        • Click "Download Events" button
-        • Retrieves all assigned events from OWC
-        • Events appear in main grid with calculated parameters
+DOWNLOAD EVENTS
+---------------
+Click Download button to retrieve assigned events from OWC. Events appear in grid with calculated exposures and recording durations.
 
-        STEP 2: EXPLORE EVENTS
-        ----------------------
-        • Review events in main grid
-        • Click column headers to sort
-        • Use Station Filter to show specific locations
-        • Double-click events for detailed information
+EXPLORE EVENTS
+--------------
+• Click column headers to sort
+• Use station filter dropdown to filter by location
+• Double-click rows for Event Details dialog
+• Check event Status column for timing
 
-        STEP 3: TEST PREPARATION
-        ------------------------
-        • Select an event and click "Load Event" in bottom panel
-        • Try "Setup for Event" to configure SharpCap
-        • Use "GOTO & Center" to test telescope positioning
-        • Try "Plate Solve & Label" to verify position and label the target star
+TEST PREPARATION TOOLS
+----------------------
+1. Select an event in the grid
+2. Click Load Event in Observation Preparation panel
+3. Click Setup to configure SharpCap for the event
+4. Test GOTO to position telescope
+5. Use Plate Solve to verify pointing
 
-        STEP 4: CREATE SEQUENCES
-        ------------------------
-        • Select one or more events using checkboxes
-        • Click "Create Sequences"
-        • Choose template and generate .scs files
-        • Check files are created in Sequence Path
+CREATE TEST SEQUENCE
+--------------------
+1. Check one or more event checkboxes
+2. Click Create Sequences button
+3. Select a template from the dialog
+4. Verify .scs files created in Sequence Path
 
-        STEP 5: VERIFY SETUP
-        --------------------
-        • Open .scs file in text editor to verify content
-        • Test loading sequence in SharpCap
-        • Confirm coordinates and timing are correct"""
+VERIFY OUTPUT
+-------------
+Open generated .scs file in text editor to confirm coordinates, exposure, and timing are correct. Test loading in SharpCap."""
 
     def get_main_interface_content(self):
         return """MAIN INTERFACE
-        ==============
+==============
 
-        The main window layout and key areas.
+Main window layout and components.
 
-        LAYOUT OVERVIEW
-        ---------------
-        1. Menu Bar: Access to all functions
-        2. Toolbar: Quick access buttons in two rows
-        3. Station Filter: Dropdown to filter events by location
-        4. Events Grid: Main display of all events with selection checkboxes
-        5. Bottom Panel: Configuration, preparation tools, and quick filters
-        6. Status Bar: Current operation status and event count
+LAYOUT
+------
+1. Menu Bar: File, Events, Tools, Help
+2. Toolbar: Single row of action buttons
+3. Station Filter: Dropdown for location filtering
+4. Events Grid: Sortable table of all events
+5. Bottom Panel: Quick Filters and Observation Preparation
+6. Status Bar: Operation status and event count
 
-        KEY AREAS
-        ---------
-        Events Grid: Central area showing all event information
-        • Checkboxes for selecting events for batch operations
-        • Sortable columns for organization
-        • Double-click for event details
+EVENTS GRID
+-----------
+Central display showing all event data:
+• Checkboxes for batch selection
+• Sortable columns (click headers)
+• Double-click rows for Event Details
+• Double-click Exposure column to edit
 
-        Bottom Panel Sections:
-        • Configuration: Sequence Path setting
-        • Preparation: Interactive tools for event setup
-        • Quick Filters: Today/Upcoming/All buttons
-        • Selection Summary: Count of selected events
+BOTTOM PANEL
+------------
+Quick Filters group:
+• Today: Events in next 24 hours
+• Future: All upcoming events
+• All: Clear filters
+• On/Off: Toggle selected event checkboxes
+• Selection summary label
 
-        The interface follows a logical workflow from top to bottom: download → filter → select → prepare → generate."""
+Observation Preparation group:
+• Load Event: Select event from grid
+• GOTO: Position telescope
+• Plate Solve: Verify pointing
+• Setup: Configure SharpCap
+• Current event display label
+
+Workflow follows top-to-bottom: download → filter → prepare → generate sequences."""
 
     def get_menu_bar_content(self):
         return """MENU BAR
-        ========
+========
 
-        Complete access to all application functions.
+Top-level menu access to all functions.
 
-        FILE MENU
-        ---------
-        • Download Events: Get latest from OWC
-        • Refresh Events: Reload from local files
-        • Download & Run Tonight's Events: Complete automation
-        • Exit: Close application
+FILE MENU
+---------
+• Download Events: Retrieve assigned events from OWC
+• Refresh Events: Reload from local files
+• Exit: Close application
 
-        EVENTS MENU
-        -----------
-        • Event Details: Show detailed event information
-        • Edit Exposure: Modify exposure time
-        • Select All: Mark all events currently visible in the grid (e.g. only filtered stations)
-        • Select None: Clear all selections
+EVENTS MENU
+-----------
+• Event Details: Show detailed event information dialog
+• Edit Exposure: Modify camera exposure time
+• Select All: Check all visible events
+• Select None: Clear all checkboxes
 
-        SEQUENCES MENU
-        --------------
-        • Create Sequences: Generate .scs files
-        • Generate Combined Script: Single sequence for multiple events
-        • Run Selected Sequences: Automated execution
+TOOLS MENU
+----------
+• Configuration: Open settings dialog
+• Template Manager: Select sequence templates
 
-        TOOLS MENU
-        ----------
-        • Configuration: Settings dialog
-        • Template Manager: Select sequence templates
+HELP MENU
+---------
+• User Guide: This help system
+• About: Version and license information
 
-        HELP MENU
-        ---------
-        • User Guide: This help system
-        • About: Application information
-
-        Most functions are also available via toolbar buttons for quick access."""
+Most functions also available via toolbar buttons for quick access."""
 
     def get_toolbar_content(self):
         return """TOOLBAR
-        =======
+=======
 
-        Two rows of buttons for quick access to common functions.
+Single row of action buttons below menu bar.
 
-        TOP ROW - EVENT MANAGEMENT
-        ---------------------------
-        • Download Events: Get latest from OWC
-        • Refresh: Reload from local files
-        • Tonight's Events: Complete automation
-        • Select All: Mark all events
-        • Select None: Clear selections
-        • Event Details: Show detailed information
-        • Edit Exposure: Modify exposure settings
-        • Test GOTO & Solve: Quick positioning test
-        • Night Mode: Toggle red theme
+BUTTONS (LEFT TO RIGHT)
+-----------------------
+• Download: Retrieve events from OWC
+• Refresh: Reload from local files
+• Station Filter: Dropdown to filter by location
+• Event Details: Show detailed event information
+• Edit Exposure: Modify camera exposure time
+• Create Sequences: Generate .scs files from template
+• Run Sequences: Execute sequences with automated timing
+• Night Mode: Toggle red theme for observing
 
-        BOTTOM ROW - SEQUENCES
-        ----------------------
-        • Create Sequences: Generate .scs files
-        • Run Sequences: Automated execution
-        • Combined Script: Multi-event sequence file
+BUTTON STATES
+-------------
+Some buttons require event selection to be enabled:
+• Event Details: Requires selected row
+• Edit Exposure: Requires selected row
+• Create Sequences: Requires checked events
+• Run Sequences: Requires checked events
 
-        BUTTON STATES
-        -------------
-        • Grayed buttons are disabled (no selection required)
-        • Some buttons require event selection to be active
-        • Night Mode button text changes to reflect current state
-
-        Buttons are arranged in typical workflow order from left to right."""
+Buttons arranged in typical workflow order: download → filter → review → generate → execute."""
 
     def get_events_grid_content(self):
         return """EVENTS GRID
-        ===========
+===========
 
-        Central display showing all occultation events.
+Central table displaying all occultation events.
 
-        COLUMNS
-        -------
-        • Selected: Checkbox for batch operations
-        • Event Name: Asteroid name and station
-        • Station: Observing location
-        • Date/Time UTC: Occultation timing
-        • Star Mag/Comb Mag/Mag Drop: Brightness information
-        • Exposure (ms): Calculated or custom (* indicates custom)
-        • Recording Time (s): Total recording duration
-        • Max Duration (s): Maximum occultation length
-        • Time Error (s): Timing uncertainty
-        • Alt/Az: Target position at event time
-        • Coordinates: RA/Dec (J2000)
-        • OWC: Link to event on OccultWatcher Cloud
-        • Status: Event timing status
+COLUMNS
+-------
+• Selected: Checkbox for batch operations
+• Event Name: Asteroid name and station identifier
+• Station: Observing location
+• Date/Time UTC: Event occurrence time
+• Star Mag: Target star magnitude
+• Comb Mag: Combined magnitude (star + asteroid)
+• Mag Drop: Brightness change during occultation
+• Exposure (ms): Camera exposure time (* = custom)
+• Recording Time (s): Total recording duration
+• Max Duration (s): Maximum occultation length
+• Time Error (s): Timing uncertainty
+• Alt/Az: Target altitude and azimuth at event time
+• Coordinates: RA/Dec J2000
+• OWC: Link to OccultWatcher Cloud event page
+• Status: Event timing status
 
-        INTERACTIONS
-        ------------
-        • Single click: Select row
-        • Double-click: Open Event Details
-        • Double-click Exposure: Edit exposure time
-        • Checkbox: Select for batch operations
-        • Column headers: Sort by that column
-        • OWC link: Opens event in web browser
+INTERACTIONS
+------------
+• Click row: Select event
+• Double-click row: Open Event Details dialog
+• Double-click Exposure cell: Edit exposure time
+• Check checkbox: Select for batch operations
+• Click column header: Sort by that column
+• Click OWC link: Open event in browser
 
-        VISUAL INDICATORS
-        -----------------
-        • * after exposure: Custom exposure (not calculated)
-        • Status shows: future, past, starting soon, etc.
-        • Color coding varies by day/night theme"""
+VISUAL INDICATORS
+-----------------
+• * after exposure: Custom exposure (not calculated)
+• Status values: future, past, starting soon
+• Theme colors adapt for Night Mode"""
 
     def get_station_filter_content(self):
         return """STATION FILTER
-        ==============
+==============
 
-        Dropdown filter below toolbar for showing events by observing location.
+Dropdown combo box in toolbar for filtering events by observing location.
 
-        HOW IT WORKS
-        ------------
-        • Dropdown automatically populated with station names from events
-        • "All Stations" shows everything (default)
-        • Select specific station to filter events
-        • Filter applies immediately when selection changes
-        • Event count updates in status bar
+OPERATION
+---------
+• Dropdown populated with station names from downloaded events
+• "All Stations" shows all events (default)
+• Select station name to filter to that location only
+• Filter applies immediately on selection
+• Status bar updates to show filtered event count
 
-        FEATURES
-        --------
-        • Event selections preserved when filtering
-        • "Clear Filter" button returns to "All Stations"
-        • Works with Quick Filters and sorting
-        • Useful for multi-station observers
+FEATURES
+--------
+• Event checkbox selections preserved when filtering
+• Works in combination with Quick Filters (Today/Future/All)
+• Column sorting preserved during filtering
+• Useful for observers with multiple station assignments
 
-        The Station Filter helps organize events when you have assignments at multiple observing locations."""
+Select "All Stations" to clear the station filter."""
 
     def get_bottom_panel_content(self):
         return """BOTTOM PANEL
-        ============
+============
 
-        Three main sections for configuration, preparation, and filtering.
+Two group boxes for quick filtering and observation preparation.
 
-        CONFIGURATION SECTION
-        ----------------------
-        • Sequence Path: Shows current path for .scs file generation
-        • Browse button to select different folder
-        • Path automatically used for all sequence creation
+QUICK FILTERS GROUP
+-------------------
+Date range filtering buttons:
+• Today: Show events in next 24 hours
+• Future: Show all upcoming events
+• All: Clear date filters (show all events)
+• On/Off: Toggle checkboxes for visible events
 
-        OBSERVATION PREPARATION
-        -----------------------
-        Interactive tools for event setup:
-        • Load Event: Select event from grid for preparation
-        • Setup for Event: Configure SharpCap parameters
-        • GOTO & Center: Execute telescope positioning
-        • Plate Solve & Label: Verify position accuracy
-        • Clear Labels: Remove overlay markers
+Selection Summary label shows count of checked events.
 
-        Event Display shows loaded event details including coordinates, timing, and exposure settings.
+OBSERVATION PREPARATION GROUP
+-----------------------------
+Interactive telescope and camera setup tools:
+• Load Event: Select event from grid for preparation
+• GOTO: Position telescope to event coordinates
+• Plate Solve: Verify telescope pointing accuracy
+• Setup: Configure SharpCap camera and capture settings
 
-        QUICK FILTERS
-        -------------
-        • Today: Show events in next 24 hours
-        • Upcoming: Show all future events
-        • All: Show all events (clear filters)
+Current Event Display shows:
+• Loaded event name and coordinates
+• Event timing (UTC and local)
+• Calculated exposure and recording duration
+• Star magnitudes and other event parameters
 
-        SELECTION SUMMARY
-        -----------------
-        Shows count of selected events and how many are future events that can be executed.
-
-        The bottom panel integrates configuration, interactive preparation, and quick filtering for efficient workflow management."""
+Preparation tools allow interactive testing before generating sequences for automated execution."""
 
     def get_status_bar_content(self):
         return """STATUS BAR
-        ==========
+==========
 
-        Bottom window bar showing current status and event information.
+Bottom edge of window showing current operation status.
 
-        INFORMATION DISPLAYED
-        ---------------------
-        Left Side: Current operation status
-        • "Downloading events..." during network operations
-        • "Downloaded X events" on completion
-        • "Ready" when idle
-        • Error messages when problems occur
+DISPLAYED INFORMATION
+---------------------
+Left side: Operation status messages
+• "Downloading events..." during OWC retrieval
+• "Downloaded X events" on completion
+• "Ready" when idle
+• Error messages for failed operations
+• "Generating sequence..." during file creation
+• "Night mode enabled/disabled" on theme toggle
 
-        Right Side: Event count
-        • Total events currently displayed
-        • Updates with filtering and downloads
-        • Reflects current filter state
+Right side: Event count
+• Total number of displayed events
+• Updates with filters and downloads
 
-        TYPICAL MESSAGES
-        ----------------
-        • "Downloading events from OW Cloud..."
-        • "Downloaded 15 events"
-        • "Loaded event for preparation: [event name]"
-        • "Generating sequence for [event name]..."
-        • "Night mode enabled/disabled"
+TYPICAL MESSAGES
+----------------
+• "Downloading events from OW Cloud..."
+• "Downloaded 15 events"
+• "Loaded event for preparation: [name]"
+• "Generating sequence for [name]..."
+• "Night mode enabled"
 
-        The status bar provides immediate feedback on all operations and current system state."""
+Provides immediate feedback for all operations."""
 
     def get_downloading_events_content(self):
         return """DOWNLOADING EVENTS
-        ==================
+==================
 
-        Getting event data from OccultWatcher Cloud.
+Retrieve assigned events from OccultWatcher Cloud.
 
-        DOWNLOAD PROCESS
-        ----------------
-        Click "Download Events" button:
-        1. Connects to OWC using configured credentials
-        2. Retrieves all events assigned to your stations
-        3. Calculates exposure times based on star magnitudes
-        4. Determines recording durations with uncertainty buffers
-        5. Saves to occultations_latest.json and merges with occultations.json
-        6. Updates events grid display
+PROCESS
+-------
+Click Download button:
+1. Connects to OWC using configured credentials
+2. Retrieves all events assigned to your stations
+3. Calculates exposure times from star magnitudes
+4. Calculates recording durations with uncertainty buffers
+5. Saves to occultations_latest.json
+6. Merges with occultations.json master file
+7. Updates events grid display
 
-        WHAT GETS DOWNLOADED
-        --------------------
-        • All events assigned to your OWC stations
-        • Complete timing and coordinate data
-        • Star magnitudes for exposure calculation
-        • Uncertainty values for duration calculation
-        • Links to detailed OWC event pages
+DOWNLOADED DATA
+---------------
+• Event timing and coordinates (RA/Dec)
+• Star and asteroid magnitudes
+• Duration and uncertainty values
+• Altitude and azimuth at event time
+• OWC event page links
 
-        AUTOMATIC PROCESSING
-        --------------------
-        • Exposure calculation using magnitude reference from Configuration
-        • Recording duration = max duration + base duration from Configuration
-        • GOTO time = event time - lead time from Configuration
-        • Automatic removal of events older than 14 days
+AUTOMATIC CALCULATIONS
+----------------------
+Exposure calculation:
+• Based on star magnitude and reference from Configuration
+• Formula: 40ms * 2.5^(star_mag - ref_mag)
 
-        FILE MANAGEMENT
-        ---------------
-        • Events saved to File Folder as occultations.json
-        • Latest download saved as occultations_latest.json
-        • Custom exposure modifications preserved across downloads
+Recording duration:
+• max_duration + (2 * time_error) + base_duration
 
-        Download frequency: daily during active periods or when new events are assigned."""
+GOTO timing:
+• event_time - goto_lead_time from Configuration
+
+FILE MANAGEMENT
+---------------
+• occultations.json: Master database
+• occultations_latest.json: Most recent download
+• Custom exposures preserved during merge
+• Events older than 14 days automatically removed
+
+Download frequency: Daily or when new assignments appear in OWC."""
 
     def get_editing_exposures_content(self):
         return """EDITING EXPOSURES
-    =================
+=================
 
-        Modifying camera exposure times for specific events.
+Modify camera exposure times for specific events.
 
-        ACCESS METHODS
-        --------------
-        • Select event and click "Edit Exposure" button, OR
-        • Double-click the Exposure column in events grid
+ACCESS
+------
+• Double-click Exposure column in events grid, OR
+• Select event and click Edit Exposure button, OR
+• Events menu → Edit Exposure
 
-        EXPOSURE EDITOR
-        ---------------
-        • Shows current exposure (calculated or custom)
-        • Text input for manual entry
-        • Quick-set buttons: 10ms, 20ms, 40ms, 100ms, etc.
-        • Reset button to return to calculated value
-        • OK/Cancel buttons
+EXPOSURE EDITOR DIALOG
+----------------------
+• Shows current exposure (calculated or custom)
+• Text input for manual entry in milliseconds
+• Quick-set buttons: 10ms, 20ms, 40ms, 100ms, 200ms, etc.
+• Reset button to restore calculated value
+• OK saves changes, Cancel discards
 
-        AUTOMATIC vs CUSTOM
-        -------------------
-        • Default exposures calculated from star magnitude and configuration
-        • Custom exposures show "*" in events grid
-        • Custom settings override automatic calculation
-        • Reset button returns to automatic calculation
+CALCULATED VS CUSTOM
+--------------------
+Calculated exposures:
+• Based on star magnitude and reference from Configuration
+• Formula: 40ms * 2.5^(star_mag - ref_mag)
+• Automatically determined on download
 
-        VALIDATION
-        ----------
-        • Values must be between 1ms and 10000ms
-        • Invalid entries show warning messages
-        • Changes applied when OK clicked
+Custom exposures:
+• Manually set by user
+• Marked with * in events grid
+• Preserved across event downloads
+• Override calculated values
 
-        Custom exposures are preserved across event downloads and remembered for future use."""
+WHEN TO CUSTOMIZE
+-----------------
+• Known camera sensitivity differs from reference
+• Specific exposure needed for target star
+• Site-specific lighting conditions
+• Testing different exposure times
+
+Custom exposures are saved in occultations.json and persist."""
 
     def get_selecting_events_content(self):
         return """SELECTING EVENTS
-        ================
+================
 
-        Choosing events for batch operations using checkboxes.
+Choosing events for batch operations using checkboxes.
 
-        SELECTION METHODS
-        -----------------
-        • Individual: Click checkbox in "Selected" column
-        • Bulk: "Select All" or "Select None" buttons
-        • Checkboxes work with current filter settings
+SELECTION METHODS
+-----------------
+Individual:
+• Click checkbox in Selected column
 
-        SELECTION BEHAVIOR
-        ------------------
-        • Selections preserved when changing filters
-        • Hidden events stay selected but don't appear in operations
-        • Selection summary shown in bottom panel
-        • Grid highlighting different from checkbox selection
+Bulk:
+• Select All: Check all visible events
+• Select None: Clear all checkboxes
+• On/Off toggle: Toggle checkboxes for visible events
 
-        BATCH OPERATIONS
-        ----------------
-        Selected events used for:
-        • Creating sequence files
-        • Generating combined scripts
-        • Running automated sequences
-        • Statistical summaries
+SELECTION BEHAVIOR
+------------------
+• Selections preserved when changing filters
+• Hidden filtered events remain selected
+• Selection summary shows count in bottom panel
+• Row highlighting separate from checkbox state
 
-        WORKFLOW TIPS
-        -------------
-        • Use Station Filter then Select All for location-specific operations
-        • Use Quick Filters (Today/Upcoming) then select for time-based operations
-        • Check selection summary before batch operations
+BATCH OPERATIONS
+----------------
+Checked events used for:
+• Creating sequence files (.scs generation)
+• Running automated sequences with timing
+• Batch statistics and reporting
 
-        The selection system supports both single-event workflows and complex multi-event batch processing."""
+WORKFLOW TIPS
+-------------
+• Apply Station Filter, then Select All for location-specific operations
+• Use Quick Filters (Today/Future), then select for time-based operations
+• Check selection summary before batch operations
+• Clear selections with Select None between different tasks
+
+Selection system supports individual and batch workflows."""
 
     def get_event_management_content(self):
         return """EVENT MANAGEMENT
-        ================
+================
 
-        Organizing and working with occultation events.
+Organizing and working with occultation events.
 
-        CORE FUNCTIONS
-        --------------
-        Download Events:
-        • Retrieves latest assignments from OWC
-        • Processes and validates event data
-        • Merges with existing events automatically
+DOWNLOAD
+--------
+Retrieve assigned events from OWC. Events are processed with calculated exposures, recording times, and GOTO timing.
 
-        Event Display:
-        • Comprehensive grid with sortable columns
-        • Real-time status updates
-        • Visual indicators for custom settings
-        • Links to detailed OWC event pages
+DISPLAY
+-------
+Events grid shows:
+• Sortable columns for all event parameters
+• Real-time status updates
+• Custom exposure indicators (*)
+• OWC links for detailed information
 
-        Event Selection:
-        • Individual checkboxes and bulk selection tools
-        • Selection preserved across filtering operations
-        • Batch operations on selected events
+SELECTION
+---------
+Checkbox selection for batch operations:
+• Individual event selection
+• Select All/Select None commands
+• On/Off toggle for filtered events
+• Selections preserved during filtering
 
-        FILTERING CAPABILITIES
-        ----------------------
-        • Station Filter: Show events for specific locations
-        • Quick Filters: Today/Upcoming/All for time-based selection
-        • Column sorting: Click headers to sort by any field
-        • Combined filtering for precise event selection
+FILTERING
+---------
+• Station Filter: Show specific locations
+• Quick Filters: Today/Future/All time ranges
+• Column sorting: Click headers
+• Combined filters for precise selection
 
-        DATA MANAGEMENT
-        ---------------
-        • Automatic exposure calculations based on star magnitudes
-        • Recording duration with uncertainty buffers
-        • GOTO timing with configurable lead times
-        • Custom modifications preserved across downloads
-        • Automatic cleanup of events older than 14 days
-
-        The event management system handles everything from download through selection for automated operations."""
+Data management includes automatic exposure calculations, recording duration with buffers, and cleanup of old events."""
 
     def get_creating_sequences_content(self):
         return """CREATING SEQUENCES
-        ==================
+==================
 
-        Generating SharpCap .scs files from selected events.
+Generate SharpCap .scs files from selected events.
 
-        SEQUENCE CREATION
-        -----------------
-        1. Select events using checkboxes
-        2. Click "Create Sequences" button
-        3. Choose template from selection dialog
-        4. Application generates individual .scs file for each event
-        5. Files saved to configured Sequence Path
+PROCESS
+-------
+1. Check event checkboxes in grid
+2. Click Create Sequences button
+3. Select template from dialog
+4. Application generates .scs file for each event
+5. Files saved to Sequence Path from Configuration
 
-        TEMPLATE SYSTEM
-        ---------------
-        • Built-in default template if no custom template exists
-        • Custom templates: .txt files with "template" in name in File Folder
-        • Template preview shows content before selection
-        • Variables automatically replaced with event data
+TEMPLATE SELECTION
+------------------
+Dialog shows:
+• Available templates with file information
+• Template content preview
+• File size and modification date
+• Default template if no custom templates exist
 
-        GENERATED FILES
-        ---------------
-        • Named: YYYYMMDD [Event Name].scs
-        • Contains complete SharpCap commands for automation
-        • Includes timing, coordinates, and recording parameters
-        • Ready for manual loading or automated execution
+FILE GENERATION
+---------------
+Each event creates one .scs file:
+• Filename: YYYYMMDD [Event Name].scs
+• Contains SharpCap commands
+• Timing, coordinates, and recording parameters
+• Ready for manual or automated execution
 
-        BATCH PROCESSING
-        ----------------
-        • Multiple events create multiple sequence files
-        • Progress shown during generation
-        • Success/failure count reported
-        • Each file independent and self-contained
+BATCH PROCESSING
+----------------
+• Multiple checked events create multiple files
+• Progress messages during generation
+• Success/failure summary
 
-        The sequence generation system transforms event data into executable SharpCap automation files."""
+Template variables replaced with event-specific data during generation."""
 
     def get_template_selection_content(self):
         return """TEMPLATE SELECTION
-    ==================
+==================
 
-        Choosing templates for sequence generation.
+Choose templates for sequence generation.
 
-        TEMPLATE DIALOG
-        ---------------
-        • Shows available templates with file information
-        • Template preview displays full content
-        • File size and modification date shown
-        • Selection updates preview immediately
+DIALOG
+------
+Template Selection dialog shows:
+• Available templates with filenames
+• File size and modification date
+• Template content preview pane
+• Selection updates preview immediately
 
-        TEMPLATE TYPES
-        --------------
-        • Default Template: Built-in template used when no custom files exist
-        • Custom Templates: .txt files in File Folder with "template" in filename
-        • Template preview shows complete content with proper formatting
+TEMPLATE TYPES
+--------------
+Default Template:
+• Built-in template used when no custom files exist
+• Provides basic functionality
 
-        TEMPLATE VARIABLES
-        ------------------
-        Variables replaced with event data:
-        • {object_name}: Asteroid name
-        • {event_time}: Event center time (UTC)
-        • {goto_time}: GOTO start time
-        • {recording_duration}: Recording seconds
-        • {exposure}: Exposure time
-        • {ra}, {dec}: Target coordinates
-        • And many others for complete customization
+Custom Templates:
+• .txt files in File Folder with "template" in filename
+• Fully customizable SharpCap commands
+• Variable placeholders for event data
 
-        CUSTOM TEMPLATES
-        ----------------
-        • Create .txt file in File Folder
-        • Include "template" in filename
-        • Use SharpCap commands with variable placeholders
-        • Test with sample events before critical use
+TEMPLATE VARIABLES
+------------------
+Variables replaced during generation:
+{object_name}: Asteroid name
+{event_time}: UTC event time
+{goto_time}: GOTO start time
+{start_time}: Recording start time
+{recording_duration}: Recording seconds
+{exposure}: Camera exposure time
+{ra}, {dec}: Coordinates
+{star_mag}, {comb_mag}: Magnitudes
+{event_time_local}, {goto_time_local}, {start_time_local}: Local times
 
-        The template system allows complete customization of generated sequence commands while providing sensible defaults."""
+CUSTOM TEMPLATES
+----------------
+To create custom template:
+1. Create .txt file in File Folder
+2. Include "template" in filename
+3. Write SharpCap commands with variable placeholders
+4. Test with sample events
+
+Templates allow full customization for specific equipment setups."""
 
     def get_combined_scripts_content(self):
         return """COMBINED SCRIPTS
-        ================
+================
 
-        Creating single sequence files containing multiple events.
+Single sequence files containing multiple events.
 
-        COMBINED SCRIPT CREATION
-        ------------------------
-        1. Select multiple events using checkboxes
-        2. Click "Combined Script" button
-        3. Choose template for sequence generation
-        4. Application creates single .scs file with all events
+FEATURE NOTE
+------------
+Combined script generation functionality exists in the code but is not currently exposed in the user interface. Use individual sequence generation instead.
 
-        COMBINED FILE FEATURES
-        ----------------------
-        • Events ordered chronologically by GOTO time
-        • Complete timing coordination between events
-        • Single file for simplified execution
-        • Named: YYYYMMDD_[StationName]_Combined_Sequences.scs
+CONCEPT
+-------
+When available, combined scripts would:
+• Merge multiple events into single .scs file
+• Order events chronologically
+• Provide single-file execution for multiple events
+• Filename: YYYYMMDD_[StationName]_Combined_Sequences.scs
 
-        WHEN TO USE
-        -----------
-        • Multiple events in one observing session
-        • All-night automated observations
-        • Events from same observing station
-        • Minimal manual intervention desired
+CURRENT WORKFLOW
+----------------
+Generate individual sequences for each event:
+1. Check multiple event checkboxes
+2. Click Create Sequences
+3. Use Run Sequences for automated execution of multiple files
 
-        MULTI-STATION HANDLING
-        ----------------------
-        • Warning dialog if events from different stations selected
-        • File created but may need manual coordination
-        • Consider separate combined files per station
-
-        Combined scripts simplify execution by merging multiple events into one automated sequence file."""
+Individual sequences provide same automation with more flexibility."""
 
     def get_running_sequences_content(self):
         return """RUNNING SEQUENCES
-        =================
+=================
 
-        Automated execution of generated sequence files.
+Execute generated sequence files with automated timing.
 
-        EXECUTION METHODS
-        -----------------
-        Manual Execution:
-        • Load .scs files directly in SharpCap
-        • User controls timing and start
+EXECUTION METHODS
+-----------------
+Manual:
+• Load .scs files directly in SharpCap
+• User controls timing and start
 
-        Automated Execution:
-        • Click "Run Sequences" for selected events
-        • Application manages timing automatically
-        • Sequences start at calculated GOTO times
+Automated:
+• Check event checkboxes
+• Click Run Sequences button
+• Application manages timing automatically
 
-        AUTOMATED PROCESS
-        -----------------
-        1. Select events with future GOTO times
-        2. Click "Run Sequences" button
-        3. Application waits for each event's GOTO time
-        4. Sequences execute automatically in chronological order
-        5. Status updates show progress
+AUTOMATED PROCESS
+-----------------
+1. Select events with future GOTO times
+2. Click Run Sequences
+3. Application waits for each event's GOTO time
+4. Sequences execute automatically in chronological order
+5. Status updates show progress
 
-        TONIGHT'S EVENTS
-        ----------------
-        Complete automation via "Tonight's Events" button:
-        • Downloads latest events
-        • Filters for next 24 hours
-        • Creates sequences automatically
-        • Starts execution immediately
-        • Hands-off operation for entire night
+REQUIREMENTS
+------------
+• SharpCap running and accessible
+• Sequence files exist for selected events (.scs in Sequence Path)
+• Events must have future GOTO times
+• System remains running until completion
 
-        REQUIREMENTS
-        ------------
-        • SharpCap running and accessible
-        • Sequence files exist for selected events
-        • Events must have future GOTO times
-        • System remains running until completion
-
-        Automated execution provides reliable hands-off operation while maintaining manual control options when needed."""
+Automated execution provides hands-off operation with precise timing while maintaining manual control option."""
 
     def get_troubleshooting_content(self):
         return """TROUBLESHOOTING
-    ===============
+===============
 
-        Solutions for common problems.
+Solutions for common problems.
 
-        EVENT DOWNLOAD ISSUES
-        ---------------------
-        No Events Downloaded:
-        • Check OWC credentials in Configuration
-        • Verify event assignments exist in OWC
-        • Confirm internet connection
+EVENT DOWNLOAD ISSUES
+---------------------
+No events downloaded:
+• Check OWC credentials in Configuration
+• Verify event assignments exist in OWC
+• Confirm internet connection
 
-        Authentication Errors:
-        • Verify email address confirmed in OWC
-        • Check API key from OWC User Profile
-        • Test login on OWC website
+Authentication errors:
+• Verify email confirmed in OWC
+• Check API key from OWC User Profile
+• Test login on OWC website
 
-        SEQUENCE PROBLEMS
-        -----------------
-        Empty Sequence Files:
-        • Verify template file exists in File Folder
-        • Check template contains valid SharpCap commands
-        • Ensure template uses correct variable syntax
+SEQUENCE PROBLEMS
+-----------------
+Empty or invalid sequences:
+• Verify template file exists in File Folder
+• Check template contains valid SharpCap commands
+• Ensure template uses correct variable syntax
 
-        Template Not Found:
-        • Place .txt file with "template" in name in File Folder
-        • Check File Folder path in Configuration
+Template not found:
+• Place .txt file with "template" in name in File Folder
+• Check File Folder path in Configuration
 
-        SHARPCAP INTEGRATION
-        --------------------
-        Cannot Connect:
-        • Ensure SharpCap 4.1+ is running
-        • Close other applications controlling SharpCap
-        • Restart both applications
+SHARPCAP INTEGRATION
+--------------------
+Cannot connect:
+• Ensure SharpCap 4.1+ is running
+• Close other applications controlling SharpCap
+• Restart both applications
 
-        GOTO Problems:
-        • Check mount connected in SharpCap
-        • Test GOTO manually first
-        • Verify coordinates are reasonable
+GOTO problems:
+• Check mount connected in SharpCap
+• Test GOTO manually first
+• Verify coordinates are reasonable
 
-        FILE ISSUES
-        -----------
-        Cannot Save Files:
-        • Check folder permissions
-        • Run as administrator if needed
-        • Verify sufficient disk space
+FILE ISSUES
+-----------
+Cannot save files:
+• Check folder permissions
+• Verify paths in Configuration
+• Ensure sufficient disk space
 
-        Most issues resolve by checking Configuration settings and ensuring prerequisites are met."""
+Check Configuration settings first for most issues. Error messages provide specific guidance."""
 
-    def get_event_details_content(self):  # (fixed indentation)
+    def get_event_details_content(self):
         return """EVENT DETAILS
-    =============
+=============
 
-    Access event details by selecting an event and clicking "Event Details" or double-clicking any event row.
+Detailed event information dialog.
 
-    INFORMATION SECTIONS
-    --------------------
-    Event Information:
-    • Event name (asteroid + station)
-    • Asteroid designation and proper name
-    • Target star identification
-    • Observing station details
-    • Data source (OWCloud)
-    • Link to view on OWC website
+ACCESS
+------
+• Double-click event row in grid, OR
+• Select event and click Event Details button, OR
+• Events menu → Event Details
 
-    Timing Information:
-    • Event time (predicted center time)
-    • GOTO time (when to start slewing)
-    • Recording start and end times
-    • Maximum duration and timing uncertainty
-    • All times shown in UTC
+DISPLAYED INFORMATION
+---------------------
+Timing:
+• Event date/time (UTC)
+• Local time conversion
+• GOTO and recording start times
+• Recording duration
 
-    Recording Settings:
-    • Calculated or custom exposure time
-    • Total recording duration
-    • Pre-calculated exposure from OWC data
-    • Indication of custom vs. calculated settings
+Coordinates:
+• RA/Dec J2000
+• Altitude and azimuth at event time
 
-    Photometry Information:
-    • Star magnitude (unoccluded brightness)
-    • Combined magnitude (star + asteroid)
-    • Expected magnitude drop during occultation
-    • Useful for planning recording settings
+Magnitudes:
+• Star magnitude
+• Combined magnitude (star + asteroid)
+• Magnitude drop during occultation
 
-    Position Information:
-    • Right Ascension and Declination (J2000)
-    • Altitude and azimuth at event time
-    • Target coordinates for GOTO operations
+Parameters:
+• Calculated or custom exposure time
+• Maximum occultation duration
+• Timing uncertainty
+• Station name
 
-    Observer Location:
-    • Station latitude and longitude
-    • Used for local predictions and timing
+OWC LINK
+--------
+Button opens event page in OccultWatcher Cloud for additional details including finder charts and event predictions.
 
-    Technical Information:
-    • Internal event identifiers
-    • OWCloud event ID for reference
-    • Object catalog number
+Dialog is read-only. Use Edit Exposure to modify camera exposure."""
 
-    USING EVENT DETAILS
-    -------------------
-    • Review all parameters before observation
-    • Verify coordinates match your planning
-    • Check timing uncertainty for recording duration
-    • Note altitude for observability planning
-    • Use OWC link for additional event information
-
-    The details dialog provides comprehensive information for planning and verification of occultation observations."""
-
-    def get_observation_prep_content(self):  # (generated)
+    def get_observation_prep_content(self):
         return """OBSERVATION PREPARATION
-    =======================
+=======================
 
-    Interactive tools in the bottom panel for setting up occultation observations.
+Interactive tools in bottom panel for telescope and camera setup.
 
-    PREPARATION WORKFLOW
-    --------------------
-    1. Select event in main grid
-    2. Click "Load Event" to prepare for setup
-    3. Use "Setup for Event" to configure SharpCap
-    4. Click "GOTO & Center" for telescope positioning
-    5. Use "Plate Solve & Label" to verify position
-    6. Click "Clear Labels" to clean up display
+WORKFLOW
+--------
+1. Select event in events grid
+2. Click Load Event button
+3. Use Setup button to configure SharpCap
+4. Click GOTO to position telescope
+5. Use Plate Solve to verify pointing
 
-    LOAD EVENT FUNCTION
-    -------------------
-    • Takes first selected event from main grid
-    • Displays event details in preparation panel
-    • Shows event name, coordinates, timing, exposure settings
-    • Enables all preparation tool buttons
+LOAD EVENT
+----------
+• Select event from grid for preparation
+• Displays event details in panel
+• Shows name, coordinates, timing, exposure
+• Enables preparation tool buttons
 
-    PREPARATION TOOLS
-    -----------------
-    Setup for Event:
-    • Configures SharpCap camera settings automatically
-    • Sets exposure time from event data
-    • Applies target information to SharpCap
+PREPARATION TOOLS
+-----------------
+Setup:
+• Configures SharpCap camera settings
+• Sets exposure time from event data
+• Applies target information
 
-    GOTO & Center:
-    • Executes telescope GOTO to target coordinates
-    • Waits for mount settling and completion
-    • Reports success/failure status
+GOTO:
+• Positions telescope to target coordinates
+• Uses RA/Dec from loaded event
+• Waits for mount completion
+• Reports success/failure
 
-    Plate Solve & Label:
-    • Initiates plate solving on current field
-    • Verifies target position accuracy
-    • Shows target information dialog
-    • Adds overlay labels marking target location
+Plate Solve:
+• Initiates plate solving on current field
+• Verifies target position accuracy
+• Shows target information
 
-    Clear Labels:
-    • Removes overlay markers and labels
-    • Cleans up display for fresh preparation
+Current Event Display shows loaded event details including coordinates, timing, exposure, and magnitudes.
 
-    The preparation tools provide step-by-step interactive setup and verification before manual or automated recording."""
+Preparation tools allow interactive testing before generating sequences for automated execution."""
 
-    def get_loading_events_content(self):  # (generated)
+    def get_loading_events_content(self):
         return """LOADING EVENTS
-    ==============
+==============
 
-    Methods for getting occultation event data into the application.
+Methods for getting event data into the application.
 
-    LOADING METHODS
-    ---------------
-    Download Events:
-    • Primary method using "Download Events" button
-    • Connects to OccultWatcher Cloud via configured credentials
-    • Retrieves all events assigned to your stations
-    • Processes and saves data automatically
+DOWNLOAD EVENTS
+---------------
+Primary method:
+• Click Download button
+• Connects to OWC with configured credentials
+• Retrieves events assigned to your stations
+• Processes and saves data automatically
 
-    Refresh Events:
-    • "Refresh Events" reloads from local occultations.json file
-    • Updates display without network access
-    • Useful when working with previously downloaded data
+REFRESH EVENTS
+--------------
+• Reloads from local occultations.json
+• Updates display without network access
+• Useful for previously downloaded data
 
-    DOWNLOAD PROCESS
-    ----------------
-    1. Connects to OWC using email/password and API key
-    2. Downloads all events for your assigned stations
-    3. Calculates exposure times based on star magnitudes
-    4. Determines recording durations with uncertainty buffers
-    5. Saves to occultations_latest.json and merges with occultations.json
-    6. Updates events grid display
+DOWNLOAD PROCESS
+----------------
+1. Connect to OWC using email/password and API key
+2. Download events for assigned stations
+3. Calculate exposures from star magnitudes
+4. Calculate recording durations with uncertainty buffers
+5. Save to occultations_latest.json
+6. Merge with occultations.json master file
+7. Update events grid
 
-    AUTOMATIC PROCESSING
-    --------------------
-    • Exposure calculation using magnitude reference from Configuration
-    • Recording duration = max duration + base duration + uncertainty buffer
-    • GOTO time calculation with configurable lead time
-    • Coordinate validation and formatting
-    • Automatic removal of events older than 14 days
+FILE MANAGEMENT
+---------------
+• occultations.json: Master database
+• occultations_latest.json: Most recent download
+• Custom exposures preserved
+• Events older than 14 days removed automatically"""
 
-    FILE MANAGEMENT
-    ---------------
-    • Events saved to File Folder as occultations.json
-    • Latest download saved as occultations_latest.json
-    • Automatic merge prevents duplicates
-    • Custom exposure settings preserved across downloads
-
-    The loading system automatically handles all data processing and file management for seamless event updates."""
-
-    def get_goto_centering_content(self):  # (generated)
+    def get_goto_centering_content(self):
         return """GOTO & CENTERING
-    ================
+================
 
-    Automated telescope positioning using the "GOTO & Center" button in the preparation panel.
+Automated telescope positioning via GOTO button.
 
-    GOTO PROCESS
-    ------------
-    1. Uses RA/Dec coordinates from loaded event (J2000)
-    2. Sends GOTO command through SharpCap mount control
-    3. Waits for mount to complete slew
-    4. Reports success/failure status
-    5. Provides starting point for fine centering or plate solving
+PROCESS
+-------
+1. Uses RA/Dec coordinates from loaded event (J2000)
+2. Sends GOTO command through SharpCap mount control
+3. Waits for mount to complete slew
+4. Reports success/failure status
 
-    REQUIREMENTS
-    ------------
-    • Mount connected and working in SharpCap
-    • Valid coordinates loaded from selected event
-    • Mount control active and responsive
-    • Event loaded in preparation panel
+REQUIREMENTS
+------------
+• Mount connected and active in SharpCap
+• Valid coordinates loaded from event
+• Mount control responsive
+• Event loaded in preparation panel
 
-    INTEGRATION
-    -----------
-    • Works through SharpCap's mount control interface
-    • Uses coordinates directly from event data
-    • Integrates with preparation workflow
-    • Prepares field for plate solving verification
+INTEGRATION
+-----------
+• Works through SharpCap's mount control interface
+• Uses coordinates directly from event data
+• Provides starting point for plate solving
+• Verify position before recording"""
 
-    TYPICAL ACCURACY
-    ----------------
-    • Gets telescope within 1-10 arcminutes of target
-    • Accuracy depends on mount alignment quality
-    • Provides starting point for fine positioning
-    • May require plate solving for precise positioning
-
-    The GOTO function provides automated telescope positioning as part of the interactive preparation workflow."""
-
-    def get_plate_solving_content(self):  # (generated)
+    def get_plate_solving_content(self):
         return """PLATE SOLVING
-    =============
+=============
 
-    Astrometric verification using the "Plate Solve & Label" button in the preparation panel.
+Verify telescope pointing accuracy.
 
-    PLATE SOLVING PROCESS
-    ---------------------
-    1. Captures current camera image automatically
-    2. Processes image through SharpCap's plate solving engine
-    3. Determines exact field center coordinates
-    4. Compares solved position with target coordinates
-    5. Shows target information dialog with results
-    6. Adds overlay labels marking target location
+PROCESS
+-------
+1. Click Plate Solve button in preparation panel
+2. SharpCap captures current camera image
+3. Plate solve engine determines exact pointing
+4. Shows target information dialog
+5. Verifies coordinates match event target
 
-    REQUIREMENTS
-    ------------
-    • Camera connected and working in SharpCap
-    • Sufficient stars visible in current field
-    • Event loaded in preparation panel
-    • SharpCap plate solving configured and working
+REQUIREMENTS
+------------
+• Plate solving configured in SharpCap
+• Camera connected and imaging
+• Sufficient stars visible in field
+• Event loaded in preparation panel
 
-    RESULTS PROVIDED
-    ----------------
-    • Exact field center coordinates
-    • Target position verification
-    • Pointing accuracy measurement
-    • Visual overlay showing target location
-    • Confirmation dialog with solving details
+RESULTS
+-------
+• Exact field center coordinates
+• Target position verification
+• Pointing accuracy measurement
+• Confirmation of setup accuracy
 
-    INTEGRATION
-    -----------
-    • Uses SharpCap's built-in plate solving
-    • Works with current camera image
-    • Integrates with preparation workflow
-    • Provides visual confirmation of setup
+INTEGRATION
+-----------
+• Uses SharpCap's built-in plate solving
+• Works with current camera image
+• Provides definitive position verification
 
-    CLEAR LABELS
-    ------------
-    • "Clear Labels" button removes overlay markers
-    • Cleans up display after plate solving
-    • Resets view for fresh preparation
+Plate solving confirms accurate target positioning before automated recording."""
 
-    Plate solving provides precise position verification as part of the interactive observation preparation process."""
-
-    def get_advanced_content(self):  # (generated)
+    def get_advanced_content(self):
         return """ADVANCED FEATURES
-    =================
+=================
 
-    Sophisticated tools and capabilities for experienced users.
+Additional capabilities for experienced users.
 
-    NIGHT MODE
-    ----------
-    • Click "Night Mode" button in toolbar to activate
-    • Complete red-tinted interface for night vision preservation
-    • Consistent theming across all dialogs and windows
-    • Toggle anytime with immediate visual change
-    • Setting automatically saved and restored
+NIGHT MODE
+----------
+• Click Night Mode button in toolbar
+• Red-tinted interface for night vision preservation
+• Theming across all dialogs and windows
+• Toggle anytime with immediate effect
+• Setting saved and restored
 
-    TONIGHT'S EVENTS AUTOMATION
-    ---------------------------
-    • Single "Tonight's Events" button for complete automation
-    • Downloads latest events, filters for next 24 hours
-    • Automatically selects and generates sequences
-    • Immediately starts automated execution
-    • Hands-off operation for entire night's events
+BATCH PROCESSING
+----------------
+• Select multiple events with checkboxes
+• Generate multiple sequences simultaneously
+• Filter and select specific subsets
+• Automated execution of multiple events
 
-    COMBINED SCRIPT GENERATION
-    --------------------------
-    • "Combined Script" button creates single multi-event sequence
-    • Chronological ordering of selected events
-    • Automatic transitions between events
-    • Single file for all-night automation
-    • Named: YYYYMMDD_[StationName]_Combined_Sequences.scs
+TEMPLATE CUSTOMIZATION
+----------------------
+• Create custom .txt templates in File Folder
+• Include "template" in filename
+• Use variable placeholders for event data
+• Full control over SharpCap commands
 
-    BATCH PROCESSING
-    ----------------
-    • Multi-event sequence generation
-    • Bulk selection tools (Select All/Select None)
-    • Station-based filtering and operations
-    • Persistent selections across filter changes
+Advanced features provide flexibility for various observation workflows."""
 
-    AUTOMATED EXECUTION
-    -------------------
-    • "Run Sequences" button for hands-off execution
-    • Background processing with status updates
-    • Automatic timing coordination for multiple events
-    • Thread-safe operation maintaining interface responsiveness
-
-    CONFIGURATION PROFILES
-    ----------------------
-    • Complete configuration system via Tools → Configuration
-    • Automatic saving of all settings
-    • Reset to Defaults option available
-    • Settings preserved across application restarts
-
-    These advanced features provide professional-grade automation while maintaining ease of use for standard operations."""
-
-    def get_tonights_events_content(self):  # (generated)
+    def get_tonights_events_content(self):
         return """TONIGHT'S EVENTS
-    ================
+================
 
-    Complete automation for current-night observations via single button click.
+Quick filtering for current night observations.
 
-    TONIGHT'S EVENTS BUTTON
-    -----------------------
-    Located in toolbar - provides one-click automation:
-    1. Downloads latest events from OWC
-    2. Automatically filters events for next 24 hours
-    3. Selects all applicable events for your stations
-    4. Generates sequence files using configured template
-    5. Immediately begins automated execution
-    6. Runs hands-off until completion
+QUICK FILTER
+------------
+Use Today button in Quick Filters group to show events in next 24 hours.
 
-    AUTOMATIC FILTERING
-    -------------------
-    • Events occurring within next 24 hours
-    • Events assigned to your configured stations
-    • Events with valid timing and coordinate data
-    • Events with future GOTO times only
+WORKFLOW
+--------
+1. Click Today button to filter events
+2. Review filtered events in grid
+3. Check events to observe
+4. Click Create Sequences to generate .scs files
+5. Use Run Sequences for automated execution
 
-    REQUIREMENTS
-    ------------
-    • Valid OWC credentials configured
-    • Template file available in File Folder
-    • SharpCap running and equipment connected
-    • System stable for extended operation
+The Today filter provides quick access to imminent events for current observing session."""
 
-    OPERATION
-    ---------
-    • Completely hands-off after initial button click
-    • Background processing with status updates
-    • Automatic timing coordination for all events
-    • Continues through individual event failures
-    • Status bar shows progress throughout night
-
-    WHEN TO USE
-    -----------
-    • Beginning of observing sessions
-    • Multiple events scheduled for one night
-    • Reliable, tested observing setups
-    • Minimal manual intervention desired
-
-    Tonight's Events transforms the entire workflow into a single-click operation for experienced users with tested configurations."""
-
-    def get_automation_content(self):  # (generated)
+    def get_automation_content(self):
         return """AUTOMATION
-    ==========
+==========
 
-    Automated execution capabilities for reliable occultation observations.
+Automated execution capabilities for occultation observations.
 
-    AUTOMATION LEVELS
-    -----------------
-    Manual Control:
-    • Load sequences in SharpCap manually
-    • User controls all timing and execution
+AUTOMATION LEVELS
+-----------------
+Manual:
+• Load .scs sequences in SharpCap manually
+• User controls timing and execution
 
-    Semi-Automated:
-    • Generate sequences with "Create Sequences"
-    • Load and run manually in SharpCap
+Semi-Automated:
+• Generate sequences with Create Sequences
+• Load and run manually in SharpCap
 
-    Fully Automated:
-    • Use "Run Sequences" for automatic execution
-    • Use "Tonight's Events" for complete automation
+Fully Automated:
+• Use Run Sequences for automatic timed execution
+• Application manages timing coordination
 
-    AUTOMATED SEQUENCE EXECUTION
-    ----------------------------
-    "Run Sequences" Button:
-    • Executes selected events automatically
-    • Manages timing coordination
-    • Starts sequences at calculated GOTO times
-    • Background operation with status updates
-    • Continues through multiple events
+AUTOMATED EXECUTION
+-------------------
+Run Sequences button:
+• Executes checked events automatically
+• Waits for each event's GOTO time
+• Starts sequences at calculated times
+• Background operation with status updates
 
-    "Tonight's Events" Button:
-    • Complete workflow automation
-    • Downloads, filters, generates, and executes
-    • Single-click operation for entire night
+TIMING AUTOMATION
+-----------------
+• Automatic GOTO time calculation with lead time
+• UTC-based scheduling
+• Background execution at scheduled times
+• Interface remains responsive
 
-    TIMING AUTOMATION
-    -----------------
-    • Automatic GOTO time calculation with lead time
-    • Precise UTC-based scheduling
-    • Background execution at scheduled times
-    • Thread-safe operation maintaining responsiveness
+REQUIREMENTS
+------------
+• SharpCap running and connected
+• Sequence files generated
+• Events have future GOTO times
+• System stable for duration
 
-    BACKGROUND PROCESSING
-    ---------------------
-    • Sequences execute in background threads
-    • Interface remains responsive during automation
-    • Status updates show current operations
-    • Individual event failures don't stop others
+Automation provides hands-off execution while maintaining manual control options."""
 
-    REQUIREMENTS FOR AUTOMATION
-    ---------------------------
-    • SharpCap running and equipment connected
-    • Valid sequence files for selected events
-    • Events must have future GOTO times
-    • System must remain running until completion
-
-    Automation provides reliable hands-off operation while maintaining manual control options when needed."""
-
-    def get_common_issues_content(self):  # (generated)
+    def get_common_issues_content(self):
         return """COMMON ISSUES
-    =============
+=============
 
-    Frequently encountered problems and quick solutions.
+Frequently encountered problems and solutions.
 
-    "NO EVENTS DOWNLOADED"
-    ----------------------
-    • Check OWC email/password in Tools → Configuration → Credentials
-    • Verify API key in Tools → Configuration → API Settings
-    • Confirm you have event assignments in OWC
-    • Test login on OccultWatcher Cloud website
+NO EVENTS DOWNLOADED
+--------------------
+• Check OWC credentials in Configuration
+• Verify API key is correct
+• Confirm event assignments exist in OWC
+• Test login on OWC website
 
-    "TEMPLATE NOT FOUND"
-    -------------------
-    • Place .txt file with "template" in filename in File Folder
-    • Check File Folder path in Configuration is correct
-    • Verify template file contains SharpCap commands
-    • Use Browse button to confirm File Folder location
+TEMPLATE NOT FOUND
+------------------
+• Place .txt file with "template" in name in File Folder
+• Check File Folder path in Configuration
+• Verify template file contains commands
+• Use Browse button to confirm folder
 
-    "EMPTY SEQUENCE FILES"
-    ---------------------
-    • Check template uses correct variable syntax: {variable_name}
-    • Verify template contains valid SharpCap commands
-    • Ensure template file isn't corrupted
-    • Test with different events
+EMPTY SEQUENCE FILES
+--------------------
+• Check template uses correct variable syntax: {variable_name}
+• Verify template contains valid SharpCap commands
+• Test with different events
 
-    "CANNOT CONNECT TO SHARPCAP"
-    ---------------------------
-    • Ensure SharpCap 4.1+ is running
-    • Close other applications controlling SharpCap
-    • Restart both applications
-    • Check SharpCap isn't showing error dialogs
+CANNOT CONNECT TO SHARPCAP
+--------------------------
+• Ensure SharpCap 4.1+ is running
+• Close other applications controlling SharpCap
+• Restart both applications
 
-    "GOTO COMMANDS NOT WORKING"
-    ---------------------------
-    • Verify mount is connected in SharpCap
-    • Test GOTO manually in SharpCap first
-    • Check mount isn't parked or restricted
-    • Ensure mount control is active
+GOTO NOT WORKING
+----------------
+• Verify mount connected in SharpCap
+• Test GOTO manually in SharpCap first
+• Check mount isn't parked
+• Ensure mount control is active
 
-    "EVENTS GRID IS EMPTY"
-    ---------------------
-    • Click Download Events to get data from OWC
-    • Check Station Filter - select "All Stations"
-    • Use "All" quick filter to clear time filters
-    • Verify File Folder contains occultations.json
+EVENTS GRID EMPTY
+-----------------
+• Click Download to get data from OWC
+• Check Station Filter - select "All Stations"
+• Use All quick filter
+• Verify occultations.json exists in File Folder
 
-    "SEQUENCES RUN AT WRONG TIMES"
-    -----------------------------
-    • Verify system clock is accurate
-    • Check GOTO Lead Time setting in Configuration
-    • Confirm events times are interpreted as UTC
-    • Check timezone settings in Windows
+SEQUENCES RUN AT WRONG TIMES
+----------------------------
+• Verify system clock is accurate
+• Check GOTO Lead Time in Configuration
+• Confirm UTC interpretation
+• Check Windows timezone settings
 
-    Most issues resolve by checking Configuration settings and ensuring all prerequisites are met."""
+Most issues resolve by checking Configuration settings."""
 
-    def get_error_messages_content(self):  # (generated)
+    def get_error_messages_content(self):
         return """ERROR MESSAGES
-    ==============
+==============
 
-    Common error messages and their solutions.
+Common error messages and solutions.
 
-    DOWNLOAD ERRORS
-    ---------------
-    "HTTP Error: 401 - Unauthorized"
-    • Check OWC email/password in Configuration
-    • Verify API key is correct
+DOWNLOAD ERRORS
+---------------
+"HTTP Error: 401 - Unauthorized":
+• Check OWC email/password in Configuration
+• Verify API key is correct
 
-    "HTTP Error: 403 - Forbidden"
-    • Confirm email address is verified in OWC
-    • Check API key has proper permissions
+"HTTP Error: 403 - Forbidden":
+• Confirm email verified in OWC
+• Check API key permissions
 
-    "Connection timed out"
-    • Check internet connection
-    • Try downloading at different times
+"Connection timed out":
+• Check internet connection
+• Retry download
 
-    FILE ERRORS
-    -----------
-    "Permission denied" / "Access denied"
-    • Run application as administrator
-    • Check folder permissions
-    • Verify antivirus isn't blocking files
+FILE ERRORS
+-----------
+"Access Denied":
+• Check folder permissions
+• Run application as administrator if needed
+• Verify antivirus not blocking
 
-    "File not found" / "Path not found"
-    • Check File Folder path in Configuration
-    • Use Browse button to verify folder exists
+"File not found":
+• Check File Folder path in Configuration
+• Create missing folders
+• Verify occultations.json exists
 
-    "Template not found or empty"
-    • Place template.txt file in File Folder
-    • Verify template contains content
+SHARPCAP ERRORS
+---------------
+"Mount not connected":
+• Connect mount in SharpCap
+• Check mount control is active
 
-    SHARPCAP ERRORS
-    ---------------
-    "SharpCap not found or not responding"
-    • Ensure SharpCap 4.1+ is running
-    • Restart both applications
+"Plate solve failed":
+• Ensure stars visible
+• Check plate solving configured
+• Verify solving database installed
 
-    "Camera not available"
-    • Connect camera in SharpCap first
-    • Test camera manually in SharpCap
+"Cannot start sequence":
+• Check SharpCap is running
+• Verify .scs file has content
+• Ensure SharpCap ready to accept commands
 
-    "Mount not connected"
-    • Connect mount in SharpCap mount panel
-    • Test mount control manually
+Error messages usually indicate specific configuration or connection issues. Check Configuration first."""
 
-    AUTOMATION ERRORS
-    -----------------
-    "No future events selected"
-    • Select events with future GOTO times
-    • Check system clock is accurate
-
-    "Sequence execution failed"
-    • Check sequence files exist
-    • Verify SharpCap is ready for automation
-
-    Most error messages provide specific guidance for resolution. Check Configuration settings first for most issues."""
-
-    def get_config_problems_content(self):  # (implemented)
+    def get_config_problems_content(self):
         return """CONFIGURATION PROBLEMS
-    ======================
+======================
 
-    Solutions for configuration-related issues.
+Solutions for configuration issues.
 
-    CREDENTIAL ISSUES
-    -----------------
-    Cannot Login to OWC:
-    • Verify email address exactly matches OWC account
-    • Check password hasn't changed
-    • Confirm account is active and not suspended
-    • Test login on OWC website directly
+CREDENTIAL ISSUES
+-----------------
+Cannot login to OWC:
+• Verify email matches OWC account exactly
+• Check password hasn't changed
+• Confirm account is active
+• Test login on OWC website
 
-    API Key Problems:
-    • Get fresh API key from OWC User Profile
-    • Ensure email address is verified in OWC
-    • Check key wasn't truncated when copying or had extra spaces
-    
-    PATH CONFIGURATION ISSUES
-    -------------------------
-    Folders Not Found:
-    • Use Browse buttons to select valid folders
-    • Ensure folders exist and are accessible
-    • Check folder permissions allow reading/writing
-    • Avoid network paths that might disconnect
+API Key problems:
+• Get fresh API key from OWC User Profile
+• Ensure email verified in OWC
+• Check key wasn't truncated when copying
 
-    File Access Problems:
-    • Run application as administrator if needed
-    • Check Windows UAC isn't blocking access
-    • Verify antivirus isn't quarantining files
-    • Use local folders rather than network locations
+PATH ISSUES
+-----------
+Folders not found:
+• Use Browse buttons to select valid folders
+• Ensure folders exist and accessible
+• Check folder permissions
+• Avoid network paths
 
-    PARAMETER CONFIGURATION
-    -----------------------
-    Recording Duration Issues:
-    • Base Duration should be 30-120 seconds typically
-    • GOTO Lead Time should allow enough for your mount to plate solve and GOTO, including 1 plate solve retry
-    • Consider site-specific timing requirements
-    • Test with conservative values first
+File access problems:
+• Run as administrator if needed
+• Check Windows UAC settings
+• Verify antivirus not blocking
+• Use local folders
 
-    Exposure Calculation Problems:
-    • Magnitude reference affects all exposure calculations
-    • Adjust based on your camera sensitivity
-    • Test with known star magnitudes
-    • Use custom exposures for critical events"""
+PARAMETER ISSUES
+----------------
+Recording duration:
+• Base Duration typically 30-120 seconds
+• GOTO Lead Time should allow mount positioning and plate solving
+• Test with conservative values first
 
-    def get_night_mode_content(self):  # (implemented)
+Exposure calculation:
+• Magnitude reference affects all calculations
+• Adjust based on camera sensitivity
+• Test with known star magnitudes
+• Use custom exposures for critical events"""
+
+    def get_night_mode_content(self):
         return """NIGHT MODE
-    ================
+==========
 
-    Toggle Night Mode for an alternative color scheme.
+Red theme for preserving night vision during observations.
 
-    """
+ACTIVATION
+----------
+Click Night Mode button in toolbar to toggle between normal and red themes.
+
+FEATURES
+--------
+• Red-tinted interface across all windows
+• Reduced brightness for night adaptation
+• Consistent theming in all dialogs
+• Immediate visual change
+• Setting persists across sessions
+
+USE CASES
+---------
+• Nighttime observation sessions
+• Preserving dark adaptation
+• Reducing eye strain
+• Observatory environments
+
+Toggle anytime without affecting functionality."""
   
 
     
