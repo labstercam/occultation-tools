@@ -675,7 +675,7 @@ class OccultationManagerGUI(Form):
         # Current event display - positioned after buttons
         self.lbl_current_event = Label()
         self.lbl_current_event.Text = "No event loaded for preparation"
-        self.lbl_current_event.Size = Size(int(200 * sf), int(22 * sf))
+        self.lbl_current_event.Size = Size(int(200 * sf), int(50 * sf))
         self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
         obs_group.Controls.Add(self.lbl_current_event)
 
