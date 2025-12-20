@@ -675,7 +675,7 @@ class OccultationManagerGUI(Form):
         # Current event display - positioned after buttons
         self.lbl_current_event = Label()
         self.lbl_current_event.Text = "No event loaded for preparation"
-        self.lbl_current_event.Size = Size(int(200 * sf), int(50 * sf))
+        self.lbl_current_event.Size = Size(400, int(22 * sf))
         self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
         obs_group.Controls.Add(self.lbl_current_event)
 
@@ -686,7 +686,7 @@ class OccultationManagerGUI(Form):
             self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, self.lbl_current_event], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
-                
+        self.lbl_current_event.Size = Size(400, int(22 * sf))        
         # Event details display
         self.lbl_event_details = Label()
         self.lbl_event_details.Text = ""
@@ -1073,7 +1073,7 @@ class OccultationManagerGUI(Form):
             MessageBox.Show("Failed to start GOTO sequence", "Error")
 
     def execute_goto_command(self, event):
-        """Execute the actual GOTO command"""
+        """Execute the actual GOTO command and wait for completion"""
         coordinates = self.CoordinateParser.Parse(f"{event.ra:.6f};{event.dec:.6f}", True)
 
         try:
@@ -1081,21 +1081,35 @@ class OccultationManagerGUI(Form):
             if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
                 mount = self.sharpcap.Mounts.SelectedMount
                 
-                mount.SlewTo(coordinates)
-                time.sleep(1)
-                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates,CancellationToken()))
+                # Use the async method with SafeGetAsyncResult to properly wait for completion
+                # SafeGetAsyncResult blocks until the async operation completes
+                print(f"Starting GOTO to: RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
+                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates, CancellationToken()))
+                
+                # Wait a moment for mount to settle after slew completes
+                time.sleep(2)
+                if not mount.IsSettled:
+                    print("Waiting for mount to settle...")
+                    # Wait up to 30 seconds for mount to settle
+                    wait_start = time.time()
+                    while not mount.IsSettled and (time.time() - wait_start) < 30:
+                        time.sleep(1)
+                
+                # Optionally sync mount after GOTO
                 if self.config.get_sync_mount():
+                    print("Performing Solve And Sync...")
                     mount.SolveAndSync() 
 
-                print(f"GOTO command sent: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
+                print(f"GOTO completed: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
                 return True
             else:
                 # Show coordinates for manual GOTO
                 print(f"Manual GOTO required: RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
-                result = MessageBox.Show(f"No mount control available.\n\nPlease manually GOTO:\n\n" +
+                result = MessageBox.Show(f"No mount control available.\n\nPlease manually GOTO:\n\nYou can use the SharpCap Push To Assistant" +
                                     f"RA: {event.ra:.6f} hours\nDec: {event.dec:.6f}°\n\n" +
-                                    f"Click OK when GOTO is complete, or Cancel to stop.",
+                                    f"These coordinates have been copied to the clipboard.",
                                     "Manual GOTO Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
+                System.Windows.Forms.Clipboard.SetText(f"{event.ra:.6f}, {event.dec:.6f}")
                 return result == DialogResult.OK
                 
         except Exception as e:
@@ -1575,7 +1589,7 @@ class OccultationManagerGUI(Form):
             return False
 
     def goto_and_center_click(self, sender, e):
-        """Execute GOTO, plate solve, and recenter on target"""
+        """Execute GOTO and wait for mount to settle"""
         if not self._preparation_event:
             MessageBox.Show("Please load an event first using 'Load Event' button", "No Event Loaded", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning)
@@ -1584,49 +1598,129 @@ class OccultationManagerGUI(Form):
         event = self._preparation_event
         
         try:
-            self.update_status(f"GOTO, plate solve and center: {event.get_asteroid_display_name()}...")
+            self.update_status(f"Executing GOTO: {event.get_asteroid_display_name()}...")
             
-            # Execute complete GOTO sequence
+            # Execute GOTO sequence
             success = self.execute_complete_goto_sequence(event)
             
             if success:
-                self.update_status("GOTO, plate solve, and recenter completed successfully")
-                MessageBox.Show(f"Sequence completed successfully!\n\n" +
+                MessageBox.Show(f"GOTO completed!\n\n" +
                             f"Target: {event.get_asteroid_display_name()}\n" +
-                            f"Position verified and centered\n" +
-                            f"Ready for observation",
-                            "GOTO & Center Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                            f"RA: {event.ra:.4f}h, Dec: {event.dec:.4f}°\n\n" +
+                            f"Next: Click 'Plate Solve' to verify position",
+                            "GOTO Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
             else:
-                self.update_status("GOTO completed, but verification had issues")
+                self.update_status("GOTO failed")
+                MessageBox.Show("GOTO failed. Please check mount connection and try again.",
+                              "GOTO Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 
         except Exception as ex:
-            self.update_status(f"GOTO & center error: {ex}")
+            self.update_status(f"GOTO error: {ex}")
+            MessageBox.Show(f"GOTO error: {ex}", "Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error)
             MessageBox.Show(f"GOTO & center error: {ex}", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
 
     def execute_complete_goto_sequence(self, event):
         """Execute the complete GOTO sequence with error handling"""
         try:
-            # Step 1: GOTO
+            # Step 1: GOTO (this will block until GOTO completes)
             self.update_status("Step 1: Executing GOTO...")
             goto_success = self.execute_goto_command(event)
             
             if not goto_success:
                 return False
+
             
-            # Step 2: Wait and plate solve
-#            self.update_status("Step 2: Plate solving...")
-            time.sleep(3)  # Wait for mount to settle
-            
-            # Basic verification that we're in the right area - not done yet
+            # GOTO complete - user can now manually verify position with Plate Solve button
+            self.update_status("GOTO complete. Now use 'Plate Solve' to verify position and label the target.")
             return True
             
         except Exception as e:
             print(f"GOTO sequence error: {e}")
             return False
 
+    def verify_goto_position(self, event):
+        """Verify mount position after GOTO by plate solving and checking distance from target.
+        Returns: 'success' if within tolerance, 'retry' if user wants to retry, 'failed' if plate solve failed"""
+        import math
+        
+        try:
+            # Capture and plate solve
+            if not self.sharpcap.SelectedCamera:
+                print("Camera not selected for position verification")
+                return "failed"
+            
+            # Perform plate solve to get current mount position
+            result = self.sharpcap.SafeGetAsyncResult(
+                self.sharpcap.BlindSolver.SolveAsync(self.plate_solve_purpose.Annotation, CancellationToken())
+            )
+            
+            if not result or str(type(result)) != "<class 'RADecPosition'>":
+                print(f"Plate solve failed during position verification: {result}")
+                return "failed"
+            
+            # Get current mount position from plate solve result
+            current_ra = result.RightAscension  # in hours
+            current_dec = result.Declination    # in degrees
+            
+            # Target position
+            target_ra = event.ra    # in hours
+            target_dec = event.dec  # in degrees
+            
+            # Calculate angular separation in degrees
+            # Convert RA from hours to degrees for calculation
+            ra1_deg = current_ra * 15.0
+            ra2_deg = target_ra * 15.0
+            
+            # Use spherical trigonometry to calculate angular separation
+            # d = arccos(sin(dec1)*sin(dec2) + cos(dec1)*cos(dec2)*cos(ra1-ra2))
+            dec1_rad = math.radians(current_dec)
+            dec2_rad = math.radians(target_dec)
+            ra_diff_rad = math.radians(ra1_deg - ra2_deg)
+            
+            cos_distance = (math.sin(dec1_rad) * math.sin(dec2_rad) + 
+                          math.cos(dec1_rad) * math.cos(dec2_rad) * math.cos(ra_diff_rad))
+            
+            # Clamp to [-1, 1] to avoid domain errors from floating point precision
+            cos_distance = max(-1.0, min(1.0, cos_distance))
+            distance_deg = math.degrees(math.acos(cos_distance))
+            
+            print(f"Position check - Current: RA {current_ra:.4f}h, Dec {current_dec:.4f}°")
+            print(f"Position check - Target: RA {target_ra:.4f}h, Dec {target_dec:.4f}°")
+            print(f"Position check - Distance: {distance_deg:.4f}°")
+            
+            # Check if within tolerance (0.05 degrees)
+            tolerance = 0.05
+            if distance_deg <= tolerance:
+                self.update_status(f"Position verified: {distance_deg:.2f}° from target (within {tolerance:.2f}° tolerance)")
+                return "success"
+            else:
+                # Position is off - prompt user
+                message = (f"Mount position is off target!\n\n"
+                          f"Current position:\n"
+                          f"  RA: {current_ra:.4f}h, Dec: {current_dec:.4f}°\n\n"
+                          f"Target position:\n"
+                          f"  RA: {target_ra:.4f}h, Dec: {target_dec:.4f}°\n\n"
+                          f"Distance from target: {distance_deg:.2f}° (tolerance: {tolerance:.2f}°)\n\n"
+                          f"Redo the GOTO and Plate Solve to get closer")
+                
+                result = MessageBox.Show(message, "Position Check Failed", 
+                                       MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+                
+                if result == DialogResult.Yes:
+                    self.update_status("User requested retry of GOTO sequence")
+                    return "retry"
+                else:
+                    self.update_status(f"User accepted position error of {distance_deg:.4f}°")
+                    return "success"
+                    
+        except Exception as e:
+            print(f"Error verifying GOTO position: {e}")
+            return "failed"
+
     def plate_solve_label_click(self, sender, e):
-        """Plate solve and label the target star"""
+        """Plate solve, verify position, and label the target star"""
         if not self._preparation_event:
             MessageBox.Show("Please load an event first using 'Load Event' button", "No Event Loaded", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning)
@@ -1635,22 +1729,35 @@ class OccultationManagerGUI(Form):
         event = self._preparation_event
         
         try:
-            self.update_status("Plate solving and labeling target...")
+            self.update_status("Plate solving and verifying position...")
             
-            # Execute plate solve with target marking
+            # First, verify the GOTO position
+            position_check = self.verify_goto_position(event)
+            
+            if position_check == "retry":
+                # User wants to retry GOTO
+                self.update_status("Please click 'GOTO & Center' to reposition mount")
+                return
+            elif position_check == "failed":
+                self.update_status("Plate solve failed during position verification")
+                MessageBox.Show("Plate solve failed. Please check camera settings and try again.",
+                              "Plate Solve Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                return
+            
+            # Position is good, now mark the target star
+            self.update_status("Position verified, labeling target...")
             success = self.plate_solve_and_mark_star(event, checkStarInFOV=True)
             
             if success == True:
                 self.update_status(f"Target labeled: {event.get_asteroid_display_name()}")
-                MessageBox.Show(f"Target star labeled successfully!\n\n" +
+                MessageBox.Show(f"Position verified and target labeled!\n\n" +
                             f"Object: {event.get_asteroid_display_name()}\n" +
                             f"Coordinates: RA {event.ra:.4f}h, Dec {event.dec:.4f}°\n" +
-                            f"Star Magnitude: {event.star_mag:.1f}",
+                            f"Star Magnitude: {event.star_mag:.1f}\n\n" +
+                            f"Ready for observation",
                             "Target Labeled", MessageBoxButtons.OK, MessageBoxIcon.Information)
             elif isinstance(success, str):
-                self.update_status(f"Plate solve failed: {success}")
-                MessageBox.Show(f"Plate solve failed: {success}", "Plate Solve Error", 
-                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+                self.update_status(f"Target labeling failed: {success}")
             else:
                 self.update_status("Target not found or outside field of view")
                 
