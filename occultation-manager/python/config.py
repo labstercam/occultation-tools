@@ -14,7 +14,7 @@ class ConfigManager:
             'owc_user_password': 'your_owc_password',
             
             # File paths
-            'my_file_folder': os.path.normpath(r'C:\Users\AstroPC\Documents\SharpCap'),
+            'my_file_folder': os.path.normpath(os.path.dirname(__file__)),
             'my_occultations_file': 'occultations.json',
             'my_latest_occultations_file': 'occultations_latest.json',
             'sequence_path': '',  # Will be set to my_file_folder if empty
