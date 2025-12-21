@@ -10,10 +10,11 @@ SharpCap Occultation Manager for Occult Watcher is a tool for SharpCap that full
 3. Provides a very easy and flexible way to generate SharpCap sequences to record events, with the ability for the user to edit the sequence template to their needs or edit the generate sequences
 
 ## How to Install the SharpCap Addin
-1. Download the Python code from ??? by right clicking and selecitng 'Save As'
+1. Download the Python code from **occultation-manager.zip** above by right clicking and selecting 'Save As'
 2. Unzip to a file locaiton where you have read/write access. Suggest a new subfolder  \Documents\Sharpcap\occultation-manager
-3. Start SharpCap
-4. In "File" - "SharpCap Settings" - "Startup Scripts" - find that folder and add the 'main' script
+3. Alternative, you could clone this GitHub respository if you are a GitHub user
+4. Start SharpCap
+5. In "File" - "SharpCap Settings" - "Startup Scripts" - find that folder and add the 'main' script
 
 <img width="666" height="155" alt="image" src="https://github.com/user-attachments/assets/42a9d9c9-4273-4a88-8d0a-428cca649afe" />
 
