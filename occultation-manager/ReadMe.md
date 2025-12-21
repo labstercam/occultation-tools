@@ -14,6 +14,12 @@ How to Install the SharpCap Addin
 2. Unzip to a file locaiton where you have read/write access. Suggest a new subfolder  \Documents\Sharpcap\occultation-manager
 3.Start SharpCap
 4. In "File" - "SharpCap Settings" - "Startup Scripts" - find that folder and add the 'main' script
+
 <img width="666" height="155" alt="image" src="https://github.com/user-attachments/assets/42a9d9c9-4273-4a88-8d0a-428cca649afe" />
+
 5. Close SharpCap (the script will be loaded at the next start)
+
+A new button should appear in the SharpCap main toolbar. Press it to start the Occultation Manager.
+<img width="117" height="28" alt="image" src="https://github.com/user-attachments/assets/6dbdf7af-aea5-4637-a39a-ff8a435dce55" />
+
 
