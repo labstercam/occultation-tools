@@ -9,7 +9,7 @@ from System.Windows.Forms import (
     Form, Label, TextBox, Button, MessageBox, MessageBoxButtons, MessageBoxIcon,
     DialogResult, FormStartPosition, FormBorderStyle, Panel, GroupBox, LinkLabel,
     TabControl, TabPage, ListBox, ScrollBars, SelectionMode, AnchorStyles,
-    CheckBox, FolderBrowserDialog, DockStyle
+    CheckBox, FolderBrowserDialog, DockStyle, ToolTip
 )
 from theme import apply_theme_to_control
 from templates import TemplateManager
@@ -415,6 +415,14 @@ class ConfigurationDialog(Form):
         self.config = config
         self.theme_manager = theme_manager
         self._sf = _detect_scale_factor()
+        
+        # Create ToolTip component for the entire dialog
+        self.tooltip = ToolTip()
+        self.tooltip.AutoPopDelay = 5000
+        self.tooltip.InitialDelay = 500
+        self.tooltip.ReshowDelay = 200
+        self.tooltip.ShowAlways = True
+        
         self.setup_ui()
         self.load_current_config()
         # Snapshot key config values so we can detect changes that
@@ -508,16 +516,18 @@ class ConfigurationDialog(Form):
         """Setup credentials tab with DPI scaling"""
         sf = self._sf
         
+        # Credentials fields at top with even spacing
         lbl_email = Label()
         lbl_email.Text = "OWC Email:"
-        lbl_email.Location = Point(int(20 * sf), int(30 * sf))
+        lbl_email.Location = Point(int(20 * sf), int(20 * sf))
         lbl_email.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_email)
         
         self.txt_email = TextBox()
-        self.txt_email.Location = Point(int(130 * sf), int(30 * sf))
+        self.txt_email.Location = Point(int(130 * sf), int(20 * sf))
         self.txt_email.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_email)
+        self.tooltip.SetToolTip(self.txt_email, "Your Occult Watcher Cloud account email address")
         
         lbl_password = Label()
         lbl_password.Text = "OWC Password:"
@@ -530,28 +540,67 @@ class ConfigurationDialog(Form):
         self.txt_password.Size = Size(int(300 * sf), int(20 * sf))
         self.txt_password.UseSystemPasswordChar = True
         tab.Controls.Add(self.txt_password)
+        self.tooltip.SetToolTip(self.txt_password, "Your Occult Watcher Cloud account password")
+        
+        # Information Panel at bottom (after API fields are added)
+        info_panel = GroupBox()
+        info_panel.Text = "How to Get Your OWC Credentials"
+        info_panel.Location = Point(int(20 * sf), int(190 * sf))
+        info_panel.Size = Size(int(500 * sf), int(140 * sf))
+        tab.Controls.Add(info_panel)
+        
+        info_text = Label()
+        info_text.Text = ("1. Create an account or log in at Occult Watcher Cloud\n"
+                         "2. Go to your User Profile page (link below)\n"
+                         "3. Click on the 'Permissions & Settings' sub-tab\n"
+                         "4. Find or generate your API Key in that section\n"
+                         "5. Copy your email and API Key to the fields above")
+        info_text.Location = Point(int(10 * sf), int(20 * sf))
+        info_text.Size = Size(int(480 * sf), int(80 * sf))
+        info_text.AutoSize = False
+        info_panel.Controls.Add(info_text)
+        
+        # Clickable link to user profile
+        link_profile = LinkLabel()
+        link_profile.Text = "Open OWC User Profile →"
+        link_profile.Location = Point(int(10 * sf), int(105 * sf))
+        link_profile.AutoSize = True
+        link_profile.LinkClicked += self.open_owc_profile
+        info_panel.Controls.Add(link_profile)
+        self.tooltip.SetToolTip(link_profile, "Opens https://cloud.occultwatcher.net/user-profile in your browser")
+    
+    def open_owc_profile(self, sender, e):
+        """Open OWC user profile page in browser"""
+        try:
+            webbrowser.open("https://cloud.occultwatcher.net/user-profile")
+        except Exception as ex:
+            MessageBox.Show(f"Could not open browser: {ex}", "Error", 
+                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
     
     def setup_paths_tab(self, tab):
         """Setup file paths tab with DPI scaling"""
         sf = self._sf
         
+        # All file paths fields at top with even spacing
         lbl_file_folder = Label()
         lbl_file_folder.Text = "File Folder:"
-        lbl_file_folder.Location = Point(int(20 * sf), int(30 * sf))
+        lbl_file_folder.Location = Point(int(20 * sf), int(20 * sf))
         lbl_file_folder.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_file_folder)
         
         self.txt_file_folder = TextBox()
-        self.txt_file_folder.Location = Point(int(130 * sf), int(30 * sf))
+        self.txt_file_folder.Location = Point(int(130 * sf), int(20 * sf))
         self.txt_file_folder.Size = Size(int(250 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_file_folder)
+        self.tooltip.SetToolTip(self.txt_file_folder, "Folder where downloaded occultation data files are stored")
         
         btn_browse_folder = Button()
         btn_browse_folder.Text = "Browse"
-        btn_browse_folder.Location = Point(int(390 * sf), int(29 * sf))
+        btn_browse_folder.Location = Point(int(390 * sf), int(19 * sf))
         _autosize_button(btn_browse_folder, sf, height=int(22 * sf))
         btn_browse_folder.Click += self.browse_file_folder_click
         tab.Controls.Add(btn_browse_folder)
+        self.tooltip.SetToolTip(btn_browse_folder, "Browse for file folder location")
         
         lbl_sequence_path = Label()
         lbl_sequence_path.Text = "Sequence Path:"
@@ -563,6 +612,7 @@ class ConfigurationDialog(Form):
         self.txt_sequence_path.Location = Point(int(130 * sf), int(60 * sf))
         self.txt_sequence_path.Size = Size(int(250 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_sequence_path)
+        self.tooltip.SetToolTip(self.txt_sequence_path, "Folder where generated SharpCap sequence files (.scs) are saved")
         
         btn_browse_sequence = Button()
         btn_browse_sequence.Text = "Browse"
@@ -570,83 +620,161 @@ class ConfigurationDialog(Form):
         _autosize_button(btn_browse_sequence, sf, height=int(22 * sf))
         btn_browse_sequence.Click += self.browse_sequence_path_click
         tab.Controls.Add(btn_browse_sequence)
+        self.tooltip.SetToolTip(btn_browse_sequence, "Browse for sequence file location")
         
         lbl_occ_file = Label()
         lbl_occ_file.Text = "Occultations File:"
-        lbl_occ_file.Location = Point(int(20 * sf), int(90 * sf))
+        lbl_occ_file.Location = Point(int(20 * sf), int(100 * sf))
         lbl_occ_file.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_occ_file)
         
         self.txt_occ_file = TextBox()
-        self.txt_occ_file.Location = Point(int(130 * sf), int(90 * sf))
+        self.txt_occ_file.Location = Point(int(130 * sf), int(100 * sf))
         self.txt_occ_file.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_occ_file)
+        self.tooltip.SetToolTip(self.txt_occ_file, "Filename for the main occultation events data file (merged with downloads, 14-day retention)")
         
         lbl_latest_file = Label()
         lbl_latest_file.Text = "Latest File:"
-        lbl_latest_file.Location = Point(int(20 * sf), int(120 * sf))
+        lbl_latest_file.Location = Point(int(20 * sf), int(140 * sf))
         lbl_latest_file.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_latest_file)
         
         self.txt_latest_file = TextBox()
-        self.txt_latest_file.Location = Point(int(130 * sf), int(120 * sf))
+        self.txt_latest_file.Location = Point(int(130 * sf), int(140 * sf))
         self.txt_latest_file.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_latest_file)
+        self.tooltip.SetToolTip(self.txt_latest_file, "Filename for storing the latest downloaded occultation events (replaced on each download)")
+        
+        # Information Panel at bottom
+        info_panel = GroupBox()
+        info_panel.Text = "How Download from OWC Works"
+        info_panel.Location = Point(int(20 * sf), int(190 * sf))
+        info_panel.Size = Size(int(500 * sf), int(140 * sf))
+        tab.Controls.Add(info_panel)
+        
+        info_text = Label()
+        info_text.Text = ("When you click 'Download Events', the application:\n"
+                         "1. Reads your 'Upcoming Events' from OWC (link below)\n"
+                         "2. Saves the downloaded events to 'Latest File'\n"
+                         "3. Merges with existing 'Occultations File'\n"
+                         "4. Retains only events no more than 14 days old")
+        info_text.Location = Point(int(10 * sf), int(20 * sf))
+        info_text.Size = Size(int(480 * sf), int(80 * sf))
+        info_text.AutoSize = False
+        info_panel.Controls.Add(info_text)
+        
+        # Clickable link to my events
+        link_events = LinkLabel()
+        link_events.Text = "Open My Events on OWC →"
+        link_events.Location = Point(int(10 * sf), int(105 * sf))
+        link_events.AutoSize = True
+        link_events.LinkClicked += self.open_owc_events
+        info_panel.Controls.Add(link_events)
+        self.tooltip.SetToolTip(link_events, "Opens https://cloud.occultwatcher.net/my-events in your browser")
+    
+    def open_owc_events(self, sender, e):
+        """Open OWC my events page in browser"""
+        try:
+            webbrowser.open("https://cloud.occultwatcher.net/my-events")
+        except Exception as ex:
+            MessageBox.Show(f"Could not open browser: {ex}", "Error", 
+                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
     
     def setup_recording_tab(self, tab):
         """Setup recording settings tab with DPI scaling"""
         sf = self._sf
         
+        # Settings fields at top
         lbl_base_duration = Label()
         lbl_base_duration.Text = "Base Duration (s):"
-        lbl_base_duration.Location = Point(int(20 * sf), int(30 * sf))
+        lbl_base_duration.Location = Point(int(20 * sf), int(20 * sf))
         lbl_base_duration.Size = Size(int(120 * sf), int(20 * sf))
         tab.Controls.Add(lbl_base_duration)
         
         self.txt_base_duration = TextBox()
-        self.txt_base_duration.Location = Point(int(150 * sf), int(30 * sf))
+        self.txt_base_duration.Location = Point(int(150 * sf), int(20 * sf))
         self.txt_base_duration.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_base_duration)
+        self.tooltip.SetToolTip(self.txt_base_duration, "Base recording duration in seconds. Additional time is added based on event duration and uncertainty")
         
         lbl_goto_lead = Label()
         lbl_goto_lead.Text = "GOTO Lead Time (s):"
-        lbl_goto_lead.Location = Point(int(20 * sf), int(60 * sf))
+        lbl_goto_lead.Location = Point(int(20 * sf), int(50 * sf))
         lbl_goto_lead.Size = Size(int(120 * sf), int(20 * sf))
         tab.Controls.Add(lbl_goto_lead)
         
         self.txt_goto_lead = TextBox()
-        self.txt_goto_lead.Location = Point(int(150 * sf), int(60 * sf))
+        self.txt_goto_lead.Location = Point(int(150 * sf), int(50 * sf))
         self.txt_goto_lead.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_goto_lead)
+        self.tooltip.SetToolTip(self.txt_goto_lead, "How many seconds before the start of recording to begin the GOTO slew to the target position")
         
         lbl_mag_exposure = Label()
-        lbl_mag_exposure.Text = "Mag for 40ms exp:"
-        lbl_mag_exposure.Location = Point(int(20 * sf), int(90 * sf))
+        lbl_mag_exposure.Text = "Mag for 40 ms exp:"
+        lbl_mag_exposure.Location = Point(int(20 * sf), int(80 * sf))
         lbl_mag_exposure.Size = Size(int(120 * sf), int(20 * sf))
         tab.Controls.Add(lbl_mag_exposure)
         
         self.txt_mag_exposure = TextBox()
-        self.txt_mag_exposure.Location = Point(int(150 * sf), int(90 * sf))
+        self.txt_mag_exposure.Location = Point(int(150 * sf), int(80 * sf))
         self.txt_mag_exposure.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_mag_exposure)
+        self.tooltip.SetToolTip(self.txt_mag_exposure, "Reference star magnitude that requires 40 ms exposure. Used to calculate appropriate exposure times for stars of different magnitudes")
 
         self.chk_sync_mount = CheckBox()
         self.chk_sync_mount.Text = "Sync Mount with GOTO"       
-        self.chk_sync_mount.Location = Point(int(20 * sf), int(120 * sf))
+        self.chk_sync_mount.Location = Point(int(20 * sf), int(110 * sf))
         self.chk_sync_mount.Size = Size(int(200 * sf), int(20 * sf))    
         tab.Controls.Add(self.chk_sync_mount)
+        self.tooltip.SetToolTip(self.chk_sync_mount, "⚠ WARNING: Only enable if you usually SYNC your mount with every GOTO. Do NOT use with permanently aligned or precision aligned mounts!")
 
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
         self.chk_sync_mount.CheckedChanged += self.sync_mount_checked_changed
 
         self.display_utc = CheckBox()
         self.display_utc.Text = "Display UTC in Grid"       
-        self.display_utc.Location = Point(int(20 * sf), int(150 * sf))
+        self.display_utc.Location = Point(int(20 * sf), int(140 * sf))
         self.display_utc.Size = Size(int(200 * sf), int(20 * sf))    
         tab.Controls.Add(self.display_utc)
+        self.tooltip.SetToolTip(self.display_utc, "Display event times in UTC (Coordinated Universal Time) in the main grid. When unchecked, times are shown in local time")
 
         self.display_utc.Checked = self.config.get_display_utc()
         self.display_utc.CheckedChanged += self.display_utc_checked_changed
+        
+        # Information Panel at bottom
+        info_panel = GroupBox()
+        info_panel.Text = "Understanding These Settings"
+        info_panel.Location = Point(int(20 * sf), int(180 * sf))
+        info_panel.Size = Size(int(500 * sf), int(400 * sf))
+        tab.Controls.Add(info_panel)
+        
+        info_text = Label()
+        info_text.Text = ("Recording Duration Formula:\n"
+                         "  Duration = Base Duration + Event Duration (if >5 s) + 6 × Uncertainty (if >2 s)\n"
+                         "    Example 1. Base Duration 60 s,  Event Duration 1.2 s, Uncertainty 1 s → 60s total\n"
+                         "    Example 2. Base Duration 60 s,  Event Duration 6 s, Uncertainty 3 s  → 60 + 6 + 18 = 84s\n"
+                         "In plain English: Start with the base duration,\n"
+                         "and add the event duration if it's more than 5 seconds,\n"
+                         "and add 6 times the uncertainty if it's more than 2 s to ensure full event coverage.\n\n"
+                         "Exposure Time Formula:\n"
+                         "  Exposure = 40 ms × 2^(CombMag + Extinction - MagRef)\n"
+                         "  Adjusted for atmospheric extinction based on star altitude\n"
+                         " In plain English: For every magnitude the star is dimmer than the reference magnitude,\n"
+                         " the exposure time doubles. \n"
+                         " MagRef: The star magnitude where you would usually use 40 ms exposure\n"
+                         "    Example. MagRef 10.0, CombMag 12.0, Extinction 0.3 → 40 × 2^(12.0 + 0.3 - 10.0), rounded to 40 × 2^(2) = 160 ms\n"
+                         "40 ms is the minimum exposure that will be automatically set.\n"
+                         "Values set by doubling are 80 ms, 160 ms, 320 ms etc.\n"
+                         "You can manually set a custom exposure per event if desired.\n\n"
+                         "⚠ Sync Mount Warning:\n"
+                         "Only enable 'Sync Mount' if you usually Sync the mount with each GOTO.\n"
+                         "Do NOT sync if: Have a permanently aligned mount or use a refined pointing model.\n"
+                         "Syncing could adversely affect your carefully calibrated pointing model!")
+        info_text.Location = Point(int(10 * sf), int(20 * sf))
+        info_text.Size = Size(int(480 * sf), int(370 * sf))
+        info_text.AutoSize = False
+        info_panel.Controls.Add(info_text)
     
     def sync_mount_checked_changed(self, sender, e):
         """Handle sync mount checkbox change"""
@@ -672,25 +800,27 @@ class ConfigurationDialog(Form):
         
         lbl_host = Label()
         lbl_host.Text = "API Host:"
-        lbl_host.Location = Point(int(20 * sf), int(90 * sf))
+        lbl_host.Location = Point(int(20 * sf), int(100 * sf))
         lbl_host.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_host)
         
         self.txt_host = TextBox()
-        self.txt_host.Location = Point(int(130 * sf), int(90 * sf))
+        self.txt_host.Location = Point(int(130 * sf), int(100 * sf))
         self.txt_host.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_host)
+        self.tooltip.SetToolTip(self.txt_host, "API server hostname or URL for custom occultation data sources")
         
         lbl_api_key = Label()
         lbl_api_key.Text = "API Key:"
-        lbl_api_key.Location = Point(int(20 * sf), int(120 * sf))
+        lbl_api_key.Location = Point(int(20 * sf), int(140 * sf))
         lbl_api_key.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(lbl_api_key)
         
         self.txt_api_key = TextBox()
-        self.txt_api_key.Location = Point(int(130 * sf), int(120 * sf))
+        self.txt_api_key.Location = Point(int(130 * sf), int(140 * sf))
         self.txt_api_key.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_api_key)
+        self.tooltip.SetToolTip(self.txt_api_key, "API authentication key for accessing custom occultation data sources")
     
     def load_current_config(self):
         """Load current configuration into controls"""

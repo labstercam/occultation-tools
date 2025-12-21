@@ -57,7 +57,7 @@ class HelpDialog(Form):
         # Create main split container
         main_split = SplitContainer()
         main_split.Dock = DockStyle.Fill
-        main_split.SplitterDistance = int(200 * sf)
+        main_split.SplitterDistance = int(600 * sf)  # 3x wider for better topic visibility
         main_split.FixedPanel = FixedPanel.Panel1
         self.Controls.Add(main_split)
         
@@ -95,6 +95,11 @@ class HelpDialog(Form):
         self.tree_topics.Dock = DockStyle.Fill
         self.tree_topics.AfterSelect += self.topic_selected
         panel.Controls.Add(self.tree_topics)
+        
+        # Apply theme colors to TreeView
+        theme_colors = self.theme_manager.get_current_theme()
+        self.tree_topics.BackColor = theme_colors['textbox_background']
+        self.tree_topics.ForeColor = theme_colors['text_foreground']
         
         # Populate help topics
         self.populate_help_topics()
@@ -446,30 +451,73 @@ Click Download to test configuration. Events should load into grid."""
 
 Settings dialog accessed via Tools → Configuration.
 
+The Configuration dialog has three tabs for organizing settings:
+
 CREDENTIALS TAB
 ---------------
-• OWC Email: OccultWatcher Cloud login email
-• OWC Password: Account password
+How to Get Your OWC Credentials:
 
-API SETTINGS TAB
-----------------
-• API Host: OWC server URL (typically unchanged)
-• API Key: From OWC User Profile → User Permissions
+1. Create an account or log in at Occult Watcher Cloud
+2. Go to your User Profile page (link below)
+3. Click on the 'Permissions & Settings' sub-tab
+4. Find or generate your API Key in that section
+5. Copy your email and API Key to the fields above
+
+Fields:
+• OWC Email: Your Occult Watcher Cloud account email address
+• OWC Password: Your Occult Watcher Cloud account password
+• API Host: API server hostname or URL for custom occultation data sources
+• API Key: API authentication key for accessing custom occultation data sources
 
 FILE PATHS TAB
 --------------
-• File Folder: Event data and template storage
-• Sequence Path: .scs file output location
-• Occultations File: Master event database filename
-• Latest File: Temporary download filename
+How Download from OWC Works:
 
-RECORDING TAB
--------------
-• Base Duration: Buffer added to calculated recording time
-• GOTO Lead Time: Pre-event positioning time
-• Magnitude for 40ms Exposure: Reference for exposure calculations
+When you click 'Download Events', the application:
+1. Reads your 'Upcoming Events' from OWC
+2. Saves the downloaded events to 'Latest File'
+3. Merges with existing 'Occultations File'
+4. Retains only events no more than 14 days old
 
-Settings are validated and saved when Save is clicked."""
+Fields:
+• File Folder: Folder where downloaded occultation data files are stored
+• Sequence Path: Folder where generated SharpCap sequence files (.scs) are saved
+• Occultations File: Filename for the main occultation events data file (merged with downloads, 14-day retention)
+• Latest File: Filename for storing the latest downloaded occultation events (replaced on each download)
+
+USER SETTINGS TAB
+-----------------
+Understanding These Settings:
+
+Recording Duration Formula:
+  Duration = Base Duration + Event Duration (if >5 s) + 6 × Uncertainty (if >2 s)
+    Example 1. Base Duration 60 s,  Event Duration 1.2 s, Uncertainty 1 s → 60s total
+    Example 2. Base Duration 60 s,  Event Duration 6 s, Uncertainty 3 s  → 60 + 6 + 18 = 84s
+In plain English: Start with the base duration, and add the event duration if it's more than 5 seconds, and add 6 times the uncertainty if it's more than 2 s to ensure full event coverage.
+
+Exposure Time Formula:
+  Exposure = 40 ms × 2^(CombMag + Extinction - MagRef)
+  Adjusted for atmospheric extinction based on star altitude
+In plain English: For every magnitude the star is dimmer than the reference magnitude, the exposure time doubles. 
+MagRef: The star magnitude where you would usually use 40 ms exposure
+    Example. MagRef 10.0, CombMag 12.0, Extinction 0.3 → 40 × 2^(12.0 + 0.3 - 10.0), rounded to 40 × 2^(2) = 160 ms
+40 ms is the minimum exposure that will be automatically set.
+Values set by doubling are 80 ms, 160 ms, 320 ms etc.
+You can manually set a custom exposure per event if desired.
+
+⚠ Sync Mount Warning:
+Only enable 'Sync Mount' if you usually Sync the mount with each GOTO.
+Do NOT sync if: Have a permanently aligned mount or use a refined pointing model.
+Syncing could adversely affect your carefully calibrated pointing model!
+
+Fields:
+• Base Duration (s): Base recording duration in seconds. Additional time is added based on event duration and uncertainty
+• GOTO Lead Time (s): How many seconds before the start of recording to begin the GOTO slew to the target position
+• Mag for 40ms exp: Reference star magnitude that requires 40ms exposure. Used to calculate appropriate exposure times for stars of different magnitudes
+• Sync Mount with GOTO: Enable to sync mount position after each GOTO. WARNING: Only enable if you typically sync your mount. Do NOT use with refined pointing models.
+• Display UTC in Grid: Display event times in UTC (Coordinated Universal Time) in the main grid. When unchecked, times are shown in local time
+
+All settings are validated before saving. Click Save to apply changes or Cancel to discard."""
 
     def get_first_use_content(self):
         return """FIRST USE
@@ -1134,44 +1182,95 @@ Dialog is read-only. Use Edit Exposure to modify camera exposure."""
         return """OBSERVATION PREPARATION
 =======================
 
-Interactive tools in bottom panel for telescope and camera setup.
+Interactive tools in bottom panel for manual telescope and camera setup.
+
+PURPOSE
+-------
+The Observation Preparation panel provides manual control over setup steps, allowing you to accommodate different mount configurations, test equipment, and verify setup before running automated sequences.
 
 WORKFLOW
 --------
 1. Select event in events grid
 2. Click Load Event button
-3. Use Setup button to configure SharpCap
-4. Click GOTO to position telescope
-5. Use Plate Solve to verify pointing
+3. Click Setup to configure SharpCap camera settings
+4. Click GOTO & Center to position telescope
+5. Click Plate Solve & Label to verify position and mark target star
+6. Make adjustments and retry steps as needed
 
 LOAD EVENT
 ----------
-• Select event from grid for preparation
-• Displays event details in panel
-• Shows name, coordinates, timing, exposure
-• Enables preparation tool buttons
+Loads event information into the preparation panel:
+• Displays event name, coordinates, timing in panel
+• Shows exposure, star magnitude, duration
+• Enables the preparation tool buttons (Setup, GOTO, Plate Solve)
+• Allows you to manually work through setup and testing
+• Coordinates are copied to clipboard for manual GOTO if needed
 
-PREPARATION TOOLS
------------------
-Setup:
-• Configures SharpCap camera settings
-• Sets exposure time from event data
-• Applies target information
+SETUP BUTTON
+------------
+Configures SharpCap for the loaded event:
+• Sets camera exposure time based on star magnitude
+• Copies target coordinates (RA/Dec) to clipboard
+• Sets target name in SharpCap (if supported)
+• Prepares camera for target acquisition
+• Use this before GOTO to ensure camera is ready
 
-GOTO:
-• Positions telescope to target coordinates
-• Uses RA/Dec from loaded event
-• Waits for mount completion
-• Reports success/failure
+GOTO & CENTER BUTTON
+--------------------
+Positions telescope to target coordinates:
+• Sends GOTO command to mount using event RA/Dec
+• Syncs mount position first if "Sync Mount with GOTO" is enabled in Configuration
+• Waits for mount to complete slew (uses async operation with blocking)
+• Adds settling time after slew completes
+• Does NOT automatically plate solve or recenter
+• Reports completion status
 
-Plate Solve:
-• Initiates plate solving on current field
-• Verifies target position accuracy
-• Shows target information
+If no mount is connected:
+• Prompts for manual GOTO
+• Coordinates are already in clipboard from Setup
+• Use SharpCap's Push To Assistant or manual telescope positioning
 
-Current Event Display shows loaded event details including coordinates, timing, exposure, and magnitudes.
+PLATE SOLVE & LABEL BUTTON
+---------------------------
+Verifies position and marks target star:
+• Performs plate solve on current camera frame
+• Calculates actual mount position from plate solve
+• Compares with target coordinates (tolerance: 0.05 degrees)
+• If off by more than 0.05°: Shows position error dialog with option to retry GOTO
+• If within tolerance: Labels target star with annotation
+• Reports distance from target and verification status
 
-Preparation tools allow interactive testing before generating sequences for automated execution."""
+Use this AFTER GOTO to:
+• Verify mount is on target
+• Check if another GOTO is needed
+• Mark the target star for visual confirmation
+
+WHY MANUAL CONTROL?
+-------------------
+This step-by-step approach accommodates different configurations:
+• Permanently aligned mounts vs. nightly alignment
+• Varying GOTO accuracy between mount types
+• Different polar alignment quality
+• Need to test and verify before automated runs
+• Ability to make manual corrections between steps
+
+You have full control to:
+• Repeat GOTO if first attempt was inaccurate
+• Adjust camera settings between steps
+• Verify pointing before committing to automated sequence
+• Test equipment functionality with a single event
+
+TYPICAL SESSION
+---------------
+1. Load Event: Select and load test event
+2. Setup: Configure camera exposure and target info
+3. GOTO & Center: Position telescope (wait for completion)
+4. Plate Solve & Label: Verify position
+5. If off target: Click GOTO & Center again, then Plate Solve again
+6. If on target: Target star is labeled, ready for observation
+7. Repeat with different events to test multiple targets
+
+Use these tools to validate your setup before running automated sequences for multiple events."""
 
     def get_loading_events_content(self):
         return """LOADING EVENTS
