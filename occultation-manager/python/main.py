@@ -25,6 +25,10 @@ import clr
 clr.AddReference("System.Windows.Forms")
 from System.Windows.Forms import *
 
+clr.AddReference("System.Drawing")
+import System.Drawing
+from System.Drawing import Image
+
 # Import our modules
 from config import ConfigManager
 from theme import ThemeManager
@@ -33,13 +37,15 @@ from SharpCap.Interfaces import PlateSolvePurpose
 from  SharpCap.Base import CoordinateParser, RADecPosition, Epoch
 
 
+
 ################################
 # Various Global Setup
 #################################
 # Check Version of SharpCap
 SharpCapVersion = SharpCap.AppName.Split("v")[1].Split(",")[0]
-
-
+# Prepare Icon Path for custom button
+Occultation_script_path  = os.path.dirname(__file__)
+default_icon = Occultation_script_path + "\moon_icon_178489.ico"
 
 
 
@@ -82,5 +88,7 @@ def main():
         MessageBox.Show(f"Failed to start application: {ex}", "Startup Error", 
                        MessageBoxButtons.OK, MessageBoxIcon.Error)
 
-if __name__ == "__main__":
-    main()
+# Add custom button to SharpCap UI
+SharpCap.AddCustomButton(" Occultations ", Image.FromFile(default_icon), "Occultation Manager", main)
+#if __name__ == "__main__":
+    # main()
