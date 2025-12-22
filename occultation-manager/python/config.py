@@ -29,9 +29,12 @@ class ConfigManager:
             # Observer information for NA Report Form
             'observer_name': '',
             'observer_email': '',
-            'observer_latitude': 0.0,
-            'observer_longitude': 0.0,
-            'observer_elevation': 0.0,
+            'observer_address': '',
+            'observer_city': '',
+            'observer_state': '',
+            'observer_country': '',
+            'observer_phone': '',
+            'observer_fax': '',
             
             # Telescope information for NA Report Form
             'telescope_aperture': 0,  # mm
@@ -213,23 +216,41 @@ class ConfigManager:
     def set_observer_email(self, email):
         self.config['observer_email'] = email
     
-    def get_observer_latitude(self):
-        return self.config.get('observer_latitude', 0.0)
+    def get_observer_address(self):
+        return self.config.get('observer_address', '')
     
-    def set_observer_latitude(self, lat):
-        self.config['observer_latitude'] = float(lat)
+    def set_observer_address(self, address):
+        self.config['observer_address'] = address
     
-    def get_observer_longitude(self):
-        return self.config.get('observer_longitude', 0.0)
+    def get_observer_city(self):
+        return self.config.get('observer_city', '')
     
-    def set_observer_longitude(self, lon):
-        self.config['observer_longitude'] = float(lon)
+    def set_observer_city(self, city):
+        self.config['observer_city'] = city
     
-    def get_observer_elevation(self):
-        return self.config.get('observer_elevation', 0.0)
+    def get_observer_state(self):
+        return self.config.get('observer_state', '')
     
-    def set_observer_elevation(self, elev):
-        self.config['observer_elevation'] = float(elev)
+    def set_observer_state(self, state):
+        self.config['observer_state'] = state
+    
+    def get_observer_country(self):
+        return self.config.get('observer_country', '')
+    
+    def set_observer_country(self, country):
+        self.config['observer_country'] = country
+    
+    def get_observer_phone(self):
+        return self.config.get('observer_phone', '')
+    
+    def set_observer_phone(self, phone):
+        self.config['observer_phone'] = phone
+    
+    def get_observer_fax(self):
+        return self.config.get('observer_fax', '')
+    
+    def set_observer_fax(self, fax):
+        self.config['observer_fax'] = fax
     
     # Telescope configuration
     def get_telescope_aperture(self):
