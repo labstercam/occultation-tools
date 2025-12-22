@@ -1554,8 +1554,6 @@ class LocationConfirmDialog(Form):
             
             if location_name:
                 self.txt_obs_location.Text = location_name
-                MessageBox.Show(f"Location found: {location_name}\n\nFormat: City, ST (US) or City, COUNTRY (others)", 
-                              "Location Lookup", MessageBoxButtons.OK, MessageBoxIcon.Information)
             else:
                 MessageBox.Show("Could not retrieve location name from the service.\nPlease check your internet connection or enter location manually.", 
                               "Location Lookup Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning)
@@ -1596,8 +1594,6 @@ class LocationConfirmDialog(Form):
             
             if elevation is not None:
                 self.txt_elevation.Text = str(round(elevation, 1))
-                MessageBox.Show(f"Elevation found: {elevation:.1f} meters (WGS84 datum)", 
-                              "Elevation Lookup", MessageBoxButtons.OK, MessageBoxIcon.Information)
             else:
                 MessageBox.Show("Could not retrieve elevation data from the service.\nPlease check your internet connection or enter elevation manually.", 
                               "Elevation Lookup Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning)
