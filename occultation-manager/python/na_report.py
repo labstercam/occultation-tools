@@ -86,6 +86,7 @@ class NAReportGenerator:
         return {
             'AstNum': 'E7',
             'AstName': 'K7',
+            'ObservingLocation': 'E15',
             'EventYear': 'D5',
             'EventMonth': 'K5',
             'EventDay': 'P5',
@@ -109,6 +110,12 @@ class NAReportGenerator:
             'OtherDetectorRelatedInfo': 'V25',
             'ObserverName': 'D9',
             'ObserverEmail': 'S9',
+            'ObserverAddress': 'D11',
+            'ObserverCity': 'D13',
+            'ObserverState': 'D14',
+            'ObserverCountry': 'S14',
+            'ObserverPhone': 'D12',
+            'ObserverFax': 'S12',
             'Aperture': 'E20',
             'ApertureUnits': 'H20',
             'FocalRatio': 'L20',
@@ -209,6 +216,17 @@ class NAReportGenerator:
             log(f"SUCCESS: Report generated: {report_path}")
             return report_path
             
+        except PermissionError as ex:
+            import traceback
+            error_msg = f"Cannot save report - file is open in another program. Please close the file and try again:\n{report_path}"
+            log(f"ERROR generating report: {error_msg}")
+            log(f"Exception type: {type(ex).__name__}")
+            log("Full traceback:")
+            for line in traceback.format_exc().split('\n'):
+                log(line)
+            # Return a tuple (None, error_message) to provide better feedback
+            return None
+            
         except Exception as ex:
             import traceback
             log(f"ERROR generating report: {str(ex)}")
@@ -246,6 +264,11 @@ class NAReportGenerator:
     
     def _fill_observer_data(self, ws, cell_mapping, event):
         """Fill in observer information from event station data"""
+        # Observing location (City, State/Country)
+        obs_location = getattr(event, 'obs_location', '')
+        if obs_location:
+            ws[cell_mapping['ObservingLocation']] = obs_location
+        
         # Use latitude/longitude from the event (station location)
         station_lat = getattr(event, 'latitude', 0.0)
         station_lon = getattr(event, 'longitude', 0.0)
@@ -276,6 +299,27 @@ class NAReportGenerator:
             ws[cell_mapping['ObserverName']] = observer_name
         if observer_email:
             ws[cell_mapping['ObserverEmail']] = observer_email
+        
+        # Observer mailing address information
+        observer_address = self.config.get_observer_address()
+        observer_city = self.config.get_observer_city()
+        observer_state = self.config.get_observer_state()
+        observer_country = self.config.get_observer_country()
+        observer_phone = self.config.get_observer_phone()
+        observer_fax = self.config.get_observer_fax()
+        
+        if observer_address:
+            ws[cell_mapping['ObserverAddress']] = observer_address
+        if observer_city:
+            ws[cell_mapping['ObserverCity']] = observer_city
+        if observer_state:
+            ws[cell_mapping['ObserverState']] = observer_state
+        if observer_country:
+            ws[cell_mapping['ObserverCountry']] = observer_country
+        if observer_phone:
+            ws[cell_mapping['ObserverPhone']] = observer_phone
+        if observer_fax:
+            ws[cell_mapping['ObserverFax']] = observer_fax
     
     def _fill_telescope_data(self, ws, cell_mapping):
         """Fill in telescope information from config"""

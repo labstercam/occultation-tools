@@ -661,10 +661,9 @@ class OccultationManager:
         self.event_processor = EventProcessor(config)
     
     def load_events_from_files(self):
-        """Load events from saved JSON files"""
-        events_data = EventProcessor.load_occultations(self.config.get_latest_occultations_file(), self.config)
-        if not events_data:
-            events_data = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
+        """Load events from saved JSON files - uses occultations.json (merged history)"""
+        # Load from occultations.json which contains the full merged history
+        events_data = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
         
         if events_data:
             self.all_events = [OccultationEvent(event, self.config) for event in events_data]
