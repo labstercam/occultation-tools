@@ -1,0 +1,48 @@
+================================================================================
+RAW OWC DOWNLOAD DATA - COMPLETE DUMP
+================================================================================
+Number of events: 1
+
+
+--------------------------------------------------------------------------------
+Event: (165690) 2001 PA3
+Station: Camilleri M Home
+
+All station keys: ['ChordOffsetKm', 'CloudCover', 'CombMag', 'CountryCode', 'ErrorInTimeSec', 'EventTimeUtc', 'HighCloud', 'IsOwnStation', 'IsPrimaryStation', 'Latitude', 'Longitude', 'MoonAlt', 'MoonAz', 'MoonDist', 'MoonPhase', 'OccultDistanceKm', 'Report', 'ReportComment', 'ReportedDuration', 'StarAlt', 'StarAz', 'StarColour', 'StateCode', 'StationId', 'StationName', 'StationPos', 'SunAlt', 'TempDegC', 'WeatherInfoAvailable', 'Wind']
+
+All station data:
+  ChordOffsetKm = -8.9000000000000004
+  CloudCover = 10
+  CombMag = 13.69
+  CountryCode = None
+  ErrorInTimeSec = 0.80000000000000004
+  EventTimeUtc = 2025-12-23T09:28:50.247
+  HighCloud = False
+  IsOwnStation = True
+  IsPrimaryStation = True
+  Latitude = -36.835560000000001
+  Longitude = 174.65780000000001
+  MoonAlt = 7.7999999999999998
+  MoonAz = 250.09999999999999
+  MoonDist = 93.0
+  MoonPhase = 1.0
+  OccultDistanceKm = -9.0
+  Report = 0
+  ReportComment = None
+  ReportedDuration = None
+  StarAlt = 24.899999999999999
+  StarAz = 347.0
+  StarColour = 3
+  StateCode = None
+  StationId = 1
+  StationName = Camilleri M Home
+  StationPos = 2
+  SunAlt = -16.899999999999999
+  TempDegC = 20
+  WeatherInfoAvailable = True
+  Wind = 3
+
+ELEVATION FIELD CHECK:
+  'Elevation' field NOT FOUND
+  'Altitude' field NOT FOUND
+  'Height' field NOT FOUND

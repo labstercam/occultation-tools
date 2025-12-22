@@ -114,6 +114,20 @@ class EventProcessor:
     @staticmethod    
     def process_owc_events(owevents, sitefilter, config):
         """Process OWC events to extract the parameters"""
+        # DEBUG: Log raw OWC data at the start
+        import os
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        debug_log = os.path.join(module_dir, "owc_raw_download.log")
+        try:
+            with open(debug_log, 'w') as f:  # 'w' to overwrite each time
+                f.write("="*80 + "\n")
+                f.write("RAW OWC DOWNLOAD DATA - COMPLETE DUMP\n")
+                f.write("="*80 + "\n")
+                f.write("Number of events: " + str(len(owevents)) + "\n\n")
+            print("DEBUG: Writing raw OWC data to: " + debug_log)
+        except Exception as e:
+            print("DEBUG: Error creating log file: " + str(e))
+        
         occultations = []
         for owevent in owevents:
             name = owevent['Object']
@@ -125,6 +139,33 @@ class EventProcessor:
 
             for station in owevent['Stations']:
                 if station['IsOwnStation']:
+                    # DEBUG: Log raw OWC station data
+                    try:
+                        with open(debug_log, 'a') as f:
+                            f.write("\n" + "-"*80 + "\n")
+                            f.write("Event: " + str(name) + "\n")
+                            f.write("Station: " + str(station.get('StationName', 'Unknown')) + "\n")
+                            f.write("\nAll station keys: " + str(sorted(station.keys())) + "\n")
+                            f.write("\nAll station data:\n")
+                            for key in sorted(station.keys()):
+                                f.write("  " + str(key) + " = " + str(station[key]) + "\n")
+                            f.write("\nELEVATION FIELD CHECK:\n")
+                            if 'Elevation' in station:
+                                f.write("  >>> FOUND 'Elevation': " + str(station['Elevation']) + " <<<\n")
+                            else:
+                                f.write("  'Elevation' field NOT FOUND\n")
+                            if 'Altitude' in station:
+                                f.write("  >>> FOUND 'Altitude': " + str(station['Altitude']) + " <<<\n")
+                            else:
+                                f.write("  'Altitude' field NOT FOUND\n")
+                            if 'Height' in station:
+                                f.write("  >>> FOUND 'Height': " + str(station['Height']) + " <<<\n")
+                            else:
+                                f.write("  'Height' field NOT FOUND\n")
+                        print("DEBUG: Logged station data for: " + str(station.get('StationName', 'Unknown')))
+                    except Exception as e:
+                        print("DEBUG: Error writing station data: " + str(e))
+                    
                     eventTime = station['EventTimeUtc']
                     eventUncertainty = station['ErrorInTimeSec']
                     stationName = station['StationName']
@@ -216,6 +257,33 @@ class OccultationEvent:
     
     def _parse_event_data(self, data):
         """Parse event data from OW Cloud JSON format"""
+        # DEBUG: Log all OWC data fields to check for elevation
+        import os
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        debug_log = os.path.join(module_dir, "owc_data_debug.log")
+        try:
+            with open(debug_log, 'a') as f:
+                f.write("\n" + "="*80 + "\n")
+                f.write("OWC Event Data Debug\n")
+                f.write("Available keys: " + str(sorted(data.keys())) + "\n")
+                f.write("\nAll data items:\n")
+                for key in sorted(data.keys()):
+                    f.write("  " + str(key) + " = " + str(data[key]) + "\n")
+                f.write("\nChecking for elevation fields:\n")
+                if 'elevation' in data:
+                    f.write("  FOUND 'elevation': " + str(data['elevation']) + "\n")
+                if 'altitude' in data:
+                    f.write("  FOUND 'altitude': " + str(data['altitude']) + "\n")
+                if 'height' in data:
+                    f.write("  FOUND 'height': " + str(data['height']) + "\n")
+                if 'station_elevation' in data:
+                    f.write("  FOUND 'station_elevation': " + str(data['station_elevation']) + "\n")
+                if 'observer_elevation' in data:
+                    f.write("  FOUND 'observer_elevation': " + str(data['observer_elevation']) + "\n")
+                f.write("="*80 + "\n")
+        except Exception as e:
+            pass  # Silently ignore debug logging errors
+        
         self.name = data.get('name', '')
         self.station_name = data.get('station_name', '')
         self.ow_eventid = data.get('ow_eventid', '')

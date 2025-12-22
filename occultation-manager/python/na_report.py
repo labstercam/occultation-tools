@@ -184,7 +184,7 @@ class NAReportGenerator:
             log("Filling event data...")
             self._fill_event_data(ws, cell_mapping, event)
             log("Filling observer data...")
-            self._fill_observer_data(ws, cell_mapping)
+            self._fill_observer_data(ws, cell_mapping, event)
             log("Filling telescope data...")
             self._fill_telescope_data(ws, cell_mapping)
             log("Filling recording times...")
@@ -244,29 +244,32 @@ class NAReportGenerator:
                 ws[cell_mapping['StarCatalog']] = star_catalog
                 ws[cell_mapping['StarNumber']] = star_number
     
-    def _fill_observer_data(self, ws, cell_mapping):
-        """Fill in observer information from config"""
-        # Location
-        observer_lat = self.config.get_observer_latitude()
-        observer_lon = self.config.get_observer_longitude()
-        observer_elev = self.config.get_observer_elevation()
+    def _fill_observer_data(self, ws, cell_mapping, event):
+        """Fill in observer information from event station data"""
+        # Use latitude/longitude from the event (station location)
+        station_lat = getattr(event, 'latitude', 0.0)
+        station_lon = getattr(event, 'longitude', 0.0)
         
-        if observer_lat != 0.0:
+        # Try to get elevation from event data if available
+        # Note: elevation may not be in event data, so we'll use 0 as fallback
+        station_elev = getattr(event, 'elevation', 0.0)
+        
+        if station_lat != 0.0:
             ws[cell_mapping['LatitudeFormat']] = 'deg.ddddd'
-            ws[cell_mapping['Latitude']] = '%0.5f' % abs(observer_lat)
-            ws[cell_mapping['LatitudeDir']] = 'S' if observer_lat < 0 else 'N'
+            ws[cell_mapping['Latitude']] = '%0.5f' % abs(station_lat)
+            ws[cell_mapping['LatitudeDir']] = 'S' if station_lat < 0 else 'N'
         
-        if observer_lon != 0.0:
+        if station_lon != 0.0:
             ws[cell_mapping['LongitudeFormat']] = 'deg.ddddd'
-            ws[cell_mapping['Longitude']] = '%0.5f' % abs(observer_lon)
-            ws[cell_mapping['LongitudeDir']] = 'W' if observer_lon < 0 else 'E'
+            ws[cell_mapping['Longitude']] = '%0.5f' % abs(station_lon)
+            ws[cell_mapping['LongitudeDir']] = 'W' if station_lon < 0 else 'E'
         
-        if observer_elev != 0.0:
-            ws[cell_mapping['Elevation']] = observer_elev
+        if station_elev != 0.0:
+            ws[cell_mapping['Elevation']] = station_elev
             ws[cell_mapping['ElevationUnits']] = 'm'
             ws[cell_mapping['ElevationDatum']] = 'WGS84'
         
-        # Observer name and email
+        # Observer name and email still come from config
         observer_name = self.config.get_observer_name()
         observer_email = self.config.get_observer_email()
         if observer_name:
@@ -322,36 +325,18 @@ class NAReportGenerator:
         ws[cell_mapping['CommentLine3']] = 'This report was pre-filled by Occultation Manager'
     
     def _generate_filename(self, event):
-        """Generate IOTA-standard filename"""
+        """Generate NA report filename: YYYYMMDD_###_Asteroid name_Last name_POS/NEG.xlsx"""
         # Get date
         if hasattr(event, 'event_datetime') and event.event_datetime:
             event_date = event.event_datetime.strftime('%Y%m%d')
         else:
             event_date = 'unknown'
         
-        # Get asteroid number and name (no parentheses)
+        # Get asteroid number (###)
         object_no = getattr(event, 'object_no', '')
-        object_name = getattr(event, 'object_name', '').replace(' ', '_')
         
-        # Get star designation and convert to filename format
-        star_name = getattr(event, 'star_name', '') or getattr(event, 'star_id', '')
-        if star_name:
-            # Extract catalog prefix and number
-            star_clean = star_name.strip()
-            if ' ' in star_clean:
-                catalog = star_clean.split(' ')[0]
-                number = star_clean.split(' ', 1)[1]
-            else:
-                catalog = star_clean
-                number = ''
-            
-            # Convert all separators in star number to underscores
-            if number:
-                number = number.replace('-', '_').replace(' ', '_')
-            
-            star_part = f"{catalog}_{number}" if number else f"{catalog}"
-        else:
-            star_part = ''
+        # Get asteroid name with spaces replaced by underscores
+        object_name = getattr(event, 'object_name', '').replace(' ', '_')
         
         # Get observer surname from config
         observer_name = self.config.get_observer_name()
@@ -363,23 +348,11 @@ class NAReportGenerator:
         else:
             surname = 'Observer'
         
-        # Get station name from event and remove surname if it's duplicated
-        station = getattr(event, 'station_name', '')
-        if station:
-            station = station.replace(' ', '_')
-            # Remove surname from station name if it appears at the start
-            if surname and station.startswith(surname + '_'):
-                station = station[len(surname) + 1:]  # Remove surname and underscore
-            elif surname and station == surname:
-                station = 'Home'  # If station is just the surname, use Home
-        else:
-            station = 'Home'
+        # Determine result indicator (POS for positive, NEG for negative/unsure)
+        # For now, default to 'NEG' (negative/no detection)
+        result_indicator = 'NEG'
         
-        # Determine result indicator (+ for positive, - for negative/unsure)
-        # For now, default to '-' (unsure/to be determined)
-        result_indicator = '-'
-        
-        # IOTA format: YYYYMMDD_asteroidnumber_asteroidname_starcatalog_starnumber-surname_station.xlsx
-        filename = f"{event_date}_{object_no}_{star_part}{result_indicator}{surname}_{station}.xlsx"
+        # NA format: YYYYMMDD_###_Asteroid_name_Surname_POS/NEG.xlsx
+        filename = f"{event_date}_{object_no}_{object_name}_{surname}_{result_indicator}.xlsx"
         
         return filename

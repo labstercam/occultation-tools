@@ -1214,6 +1214,22 @@ class OccultationManagerGUI(Form):
         for event in past_events:
             try:
                 print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
+                
+                # Show location confirmation dialog
+                from gui_dialogs import LocationConfirmDialog
+                location_dialog = LocationConfirmDialog(event, self.theme_manager)
+                if location_dialog.ShowDialog() != DialogResult.OK:
+                    print("User cancelled location confirmation")
+                    continue  # Skip this event
+                
+                # Get the confirmed location from the dialog
+                location = location_dialog.get_location()
+                
+                # Temporarily update event with user-entered location
+                event.latitude = location['latitude']
+                event.longitude = location['longitude']
+                event.elevation = location['elevation']
+                
                 self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
                 output_path = self.report_generator.generate_report(event)
                 if output_path:

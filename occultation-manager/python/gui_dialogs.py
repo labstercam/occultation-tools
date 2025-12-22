@@ -836,7 +836,7 @@ class ConfigurationDialog(Form):
         observer_group = GroupBox()
         observer_group.Text = "Observer Information"
         observer_group.Location = Point(int(20 * sf), int(10 * sf))
-        observer_group.Size = Size(int(500 * sf), int(200 * sf))
+        observer_group.Size = Size(int(500 * sf), int(290 * sf))
         tab.Controls.Add(observer_group)
         
         lbl_observer_name = Label()
@@ -863,45 +863,79 @@ class ConfigurationDialog(Form):
         observer_group.Controls.Add(self.txt_observer_email)
         self.tooltip.SetToolTip(self.txt_observer_email, "Your email address for report correspondence")
         
-        lbl_observer_lat = Label()
-        lbl_observer_lat.Text = "Latitude (°):"
-        lbl_observer_lat.Location = Point(int(20 * sf), int(90 * sf))
-        lbl_observer_lat.Size = Size(int(100 * sf), int(20 * sf))
-        observer_group.Controls.Add(lbl_observer_lat)
+        lbl_observer_address = Label()
+        lbl_observer_address.Text = "Address:"
+        lbl_observer_address.Location = Point(int(20 * sf), int(90 * sf))
+        lbl_observer_address.Size = Size(int(100 * sf), int(20 * sf))
+        observer_group.Controls.Add(lbl_observer_address)
         
-        self.txt_observer_lat = TextBox()
-        self.txt_observer_lat.Location = Point(int(130 * sf), int(90 * sf))
-        self.txt_observer_lat.Size = Size(int(100 * sf), int(20 * sf))
-        observer_group.Controls.Add(self.txt_observer_lat)
-        self.tooltip.SetToolTip(self.txt_observer_lat, "Observatory latitude in decimal degrees (e.g., 34.0522 for Los Angeles)")
+        self.txt_observer_address = TextBox()
+        self.txt_observer_address.Location = Point(int(130 * sf), int(90 * sf))
+        self.txt_observer_address.Size = Size(int(340 * sf), int(20 * sf))
+        observer_group.Controls.Add(self.txt_observer_address)
+        self.tooltip.SetToolTip(self.txt_observer_address, "Street address")
         
-        lbl_observer_lon = Label()
-        lbl_observer_lon.Text = "Longitude (°):"
-        lbl_observer_lon.Location = Point(int(250 * sf), int(90 * sf))
-        lbl_observer_lon.Size = Size(int(100 * sf), int(20 * sf))
-        observer_group.Controls.Add(lbl_observer_lon)
+        lbl_observer_city = Label()
+        lbl_observer_city.Text = "City:"
+        lbl_observer_city.Location = Point(int(20 * sf), int(120 * sf))
+        lbl_observer_city.Size = Size(int(100 * sf), int(20 * sf))
+        observer_group.Controls.Add(lbl_observer_city)
         
-        self.txt_observer_lon = TextBox()
-        self.txt_observer_lon.Location = Point(int(360 * sf), int(90 * sf))
-        self.txt_observer_lon.Size = Size(int(110 * sf), int(20 * sf))
-        observer_group.Controls.Add(self.txt_observer_lon)
-        self.tooltip.SetToolTip(self.txt_observer_lon, "Observatory longitude in decimal degrees (e.g., -118.2437 for Los Angeles)")
+        self.txt_observer_city = TextBox()
+        self.txt_observer_city.Location = Point(int(130 * sf), int(120 * sf))
+        self.txt_observer_city.Size = Size(int(150 * sf), int(20 * sf))
+        observer_group.Controls.Add(self.txt_observer_city)
         
-        lbl_observer_elev = Label()
-        lbl_observer_elev.Text = "Elevation (m):"
-        lbl_observer_elev.Location = Point(int(20 * sf), int(120 * sf))
-        lbl_observer_elev.Size = Size(int(100 * sf), int(20 * sf))
-        observer_group.Controls.Add(lbl_observer_elev)
+        lbl_observer_state = Label()
+        lbl_observer_state.Text = "State:"
+        lbl_observer_state.Location = Point(int(290 * sf), int(120 * sf))
+        lbl_observer_state.Size = Size(int(40 * sf), int(20 * sf))
+        observer_group.Controls.Add(lbl_observer_state)
         
-        self.txt_observer_elev = TextBox()
-        self.txt_observer_elev.Location = Point(int(130 * sf), int(120 * sf))
-        self.txt_observer_elev.Size = Size(int(100 * sf), int(20 * sf))
-        observer_group.Controls.Add(self.txt_observer_elev)
-        self.tooltip.SetToolTip(self.txt_observer_elev, "Observatory elevation in meters above sea level")
+        self.txt_observer_state = TextBox()
+        self.txt_observer_state.Location = Point(int(335 * sf), int(120 * sf))
+        self.txt_observer_state.Size = Size(int(135 * sf), int(20 * sf))
+        observer_group.Controls.Add(self.txt_observer_state)
+        self.tooltip.SetToolTip(self.txt_observer_state, "e.g., GA, NSW")
+        
+        lbl_observer_country = Label()
+        lbl_observer_country.Text = "Country:"
+        lbl_observer_country.Location = Point(int(20 * sf), int(150 * sf))
+        lbl_observer_country.Size = Size(int(100 * sf), int(20 * sf))
+        observer_group.Controls.Add(lbl_observer_country)
+        
+        self.txt_observer_country = TextBox()
+        self.txt_observer_country.Location = Point(int(130 * sf), int(150 * sf))
+        self.txt_observer_country.Size = Size(int(150 * sf), int(20 * sf))
+        observer_group.Controls.Add(self.txt_observer_country)
+        
+        lbl_observer_phone = Label()
+        lbl_observer_phone.Text = "Phone:"
+        lbl_observer_phone.Location = Point(int(20 * sf), int(180 * sf))
+        lbl_observer_phone.Size = Size(int(100 * sf), int(20 * sf))
+        observer_group.Controls.Add(lbl_observer_phone)
+        
+        self.txt_observer_phone = TextBox()
+        self.txt_observer_phone.Location = Point(int(130 * sf), int(180 * sf))
+        self.txt_observer_phone.Size = Size(int(200 * sf), int(20 * sf))
+        observer_group.Controls.Add(self.txt_observer_phone)
+        self.tooltip.SetToolTip(self.txt_observer_phone, "+1-404-555-1234")
+        
+        lbl_observer_fax = Label()
+        lbl_observer_fax.Text = "Fax:"
+        lbl_observer_fax.Location = Point(int(20 * sf), int(210 * sf))
+        lbl_observer_fax.Size = Size(int(100 * sf), int(20 * sf))
+        observer_group.Controls.Add(lbl_observer_fax)
+        
+        self.txt_observer_fax = TextBox()
+        self.txt_observer_fax.Location = Point(int(130 * sf), int(210 * sf))
+        self.txt_observer_fax.Size = Size(int(200 * sf), int(20 * sf))
+        observer_group.Controls.Add(self.txt_observer_fax)
+        self.tooltip.SetToolTip(self.txt_observer_fax, "Optional")
         
         lbl_note = Label()
-        lbl_note.Text = "Note: Lat/Lon/Elevation can be found using Google Maps or GPS coordinates"
-        lbl_note.Location = Point(int(20 * sf), int(155 * sf))
+        lbl_note.Text = "Location lat/lon will be requested from event station when generating reports"
+        lbl_note.Location = Point(int(20 * sf), int(245 * sf))
         lbl_note.Size = Size(int(460 * sf), int(30 * sf))
         lbl_note.ForeColor = Color.Gray
         observer_group.Controls.Add(lbl_note)
@@ -909,7 +943,7 @@ class ConfigurationDialog(Form):
         # Telescope Section
         telescope_group = GroupBox()
         telescope_group.Text = "Telescope Information"
-        telescope_group.Location = Point(int(20 * sf), int(220 * sf))
+        telescope_group.Location = Point(int(20 * sf), int(310 * sf))
         telescope_group.Size = Size(int(500 * sf), int(160 * sf))
         tab.Controls.Add(telescope_group)
         
@@ -986,9 +1020,12 @@ class ConfigurationDialog(Form):
         # Observer/Telescope fields
         self.txt_observer_name.Text = self.config.get_observer_name()
         self.txt_observer_email.Text = self.config.get_observer_email()
-        self.txt_observer_lat.Text = str(self.config.get_observer_latitude())
-        self.txt_observer_lon.Text = str(self.config.get_observer_longitude())
-        self.txt_observer_elev.Text = str(self.config.get_observer_elevation())
+        self.txt_observer_address.Text = self.config.get_observer_address()
+        self.txt_observer_city.Text = self.config.get_observer_city()
+        self.txt_observer_state.Text = self.config.get_observer_state()
+        self.txt_observer_country.Text = self.config.get_observer_country()
+        self.txt_observer_phone.Text = self.config.get_observer_phone()
+        self.txt_observer_fax.Text = self.config.get_observer_fax()
         self.txt_aperture.Text = str(self.config.get_telescope_aperture())
         self.txt_focal_length.Text = str(self.config.get_telescope_focal_length())
         
@@ -1036,9 +1073,12 @@ class ConfigurationDialog(Form):
             # Observer/Telescope fields
             self.config.set_observer_name(self.txt_observer_name.Text)
             self.config.set_observer_email(self.txt_observer_email.Text)
-            self.config.set_observer_latitude(float(self.txt_observer_lat.Text) if self.txt_observer_lat.Text else 0.0)
-            self.config.set_observer_longitude(float(self.txt_observer_lon.Text) if self.txt_observer_lon.Text else 0.0)
-            self.config.set_observer_elevation(float(self.txt_observer_elev.Text) if self.txt_observer_elev.Text else 0.0)
+            self.config.set_observer_address(self.txt_observer_address.Text)
+            self.config.set_observer_city(self.txt_observer_city.Text)
+            self.config.set_observer_state(self.txt_observer_state.Text)
+            self.config.set_observer_country(self.txt_observer_country.Text)
+            self.config.set_observer_phone(self.txt_observer_phone.Text)
+            self.config.set_observer_fax(self.txt_observer_fax.Text)
             self.config.set_telescope_aperture(float(self.txt_aperture.Text) if self.txt_aperture.Text else 0.0)
             self.config.set_telescope_focal_length(float(self.txt_focal_length.Text) if self.txt_focal_length.Text else 0.0)
             if self.combo_telescope_type.SelectedIndex >= 0:
@@ -1299,4 +1339,244 @@ class TemplateSelectionDialog(Form):
     def get_selected_template_path(self):
         """Get the selected template path"""
         return self.selected_template_path
+
+
+class LocationConfirmDialog(Form):
+    """Dialog to confirm observer location before generating report"""
+    
+    def __init__(self, event, theme_manager):
+        Form.__init__(self)
+        self.event = event
+        self.theme_manager = theme_manager
+        self.confirmed = False
+        
+        # Detect scale factor
+        sf = _detect_scale_factor()
+        
+        # Form properties
+        self.Text = "Confirm Observation Location"
+        self.Size = Size(int(550 * sf), int(500 * sf))
+        self.FormBorderStyle = FormBorderStyle.FixedDialog
+        self.StartPosition = FormStartPosition.CenterParent
+        self.MaximizeBox = False
+        self.MinimizeBox = False
+        self.TopMost = True  # Ensure dialog appears on top
+        
+        # Main panel
+        panel = Panel()
+        panel.Dock = DockStyle.Fill
+        from System.Windows.Forms import Padding as PaddingClass
+        panel.Padding = PaddingClass(int(15 * sf), int(15 * sf), int(15 * sf), int(15 * sf))
+        self.Controls.Add(panel)
+        
+        y_pos = 10
+        
+        # Title
+        lbl_title = Label()
+        lbl_title.Text = "Please confirm the observation location"
+        lbl_title.Location = Point(int(10 * sf), y_pos)
+        lbl_title.Size = Size(int(510 * sf), int(25 * sf))
+        lbl_title.Font = Font(lbl_title.Font.FontFamily, 11, FontStyle.Bold)
+        panel.Controls.Add(lbl_title)
+        y_pos += int(35 * sf)
+        
+        # Event details
+        lbl_event = Label()
+        event_name = getattr(event, 'event_name', 'Unknown Event')
+        event_date = ''
+        if hasattr(event, 'event_datetime') and event.event_datetime:
+            event_date = event.event_datetime.strftime('%Y-%m-%d %H:%M UTC')
+        lbl_event.Text = f"Event: {event_name}\nDate: {event_date}"
+        lbl_event.Location = Point(int(10 * sf), y_pos)
+        lbl_event.Size = Size(int(510 * sf), int(40 * sf))
+        panel.Controls.Add(lbl_event)
+        y_pos += int(50 * sf)
+        
+        # Station info group
+        station_group = GroupBox()
+        station_group.Text = "Observation Location (editable)"
+        station_group.Location = Point(int(10 * sf), y_pos)
+        station_group.Size = Size(int(510 * sf), int(220 * sf))
+        panel.Controls.Add(station_group)
+        
+        # Station name
+        lbl_station = Label()
+        station_name = getattr(event, 'station_name', 'Unknown Station')
+        lbl_station.Text = f"Station: {station_name}"
+        lbl_station.Location = Point(int(15 * sf), int(25 * sf))
+        lbl_station.Size = Size(int(480 * sf), int(20 * sf))
+        lbl_station.Font = Font(lbl_station.Font.FontFamily, 9, FontStyle.Bold)
+        station_group.Controls.Add(lbl_station)
+        
+        # Get coordinates
+        latitude = getattr(event, 'latitude', 0.0)
+        longitude = getattr(event, 'longitude', 0.0)
+        elevation = getattr(event, 'elevation', 0.0)
+        
+        # Latitude input
+        lbl_lat = Label()
+        lbl_lat.Text = "Latitude (°):"
+        lbl_lat.Location = Point(int(15 * sf), int(55 * sf))
+        lbl_lat.Size = Size(int(100 * sf), int(20 * sf))
+        station_group.Controls.Add(lbl_lat)
+        
+        self.txt_latitude = TextBox()
+        self.txt_latitude.Location = Point(int(120 * sf), int(55 * sf))
+        self.txt_latitude.Size = Size(int(120 * sf), int(20 * sf))
+        self.txt_latitude.Text = f"{latitude:.5f}"
+        station_group.Controls.Add(self.txt_latitude)
+        
+        # Longitude input
+        lbl_lon = Label()
+        lbl_lon.Text = "Longitude (°):"
+        lbl_lon.Location = Point(int(260 * sf), int(55 * sf))
+        lbl_lon.Size = Size(int(100 * sf), int(20 * sf))
+        station_group.Controls.Add(lbl_lon)
+        
+        self.txt_longitude = TextBox()
+        self.txt_longitude.Location = Point(int(365 * sf), int(55 * sf))
+        self.txt_longitude.Size = Size(int(120 * sf), int(20 * sf))
+        self.txt_longitude.Text = f"{longitude:.5f}"
+        station_group.Controls.Add(self.txt_longitude)
+        
+        # Elevation input
+        lbl_elev = Label()
+        lbl_elev.Text = "Elevation (m):"
+        lbl_elev.Location = Point(int(15 * sf), int(85 * sf))
+        lbl_elev.Size = Size(int(100 * sf), int(20 * sf))
+        station_group.Controls.Add(lbl_elev)
+        
+        self.txt_elevation = TextBox()
+        self.txt_elevation.Location = Point(int(120 * sf), int(85 * sf))
+        self.txt_elevation.Size = Size(int(120 * sf), int(20 * sf))
+        self.txt_elevation.Text = str(elevation) if elevation != 0.0 else ''
+        station_group.Controls.Add(self.txt_elevation)
+        
+        # Google Maps link
+        lbl_maps_text = Label()
+        lbl_maps_text.Text = "View on map:"
+        lbl_maps_text.Location = Point(int(15 * sf), int(120 * sf))
+        lbl_maps_text.Size = Size(int(100 * sf), int(20 * sf))
+        station_group.Controls.Add(lbl_maps_text)
+        
+        link_maps = LinkLabel()
+        maps_url = f"https://www.google.com/maps?q={latitude},{longitude}"
+        link_maps.Text = "Open Google Maps"
+        link_maps.Location = Point(int(120 * sf), int(120 * sf))
+        link_maps.Size = Size(int(150 * sf), int(20 * sf))
+        link_maps.LinkClicked += lambda s, e: webbrowser.open(maps_url)
+        station_group.Controls.Add(link_maps)
+        
+        # Lookup Elevation button
+        btn_lookup_elev = Button()
+        btn_lookup_elev.Text = "Lookup Elevation"
+        btn_lookup_elev.Location = Point(int(285 * sf), int(117 * sf))
+        btn_lookup_elev.Size = Size(int(130 * sf), int(25 * sf))
+        btn_lookup_elev.Click += self.lookup_elevation_click
+        station_group.Controls.Add(btn_lookup_elev)
+        
+        # Info label
+        lbl_info = Label()
+        lbl_info.Text = "Please enter or verify the observation location.\nModify the coordinates if you observed from a different location.\nClick 'Lookup Elevation' to get elevation from coordinates (WGS84 datum)."
+        lbl_info.Location = Point(int(15 * sf), int(155 * sf))
+        lbl_info.Size = Size(int(480 * sf), int(55 * sf))
+        lbl_info.ForeColor = Color.Gray
+        station_group.Controls.Add(lbl_info)
+        
+        y_pos += int(230 * sf)
+        
+        # Buttons
+        btn_panel = Panel()
+        btn_panel.Height = int(40 * sf)
+        btn_panel.Location = Point(0, y_pos)
+        btn_panel.Width = int(520 * sf)
+        panel.Controls.Add(btn_panel)
+        
+        btn_confirm = Button()
+        btn_confirm.Text = "Confirm && Generate Report"
+        btn_confirm.Size = Size(int(180 * sf), int(28 * sf))
+        btn_confirm.Location = Point(int(240 * sf), int(6 * sf))
+        btn_confirm.Click += self.confirm_click
+        btn_panel.Controls.Add(btn_confirm)
+        
+        btn_cancel = Button()
+        btn_cancel.Text = "Cancel"
+        btn_cancel.Size = Size(int(100 * sf), int(28 * sf))
+        btn_cancel.Location = Point(int(130 * sf), int(6 * sf))
+        btn_cancel.Click += self.cancel_click
+        btn_panel.Controls.Add(btn_cancel)
+        
+        # Apply theme
+        apply_theme_to_control(self, theme_manager)
+    
+    def lookup_elevation_click(self, sender, e):
+        """Look up elevation from coordinates using online API"""
+        try:
+            # Get current lat/lon values
+            latitude = float(self.txt_latitude.Text)
+            longitude = float(self.txt_longitude.Text)
+            
+            # Show working message
+            original_text = sender.Text
+            sender.Text = "Looking up..."
+            sender.Enabled = False
+            self.Refresh()
+            
+            # Import elevation lookup function
+            from utils import get_elevation_from_coordinates
+            
+            # Lookup elevation
+            elevation = get_elevation_from_coordinates(latitude, longitude)
+            
+            # Restore button
+            sender.Text = original_text
+            sender.Enabled = True
+            
+            if elevation is not None:
+                self.txt_elevation.Text = str(round(elevation, 1))
+                MessageBox.Show(f"Elevation found: {elevation:.1f} meters (WGS84 datum)", 
+                              "Elevation Lookup", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            else:
+                MessageBox.Show("Could not retrieve elevation data from the service.\nPlease check your internet connection or enter elevation manually.", 
+                              "Elevation Lookup Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        
+        except ValueError:
+            MessageBox.Show("Please enter valid latitude and longitude values first.", 
+                          "Invalid Coordinates", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            sender.Text = original_text
+            sender.Enabled = True
+        except Exception as ex:
+            MessageBox.Show(f"Error during elevation lookup: {ex}", 
+                          "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            sender.Text = original_text
+            sender.Enabled = True
+    
+    def confirm_click(self, sender, e):
+        """User confirmed the location"""
+        try:
+            # Validate and store the entered values
+            self.latitude = float(self.txt_latitude.Text)
+            self.longitude = float(self.txt_longitude.Text)
+            self.elevation = float(self.txt_elevation.Text) if self.txt_elevation.Text.strip() else 0.0
+            
+            self.confirmed = True
+            self.DialogResult = DialogResult.OK
+            self.Close()
+        except ValueError:
+            MessageBox.Show("Please enter valid numeric values for latitude and longitude.", 
+                          "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+    
+    def cancel_click(self, sender, e):
+        """User cancelled"""
+        self.confirmed = False
+        self.DialogResult = DialogResult.Cancel
+        self.Close()
+    
+    def get_location(self):
+        """Get the entered location values"""
+        return {
+            'latitude': self.latitude if hasattr(self, 'latitude') else 0.0,
+            'longitude': self.longitude if hasattr(self, 'longitude') else 0.0,
+            'elevation': self.elevation if hasattr(self, 'elevation') else 0.0
+        }
     

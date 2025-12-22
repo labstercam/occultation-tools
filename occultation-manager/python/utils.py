@@ -1,6 +1,49 @@
 import os
 from datetime import datetime
 from templates import TemplateManager
+import urllib.request
+import json
+
+
+def get_elevation_from_coordinates(latitude, longitude, timeout=10):
+    """
+    Look up elevation for given coordinates using Open-Elevation API
+    Returns elevation in meters relative to WGS84 datum, or None if lookup fails
+    
+    Args:
+        latitude: Latitude in decimal degrees
+        longitude: Longitude in decimal degrees
+        timeout: Request timeout in seconds
+    
+    Returns:
+        float: Elevation in meters, or None if lookup fails
+    """
+    try:
+        # Open-Elevation API - free, no API key required
+        url = "https://api.open-elevation.com/api/v1/lookup?locations={},{}".format(latitude, longitude)
+        
+        request = urllib.request.Request(url)
+        request.add_header('User-Agent', 'OccultationManager/1.0')
+        
+        response = urllib.request.urlopen(request, timeout=timeout)
+        data = json.loads(response.read().decode('utf-8'))
+        
+        if 'results' in data and len(data['results']) > 0:
+            elevation = data['results'][0].get('elevation')
+            if elevation is not None:
+                print("Elevation lookup successful: {} meters at {}, {}".format(elevation, latitude, longitude))
+                return float(elevation)
+        
+        print("No elevation data returned from API")
+        return None
+        
+    except urllib.error.URLError as e:
+        print("Network error during elevation lookup: {}".format(e))
+        return None
+    except Exception as e:
+        print("Error looking up elevation: {}".format(e))
+        return None
+
 
 def save_occultation_sequence(occ, template_path="", sequence_path=None, config=None):
     """Format occultation data into readable report and save it"""
