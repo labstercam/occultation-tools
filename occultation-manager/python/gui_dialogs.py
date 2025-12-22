@@ -1355,7 +1355,7 @@ class LocationConfirmDialog(Form):
         
         # Form properties
         self.Text = "Confirm Observation Location"
-        self.Size = Size(int(550 * sf), int(500 * sf))
+        self.Size = Size(int(550 * sf), int(560 * sf))
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.StartPosition = FormStartPosition.CenterParent
         self.MaximizeBox = False
@@ -1396,7 +1396,7 @@ class LocationConfirmDialog(Form):
         station_group = GroupBox()
         station_group.Text = "Observation Location (editable)"
         station_group.Location = Point(int(10 * sf), y_pos)
-        station_group.Size = Size(int(510 * sf), int(220 * sf))
+        station_group.Size = Size(int(510 * sf), int(280 * sf))
         panel.Controls.Add(station_group)
         
         # Station name
@@ -1408,6 +1408,26 @@ class LocationConfirmDialog(Form):
         lbl_station.Font = Font(lbl_station.Font.FontFamily, 9, FontStyle.Bold)
         station_group.Controls.Add(lbl_station)
         
+        # Observing Location (City, State/Country)
+        lbl_obs_loc = Label()
+        lbl_obs_loc.Text = "Observing Location:"
+        lbl_obs_loc.Location = Point(int(15 * sf), int(50 * sf))
+        lbl_obs_loc.Size = Size(int(140 * sf), int(20 * sf))
+        station_group.Controls.Add(lbl_obs_loc)
+        
+        self.txt_obs_location = TextBox()
+        self.txt_obs_location.Location = Point(int(160 * sf), int(50 * sf))
+        self.txt_obs_location.Size = Size(int(200 * sf), int(20 * sf))
+        self.txt_obs_location.Text = ""  # Will be filled by lookup
+        station_group.Controls.Add(self.txt_obs_location)
+        
+        btn_lookup_loc = Button()
+        btn_lookup_loc.Text = "Lookup"
+        btn_lookup_loc.Location = Point(int(370 * sf), int(48 * sf))
+        btn_lookup_loc.Size = Size(int(100 * sf), int(25 * sf))
+        btn_lookup_loc.Click += self.lookup_location_click
+        station_group.Controls.Add(btn_lookup_loc)
+        
         # Get coordinates
         latitude = getattr(event, 'latitude', 0.0)
         longitude = getattr(event, 'longitude', 0.0)
@@ -1416,12 +1436,12 @@ class LocationConfirmDialog(Form):
         # Latitude input
         lbl_lat = Label()
         lbl_lat.Text = "Latitude (°):"
-        lbl_lat.Location = Point(int(15 * sf), int(55 * sf))
+        lbl_lat.Location = Point(int(15 * sf), int(80 * sf))
         lbl_lat.Size = Size(int(100 * sf), int(20 * sf))
         station_group.Controls.Add(lbl_lat)
         
         self.txt_latitude = TextBox()
-        self.txt_latitude.Location = Point(int(120 * sf), int(55 * sf))
+        self.txt_latitude.Location = Point(int(120 * sf), int(80 * sf))
         self.txt_latitude.Size = Size(int(120 * sf), int(20 * sf))
         self.txt_latitude.Text = f"{latitude:.5f}"
         station_group.Controls.Add(self.txt_latitude)
@@ -1429,12 +1449,12 @@ class LocationConfirmDialog(Form):
         # Longitude input
         lbl_lon = Label()
         lbl_lon.Text = "Longitude (°):"
-        lbl_lon.Location = Point(int(260 * sf), int(55 * sf))
+        lbl_lon.Location = Point(int(260 * sf), int(80 * sf))
         lbl_lon.Size = Size(int(100 * sf), int(20 * sf))
         station_group.Controls.Add(lbl_lon)
         
         self.txt_longitude = TextBox()
-        self.txt_longitude.Location = Point(int(365 * sf), int(55 * sf))
+        self.txt_longitude.Location = Point(int(365 * sf), int(80 * sf))
         self.txt_longitude.Size = Size(int(120 * sf), int(20 * sf))
         self.txt_longitude.Text = f"{longitude:.5f}"
         station_group.Controls.Add(self.txt_longitude)
@@ -1442,12 +1462,12 @@ class LocationConfirmDialog(Form):
         # Elevation input
         lbl_elev = Label()
         lbl_elev.Text = "Elevation (m):"
-        lbl_elev.Location = Point(int(15 * sf), int(85 * sf))
+        lbl_elev.Location = Point(int(15 * sf), int(110 * sf))
         lbl_elev.Size = Size(int(100 * sf), int(20 * sf))
         station_group.Controls.Add(lbl_elev)
         
         self.txt_elevation = TextBox()
-        self.txt_elevation.Location = Point(int(120 * sf), int(85 * sf))
+        self.txt_elevation.Location = Point(int(120 * sf), int(110 * sf))
         self.txt_elevation.Size = Size(int(120 * sf), int(20 * sf))
         self.txt_elevation.Text = str(elevation) if elevation != 0.0 else ''
         station_group.Controls.Add(self.txt_elevation)
@@ -1455,14 +1475,14 @@ class LocationConfirmDialog(Form):
         # Google Maps link
         lbl_maps_text = Label()
         lbl_maps_text.Text = "View on map:"
-        lbl_maps_text.Location = Point(int(15 * sf), int(120 * sf))
+        lbl_maps_text.Location = Point(int(15 * sf), int(145 * sf))
         lbl_maps_text.Size = Size(int(100 * sf), int(20 * sf))
         station_group.Controls.Add(lbl_maps_text)
         
         link_maps = LinkLabel()
         maps_url = f"https://www.google.com/maps?q={latitude},{longitude}"
         link_maps.Text = "Open Google Maps"
-        link_maps.Location = Point(int(120 * sf), int(120 * sf))
+        link_maps.Location = Point(int(120 * sf), int(145 * sf))
         link_maps.Size = Size(int(150 * sf), int(20 * sf))
         link_maps.LinkClicked += lambda s, e: webbrowser.open(maps_url)
         station_group.Controls.Add(link_maps)
@@ -1470,20 +1490,20 @@ class LocationConfirmDialog(Form):
         # Lookup Elevation button
         btn_lookup_elev = Button()
         btn_lookup_elev.Text = "Lookup Elevation"
-        btn_lookup_elev.Location = Point(int(285 * sf), int(117 * sf))
+        btn_lookup_elev.Location = Point(int(285 * sf), int(142 * sf))
         btn_lookup_elev.Size = Size(int(130 * sf), int(25 * sf))
         btn_lookup_elev.Click += self.lookup_elevation_click
         station_group.Controls.Add(btn_lookup_elev)
         
         # Info label
         lbl_info = Label()
-        lbl_info.Text = "Please enter or verify the observation location.\nModify the coordinates if you observed from a different location.\nClick 'Lookup Elevation' to get elevation from coordinates (WGS84 datum)."
-        lbl_info.Location = Point(int(15 * sf), int(155 * sf))
-        lbl_info.Size = Size(int(480 * sf), int(55 * sf))
+        lbl_info.Text = "Enter/verify observation location and coordinates.\nUse 'Lookup' to find city/town name from coordinates.\nUse 'Lookup Elevation' to get elevation (WGS84 datum)."
+        lbl_info.Location = Point(int(15 * sf), int(180 * sf))
+        lbl_info.Size = Size(int(480 * sf), int(80 * sf))
         lbl_info.ForeColor = Color.Gray
         station_group.Controls.Add(lbl_info)
         
-        y_pos += int(230 * sf)
+        y_pos += int(290 * sf)
         
         # Buttons
         btn_panel = Panel()
@@ -1508,6 +1528,48 @@ class LocationConfirmDialog(Form):
         
         # Apply theme
         apply_theme_to_control(self, theme_manager)
+    
+    def lookup_location_click(self, sender, e):
+        """Look up city/town name from coordinates using reverse geocoding"""
+        try:
+            # Get current lat/lon values
+            latitude = float(self.txt_latitude.Text)
+            longitude = float(self.txt_longitude.Text)
+            
+            # Show working message
+            original_text = sender.Text
+            sender.Text = "Looking up..."
+            sender.Enabled = False
+            self.Refresh()
+            
+            # Import location lookup function
+            from utils import get_location_name_from_coordinates
+            
+            # Lookup location name
+            location_name = get_location_name_from_coordinates(latitude, longitude)
+            
+            # Restore button
+            sender.Text = original_text
+            sender.Enabled = True
+            
+            if location_name:
+                self.txt_obs_location.Text = location_name
+                MessageBox.Show(f"Location found: {location_name}\n\nFormat: City, ST (US) or City, COUNTRY (others)", 
+                              "Location Lookup", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            else:
+                MessageBox.Show("Could not retrieve location name from the service.\nPlease check your internet connection or enter location manually.", 
+                              "Location Lookup Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        
+        except ValueError:
+            MessageBox.Show("Please enter valid latitude and longitude values first.", 
+                          "Invalid Coordinates", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            sender.Text = original_text
+            sender.Enabled = True
+        except Exception as ex:
+            MessageBox.Show(f"Error during location lookup: {ex}", 
+                          "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            sender.Text = original_text
+            sender.Enabled = True
     
     def lookup_elevation_click(self, sender, e):
         """Look up elevation from coordinates using online API"""
@@ -1558,6 +1620,13 @@ class LocationConfirmDialog(Form):
             self.latitude = float(self.txt_latitude.Text)
             self.longitude = float(self.txt_longitude.Text)
             self.elevation = float(self.txt_elevation.Text) if self.txt_elevation.Text.strip() else 0.0
+            self.obs_location = self.txt_obs_location.Text.strip()
+            
+            # Validate observing location is filled
+            if not self.obs_location:
+                MessageBox.Show("Please enter an observing location (use the Lookup button or enter manually).", 
+                              "Missing Location", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
             
             self.confirmed = True
             self.DialogResult = DialogResult.OK
@@ -1577,6 +1646,7 @@ class LocationConfirmDialog(Form):
         return {
             'latitude': self.latitude if hasattr(self, 'latitude') else 0.0,
             'longitude': self.longitude if hasattr(self, 'longitude') else 0.0,
-            'elevation': self.elevation if hasattr(self, 'elevation') else 0.0
+            'elevation': self.elevation if hasattr(self, 'elevation') else 0.0,
+            'obs_location': self.obs_location if hasattr(self, 'obs_location') else ''
         }
     

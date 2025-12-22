@@ -1169,15 +1169,22 @@ class OccultationManagerGUI(Form):
         """Generate North American Occultation Report Forms for selected past events"""
         selected_events = self.get_displayed_selected_events()
         if not selected_events:
-            MessageBox.Show("Please select events to generate reports for.", "No Events Selected", 
+            MessageBox.Show("Please select an event to generate a report for.", "No Event Selected", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
         
-        # Filter for past events only (reports are for events that have already occurred)
-        past_events = [ev for ev in selected_events if ev.event_datetime and ev.event_datetime < datetime.utcnow()]
-        if not past_events:
-            MessageBox.Show("Reports can only be generated for events that have already occurred.\n\nPlease select past events.", 
-                        "No Past Events", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        # Only allow one event to be selected
+        if len(selected_events) > 1:
+            MessageBox.Show("Please select only one event to generate a report for.", "Multiple Events Selected", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information)
+            return
+        
+        event = selected_events[0]
+        
+        # Check if event has already occurred
+        if not event.event_datetime or event.event_datetime >= datetime.utcnow():
+            MessageBox.Show("Reports can only be generated for events that have already occurred.\n\nPlease select a past event.", 
+                        "Event Not Yet Occurred", MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
         
         # Lazy load report generator (using simple_xlsx - pure Python, no C extensions)
@@ -1200,71 +1207,47 @@ class OccultationManagerGUI(Form):
             print(error_details)
             return
         
-        # Generate reports
-        if MessageBox.Show(f"Generate {len(past_events)} report(s)?", "Confirm", 
-                          MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes:
-            return
-        
-        success_count = 0
-        error_count = 0
-        error_messages = []
-        
-        self.update_status(f"Generating {len(past_events)} report(s)...")
-        
-        for event in past_events:
-            try:
-                print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
-                
-                # Show location confirmation dialog
-                from gui_dialogs import LocationConfirmDialog
-                location_dialog = LocationConfirmDialog(event, self.theme_manager)
-                if location_dialog.ShowDialog() != DialogResult.OK:
-                    print("User cancelled location confirmation")
-                    continue  # Skip this event
-                
-                # Get the confirmed location from the dialog
-                location = location_dialog.get_location()
-                
-                # Temporarily update event with user-entered location
-                event.latitude = location['latitude']
-                event.longitude = location['longitude']
-                event.elevation = location['elevation']
-                
-                self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-                output_path = self.report_generator.generate_report(event)
-                if output_path:
-                    success_count += 1
-                    print(f"SUCCESS: Report generated: {output_path}")
-                else:
-                    error_count += 1
-                    error_msg = f"{event.get_asteroid_display_name()}: Generation returned None (check log for details)"
-                    error_messages.append(error_msg)
-                    print(f"ERROR: {error_msg}")
-            except Exception as ex:
-                error_count += 1
-                import traceback
-                error_details = traceback.format_exc()
-                error_msg = f"{event.get_asteroid_display_name()}: {str(ex)}"
-                error_messages.append(error_msg)
-                print(f"EXCEPTION generating report: {error_msg}")
-                print(f"Full traceback:\n{error_details}")
-        
-        # Show results
-        if success_count > 0 and error_count == 0:
-            self.update_status(f"Successfully generated {success_count} report(s)")
-            MessageBox.Show(f"Successfully generated {success_count} report(s).\n\nFiles saved to Reports folder.", 
-                        "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
-        elif success_count > 0 and error_count > 0:
-            error_summary = "\n".join(error_messages[:3])
-            if len(error_messages) > 3:
-                error_summary += f"\n... and {len(error_messages) - 3} more"
-            self.update_status(f"Generated {success_count} report(s), {error_count} failed")
-            MessageBox.Show(f"Generated {success_count} report(s) with {error_count} error(s):\n\n{error_summary}", 
-                        "Partial Success", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-        else:
-            error_summary = "\n".join(error_messages[:5])
+        # Generate report
+        try:
+            print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
+            
+            # Show location confirmation dialog
+            from gui_dialogs import LocationConfirmDialog
+            location_dialog = LocationConfirmDialog(event, self.theme_manager)
+            if location_dialog.ShowDialog() != DialogResult.OK:
+                print("User cancelled location confirmation")
+                self.update_status("Report generation cancelled")
+                return
+            
+            # Get the confirmed location from the dialog
+            location = location_dialog.get_location()
+            
+            # Temporarily update event with user-entered location
+            event.latitude = location['latitude']
+            event.longitude = location['longitude']
+            event.elevation = location['elevation']
+            event.obs_location = location['obs_location']  # Store observing location
+            
+            self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
+            output_path = self.report_generator.generate_report(event)
+            if output_path:
+                print(f"SUCCESS: Report generated: {output_path}")
+                self.update_status("Report generated successfully")
+                MessageBox.Show(f"Report generated successfully.\n\nFile saved to:\n{output_path}", 
+                            "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            else:
+                print(f"ERROR: Report generation failed (check log)")
+                self.update_status("Report generation failed")
+                MessageBox.Show("Report generation failed. Tip: Close the Excel file if it's already open.\n\nCheck report_debug.log for details.", 
+                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        except Exception as ex:
+            import traceback
+            error_details = traceback.format_exc()
+            error_msg = str(ex)
+            print(f"EXCEPTION generating report: {error_msg}")
+            print(f"Full traceback:\n{error_details}")
             self.update_status("Report generation failed")
-            MessageBox.Show(f"Failed to generate reports:\n\n{error_summary}", 
+            MessageBox.Show(f"Error generating report:\n\n{error_msg}", 
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         
     def create_sequences_click(self, sender, e):
