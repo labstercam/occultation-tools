@@ -84,6 +84,18 @@ class ConfigManager:
             'goto_lead_time': 240,
             'mag_for_40ms_exposure': 12.0,
             
+            # Observer information for NA Report Form
+            'observer_name': '',
+            'observer_email': '',
+            'observer_latitude': 0.0,
+            'observer_longitude': 0.0,
+            'observer_elevation': 0.0,
+            
+            # Telescope information for NA Report Form
+            'telescope_aperture': 0,  # mm
+            'telescope_focal_length': 0,  # mm
+            'telescope_type': 'SCT including Cass and Mak',
+            
             # API configuration
             'host': 'https://www.occultwatcher.net:443',
             'url_path': '/api2/v1/events/details-list',
@@ -230,6 +242,56 @@ class ConfigManager:
     
     def set_mag_for_40ms_exposure(self, magnitude):
         self.config['mag_for_40ms_exposure'] = float(magnitude)
+    
+    # Observer configuration
+    def get_observer_name(self):
+        return self.config['observer_name']
+    
+    def set_observer_name(self, name):
+        self.config['observer_name'] = name
+    
+    def get_observer_email(self):
+        return self.config['observer_email']
+    
+    def set_observer_email(self, email):
+        self.config['observer_email'] = email
+    
+    def get_observer_latitude(self):
+        return self.config['observer_latitude']
+    
+    def set_observer_latitude(self, lat):
+        self.config['observer_latitude'] = float(lat)
+    
+    def get_observer_longitude(self):
+        return self.config['observer_longitude']
+    
+    def set_observer_longitude(self, lon):
+        self.config['observer_longitude'] = float(lon)
+    
+    def get_observer_elevation(self):
+        return self.config['observer_elevation']
+    
+    def set_observer_elevation(self, elev):
+        self.config['observer_elevation'] = float(elev)
+    
+    # Telescope configuration
+    def get_telescope_aperture(self):
+        return self.config['telescope_aperture']
+    
+    def set_telescope_aperture(self, aperture):
+        self.config['telescope_aperture'] = int(aperture)
+    
+    def get_telescope_focal_length(self):
+        return self.config['telescope_focal_length']
+    
+    def set_telescope_focal_length(self, focal_length):
+        self.config['telescope_focal_length'] = int(focal_length)
+    
+    def get_telescope_type(self):
+        return self.config['telescope_type']
+    
+    def set_telescope_type(self, tel_type):
+        self.config['telescope_type'] = tel_type
     
     # API configuration
     def get_host(self):
@@ -1029,6 +1091,12 @@ class ConfigurationDialog(Form):
         self.setup_api_tab(tab_api)
         tab_control.TabPages.Add(tab_api)
         
+        # Observer/Telescope Tab
+        tab_observer = TabPage()
+        tab_observer.Text = "Observer/Telescope"
+        self.setup_observer_tab(tab_observer)
+        tab_control.TabPages.Add(tab_observer)
+        
         # Buttons
         btn_ok = Button()
         btn_ok.Text = "Save"
@@ -1199,6 +1267,122 @@ class ConfigurationDialog(Form):
         self.txt_api_key.Size = Size(300, 20)
         tab.Controls.Add(self.txt_api_key)
     
+    def setup_observer_tab(self, tab):
+        """Setup observer/telescope tab"""
+        # Observer section
+        lbl_observer_section = Label()
+        lbl_observer_section.Text = "Observer Information (for NA Report Form):"
+        lbl_observer_section.Location = Point(20, 10)
+        lbl_observer_section.Size = Size(400, 20)
+        lbl_observer_section.Font = Font(lbl_observer_section.Font, FontStyle.Bold)
+        tab.Controls.Add(lbl_observer_section)
+        
+        # Observer Name
+        lbl_observer_name = Label()
+        lbl_observer_name.Text = "Observer Name:"
+        lbl_observer_name.Location = Point(20, 40)
+        lbl_observer_name.Size = Size(120, 20)
+        tab.Controls.Add(lbl_observer_name)
+        
+        self.txt_observer_name = TextBox()
+        self.txt_observer_name.Location = Point(150, 40)
+        self.txt_observer_name.Size = Size(300, 20)
+        tab.Controls.Add(self.txt_observer_name)
+        
+        # Observer Email
+        lbl_observer_email = Label()
+        lbl_observer_email.Text = "Observer Email:"
+        lbl_observer_email.Location = Point(20, 70)
+        lbl_observer_email.Size = Size(120, 20)
+        tab.Controls.Add(lbl_observer_email)
+        
+        self.txt_observer_email = TextBox()
+        self.txt_observer_email.Location = Point(150, 70)
+        self.txt_observer_email.Size = Size(300, 20)
+        tab.Controls.Add(self.txt_observer_email)
+        
+        # Observer Latitude
+        lbl_latitude = Label()
+        lbl_latitude.Text = "Latitude (deg):"
+        lbl_latitude.Location = Point(20, 100)
+        lbl_latitude.Size = Size(120, 20)
+        tab.Controls.Add(lbl_latitude)
+        
+        self.txt_latitude = TextBox()
+        self.txt_latitude.Location = Point(150, 100)
+        self.txt_latitude.Size = Size(150, 20)
+        tab.Controls.Add(self.txt_latitude)
+        
+        # Observer Longitude
+        lbl_longitude = Label()
+        lbl_longitude.Text = "Longitude (deg):"
+        lbl_longitude.Location = Point(20, 130)
+        lbl_longitude.Size = Size(120, 20)
+        tab.Controls.Add(lbl_longitude)
+        
+        self.txt_longitude = TextBox()
+        self.txt_longitude.Location = Point(150, 130)
+        self.txt_longitude.Size = Size(150, 20)
+        tab.Controls.Add(self.txt_longitude)
+        
+        # Observer Elevation
+        lbl_elevation = Label()
+        lbl_elevation.Text = "Elevation (m):"
+        lbl_elevation.Location = Point(20, 160)
+        lbl_elevation.Size = Size(120, 20)
+        tab.Controls.Add(lbl_elevation)
+        
+        self.txt_elevation = TextBox()
+        self.txt_elevation.Location = Point(150, 160)
+        self.txt_elevation.Size = Size(150, 20)
+        tab.Controls.Add(self.txt_elevation)
+        
+        # Telescope section
+        lbl_telescope_section = Label()
+        lbl_telescope_section.Text = "Telescope Information (for NA Report Form):"
+        lbl_telescope_section.Location = Point(20, 200)
+        lbl_telescope_section.Size = Size(400, 20)
+        lbl_telescope_section.Font = Font(lbl_telescope_section.Font, FontStyle.Bold)
+        tab.Controls.Add(lbl_telescope_section)
+        
+        # Telescope Aperture
+        lbl_aperture = Label()
+        lbl_aperture.Text = "Aperture (mm):"
+        lbl_aperture.Location = Point(20, 230)
+        lbl_aperture.Size = Size(120, 20)
+        tab.Controls.Add(lbl_aperture)
+        
+        self.txt_aperture = TextBox()
+        self.txt_aperture.Location = Point(150, 230)
+        self.txt_aperture.Size = Size(150, 20)
+        tab.Controls.Add(self.txt_aperture)
+        
+        # Telescope Focal Length
+        lbl_focal_length = Label()
+        lbl_focal_length.Text = "Focal Length (mm):"
+        lbl_focal_length.Location = Point(20, 260)
+        lbl_focal_length.Size = Size(120, 20)
+        tab.Controls.Add(lbl_focal_length)
+        
+        self.txt_focal_length = TextBox()
+        self.txt_focal_length.Location = Point(150, 260)
+        self.txt_focal_length.Size = Size(150, 20)
+        tab.Controls.Add(self.txt_focal_length)
+        
+        # Telescope Type
+        lbl_telescope_type = Label()
+        lbl_telescope_type.Text = "Telescope Type:"
+        lbl_telescope_type.Location = Point(20, 290)
+        lbl_telescope_type.Size = Size(120, 20)
+        tab.Controls.Add(lbl_telescope_type)
+        
+        self.cmb_telescope_type = ComboBox()
+        self.cmb_telescope_type.Location = Point(150, 290)
+        self.cmb_telescope_type.Size = Size(300, 20)
+        self.cmb_telescope_type.DropDownStyle = ComboBoxStyle.DropDownList
+        self.cmb_telescope_type.Items.AddRange(['SCT including Cass and Mak', 'Newtonian', 'Refractor', 'Dobsonian'])
+        tab.Controls.Add(self.cmb_telescope_type)
+    
     def load_current_config(self):
         """Load current configuration into controls"""
         self.txt_email.Text = config.get_owc_email()
@@ -1212,6 +1396,16 @@ class ConfigurationDialog(Form):
         self.txt_mag_exposure.Text = str(config.get_mag_for_40ms_exposure())
         self.txt_host.Text = config.get_host()
         self.txt_api_key.Text = config.get_api_key()
+        
+        # Observer/Telescope settings
+        self.txt_observer_name.Text = config.get_observer_name()
+        self.txt_observer_email.Text = config.get_observer_email()
+        self.txt_latitude.Text = str(config.get_observer_latitude())
+        self.txt_longitude.Text = str(config.get_observer_longitude())
+        self.txt_elevation.Text = str(config.get_observer_elevation())
+        self.txt_aperture.Text = str(config.get_telescope_aperture())
+        self.txt_focal_length.Text = str(config.get_telescope_focal_length())
+        self.cmb_telescope_type.Text = config.get_telescope_type()
     
     def browse_file_folder_click(self, sender, e):
         """Browse for file folder"""
@@ -1242,6 +1436,16 @@ class ConfigurationDialog(Form):
             config.set_mag_for_40ms_exposure(float(self.txt_mag_exposure.Text))
             config.set_host(self.txt_host.Text)
             config.set_api_key(self.txt_api_key.Text)
+            
+            # Observer/Telescope settings
+            config.set_observer_name(self.txt_observer_name.Text)
+            config.set_observer_email(self.txt_observer_email.Text)
+            config.set_observer_latitude(float(self.txt_latitude.Text) if self.txt_latitude.Text else 0.0)
+            config.set_observer_longitude(float(self.txt_longitude.Text) if self.txt_longitude.Text else 0.0)
+            config.set_observer_elevation(float(self.txt_elevation.Text) if self.txt_elevation.Text else 0.0)
+            config.set_telescope_aperture(int(self.txt_aperture.Text) if self.txt_aperture.Text else 0)
+            config.set_telescope_focal_length(int(self.txt_focal_length.Text) if self.txt_focal_length.Text else 0)
+            config.set_telescope_type(self.cmb_telescope_type.Text)
             
             # Validate and save
             errors = config.validate_config()
@@ -1348,7 +1552,7 @@ class TemplateSelectionDialog(Form):
         template_files, template_folder = self.template_manager.find_template_files()
         
         # Add default option
-        self.lst_templates.Items.Add("Default Template")
+        #self.lst_templates.Items.Add("Default Template")
         
         # Add template files
         for template_file in template_files:
@@ -1597,6 +1801,13 @@ class OccultationManagerGUI(Form):
         btn_edit_exposure.Location = Point(530, 25)
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
+        
+        btn_generate_report = Button()
+        btn_generate_report.Text = "Generate Report"
+        btn_generate_report.Size = Size(120, 25)
+        btn_generate_report.Location = Point(640, 25)
+        btn_generate_report.Click += self.generate_report_click
+        toolbar.Controls.Add(btn_generate_report)
         
         return toolbar
     
@@ -1881,6 +2092,323 @@ class OccultationManagerGUI(Form):
         """Show template manager"""
         template_dialog = TemplateSelectionDialog()
         template_dialog.ShowDialog()
+    
+    def generate_report_click(self, sender, e):
+        """Generate Excel report for selected past events"""
+        try:
+            # Get selected events
+            selected_events = self.events_grid.get_selected_events()
+            
+            if len(selected_events) == 0:
+                MessageBox.Show(
+                    "Please select events (check the boxes) to generate reports for.",
+                    "No Events Selected",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                )
+                return
+            
+            # Filter for past events only
+            now = datetime.utcnow()
+            past_events = [e for e in selected_events if e.event_datetime and e.event_datetime < now]
+            
+            if len(past_events) == 0:
+                MessageBox.Show(
+                    "No past events selected. Reports can only be generated for events that have already occurred.\n\n" +
+                    f"Selected events: {len(selected_events)}\nPast events: 0",
+                    "No Past Events",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                )
+                return
+            
+            if len(past_events) < len(selected_events):
+                result = MessageBox.Show(
+                    f"Only {len(past_events)} of {len(selected_events)} selected events have occurred.\n\n" +
+                    "Generate reports for past events only?",
+                    "Past Events Filter",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                )
+                if result != DialogResult.Yes:
+                    return
+            
+            # Check if openpyxl is available
+            try:
+                import openpyxl
+            except ImportError:
+                MessageBox.Show(
+                    "Excel reporting requires the 'openpyxl' library.\n\n" +
+                    "To install, run in PowerShell:\n" +
+                    "pip install openpyxl\n\n" +
+                    "After installation, restart the application.",
+                    "Missing Library",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                )
+                return
+            
+            # Generate reports
+            self.lbl_status.Text = "Generating reports..."
+            self.Refresh()
+            
+            success_count = 0
+            report_folder = os.path.join(config.get_file_folder(), 'reports')
+            if not os.path.exists(report_folder):
+                os.makedirs(report_folder)
+            
+            for event in past_events:
+                try:
+                    report_path = self.generate_event_report(event, report_folder)
+                    if report_path:
+                        success_count += 1
+                except Exception as ex:
+                    print(f"Error generating report for {event.name}: {str(ex)}")
+            
+            self.lbl_status.Text = f"Generated {success_count} reports"
+            
+            MessageBox.Show(
+                f"Successfully generated {success_count} report(s) for past events.\n\n" +
+                f"Reports saved to: {report_folder}",
+                "Reports Generated",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            )
+            
+        except Exception as ex:
+            MessageBox.Show(
+                f"Error generating reports: {str(ex)}",
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+    
+    def download_na_report_template(self):
+        """Download North American Occultation Report Form template"""
+        na_report_url = 'https://astrid-downloads.s3.amazonaws.com/downloads/NorthAmerica_AstReportForm_V5.6.12.xlsx'
+        template_path = os.path.join(config.get_file_folder(), 'NorthAmerica_AstReportForm_V5.6.12.xlsx')
+        
+        if os.path.exists(template_path):
+            return template_path
+        
+        try:
+            import urllib.request
+            self.lbl_status.Text = "Downloading NA Report Form template..."
+            self.Refresh()
+            urllib.request.urlretrieve(na_report_url, template_path)
+            return template_path
+        except Exception as ex:
+            MessageBox.Show(
+                f"Failed to download NA Report Form template:\n{str(ex)}\n\n" +
+                f"Please download manually from:\n{na_report_url}\n\n" +
+                f"Save to: {template_path}",
+                "Template Download Failed",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
+            return None
+    
+    def generate_event_report(self, event, report_folder):
+        """Generate Excel report for a single event using NA Report Form template"""
+        from openpyxl import load_workbook
+        
+        # Get template
+        template_path = self.download_na_report_template()
+        if not template_path:
+            return None
+        
+        # Load template workbook
+        try:
+            wb = load_workbook(template_path)
+            ws = wb['DATA']
+            
+            # Validate template
+            if ws['G1'].value != 'Asteroid Occultation Report Form':
+                raise ValueError('Invalid NA Report Form template')
+        except Exception as ex:
+            MessageBox.Show(
+                f"Error loading template: {str(ex)}",
+                "Template Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+            return None
+        
+        # Cell mapping from astrid fillinnareport.py
+        MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+        
+        cell_mapping = {
+            'AstNum': 'E7',
+            'AstName': 'K7',
+            'EventYear': 'D5',
+            'EventMonth': 'K5',
+            'EventDay': 'P5',
+            'StarCatalog': 'S7',
+            'StarNumber': 'X7',
+            'PredictedHours': 'Y5',
+            'PredictedMinutes': 'AA5',
+            'PredictedSeconds': 'AC5',
+            'LatitudeFormat': 'E17',
+            'LongitudeFormat': 'N17',
+            'Latitude': 'E18',
+            'LatitudeDir': 'J18',
+            'Longitude': 'N18',
+            'LongitudeDir': 'R18',
+            'Elevation': 'V18',
+            'ElevationUnits': 'W18',
+            'ElevationDatum': 'AA18',
+            'Timing': 'E22',
+            'TimingDevice': 'E23',
+            'Detector': 'E25',
+            'OtherDetectorRelatedInfo': 'V25',
+            'ObserverName': 'D9',
+            'ObserverEmail': 'S9',
+            'Aperture': 'E20',
+            'ApertureUnits': 'H20',
+            'FocalRatio': 'L20',
+            'TelescopeType': 'T20',
+            'StartedObservingHours': 'F31',
+            'StartedObservingMins': 'H31',
+            'StartedObservingSecs': 'J31',
+            'StoppedObservingHours': 'F37',
+            'StoppedObservingMins': 'H37',
+            'StoppedObservingSecs': 'J37',
+            'VideoFormat': 'L25',
+            'ExposureIntegration': 'P25',
+            'CommentLine3': 'D44',
+        }
+        
+        # Fill in event data
+        # Asteroid number and name
+        if event.object_no:
+            ws[cell_mapping['AstNum']] = event.object_no
+        if event.object_name:
+            ws[cell_mapping['AstName']] = event.object_name
+        
+        # Event date/time
+        if event.event_datetime:
+            ws[cell_mapping['EventYear']] = event.event_datetime.year
+            ws[cell_mapping['EventMonth']] = MONTHS[event.event_datetime.month - 1]
+            ws[cell_mapping['EventDay']] = event.event_datetime.day
+            ws[cell_mapping['PredictedHours']] = event.event_datetime.hour
+            ws[cell_mapping['PredictedMinutes']] = event.event_datetime.minute
+            ws[cell_mapping['PredictedSeconds']] = event.event_datetime.second
+        
+        # Star catalog and number (parse from star_id)
+        if event.star_name:
+            star = event.star_name
+            star_catalog = None
+            star_number = None
+            
+            if star.startswith('TYC'):
+                star_catalog = 'TYC       xxxx-xxxxx-x'
+                star_number = star.replace('TYC ', '')
+            elif star.startswith('HIP'):
+                star_catalog = 'HIP  xxxxxx'
+                star_number = star.replace('HIP ', '')
+            elif star.startswith('UCAC2'):
+                star_catalog = 'UCAC2        xxxxxxxx'
+                star_number = star.replace('UCAC2 ', '')
+            elif star.startswith('UCAC3'):
+                star_catalog = 'UCAC3     xxx - xxxxxx'
+                star_number = star.replace('UCAC3 ', '')
+            elif star.startswith('UCAC4'):
+                star_catalog = 'UCAC4     xxx - xxxxxx'
+                star_number = star.replace('UCAC4 ', '')
+            elif star.startswith('G'):
+                star_catalog = 'G-coords hhmmss.s?ddmmss'
+                star_number = star.replace('G', '')
+            elif star.startswith('URAT1'):
+                star_catalog = 'URAT1    xxx - xxxxxxx'
+                star_number = star.replace('URAT1 ', '')
+            elif star.startswith('1B'):
+                star_catalog = '1B    xxx - xxxxxxx'
+                star_number = star.replace('1B ', '')
+            elif star.startswith('1N'):
+                star_catalog = '1N    xxx - xxxxxxx'
+                star_number = star.replace('1N ', '')
+            
+            if star_catalog and star_number:
+                ws[cell_mapping['StarCatalog']] = star_catalog
+                ws[cell_mapping['StarNumber']] = star_number
+        
+        # Observer location from config
+        observer_lat = config.get_observer_latitude()
+        observer_lon = config.get_observer_longitude()
+        observer_elev = config.get_observer_elevation()
+        
+        if observer_lat != 0.0:
+            ws[cell_mapping['LatitudeFormat']] = 'deg.ddddd'
+            ws[cell_mapping['Latitude']] = '%0.5f' % abs(observer_lat)
+            ws[cell_mapping['LatitudeDir']] = 'S' if observer_lat < 0 else 'N'
+        
+        if observer_lon != 0.0:
+            ws[cell_mapping['LongitudeFormat']] = 'deg.ddddd'
+            ws[cell_mapping['Longitude']] = '%0.5f' % abs(observer_lon)
+            ws[cell_mapping['LongitudeDir']] = 'W' if observer_lon < 0 else 'E'
+        
+        if observer_elev != 0.0:
+            ws[cell_mapping['Elevation']] = observer_elev
+            ws[cell_mapping['ElevationUnits']] = 'm'
+            ws[cell_mapping['ElevationDatum']] = 'WGS84'
+        
+        # Timing (SharpCap with GPS)
+        ws[cell_mapping['Timing']] = 'GPS - other linking'
+        ws[cell_mapping['TimingDevice']] = 'SharpCap'
+        ws[cell_mapping['Detector']] = 'SharpCap'
+        
+        # Detector info
+        ws[cell_mapping['OtherDetectorRelatedInfo']] = f'Exp {event.exposure_ms}ms'
+        
+        # Observer info from config
+        observer_name = config.get_observer_name()
+        observer_email = config.get_observer_email()
+        if observer_name:
+            ws[cell_mapping['ObserverName']] = observer_name
+        if observer_email:
+            ws[cell_mapping['ObserverEmail']] = observer_email
+        
+        # Telescope info from config
+        aperture = config.get_telescope_aperture()
+        focal_length = config.get_telescope_focal_length()
+        telescope_type = config.get_telescope_type()
+        
+        if aperture > 0 and focal_length > 0:
+            ws[cell_mapping['Aperture']] = aperture / 10.0  # Convert mm to cm
+            ws[cell_mapping['ApertureUnits']] = 'cm'
+            focal_ratio = focal_length / aperture
+            ws[cell_mapping['FocalRatio']] = focal_ratio
+        
+        if telescope_type:
+            ws[cell_mapping['TelescopeType']] = telescope_type
+        
+        # Recording times (event start/end converted to H:M:S)
+        if event.start_time:
+            ws[cell_mapping['StartedObservingHours']] = event.start_time.hour
+            ws[cell_mapping['StartedObservingMins']] = event.start_time.minute
+            ws[cell_mapping['StartedObservingSecs']] = event.start_time.second
+        
+        if event.end_time:
+            ws[cell_mapping['StoppedObservingHours']] = event.end_time.hour
+            ws[cell_mapping['StoppedObservingMins']] = event.end_time.minute
+            ws[cell_mapping['StoppedObservingSecs']] = event.end_time.second
+        
+        # Video format and integration
+        ws[cell_mapping['VideoFormat']] = 'SER'
+        ws[cell_mapping['ExposureIntegration']] = 'Other'
+        
+        # Comment line
+        ws[cell_mapping['CommentLine3']] = 'This report was pre-filled by Occultation Manager'
+        
+        # Generate filename (IOTA standard format: YYYYMMDD_asteroidnumber_asteroidname_observersurname_stationnumber_POS.xlsx)
+        event_date = event.event_datetime.strftime('%Y%m%d') if event.event_datetime else 'unknown'
+        clean_name = "".join(c for c in event.name if c.isalnum() or c in ('(', ')', ' ', '-', '_')).rstrip()
+        filename = f"{event_date}_{clean_name}_Report.xlsx"
+        report_path = os.path.join(report_folder, filename)
+        
+        # Save workbook
+        wb.save(report_path)
+        return report_path
     
     def show_about_click(self, sender, e):
         """Show about dialog"""

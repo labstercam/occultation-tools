@@ -26,6 +26,18 @@ class ConfigManager:
             'sync_mount': True,
             'display_utc': True,
             
+            # Observer information for NA Report Form
+            'observer_name': '',
+            'observer_email': '',
+            'observer_latitude': 0.0,
+            'observer_longitude': 0.0,
+            'observer_elevation': 0.0,
+            
+            # Telescope information for NA Report Form
+            'telescope_aperture': 0,  # mm
+            'telescope_focal_length': 0,  # mm
+            'telescope_type': 'SCT including Cass and Mak',
+            
             # API configuration
             'host': 'https://www.occultwatcher.net:443',
             'url_path': '/api2/v1/events/details-list',
@@ -187,6 +199,56 @@ class ConfigManager:
 
     def set_display_utc(self, enabled):
         self.config['display_utc'] = enabled
+
+    # Observer configuration
+    def get_observer_name(self):
+        return self.config.get('observer_name', '')
+    
+    def set_observer_name(self, name):
+        self.config['observer_name'] = name
+    
+    def get_observer_email(self):
+        return self.config.get('observer_email', '')
+    
+    def set_observer_email(self, email):
+        self.config['observer_email'] = email
+    
+    def get_observer_latitude(self):
+        return self.config.get('observer_latitude', 0.0)
+    
+    def set_observer_latitude(self, lat):
+        self.config['observer_latitude'] = float(lat)
+    
+    def get_observer_longitude(self):
+        return self.config.get('observer_longitude', 0.0)
+    
+    def set_observer_longitude(self, lon):
+        self.config['observer_longitude'] = float(lon)
+    
+    def get_observer_elevation(self):
+        return self.config.get('observer_elevation', 0.0)
+    
+    def set_observer_elevation(self, elev):
+        self.config['observer_elevation'] = float(elev)
+    
+    # Telescope configuration
+    def get_telescope_aperture(self):
+        return self.config.get('telescope_aperture', 0)
+    
+    def set_telescope_aperture(self, aperture):
+        self.config['telescope_aperture'] = int(aperture)
+    
+    def get_telescope_focal_length(self):
+        return self.config.get('telescope_focal_length', 0)
+    
+    def set_telescope_focal_length(self, focal_length):
+        self.config['telescope_focal_length'] = int(focal_length)
+    
+    def get_telescope_type(self):
+        return self.config.get('telescope_type', 'SCT including Cass and Mak')
+    
+    def set_telescope_type(self, tel_type):
+        self.config['telescope_type'] = tel_type
 
     # API configuration
     def get_host(self):

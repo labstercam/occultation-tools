@@ -1,18 +1,24 @@
 import clr
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("System.Drawing")
+clr.AddReference("System")
 
 import os
+import sys
 import threading
 import time
+import webbrowser
+
 from datetime import datetime, timedelta
 from System.Drawing import Point, Size, Color, SystemColors, Font, FontStyle, Pen, PointF
 from System.Windows.Forms import (
     Form, Panel, MenuStrip, Button, Label, ComboBox, ComboBoxStyle,
     ToolStripMenuItem, ToolStripSeparator, FolderBrowserDialog, GroupBox,
     TextBox, DataGridView, AnchorStyles, DockStyle, Padding, Application,
-    MessageBox, MessageBoxButtons, MessageBoxIcon, DialogResult, FormStartPosition
+    MessageBox, MessageBoxButtons, MessageBoxIcon, DialogResult, FormStartPosition, Clipboard,
+    LinkLabel
 )
+from System.Diagnostics import Process
 import System
 
 from System.Threading import CancellationToken
@@ -25,6 +31,7 @@ from gui_dialogs import ExposureEditDialog, EventDetailsDialog, ConfigurationDia
 from templates import TemplateManager
 from utils import save_occultation_sequence
 from help import HelpManager
+# na_report import moved to lazy load in generate_report_click() to avoid crashes
 
 class OccultationManagerGUI(Form):
     """Enhanced main GUI window for occultation management with all requested features"""
@@ -86,6 +93,7 @@ class OccultationManagerGUI(Form):
         self.station_filter = ""
         self.sequence_runner = SequenceRunner(config,sharpcap_instance)
         #self.template_manager = TemplateManager(config)
+        self.report_generator = None  # Lazy load when needed to avoid import issues
         self.setup_ui()
         self.load_initial_data()
         self.apply_current_theme() # Apply normal or night mode theme
@@ -452,6 +460,15 @@ class OccultationManagerGUI(Form):
             self._autosize_button(btn_run_sequences, height=btn_h + extra_h)
         except Exception:
             pass
+        
+        btn_generate_report = Button()
+        btn_generate_report.Text = "Generate Report"
+        btn_generate_report.Click += self.generate_report_click
+        toolbar.Controls.Add(btn_generate_report)
+        try:
+            self._autosize_button(btn_generate_report, height=btn_h + extra_h)
+        except Exception:
+            pass
 
 
         # Night Mode (global)
@@ -466,7 +483,7 @@ class OccultationManagerGUI(Form):
 
         # Layout the toolbar buttons with a fixed 4px gap
         try:
-            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, self.btn_night_mode], start_x=start_x, y=start_y, gap=gap)
+            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, btn_generate_report, self.btn_night_mode], start_x=start_x, y=start_y, gap=gap)
         except Exception:
             pass
 
@@ -496,6 +513,8 @@ class OccultationManagerGUI(Form):
         menu_events = ToolStripMenuItem("Events")
         menu_events.DropDownItems.Add(ToolStripMenuItem("Event Details", None, self.show_event_details_click))
         menu_events.DropDownItems.Add(ToolStripMenuItem("Edit Exposure", None, self.edit_exposure_click))
+        menu_events.DropDownItems.Add(ToolStripSeparator())
+        menu_events.DropDownItems.Add(ToolStripMenuItem("Generate Report", None, self.generate_report_click))
         menu_events.DropDownItems.Add(ToolStripSeparator())
         menu_events.DropDownItems.Add(ToolStripMenuItem("Select All", None, self.select_all_click))
         menu_events.DropDownItems.Add(ToolStripMenuItem("Select None", None, self.select_none_click))
@@ -1142,6 +1161,92 @@ class OccultationManagerGUI(Form):
             thread = threading.Thread(target=run_in_background)
             thread.IsBackground = True
             thread.start()
+    
+    def generate_report_click(self, sender, e):
+        """Generate North American Occultation Report Forms for selected past events"""
+        selected_events = self.get_displayed_selected_events()
+        if not selected_events:
+            MessageBox.Show("Please select events to generate reports for.", "No Events Selected", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information)
+            return
+        
+        # Filter for past events only (reports are for events that have already occurred)
+        past_events = [ev for ev in selected_events if ev.event_datetime and ev.event_datetime < datetime.utcnow()]
+        if not past_events:
+            MessageBox.Show("Reports can only be generated for events that have already occurred.\n\nPlease select past events.", 
+                        "No Past Events", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            return
+        
+        # Lazy load report generator (using simple_xlsx - pure Python, no C extensions)
+        try:
+            if self.report_generator is None:
+                print("Loading NA Report Generator (simple_xlsx)...")
+                from na_report import NAReportGenerator
+                self.report_generator = NAReportGenerator(self.config)
+                print("NAReportGenerator initialized successfully")
+        
+        except Exception as ex:
+            import traceback
+            error_details = traceback.format_exc()
+            MessageBox.Show(
+                f"Error loading report generator:\n\n{str(ex)}\n\nSee SharpCap log for details.",
+                "Initialization Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error)
+            print(f"Failed to initialize NAReportGenerator: {ex}")
+            print(error_details)
+            return
+        
+        # Generate reports
+        if MessageBox.Show(f"Generate {len(past_events)} report(s)?", "Confirm", 
+                          MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes:
+            return
+        
+        success_count = 0
+        error_count = 0
+        error_messages = []
+        
+        self.update_status(f"Generating {len(past_events)} report(s)...")
+        
+        for event in past_events:
+            try:
+                print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
+                self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
+                output_path = self.report_generator.generate_report(event)
+                if output_path:
+                    success_count += 1
+                    print(f"SUCCESS: Report generated: {output_path}")
+                else:
+                    error_count += 1
+                    error_msg = f"{event.get_asteroid_display_name()}: Generation returned None (check log for details)"
+                    error_messages.append(error_msg)
+                    print(f"ERROR: {error_msg}")
+            except Exception as ex:
+                error_count += 1
+                import traceback
+                error_details = traceback.format_exc()
+                error_msg = f"{event.get_asteroid_display_name()}: {str(ex)}"
+                error_messages.append(error_msg)
+                print(f"EXCEPTION generating report: {error_msg}")
+                print(f"Full traceback:\n{error_details}")
+        
+        # Show results
+        if success_count > 0 and error_count == 0:
+            self.update_status(f"Successfully generated {success_count} report(s)")
+            MessageBox.Show(f"Successfully generated {success_count} report(s).\n\nFiles saved to Reports folder.", 
+                        "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        elif success_count > 0 and error_count > 0:
+            error_summary = "\n".join(error_messages[:3])
+            if len(error_messages) > 3:
+                error_summary += f"\n... and {len(error_messages) - 3} more"
+            self.update_status(f"Generated {success_count} report(s), {error_count} failed")
+            MessageBox.Show(f"Generated {success_count} report(s) with {error_count} error(s):\n\n{error_summary}", 
+                        "Partial Success", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        else:
+            error_summary = "\n".join(error_messages[:5])
+            self.update_status("Report generation failed")
+            MessageBox.Show(f"Failed to generate reports:\n\n{error_summary}", 
+                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         
     def create_sequences_click(self, sender, e):
         """Handle create sequences button click"""
