@@ -81,8 +81,7 @@ def main():
         print("Starting Enhanced GUI mode...")
         app = OccultationManagerGUI(config, theme_manager,SharpCap,PlateSolvePurpose,CoordinateParser)
         Application.EnableVisualStyles()
-        #Application.Run(app)
-        app.ShowDialog()  # Changed from Application.Run(app) so shouldn't lock the main SharpCap interface.
+        app.Show()  # Use Show() instead of ShowDialog() to keep SharpCap interface responsive
     except Exception as ex:
         print(f"GUI failed to start: {ex}")
         MessageBox.Show(f"Failed to start application: {ex}", "Startup Error", 

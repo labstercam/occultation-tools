@@ -41,6 +41,9 @@ class OccultationManagerGUI(Form):
         self.config = config
         self.theme_manager = theme_manager
         
+        # Keep window on top of SharpCap
+        self.TopMost = True
+        
         # Disable automatic DPI scaling since we handle it manually
         # Use integer value 0 instead of AutoScaleMode.None (which conflicts with Python's None keyword)
         from System.Windows.Forms import AutoScaleMode
