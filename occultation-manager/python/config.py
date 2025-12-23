@@ -36,10 +36,16 @@ class ConfigManager:
             'observer_phone': '',
             'observer_fax': '',
             
-            # Telescope information for NA Report Form
+            # Telescope information for NA Report Form (legacy - kept for backward compatibility)
             'telescope_aperture': 0,  # mm
             'telescope_focal_length': 0,  # mm
             'telescope_type': 'SCT including Cass and Mak',
+            
+            # Multiple telescopes and cameras support
+            'telescopes': [],  # List of telescope configurations
+            'cameras': [],  # List of camera configurations
+            'active_telescope_id': None,  # ID of currently selected telescope
+            'active_camera_id': None,  # ID of currently selected camera
             
             # API configuration
             'host': 'https://www.occultwatcher.net:443',
@@ -356,3 +362,175 @@ class ConfigManager:
     def set_night_mode(self, enabled):
         """Set night mode setting"""
         self.config['night_mode'] = enabled
+    
+    # ========== Telescope Management ==========
+    
+    def get_telescopes(self):
+        """Get list of all telescope configurations"""
+        return self.config.get('telescopes', [])
+    
+    def get_telescope_by_id(self, telescope_id):
+        """Get a specific telescope by ID"""
+        telescopes = self.get_telescopes()
+        for telescope in telescopes:
+            if telescope.get('id') == telescope_id:
+                return telescope
+        return None
+    
+    def get_active_telescope(self):
+        """Get the currently active telescope configuration"""
+        active_id = self.config.get('active_telescope_id')
+        if active_id:
+            telescope = self.get_telescope_by_id(active_id)
+            if telescope:
+                return telescope
+        
+        # Fallback to legacy single telescope config
+        if self.config.get('telescope_aperture', 0) > 0:
+            return {
+                'id': 'legacy',
+                'name': 'Default Telescope',
+                'aperture': self.config.get('telescope_aperture', 0),
+                'focal_ratio': 0,  # Legacy config doesn't store focal_ratio
+                'type': self.config.get('telescope_type', 'SCT including Cass and Mak')
+            }
+        
+        # Return first telescope if available
+        telescopes = self.get_telescopes()
+        return telescopes[0] if telescopes else None
+    
+    def add_telescope(self, name, aperture, focal_ratio, tel_type):
+        """Add a new telescope configuration"""
+        import uuid
+        telescopes = self.get_telescopes()
+        telescope = {
+            'id': str(uuid.uuid4()),
+            'name': name,
+            'aperture': float(aperture),
+            'focal_ratio': float(focal_ratio),
+            'type': tel_type
+        }
+        telescopes.append(telescope)
+        self.config['telescopes'] = telescopes
+        
+        # Set as active if it's the first one
+        if len(telescopes) == 1:
+            self.config['active_telescope_id'] = telescope['id']
+        
+        return telescope['id']
+    
+    def update_telescope(self, telescope_id, name, aperture, focal_ratio, tel_type):
+        """Update an existing telescope configuration"""
+        telescopes = self.get_telescopes()
+        for telescope in telescopes:
+            if telescope.get('id') == telescope_id:
+                telescope['name'] = name
+                telescope['aperture'] = float(aperture)
+                telescope['focal_ratio'] = float(focal_ratio)
+                telescope['type'] = tel_type
+                self.config['telescopes'] = telescopes
+                return True
+        return False
+    
+    def delete_telescope(self, telescope_id):
+        """Delete a telescope configuration"""
+        telescopes = self.get_telescopes()
+        telescopes = [t for t in telescopes if t.get('id') != telescope_id]
+        self.config['telescopes'] = telescopes
+        
+        # Clear active if deleting the active telescope
+        if self.config.get('active_telescope_id') == telescope_id:
+            self.config['active_telescope_id'] = telescopes[0]['id'] if telescopes else None
+        
+        return True
+    
+    def set_active_telescope(self, telescope_id):
+        """Set the active telescope"""
+        if self.get_telescope_by_id(telescope_id):
+            self.config['active_telescope_id'] = telescope_id
+            return True
+        return False
+    
+    # ========== Camera Management ==========
+    
+    def get_cameras(self):
+        """Get list of all camera configurations"""
+        return self.config.get('cameras', [])
+    
+    def get_camera_by_id(self, camera_id):
+        """Get a specific camera by ID"""
+        cameras = self.get_cameras()
+        for camera in cameras:
+            if camera.get('id') == camera_id:
+                return camera
+        return None
+    
+    def get_active_camera(self):
+        """Get the currently active camera configuration"""
+        active_id = self.config.get('active_camera_id')
+        if active_id:
+            camera = self.get_camera_by_id(active_id)
+            if camera:
+                return camera
+        
+        # Return first camera if available
+        cameras = self.get_cameras()
+        return cameras[0] if cameras else None
+    
+    def add_camera(self, name, detector, timing, timing_device, other_info='', video_format='SER', exposure_integration='Other'):
+        """Add a new camera configuration"""
+        import uuid
+        cameras = self.get_cameras()
+        camera = {
+            'id': str(uuid.uuid4()),
+            'name': name,
+            'detector': detector,
+            'timing': timing,
+            'timing_device': timing_device,
+            'other_info': other_info,
+            'video_format': video_format,
+            'exposure_integration': exposure_integration
+        }
+        cameras.append(camera)
+        self.config['cameras'] = cameras
+        
+        # Set as active if it's the first one
+        if len(cameras) == 1:
+            self.config['active_camera_id'] = camera['id']
+        
+        return camera['id']
+    
+    def update_camera(self, camera_id, name, detector, timing, timing_device, other_info='', video_format='SER', exposure_integration='Other'):
+        """Update an existing camera configuration"""
+        cameras = self.get_cameras()
+        for camera in cameras:
+            if camera.get('id') == camera_id:
+                camera['name'] = name
+                camera['detector'] = detector
+                camera['timing'] = timing
+                camera['timing_device'] = timing_device
+                camera['other_info'] = other_info
+                camera['video_format'] = video_format
+                camera['exposure_integration'] = exposure_integration
+                self.config['cameras'] = cameras
+                return True
+        return False
+    
+    def delete_camera(self, camera_id):
+        """Delete a camera configuration"""
+        cameras = self.get_cameras()
+        cameras = [c for c in cameras if c.get('id') != camera_id]
+        self.config['cameras'] = cameras
+        
+        # Clear active if deleting the active camera
+        if self.config.get('active_camera_id') == camera_id:
+            self.config['active_camera_id'] = cameras[0]['id'] if cameras else None
+        
+        return True
+    
+    def set_active_camera(self, camera_id):
+        """Set the active camera"""
+        if self.get_camera_by_id(camera_id):
+            self.config['active_camera_id'] = camera_id
+            return True
+        return False

@@ -41,9 +41,6 @@ class OccultationManagerGUI(Form):
         self.config = config
         self.theme_manager = theme_manager
         
-        # Keep window on top of SharpCap
-        self.TopMost = True
-        
         # Disable automatic DPI scaling since we handle it manually
         # Use integer value 0 instead of AutoScaleMode.None (which conflicts with Python's None keyword)
         from System.Windows.Forms import AutoScaleMode
@@ -534,6 +531,10 @@ class OccultationManagerGUI(Form):
         # Tools menu
         menu_tools = ToolStripMenuItem("Tools")
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Configuration", None, self.show_configuration_click))
+        menu_tools.DropDownItems.Add(ToolStripSeparator())
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Manage Telescopes", None, self.show_telescope_manager_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Manage Cameras", None, self.show_camera_manager_click))
+        menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Template Manager", None, self.show_template_manager_click))
         menu_bar.Items.Add(menu_tools)
         
@@ -1211,6 +1212,20 @@ class OccultationManagerGUI(Form):
         try:
             print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
             
+            # Show equipment selection dialog
+            from equipment_dialogs import EquipmentSelectionDialog
+            equipment_dialog = EquipmentSelectionDialog(self.config, self.theme_manager, event)
+            if equipment_dialog.ShowDialog() != DialogResult.OK:
+                print("User cancelled equipment selection")
+                self.update_status("Report generation cancelled")
+                return
+            
+            # Get selected equipment IDs
+            telescope_id = equipment_dialog.get_selected_telescope_id()
+            camera_id = equipment_dialog.get_selected_camera_id()
+            print("main_gui: Telescope ID from dialog = {}".format(telescope_id))
+            print("main_gui: Camera ID from dialog = {}".format(camera_id))
+            
             # Show location confirmation dialog
             from gui_dialogs import LocationConfirmDialog
             location_dialog = LocationConfirmDialog(event, self.theme_manager)
@@ -1229,7 +1244,7 @@ class OccultationManagerGUI(Form):
             event.obs_location = location['obs_location']  # Store observing location
             
             self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-            output_path = self.report_generator.generate_report(event)
+            output_path = self.report_generator.generate_report(event, telescope_id, camera_id)
             if output_path:
                 print(f"SUCCESS: Report generated: {output_path}")
                 self.update_status("Report generated successfully")
@@ -1583,6 +1598,18 @@ class OccultationManagerGUI(Form):
         # Pass self as owner so the configuration dialog can refresh the
         # main UI immediately when settings (like display_utc) are changed.
         config_dialog.ShowDialog(self)
+    
+    def show_telescope_manager_click(self, sender, e):
+        """Show telescope manager dialog"""
+        from equipment_dialogs import TelescopeManagerDialog
+        telescope_dialog = TelescopeManagerDialog(self.config, self.theme_manager)
+        telescope_dialog.ShowDialog(self)
+    
+    def show_camera_manager_click(self, sender, e):
+        """Show camera manager dialog"""
+        from equipment_dialogs import CameraManagerDialog
+        camera_dialog = CameraManagerDialog(self.config, self.theme_manager)
+        camera_dialog.ShowDialog(self)
     
     def show_template_manager_click(self, sender, e):
         """Show template manager"""

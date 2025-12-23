@@ -940,63 +940,23 @@ class ConfigurationDialog(Form):
         lbl_note.ForeColor = Color.Gray
         observer_group.Controls.Add(lbl_note)
         
-        # Telescope Section
-        telescope_group = GroupBox()
-        telescope_group.Text = "Telescope Information"
-        telescope_group.Location = Point(int(20 * sf), int(310 * sf))
-        telescope_group.Size = Size(int(500 * sf), int(160 * sf))
-        tab.Controls.Add(telescope_group)
+        # Note about telescope management
+        lbl_telescope_note = Label()
+        lbl_telescope_note.Text = "Telescope and Camera information can be managed via the Tools menu:"
+        lbl_telescope_note.Location = Point(int(20 * sf), int(310 * sf))
+        lbl_telescope_note.Size = Size(int(480 * sf), int(20 * sf))
+        tab.Controls.Add(lbl_telescope_note)
         
-        lbl_aperture = Label()
-        lbl_aperture.Text = "Aperture (mm):"
-        lbl_aperture.Location = Point(int(20 * sf), int(30 * sf))
-        lbl_aperture.Size = Size(int(120 * sf), int(20 * sf))
-        telescope_group.Controls.Add(lbl_aperture)
-        
-        self.txt_aperture = TextBox()
-        self.txt_aperture.Location = Point(int(150 * sf), int(30 * sf))
-        self.txt_aperture.Size = Size(int(100 * sf), int(20 * sf))
-        telescope_group.Controls.Add(self.txt_aperture)
-        self.tooltip.SetToolTip(self.txt_aperture, "Telescope aperture diameter in millimeters (e.g., 203 for 8-inch)")
-        
-        lbl_focal_length = Label()
-        lbl_focal_length.Text = "Focal Length (mm):"
-        lbl_focal_length.Location = Point(int(20 * sf), int(60 * sf))
-        lbl_focal_length.Size = Size(int(120 * sf), int(20 * sf))
-        telescope_group.Controls.Add(lbl_focal_length)
-        
-        self.txt_focal_length = TextBox()
-        self.txt_focal_length.Location = Point(int(150 * sf), int(60 * sf))
-        self.txt_focal_length.Size = Size(int(100 * sf), int(20 * sf))
-        telescope_group.Controls.Add(self.txt_focal_length)
-        self.tooltip.SetToolTip(self.txt_focal_length, "Telescope focal length in millimeters")
-        
-        lbl_type = Label()
-        lbl_type.Text = "Telescope Type:"
-        lbl_type.Location = Point(int(20 * sf), int(90 * sf))
-        lbl_type.Size = Size(int(120 * sf), int(20 * sf))
-        telescope_group.Controls.Add(lbl_type)
-        
-        self.combo_telescope_type = ComboBox()
-        self.combo_telescope_type.Location = Point(int(150 * sf), int(90 * sf))
-        self.combo_telescope_type.Size = Size(int(320 * sf), int(20 * sf))
-        self.combo_telescope_type.DropDownStyle = ComboBoxStyle.DropDownList
-        telescope_types = [
-            "SCT including Cass and Mak",
-            "Newtonian",
-            "Refractor",
-            "EdgeHD",
-            "Ritchey-Chretien",
-            "Other"
-        ]
-        for tel_type in telescope_types:
-            self.combo_telescope_type.Items.Add(tel_type)
-        telescope_group.Controls.Add(self.combo_telescope_type)
-        self.tooltip.SetToolTip(self.combo_telescope_type, "Select your telescope optical design type")
+        lbl_telescope_menu = Label()
+        lbl_telescope_menu.Text = "• Tools → Manage Telescopes\n• Tools → Manage Cameras"
+        lbl_telescope_menu.Location = Point(int(40 * sf), int(335 * sf))
+        lbl_telescope_menu.Size = Size(int(480 * sf), int(40 * sf))
+        lbl_telescope_menu.ForeColor = Color.Gray
+        tab.Controls.Add(lbl_telescope_menu)
         
         lbl_report_note = Label()
         lbl_report_note.Text = "This information will be used to auto-fill North American Occultation Report Forms"
-        lbl_report_note.Location = Point(int(20 * sf), int(400 * sf))
+        lbl_report_note.Location = Point(int(20 * sf), int(385 * sf))
         lbl_report_note.Size = Size(int(480 * sf), int(30 * sf))
         lbl_report_note.ForeColor = Color.Gray
         tab.Controls.Add(lbl_report_note)
@@ -1017,7 +977,7 @@ class ConfigurationDialog(Form):
         self.txt_host.Text = self.config.get_host()
         self.txt_api_key.Text = self.config.get_api_key()
         
-        # Observer/Telescope fields
+        # Observer fields
         self.txt_observer_name.Text = self.config.get_observer_name()
         self.txt_observer_email.Text = self.config.get_observer_email()
         self.txt_observer_address.Text = self.config.get_observer_address()
@@ -1026,17 +986,6 @@ class ConfigurationDialog(Form):
         self.txt_observer_country.Text = self.config.get_observer_country()
         self.txt_observer_phone.Text = self.config.get_observer_phone()
         self.txt_observer_fax.Text = self.config.get_observer_fax()
-        self.txt_aperture.Text = str(self.config.get_telescope_aperture())
-        self.txt_focal_length.Text = str(self.config.get_telescope_focal_length())
-        
-        # Set telescope type in combo box
-        telescope_type = self.config.get_telescope_type()
-        for i in range(self.combo_telescope_type.Items.Count):
-            if self.combo_telescope_type.Items[i] == telescope_type:
-                self.combo_telescope_type.SelectedIndex = i
-                break
-        if self.combo_telescope_type.SelectedIndex == -1 and self.combo_telescope_type.Items.Count > 0:
-            self.combo_telescope_type.SelectedIndex = 0
     
     def browse_file_folder_click(self, sender, e):
         """Browse for file folder"""
@@ -1070,7 +1019,7 @@ class ConfigurationDialog(Form):
             self.config.set_host(self.txt_host.Text)
             self.config.set_api_key(self.txt_api_key.Text)
             
-            # Observer/Telescope fields
+            # Observer fields
             self.config.set_observer_name(self.txt_observer_name.Text)
             self.config.set_observer_email(self.txt_observer_email.Text)
             self.config.set_observer_address(self.txt_observer_address.Text)
@@ -1079,10 +1028,6 @@ class ConfigurationDialog(Form):
             self.config.set_observer_country(self.txt_observer_country.Text)
             self.config.set_observer_phone(self.txt_observer_phone.Text)
             self.config.set_observer_fax(self.txt_observer_fax.Text)
-            self.config.set_telescope_aperture(float(self.txt_aperture.Text) if self.txt_aperture.Text else 0.0)
-            self.config.set_telescope_focal_length(float(self.txt_focal_length.Text) if self.txt_focal_length.Text else 0.0)
-            if self.combo_telescope_type.SelectedIndex >= 0:
-                self.config.set_telescope_type(self.combo_telescope_type.SelectedItem)
             
             # Validate and save
             errors = self.config.validate_config()
