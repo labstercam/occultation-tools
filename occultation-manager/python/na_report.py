@@ -1,4 +1,4 @@
-"""
+"""  
 North American Occultation Report Form Generator
 Based on astrid's fillinnareport.py implementation
 
@@ -7,6 +7,7 @@ No C extensions, no external dependencies beyond Python stdlib
 """
 
 import os
+import re
 from datetime import datetime
 from simple_xlsx import load_workbook
 
@@ -111,11 +112,9 @@ class NAReportGenerator:
             'ObserverName': 'D9',
             'ObserverEmail': 'S9',
             'ObserverAddress': 'D11',
-            'ObserverCity': 'D13',
-            'ObserverState': 'D14',
-            'ObserverCountry': 'S14',
-            'ObserverPhone': 'D12',
-            'ObserverFax': 'S12',
+            'ObserverCityStateCountry': 'D13',
+            'ObserverPhone': 'S11',
+            'ObserverFax': 'S13',
             'Aperture': 'E20',
             'ApertureUnits': 'H20',
             'FocalRatio': 'L20',
@@ -128,14 +127,26 @@ class NAReportGenerator:
             'StoppedObservingSecs': 'J37',
             'VideoFormat': 'L25',
             'ExposureIntegration': 'P25',
+            'CommentLine1': 'D42',
+            'CommentLine2': 'D43',
             'CommentLine3': 'D44',
         }
     
-    def generate_report(self, event):
+    def generate_report(self, event, telescope_id=None, camera_id=None):
         """
         Generate a North American Occultation Report Form for a single event.
+        
+        Args:
+            event: The event object to generate the report for
+            telescope_id: Optional telescope ID to use (if None, uses active telescope)
+            camera_id: Optional camera ID to use (if None, uses active camera)
+        
         Returns report_path on success, None on error (with error printed)
         """
+        # Store equipment IDs for use in fill methods
+        self._report_telescope_id = telescope_id
+        self._report_camera_id = camera_id
+        
         # Create debug log
         debug_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'report_debug.log')
         
@@ -146,6 +157,12 @@ class NAReportGenerator:
                     f.write(msg + '\n')
             except:
                 pass
+        
+        # Log equipment IDs
+        log("="*60)
+        log("Report generation started")
+        log("Telescope ID: {}".format(telescope_id if telescope_id else "None"))
+        log("Camera ID: {}".format(camera_id if camera_id else "None"))
         
         try:
             log(f"\n{'='*60}")
@@ -242,7 +259,11 @@ class NAReportGenerator:
         if hasattr(event, 'object_no') and event.object_no:
             ws[cell_mapping['AstNum']] = event.object_no
         if hasattr(event, 'object_name') and event.object_name:
-            ws[cell_mapping['AstName']] = event.object_name
+            # Remove asteroid number from name (e.g., "(46854) 1998 QY42" -> "1998 QY42")
+            name = event.object_name
+            # Remove number in parentheses at the start
+            name = re.sub(r'^\(\d+\)\s*', '', name)
+            ws[cell_mapping['AstName']] = name
         
         # Event date/time
         if hasattr(event, 'event_datetime') and event.event_datetime:
@@ -310,31 +331,72 @@ class NAReportGenerator:
         
         if observer_address:
             ws[cell_mapping['ObserverAddress']] = observer_address
+        
+        # Combine city, state, country into single cell
+        city_state_country_parts = []
         if observer_city:
-            ws[cell_mapping['ObserverCity']] = observer_city
+            city_state_country_parts.append(observer_city)
         if observer_state:
-            ws[cell_mapping['ObserverState']] = observer_state
+            city_state_country_parts.append(observer_state)
         if observer_country:
-            ws[cell_mapping['ObserverCountry']] = observer_country
+            city_state_country_parts.append(observer_country)
+        if city_state_country_parts:
+            ws[cell_mapping['ObserverCityStateCountry']] = ', '.join(city_state_country_parts)
+        
         if observer_phone:
             ws[cell_mapping['ObserverPhone']] = observer_phone
         if observer_fax:
             ws[cell_mapping['ObserverFax']] = observer_fax
     
     def _fill_telescope_data(self, ws, cell_mapping):
-        """Fill in telescope information from config"""
-        aperture = self.config.get_telescope_aperture()
-        focal_length = self.config.get_telescope_focal_length()
-        telescope_type = self.config.get_telescope_type()
+        """Fill in telescope information from config (supports multiple telescopes)"""
+        # Use specified telescope ID if provided, otherwise use active telescope
+        if hasattr(self, '_report_telescope_id') and self._report_telescope_id:
+            # Find the specific telescope by ID
+            telescopes = self.config.get_telescopes()
+            telescope = None
+            for t in telescopes:
+                if t.get('id') == self._report_telescope_id:
+                    telescope = t
+                    print("Found telescope by ID: {} - {}".format(t.get('id'), t.get('name')))
+                    break
+            if not telescope:
+                print("ERROR: Telescope ID '{}' not found in list!".format(self._report_telescope_id))
+        else:
+            # Try to get active telescope
+            telescope = self.config.get_active_telescope()
+            if telescope:
+                print("Using active telescope: {}".format(telescope.get('name', 'Unknown')))
         
-        if aperture > 0 and focal_length > 0:
+        if telescope:
+            aperture = telescope.get('aperture', 0)
+            focal_ratio = telescope.get('focal_ratio', 0)
+            
+            # Backward compatibility: if focal_ratio is 0 but focal_length exists, calculate it
+            if focal_ratio == 0 and telescope.get('focal_length', 0) > 0 and aperture > 0:
+                focal_ratio = telescope.get('focal_length') / aperture
+            
+            telescope_type = telescope.get('type', '')
+            telescope_name = telescope.get('name', '')
+        else:
+            # Fallback to legacy single telescope config
+            aperture = self.config.get_telescope_aperture()
+            focal_ratio = 0  # Legacy config doesn't have focal_ratio
+            telescope_type = self.config.get_telescope_type()
+            telescope_name = ''
+        
+        if aperture > 0:
             ws[cell_mapping['Aperture']] = aperture / 10.0  # Convert mm to cm
             ws[cell_mapping['ApertureUnits']] = 'cm'
-            focal_ratio = focal_length / aperture
-            ws[cell_mapping['FocalRatio']] = focal_ratio
+        
+        if focal_ratio > 0:
+            ws[cell_mapping['FocalRatio']] = round(focal_ratio, 2)
         
         if telescope_type:
             ws[cell_mapping['TelescopeType']] = telescope_type
+        
+        # Store telescope name for later use in comment
+        self._telescope_name = telescope_name
     
     def _fill_recording_times(self, ws, cell_mapping, event):
         """Fill in recording start/stop times"""
@@ -349,23 +411,72 @@ class NAReportGenerator:
             ws[cell_mapping['StoppedObservingSecs']] = event.end_time.second
     
     def _fill_metadata(self, ws, cell_mapping, event):
-        """Fill in metadata fields"""
-        # Timing source
-        ws[cell_mapping['Timing']] = 'GPS - other linking'
-        ws[cell_mapping['TimingDevice']] = 'SharpCap'
-        ws[cell_mapping['Detector']] = 'SharpCap'
+        """Fill in metadata fields (supports multiple cameras)"""
+        # Use specified camera ID if provided, otherwise use active camera
+        if hasattr(self, '_report_camera_id') and self._report_camera_id:
+            # Find the specific camera by ID
+            cameras = self.config.get_cameras()
+            camera = None
+            for c in cameras:
+                if c.get('id') == self._report_camera_id:
+                    camera = c
+                    print("Found camera by ID: {} - {}".format(c.get('id'), c.get('model')))
+                    break
+            if not camera:
+                print("ERROR: Camera ID '{}' not found in list!".format(self._report_camera_id))
+        else:
+            # Try to get active camera
+            camera = self.config.get_active_camera()
+            if camera:
+                print("Using active camera: {}".format(camera.get('model', 'Unknown')))
+        
+        if camera:
+            # Use camera configuration
+            timing = camera.get('timing', 'GPS - other linking')
+            timing_device = camera.get('timing_device', 'SharpCap')
+            detector = camera.get('detector', 'SharpCap')
+            other_info = camera.get('other_info', '')
+            video_format = camera.get('video_format', 'SER')
+            exposure_integration = camera.get('exposure_integration', 'Other')
+            camera_name = camera.get('name', '')
+        else:
+            # Default values
+            timing = 'GPS - other linking'
+            timing_device = 'SharpCap'
+            detector = 'SharpCap'
+            other_info = 'SharpCap'
+            video_format = 'SER'
+            exposure_integration = 'Other'
+            camera_name = ''
+        
+        # Fill timing and detector fields
+        ws[cell_mapping['Timing']] = timing
+        ws[cell_mapping['TimingDevice']] = timing_device
+        ws[cell_mapping['Detector']] = detector
         
         # Detector info (include exposure if available)
-        detector_info = 'SharpCap'
-        if hasattr(event, 'exposure_ms'):
-            detector_info += f' Exp {event.exposure_ms}ms'
+        detector_info = other_info
+        if hasattr(event, 'exposure_ms') and event.exposure_ms:
+            if detector_info:
+                detector_info += f' | Exp {event.exposure_ms}ms'
+            else:
+                detector_info = f'Exp {event.exposure_ms}ms'
         ws[cell_mapping['OtherDetectorRelatedInfo']] = detector_info
         
         # Video format
-        ws[cell_mapping['VideoFormat']] = 'SER'
-        ws[cell_mapping['ExposureIntegration']] = 'Other'
+        ws[cell_mapping['VideoFormat']] = video_format
+        ws[cell_mapping['ExposureIntegration']] = exposure_integration
         
-        # Comment
+        # Comment - include telescope and camera names
+        comment_parts = []
+        if hasattr(self, '_telescope_name') and self._telescope_name:
+            comment_parts.append(f"Telescope: {self._telescope_name}")
+        if camera_name:
+            comment_parts.append(f"Camera: {camera_name}")
+        
+        comment = ' | '.join(comment_parts)
+        if comment:
+            ws[cell_mapping['CommentLine1']] = comment
         ws[cell_mapping['CommentLine3']] = 'This report was pre-filled by Occultation Manager'
     
     def _generate_filename(self, event):
@@ -380,7 +491,10 @@ class NAReportGenerator:
         object_no = getattr(event, 'object_no', '')
         
         # Get asteroid name with spaces replaced by underscores
-        object_name = getattr(event, 'object_name', '').replace(' ', '_')
+        # Remove the number in parentheses if present (e.g., "Asteroid (123)" -> "Asteroid")
+        object_name = getattr(event, 'object_name', '')
+        # Remove patterns like (123) or (12345)
+        object_name = re.sub(r'\s*\(\d+\)\s*', ' ', object_name).strip().replace(' ', '_')
         
         # Get observer surname from config
         observer_name = self.config.get_observer_name()
