@@ -1,17 +1,18 @@
 # Occultation Manager
 
 SharpCap Occulation Manager for Occult Watcher Cloud
-SharpCap Occultation Manager for Occult Watcher is a tool for SharpCap that fully automates occultation observations. It downloads personal observations announced in Occult Watcher Cloud. It includes an Event Manager to manage events, Sequence generation to create SharpCap sequences for doing the recordings (either in the tool itself or by using the sequences directly), and configuration management.
+SharpCap Occultation Manager for Occult Watcher is a tool that fully automates occultation observations. It downloads personal observations announced in Occult Watcher Cloud. It includes an Event Manager to manage events, Sequence generation to create SharpCap sequences for doing the recordings (either in the tool itself or by using the sequences directly), and configuration management. It can prefill occultation reports using the event details from OWC and other sources.
 
 ## The tool serves several purposes:
 
 1. Enables full automation of observations from SharpCap, only requiring the use of OW Cloud to announce stations
 2. Provides a much simplified work-flow for SharpCap users - other tools usually require the use of Occult Watcher Desktop or Occult 4 to generate or manage predictions, with a lot of manual work to select and run the observations, even with the OWD SharpCap addins
 3. Provides a very easy and flexible way to generate SharpCap sequences to record events, with the ability for the user to edit the sequence template to their needs or edit the generate sequences
+4. Automates report generation
 
 ## How to Install the SharpCap Addin
 1. Download the Python code from **occultation-manager.zip** above by right clicking and selecting 'Save As'
-2. Unzip to a file locaiton where you have read/write access. Suggest a new subfolder  \Documents\Sharpcap\occultation-manager
+2. Unzip to a file locationn where you have read/write access. Suggest a new subfolder  \Documents\Sharpcap\occultation-manager
 3. Alternative, you could clone this GitHub respository if you are a GitHub user
 4. Start SharpCap
 5. In "File" - "SharpCap Settings" - "Startup Scripts" - find that folder and add the 'main' script
@@ -46,3 +47,5 @@ You will need to test these templates and adapt them to your setup and to how yo
 
 You will need to extensively test your own template(s) before trusting them of before they are safe to use for unattended observations. THere is the risk of failure, and the risk of damaging gear by snagging cables of leaving it pointed to the sun after sunrise.
 
+## Report Generation
+Reports are generated using regional templates. Currently North America and Trans-Tasman forms are implemented, SODIS still to do. The reports uses the information dowloaded from OWC, can look up the coordinates to find city/town and elevation, and populations the observer, telescope and camera information from the tool. It can handle multiple sites and different equipment.
