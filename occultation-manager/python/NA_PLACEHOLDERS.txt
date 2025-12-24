@@ -1,0 +1,102 @@
+NORTH AMERICAN REPORT TEMPLATE PLACEHOLDERS
+============================================
+
+Place these exact placeholder strings in the corresponding cells in the NA template.
+The template with placeholders should be saved as: NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
+
+Based on the original cell mapping from fillinnareport.py:
+
+OBSERVATION TYPE:
+-----------------
+Cell A2:  {{OBSERVATION_TYPE}}         (Observation type, e.g., "Positive")
+
+EVENT INFORMATION:
+------------------
+Cell E7:  {{ASTEROID_NUMBER}}          (Asteroid number, e.g., "46854")
+Cell K7:  {{ASTEROID_NAME}}            (Asteroid name without number, e.g., "1998 QY42")
+Cell D5:  {{EVENT_YEAR}}               (Event year, e.g., "2025")
+Cell K5:  {{EVENT_MONTH}}              (Event month, e.g., "Dec")
+Cell P5:  {{EVENT_DAY}}                (Event day, e.g., "13")
+Cell Y5:  {{PREDICTED_HOURS}}          (Predicted time hours, e.g., "10")
+Cell AA5: {{PREDICTED_MINUTES}}        (Predicted time minutes, e.g., "3")
+Cell AC5: {{PREDICTED_SECONDS}}        (Predicted time seconds, e.g., "42")
+Cell S7:  {{STAR_CATALOG}}             (Star catalog, e.g., "UCAC4     xxx - xxxxxx")
+Cell X7:  {{STAR_NUMBER}}              (Star number, e.g., "485-038369")
+
+OBSERVER INFORMATION:
+---------------------
+Cell E15: {{OBSERVING_LOCATION}}       (Observing location city/state/country)
+Cell D9:  {{OBSERVER_NAME}}            (Observer full name)
+Cell S9:  {{OBSERVER_EMAIL}}           (Observer email address)
+Cell D11: {{OBSERVER_ADDRESS}}         (Observer mailing address)
+Cell D13: {{OBSERVER_CITY_STATE_COUNTRY}}  (City, State, Country combined)
+Cell S11: {{OBSERVER_PHONE}}           (Observer phone number)
+Cell S13: {{OBSERVER_FAX}}             (Observer fax number)
+
+LOCATION COORDINATES:
+---------------------
+Cell E17: {{LATITUDE_FORMAT}}          (Latitude format, e.g., "deg.ddddd")
+Cell E18: {{LATITUDE}}                 (Latitude value, e.g., "36.83556")
+Cell J18: {{LATITUDE_DIR}}             (Latitude direction, "N" or "S")
+Cell N17: {{LONGITUDE_FORMAT}}         (Longitude format, e.g., "deg.ddddd")
+Cell N18: {{LONGITUDE}}                (Longitude value, e.g., "174.65780")
+Cell R18: {{LONGITUDE_DIR}}            (Longitude direction, "E" or "W")
+Cell V18: {{ELEVATION}}                (Elevation value in meters)
+Cell W18: {{ELEVATION_UNITS}}          (Elevation units, "m")
+Cell AA18: {{ELEVATION_DATUM}}         (Elevation datum, e.g., "WGS84")
+
+TELESCOPE INFORMATION:
+----------------------
+Cell E20: {{APERTURE}}                 (Telescope aperture in cm)
+Cell H20: {{APERTURE_UNITS}}           (Aperture units, "cm")
+Cell L20: {{FOCAL_RATIO}}              (Telescope focal ratio, e.g., "3.3")
+Cell T20: {{TELESCOPE_TYPE}}           (Telescope type, e.g., "SCT")
+
+RECORDING TIMES:
+----------------
+Cell F31: {{START_OBSERVING_HOURS}}    (Started observing - hours)
+Cell H31: {{START_OBSERVING_MINS}}     (Started observing - minutes)
+Cell J31: {{START_OBSERVING_SECS}}     (Started observing - seconds)
+Cell F37: {{STOP_OBSERVING_HOURS}}     (Stopped observing - hours)
+Cell H37: {{STOP_OBSERVING_MINS}}      (Stopped observing - minutes)
+Cell J37: {{STOP_OBSERVING_SECS}}      (Stopped observing - seconds)
+
+CAMERA/DETECTOR INFORMATION:
+----------------------------
+Cell E22: {{TIMING}}                   (Timing method, e.g., "GPS - other linking")
+Cell E23: {{TIMING_DEVICE}}            (Timing device, e.g., "SharpCap")
+Cell E25: {{DETECTOR}}                 (Detector/software, e.g., "SharpCap")
+Cell V25: {{OTHER_DETECTOR_INFO}}      (Other detector info + exposure)
+Cell L25: {{VIDEO_FORMAT}}             (Video format, e.g., "SER")
+Cell P25: {{EXPOSURE_INTEGRATION}}     (Exposure/integration method, e.g., "Other")
+
+ADDITIONAL FIELDS:
+------------------
+{{TIMING_METHOD}}                      (Timing method description, e.g., "Video Recording")
+{{ASTEROID_VISIBLE}}                   (Was asteroid visible, e.g., "Yes")
+
+COMMENTS:
+---------
+Cell D42: {{COMMENT_LINE1}}            (Comment line 1 - telescope/camera names)
+Cell D43: {{COMMENT_LINE2}}            (Comment line 2 - additional comments)
+Cell D44: {{COMMENT_LINE3}}            (Comment line 3 - "This report was pre-filled by Occultation Manager")
+
+TOTAL: 45 placeholders
+
+INSTRUCTIONS FOR TEMPLATE CREATION:
+====================================
+
+1. Open the original NorthAmerica_AstReportForm_V5.6.12r.xlsx file
+2. Replace the content in each cell above with the corresponding placeholder
+3. Save the file as NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
+4. Place the template file in the same directory as na_report.py
+
+NOTES:
+------
+- All placeholders use double curly braces: {{PLACEHOLDER_NAME}}
+- Empty placeholders will be replaced with empty strings
+- Star catalog format will be cleaned (e.g., "1U    UCAC4" becomes "UCAC4")
+- The template should NOT have data validation (use the original file for manual editing)
+- Coordinates are formatted to 5 decimal places
+- Focal ratio is formatted to 1 decimal place
+- The report generator will fill all placeholders automatically
