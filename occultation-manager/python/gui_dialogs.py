@@ -1363,7 +1363,9 @@ class LocationConfirmDialog(Form):
         self.txt_obs_location = TextBox()
         self.txt_obs_location.Location = Point(int(160 * sf), int(50 * sf))
         self.txt_obs_location.Size = Size(int(200 * sf), int(20 * sf))
-        self.txt_obs_location.Text = ""  # Will be filled by lookup
+        # Prepopulate with stored value from event download
+        obs_location_stored = getattr(event, 'obs_location', '')
+        self.txt_obs_location.Text = obs_location_stored if obs_location_stored else ""
         station_group.Controls.Add(self.txt_obs_location)
         
         btn_lookup_loc = Button()
@@ -1373,7 +1375,7 @@ class LocationConfirmDialog(Form):
         btn_lookup_loc.Click += self.lookup_location_click
         station_group.Controls.Add(btn_lookup_loc)
         
-        # Get coordinates
+        # Get coordinates - prepopulate with stored values
         latitude = getattr(event, 'latitude', 0.0)
         longitude = getattr(event, 'longitude', 0.0)
         elevation = getattr(event, 'elevation', 0.0)

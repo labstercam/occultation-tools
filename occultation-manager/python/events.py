@@ -6,6 +6,16 @@ import urllib.request
 import math
 from datetime import datetime, timedelta
 
+# Import geocoding functions for use during event download
+try:
+    from utils import get_elevation_from_coordinates, get_location_name_from_coordinates
+except ImportError:
+    # Fallback if utils not available
+    def get_elevation_from_coordinates(lat, lon):
+        return None
+    def get_location_name_from_coordinates(lat, lon):
+        return None
+
 class EventProcessor:
     """Handles event processing operations"""
     
@@ -223,6 +233,33 @@ class EventProcessor:
                     extinction_mag = min(2, -0.5 + 0.5/math.cos((90-starAlt)*2*math.pi/360))
                     exposure = round(max(40, 40 * pow(2, round(combMag + extinction_mag - mag_ref + 0.5, 0)))/20)*20/1000.0
 
+                    # Perform geocode lookup for elevation and city/town
+                    # NOTE: This makes API calls which may slow down event downloads
+                    # Results are cached in the event data for future use
+                    elevation = 0.0
+                    obs_location = ""
+                    try:
+                        print("Performing geocode lookup for station: {}".format(stationName))
+                        
+                        # Lookup elevation
+                        elev_result = get_elevation_from_coordinates(latitude, longitude)
+                        if elev_result is not None:
+                            elevation = float(elev_result)
+                            print("  Elevation: {} meters".format(elevation))
+                        else:
+                            print("  Elevation lookup failed, using 0.0")
+                        
+                        # Lookup observing location (city/town)
+                        loc_result = get_location_name_from_coordinates(latitude, longitude)
+                        if loc_result is not None:
+                            obs_location = str(loc_result)
+                            print("  Observing location: {}".format(obs_location))
+                        else:
+                            print("  Location lookup failed, using empty string")
+                    except Exception as ex:
+                        print("  Error during geocode lookup: {}".format(ex))
+                        # Keep default values (0.0 and empty string)
+
                     # Create dictionary of occultation events
                     occultation = {
                         'name': name + ' - ' + stationName, 
@@ -235,7 +272,8 @@ class EventProcessor:
                         'event_duration': eventDuration, 'event_uncertainty': eventUncertainty, 'recording_duration': recording_duration,
                         'occelmnt': eventOccelmnt, 'source': 'OWCloud',
                         'latitude': latitude, 'longitude': longitude, 'star_az': starAz, 'star_alt': starAlt,
-                        'star_id': star_id, 'object_no': object_no, 'object_name': name, 'exposure': exposure
+                        'star_id': star_id, 'object_no': object_no, 'object_name': name, 'exposure': exposure,
+                        'elevation': elevation, 'obs_location': obs_location
                     }
                     if owcloudurl:
                         occultation['owcloudurl'] = owcloudurl
@@ -321,6 +359,15 @@ class OccultationEvent:
         self.latitude = float(data.get('latitude', 0))
         self.longitude = float(data.get('longitude', 0))
         self.precalc_exposure = float(data.get('exposure', 0))
+        
+        # Load geocoded data (elevation and observing location)
+        # Use get with defaults for backwards compatibility with old event files
+        try:
+            self.elevation = float(data.get('elevation', 0.0))
+        except (ValueError, TypeError):
+            self.elevation = 0.0
+        
+        self.obs_location = str(data.get('obs_location', '')) if data.get('obs_location') else ''
         
         self.source = data.get('source', '')
         self.owcloudurl = data.get('owcloudurl', '')
@@ -611,6 +658,25 @@ class OccultationEvent:
         days = time_to_event.days
         hours = time_to_event.seconds // 3600
         return f"{days}d {hours}h"
+    
+    def set_elevation(self, elevation):
+        """Set elevation value for the event"""
+        try:
+            self.elevation = float(elevation) if elevation is not None else 0.0
+        except (ValueError, TypeError):
+            self.elevation = 0.0
+    
+    def get_elevation(self):
+        """Get elevation value for the event"""
+        return getattr(self, 'elevation', 0.0)
+    
+    def set_obs_location(self, obs_location):
+        """Set observing location (city/town) for the event"""
+        self.obs_location = str(obs_location) if obs_location else ''
+    
+    def get_obs_location(self):
+        """Get observing location (city/town) for the event"""
+        return getattr(self, 'obs_location', '')
     
     def get_asteroid_display_name(self):
         """Get proper asteroid name, preferring named asteroids over designations"""
