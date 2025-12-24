@@ -1253,7 +1253,8 @@ class OccultationManagerGUI(Form):
             # Get the confirmed location from the dialog
             location = location_dialog.get_location()
             
-            # Temporarily update event with user-entered location
+            # Update event with user-confirmed/edited location
+            # These values persist and will be prepopulated for future report generation
             event.latitude = location['latitude']
             event.longitude = location['longitude']
             event.elevation = location['elevation']
