@@ -31,11 +31,19 @@ class NAReportGenerator(ReportGeneratorBase):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, self.TEMPLATE_FILENAME)
     
-    def generate_report(self, event, telescope_id=None, camera_id=None):
-        """Generate a North American report using placeholder replacement"""
-        # Store equipment IDs
+    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None):
+        """Generate a North American report using placeholder replacement
+        
+        Args:
+            event: Event object with observation details
+            telescope_id: ID of telescope to use
+            camera_id: ID of camera to use
+            observation_type: Type of observation ("Positive", "Negative", "Unsure")
+        """
+        # Store equipment IDs and observation type
         self._report_telescope_id = telescope_id
         self._report_camera_id = camera_id
+        self._observation_type = observation_type or "Positive"
         
         try:
             # Get report folder
@@ -74,7 +82,7 @@ class NAReportGenerator(ReportGeneratorBase):
         replacements = {}
         
         # OBSERVATION TYPE
-        replacements['{{OBSERVATION_TYPE}}'] = 'Positive'
+        replacements['{{OBSERVATION_TYPE}}'] = self._observation_type
         
         # EVENT INFORMATION
         # Asteroid number and name
@@ -281,7 +289,40 @@ class NAReportGenerator(ReportGeneratorBase):
         replacements['{{COMMENT_LINE2}}'] = ''
         replacements['{{COMMENT_LINE3}}'] = 'This report was pre-filled by Occultation Manager'
         
+        # AOTA TIMING DATA - NOT initialized here
+        # These placeholders remain in the template so post-processing can replace them
+        # when AOTA data is imported via _add_aota_to_existing_report()
+        
         return replacements
+    
+    def import_aota_data(self, aota_event, replacements):
+        """Import timing data from AOTA event into replacements dictionary
+        
+        Args:
+            aota_event: AOTAEvent object from aota_parser
+            replacements: Dictionary of placeholders to update
+        """
+        if not aota_event:
+            return
+        
+        # Import formatting functions
+        from aota_parser import format_aota_time_component, format_aota_error
+        
+        # Update D (disappearance) times - use string representations to preserve precision
+        if aota_event.d_hours is not None:
+            replacements['{{AOTA_D_HOURS}}'] = format_aota_time_component(hours=aota_event.d_hours)
+            replacements['{{AOTA_D_MINUTES}}'] = format_aota_time_component(minutes=aota_event.d_minutes)
+            replacements['{{AOTA_D_SECONDS}}'] = format_aota_time_component(seconds=aota_event.d_seconds, seconds_str=aota_event.d_seconds_str)
+            replacements['{{AOTA_D_ERROR}}'] = format_aota_error(aota_event.d_error, aota_event.d_error_str)
+        
+        # Update R (reappearance) times - use string representations to preserve precision
+        if aota_event.r_hours is not None:
+            replacements['{{AOTA_R_HOURS}}'] = format_aota_time_component(hours=aota_event.r_hours)
+            replacements['{{AOTA_R_MINUTES}}'] = format_aota_time_component(minutes=aota_event.r_minutes)
+            replacements['{{AOTA_R_SECONDS}}'] = format_aota_time_component(seconds=aota_event.r_seconds, seconds_str=aota_event.r_seconds_str)
+            replacements['{{AOTA_R_ERROR}}'] = format_aota_error(aota_event.r_error, aota_event.r_error_str)
+        
+        print(f"AOTA data imported: D={aota_event.d_hours}:{aota_event.d_minutes}:{aota_event.d_seconds_str}, R={aota_event.r_hours}:{aota_event.r_minutes}:{aota_event.r_seconds_str}")
     
     def _create_report_with_replacements(self, template_path, output_path, replacements):
         """Create report by replacing placeholders in template"""
@@ -411,8 +452,11 @@ class NAReportGenerator(ReportGeneratorBase):
         # Get observer surname
         observer_surname = self.config.get_observer_name().split()[-1] if self.config.get_observer_name() else 'Observer'
         
-        # Default to NEG (negative/no detection)
-        result_indicator = 'NEG'
+        # Result indicator based on observation type
+        if self._observation_type == 'Positive':
+            result_indicator = 'POS'
+        else:
+            result_indicator = 'NEG'  # Negative or Unsure
         
         # NA format: YYYYMMDD_###_Asteroid_name_Surname_POS/NEG.xlsx
         filename = f"{event_date_str}_{asteroid_number}_{asteroid_name}_{observer_surname}_{result_indicator}.xlsx"

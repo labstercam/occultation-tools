@@ -81,7 +81,18 @@ Cell D42: {{COMMENT_LINE1}}            (Comment line 1 - telescope/camera names)
 Cell D43: {{COMMENT_LINE2}}            (Comment line 2 - additional comments)
 Cell D44: {{COMMENT_LINE3}}            (Comment line 3 - "This report was pre-filled by Occultation Manager")
 
-TOTAL: 45 placeholders
+AOTA TIMING DATA (from AOTA analysis file):
+--------------------------------------------
+Cell N31: {{AOTA_D_HOURS}}             (Disappearance hours from AOTA)
+Cell P31: {{AOTA_D_MINUTES}}           (Disappearance minutes from AOTA)
+Cell R31: {{AOTA_D_SECONDS}}           (Disappearance seconds from AOTA)
+Cell T31: {{AOTA_D_ERROR}}             (Disappearance error/uncertainty from AOTA)
+Cell N37: {{AOTA_R_HOURS}}             (Reappearance hours from AOTA)
+Cell P37: {{AOTA_R_MINUTES}}           (Reappearance minutes from AOTA)
+Cell R37: {{AOTA_R_SECONDS}}           (Reappearance seconds from AOTA)
+Cell T37: {{AOTA_R_ERROR}}             (Reappearance error/uncertainty from AOTA)
+
+TOTAL: 53 placeholders
 
 INSTRUCTIONS FOR TEMPLATE CREATION:
 ====================================

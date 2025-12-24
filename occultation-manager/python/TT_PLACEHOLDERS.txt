@@ -73,6 +73,17 @@ Cell W38: {{WAS_MISS}}                   (e.g., "No")
 Cell D40: {{SECOND_STAR}}                (e.g., "No")
 Cell D42: {{COMMENTS}}                   (optional, any additional info)
 
+AOTA TIMING DATA (from AOTA analysis file):
+--------------------------------------------
+Cell G31: {{AOTA_D_HOURS}}               (Disappearance hours from AOTA)
+Cell I31: {{AOTA_D_MINUTES}}             (Disappearance minutes from AOTA)
+Cell K31: {{AOTA_D_SECONDS}}             (Disappearance seconds from AOTA)
+Cell M31: {{AOTA_D_ERROR}}               (Disappearance error/uncertainty from AOTA)
+Cell G37: {{AOTA_R_HOURS}}               (Reappearance hours from AOTA)
+Cell I37: {{AOTA_R_MINUTES}}             (Reappearance minutes from AOTA)
+Cell K37: {{AOTA_R_SECONDS}}             (Reappearance seconds from AOTA)
+Cell M37: {{AOTA_R_ERROR}}               (Reappearance error/uncertainty from AOTA)
+
 NOTES:
 ------
 - Use the EXACT placeholder text including curly braces

@@ -1260,8 +1260,113 @@ class OccultationManagerGUI(Form):
             event.elevation = location['elevation']
             event.obs_location = location['obs_location']  # Store observing location
             
+            # OBSERVATION TYPE SELECTION - Ask user about observation result
+            observation_type = None
+            aota_event = None
+            
+            try:
+                from aota_dialogs import ObservationTypeDialog
+                type_dialog = ObservationTypeDialog(self.theme_manager, event.get_asteroid_display_name())
+                if type_dialog.ShowDialog() == DialogResult.OK:
+                    observation_type = type_dialog.get_selected_type()
+                    print(f"Selected observation type: {observation_type}")
+                else:
+                    print("User cancelled observation type selection")
+                    self.update_status("Report generation cancelled")
+                    return
+            except Exception as ex:
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"Error showing observation type dialog: {ex}")
+                print(error_details)
+                # Fallback to old behavior
+                observation_type = "Positive"
+            
+            # AOTA FILE IMPORT - Only for Positive or Unsure observations
+            if observation_type in ["Positive", "Unsure"]:
+                try:
+                    # Show file picker dialog
+                    from aota_dialogs import AOTAFilePickerDialog
+                    file_picker = AOTAFilePickerDialog(self.theme_manager, event.get_asteroid_display_name())
+                    if file_picker.ShowDialog() == DialogResult.OK:
+                        aota_file_path = file_picker.get_selected_file_path()
+                        
+                        # Parse AOTA file
+                        from aota_parser import parse_aota_file
+                        aota_result = parse_aota_file(aota_file_path)
+                        
+                        if aota_result:
+                            # Check if multiple valid events exist
+                            if aota_result.has_multiple_valid_events():
+                                # Show event selection dialog
+                                from aota_dialogs import AOTAEventSelectionDialog
+                                event_selector = AOTAEventSelectionDialog(
+                                    self.theme_manager, 
+                                    aota_result, 
+                                    event.get_asteroid_display_name()
+                                )
+                                if event_selector.ShowDialog() == DialogResult.OK:
+                                    aota_event = event_selector.get_selected_event()
+                                    print(f"Selected AOTA event: {aota_event}")
+                                else:
+                                    print("AOTA event selection cancelled")
+                            else:
+                                # Single valid event or no valid events
+                                aota_event = aota_result.get_single_valid_event()
+                                if aota_event:
+                                    print(f"Using single AOTA event: {aota_event}")
+                                else:
+                                    MessageBox.Show(
+                                        "No valid events found in AOTA file.\n\n" +
+                                        "The file may contain only non-events or invalid data.",
+                                        "No Valid Events",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Warning
+                                    )
+                        else:
+                            MessageBox.Show(
+                                "Failed to parse AOTA file.\n\nPlease check the file format.",
+                                "Parse Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            )
+                except Exception as ex:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"Error importing AOTA data: {ex}")
+                    print(error_details)
+                    MessageBox.Show(
+                        f"Error importing AOTA data:\n\n{str(ex)}",
+                        "Import Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    )
+            elif observation_type == "Negative":
+                # Negative observation - no AOTA import needed
+                print("Negative observation selected - skipping AOTA import")
+            
             self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-            output_path = report_generator.generate_report(event, telescope_id, camera_id)
+            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type)
+            
+            # If AOTA data was imported, add it to the report
+            if output_path and aota_event:
+                try:
+                    print("Adding AOTA data to report...")
+                    self._add_aota_to_existing_report(output_path, report_generator, aota_event)
+                    print("AOTA data successfully added to report")
+                except Exception as ex:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"Warning: Could not add AOTA data to report: {ex}")
+                    print(error_details)
+                    # Don't fail the whole report generation, just warn
+                    MessageBox.Show(
+                        f"Report generated but AOTA data could not be added:\n\n{str(ex)}",
+                        "Warning",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    )
+            
             if output_path:
                 print(f"SUCCESS: Report generated: {output_path}")
                 self.update_status("Report generated successfully")
@@ -1281,6 +1386,89 @@ class OccultationManagerGUI(Form):
             self.update_status("Report generation failed")
             MessageBox.Show(f"Error generating report:\n\n{error_msg}", 
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    
+    def _add_aota_to_existing_report(self, output_path, report_generator, aota_event):
+        """Add AOTA data to an existing report by re-processing it
+        
+        Args:
+            output_path: Path to the generated report file
+            report_generator: The report generator instance used
+            aota_event: AOTAEvent object with timing data
+        """
+        import os
+        import zipfile
+        import xml.etree.ElementTree as ET
+        from tempfile import NamedTemporaryFile
+        import shutil
+        
+        # Build AOTA replacements
+        from aota_parser import format_aota_time_component, format_aota_error
+        aota_replacements = {}
+        
+        # D (disappearance) times - use string representations to preserve precision
+        if aota_event.d_hours is not None:
+            aota_replacements['{{AOTA_D_HOURS}}'] = format_aota_time_component(hours=aota_event.d_hours)
+            aota_replacements['{{AOTA_D_MINUTES}}'] = format_aota_time_component(minutes=aota_event.d_minutes)
+            aota_replacements['{{AOTA_D_SECONDS}}'] = format_aota_time_component(seconds=aota_event.d_seconds, seconds_str=aota_event.d_seconds_str)
+            aota_replacements['{{AOTA_D_ERROR}}'] = format_aota_error(aota_event.d_error, aota_event.d_error_str)
+        
+        # R (reappearance) times - use string representations to preserve precision
+        if aota_event.r_hours is not None:
+            aota_replacements['{{AOTA_R_HOURS}}'] = format_aota_time_component(hours=aota_event.r_hours)
+            aota_replacements['{{AOTA_R_MINUTES}}'] = format_aota_time_component(minutes=aota_event.r_minutes)
+            aota_replacements['{{AOTA_R_SECONDS}}'] = format_aota_time_component(seconds=aota_event.r_seconds, seconds_str=aota_event.r_seconds_str)
+            aota_replacements['{{AOTA_R_ERROR}}'] = format_aota_error(aota_event.r_error, aota_event.r_error_str)
+        
+        # Create temporary file
+        temp_file = NamedTemporaryFile(delete=False, suffix='.xlsx')
+        temp_path = temp_file.name
+        temp_file.close()
+        
+        try:
+            # Process the existing report file
+            with zipfile.ZipFile(output_path, 'r') as zf_in:
+                with zipfile.ZipFile(temp_path, 'w', zipfile.ZIP_DEFLATED) as zf_out:
+                    for item in zf_in.infolist():
+                        data = zf_in.read(item.filename)
+                        
+                        # Process sheet XML files
+                        if item.filename.startswith('xl/worksheets/') and item.filename.endswith('.xml'):
+                            try:
+                                xml_content = data.decode('utf-8')
+                                # Replace AOTA placeholders
+                                for placeholder, value in aota_replacements.items():
+                                    if placeholder in xml_content:
+                                        print(f"Replacing {placeholder} with {value} in {item.filename}")
+                                    xml_content = xml_content.replace(placeholder, str(value))
+                                data = xml_content.encode('utf-8')
+                            except Exception as ex:
+                                print(f"Error processing {item.filename}: {ex}")
+                                pass  # Leave as-is if decoding fails
+                        
+                        # Process shared strings if present
+                        elif item.filename == 'xl/sharedStrings.xml':
+                            try:
+                                xml_content = data.decode('utf-8')
+                                for placeholder, value in aota_replacements.items():
+                                    xml_content = xml_content.replace(placeholder, str(value))
+                                data = xml_content.encode('utf-8')
+                            except:
+                                pass
+                        
+                        zf_out.writestr(item, data)
+            
+            # Replace original file with updated file
+            shutil.move(temp_path, output_path)
+            print(f"Successfully added AOTA data to report: {output_path}")
+            
+        except Exception as ex:
+            # Clean up temp file on error
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            raise ex
         
     def create_sequences_click(self, sender, e):
         """Handle create sequences button click"""

@@ -1460,7 +1460,7 @@ class LocationConfirmDialog(Form):
         panel.Controls.Add(btn_panel)
         
         btn_confirm = Button()
-        btn_confirm.Text = "Confirm && Generate Report"
+        btn_confirm.Text = "Next - event D/R"
         btn_confirm.Size = Size(int(180 * sf), int(28 * sf))
         btn_confirm.Location = Point(int(240 * sf), int(6 * sf))
         btn_confirm.Click += self.confirm_click
