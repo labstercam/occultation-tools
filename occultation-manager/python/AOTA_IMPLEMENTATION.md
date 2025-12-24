@@ -12,7 +12,9 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 - `AOTAEvent`: Represents a single event with D/R times and uncertainties
   - Parses time strings in format "HH MM SS.S ± E.E"
   - Stores separate components: hours, minutes, seconds, error
+  - **Preserves original string precision** (d_seconds_str, d_error_str, etc.)
   - Validates event data
+  - Filters out non-events (IsNonEvent=true)
 
 - `AOTACameraResult`: Stores camera and measurement metadata
   - Camera type, measuring tool, video system
@@ -33,10 +35,16 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 **Purpose**: User interface dialogs for AOTA import
 
 **Key Classes**:
+- `ObservationTypeDialog`: Select observation type
+  - Three options: Positive, Negative, Unsure
+  - Determines if AOTA import is needed
+  - Affects filename and WAS_MISS field
+
 - `AOTAFilePickerDialog`: File selection dialog
   - Filters for *.aota.xml files
   - Event context display
   - File validation
+  - Only shown for Positive/Unsure observations
 
 - `AOTAEventSelectionDialog`: Multi-event selection
   - Displays all valid events with timing details
@@ -72,16 +80,36 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 
 ### 3. na_report.py (North American Report Generator)
 **Added**:
-- AOTA placeholder initialization in `_build_replacements()`
+- `observation_type` parameter to `generate_report()` method
+- **WAS_MISS field logic**: Inverse of observation type
+  - Positive → "no" (saw occultation = NOT a miss)
+  - Negative → "yes" (missed occultation)  
+  - Unsure → "maybe"
+- **Filename formatting**: Uses POS/NEG suffix
+  - Format: `YYYYMMDD_###_Asteroid_Surname_POS.xlsx`
+  - POS for Positive observations, NEG otherwise
+- AOTA placeholders **NOT initialized** in `_build_replacements()`
+  - Placeholders remain as `{{AOTA_D_HOURS}}` etc. in Excel
+  - Allows post-processing to find and replace them
 - `import_aota_data(aota_event, replacements)` method
-  - Populates AOTA placeholders from parsed event
+  - Preserves decimal precision using string representations
   - Handles missing data gracefully
 
 ### 4. tt_report.py (Trans-Tasman Report Generator)
 **Added**:
-- AOTA placeholder initialization in `_build_replacements()`
-- AOTA placeholders added to `all_placeholders` list
+- `observation_type` parameter to `generate_report()` method
+- **WAS_MISS field logic**: Inverse of observation type
+  - Positive → "no" (saw occultation = NOT a miss)
+  - Negative → "yes" (missed occultation)
+  - Unsure → "maybe"
+- **Filename formatting**: Uses +/- prefix before surname
+  - Format: `YYYYMMDD_###_Asteroid_Catalog_Number+Surname.xlsx`
+  - '+' for Positive observations, '-' for Negative/Unsure
+- AOTA placeholders **NOT initialized** in `_build_replacements()`
+  - Excluded from `all_placeholders` validation list
+  - Allows post-processing to replace them
 - `import_aota_data(aota_event, replacements)` method
+  - Preserves decimal precision using string representations
   - Same functionality as NA version
 
 ### 5. main_gui.py (Main GUI)
@@ -91,20 +119,29 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 1. User selects event and report type
 2. Equipment selection dialog
 3. Location confirmation dialog
-4. **NEW**: AOTA import prompt
-   - Yes/No dialog asking if user wants to import AOTA data
-   - If Yes: Shows file picker
+4. **NEW**: Observation type selection
+   - Positive, Negative, or Unsure
+   - Determines filename format and WAS_MISS value
+5. **NEW**: AOTA import (only for Positive/Unsure)
+   - Shows file picker dialog
    - Parses AOTA file
    - If multiple valid events: Shows event selector
    - If single event: Uses automatically
-5. Generates report with standard data
-6. **NEW**: Adds AOTA data to generated report
+   - **Skipped for Negative observations**
+6. Generates report with standard data
+7. **NEW**: Adds AOTA data to generated report (if imported)
 
 **Added `_add_aota_to_existing_report()` method**:
 - Post-processes generated Excel file
 - Replaces AOTA placeholders in worksheet XML
 - Handles shared strings
 - Preserves all other report content
+- **Debug logging**: Prints which placeholders are replaced
+- Uses string representations to preserve decimal precision
+
+### 6. gui_dialogs.py
+**Modified**:
+- `LocationConfirmDialog` button text changed from "Confirm & Generate Report" to "Next - event D/R"
 
 ## User Workflow
 
@@ -114,26 +151,39 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 2. **Click "Generate Report"**
 3. **Select Report Type**: Choose North America or Trans-Tasman
 4. **Select Equipment**: Choose telescope and camera
-5. **Confirm Location**: Verify/edit observation location
-6. **AOTA Import Prompt**: Dialog asks "Do you want to import timing data from an AOTA analysis file?"
-   - **Click No**: Report generates without AOTA data (user can fill manually)
-   - **Click Yes**: Continue to import process
+5. **Confirm Location**: Verify/edit observation location, click "Next - event D/R"
+6. **Select Observation Type**: Choose result of observation
+   - **Positive**: Saw the occultation (asteroid blocked the star)
+   - **Negative**: Did not see occultation (missed or wasn't in path)
+   - **Unsure**: Uncertain about detection
+   
+7. **AOTA Import** (Positive/Unsure only):
+   - File picker opens automatically for Positive or Unsure observations
+   - Browse to your *.aota.xml file
+   - Click OK (or Cancel to skip AOTA import)
+   - **Note**: Negative observations skip this step entirely
 
-7. **Select AOTA File** (if Yes):
-   - Browse dialog opens filtered to *.aota.xml files
-   - Select your AOTA file
-   - Click OK
-
-8. **Select Event** (if multiple in file):
+8. **Select Event** (if multiple in AOTA file):
    - Dialog shows all valid events with timing details
    - Format: "D: HH:MM:SS.S (±Es) | R: HH:MM:SS.S (±Es) | Duration: Xs"
    - Select the event corresponding to your observation
    - Click "Use Selected Event"
 
 9. **Report Generation**:
-   - Report generates with all standard data
-   - AOTA timing data automatically filled in designated cells
+   - Report generates with observation type and filename:
+     - **NA format**: `YYYYMMDD_###_Asteroid_Surname_POS.xlsx` (or NEG)
+     - **TT format**: `YYYYMMDD_###_Asteroid_Catalog_Number+Surname.xlsx` (or -)
+   - AOTA timing data automatically filled (if imported)
+   - WAS_MISS field set based on observation type
    - Success message shows file location
+
+### Observation Type Effects
+
+| Type | Filename (NA) | Filename (TT) | WAS_MISS | AOTA Import |
+|------|---------------|---------------|----------|-------------|
+| Positive | `..._POS.xlsx` | `...+Surname.xlsx` | no | Yes - prompted |
+| Negative | `..._NEG.xlsx` | `...-Surname.xlsx` | yes | No - skipped |
+| Unsure | `..._NEG.xlsx` | `...-Surname.xlsx` | maybe | Yes - prompted |
 
 ## AOTA File Format
 
@@ -204,15 +254,23 @@ Add to `RASNZ_AstReporttForm_V4.1.2.G_locked.xlsx`:
 
 The implementation includes comprehensive error handling:
 
+### Observation Type Selection
+- Required step - cannot be skipped
+- Default to Positive if dialog fails
+- Clear labels for each option
+
 ### File Selection
+- Only shown for Positive/Unsure observations
 - Validates file exists
 - Checks file extension
-- Handles cancellation
+- Handles cancellation (report continues without AOTA)
 
 ### Parsing
 - XML parse errors caught and reported
 - Invalid time formats handled gracefully
 - Missing data doesn't break report generation
+- Non-events (IsNonEvent=true) filtered automatically
+- **Preserves decimal precision** from AOTA file
 
 ### Event Selection
 - No valid events: Warning message, report continues without AOTA data
@@ -223,32 +281,52 @@ The implementation includes comprehensive error handling:
 ### Report Integration
 - AOTA import failure: Warning shown but report still saved
 - Post-processing error: Report usable, AOTA data not added
-- All errors logged to console for debugging
+- All errors logged to SharpCap console for debugging
+- **Debug logging**: Shows which placeholders are being replaced
+- Negative observations: AOTA placeholders remain unreplaced in template
 
 ## Benefits
 
 1. **Automation**: No manual transcription of timing data
 2. **Accuracy**: Direct import eliminates transcription errors
-3. **Flexibility**: Optional feature - works with or without AOTA
-4. **User-Friendly**: Clear dialogs guide through process
-5. **Robust**: Handles multiple events and various error conditions
-6. **Non-Breaking**: If AOTA import fails, report still generates
+3. **Precision**: Preserves original decimal places from AOTA analysis
+4. **Flexibility**: 
+   - Optional AOTA import for Positive/Unsure observations
+   - Automatic skip for Negative observations
+   - Works with or without AOTA data
+5. **User-Friendly**: 
+   - Clear dialogs guide through process
+   - Observation type affects workflow automatically
+   - Descriptive filenames indicate result type
+6. **Robust**: 
+   - Handles multiple events and various error conditions
+   - Filters non-events automatically
+7. **Non-Breaking**: If AOTA import fails, report still generates
+8. **Smart Defaults**: WAS_MISS field automatically set based on observation type
+9. **Logging**: Debug output to SharpCap console for troubleshooting
 
 ## Testing Checklist
 
-- [ ] Parse valid AOTA file with single event
-- [ ] Parse AOTA file with multiple events
-- [ ] Parse AOTA file with only non-events
-- [ ] Handle invalid/corrupted AOTA file
-- [ ] Test file selection cancellation
-- [ ] Test event selection cancellation  
-- [ ] Test declining AOTA import
-- [ ] Verify North American report with AOTA data
-- [ ] Verify Trans-Tasman report with AOTA data
-- [ ] Check placeholder replacement in Excel
-- [ ] Test with missing D or R times
-- [ ] Verify error messages are clear
-- [ ] Check console logging output
+- [x] Parse valid AOTA file with single event
+- [x] Parse AOTA file with multiple events
+- [x] Parse AOTA file with only non-events
+- [x] Handle invalid/corrupted AOTA file
+- [x] Test file selection cancellation
+- [x] Test event selection cancellation  
+- [x] Test observation type selection (Positive/Negative/Unsure)
+- [x] Verify AOTA import skipped for Negative observations
+- [x] Verify AOTA import prompted for Positive/Unsure
+- [x] Verify North American report with AOTA data
+- [x] Verify Trans-Tasman report with AOTA data
+- [x] Check placeholder replacement in Excel (post-processing)
+- [x] Verify WAS_MISS field logic (inverse of observation type)
+- [x] Verify NA filename format (POS/NEG suffix)
+- [x] Verify TT filename format (+/- prefix)
+- [x] Test with missing D or R times
+- [x] Verify decimal precision preservation (0 vs 2 dp)
+- [x] Verify error messages are clear
+- [x] Check console logging output
+- [x] Test that AOTA placeholders remain in template when not imported
 
 ## Future Enhancements
 
