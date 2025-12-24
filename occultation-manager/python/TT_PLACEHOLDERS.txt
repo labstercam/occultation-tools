@@ -1,0 +1,82 @@
+TRANS-TASMAN REPORT TEMPLATE PLACEHOLDERS
+==========================================
+
+Place these exact placeholder strings in the corresponding cells in the RASNZ template:
+
+EVENT INFORMATION:
+------------------
+Cell A2:  {{OBSERVATION_TYPE}}           (e.g., "Positive", "Negative")
+Cell D5:  {{EVENT_YEAR}}                 (e.g., 2025)
+Cell K5:  {{EVENT_MONTH}}                (e.g., "Dec")
+Cell P5:  {{EVENT_DAY}}                  (e.g., 13)
+Cell Y5:  {{PREDICTED_HOURS}}            (e.g., 10)
+Cell AA5: {{PREDICTED_MINUTES}}          (e.g., 3)
+Cell AC5: {{PREDICTED_SECONDS}}          (e.g., 42)
+Cell E7:  {{ASTEROID_NUMBER}}            (e.g., 46854)
+Cell K7:  {{ASTEROID_NAME}}              (e.g., "1998 QY42")
+Cell S7:  {{STAR_CATALOG}}               (e.g., "UCAC4")
+Cell X7:  {{STAR_NUMBER}}                (e.g., "485-038369")
+Cell P8:  {{RIO_TNO_PREDICTION}}         (e.g., "No")
+
+OBSERVER INFORMATION:
+---------------------
+Cell D9:  {{OBSERVER_NAME}}              (e.g., "Michael Camilleri")
+Cell S9:  {{OBSERVER_EMAIL}}             (e.g., "email@example.com")
+Cell D11: {{OBSERVER_ADDRESS}}           (e.g., "7/1 Piripiri Drive")
+Cell S11: {{OBSERVER_PHONE}}             (e.g., "+64211840111")
+Cell D13: {{OBSERVER_CITY_STATE_COUNTRY}} (e.g., "Auckland, NZ")
+Cell S13: {{OBSERVER_FAX}}               (optional)
+Cell E15: {{OBSERVING_LOCATION}}         (e.g., "Te Atatu Peninsula")
+
+LOCATION COORDINATES:
+---------------------
+Cell E17: {{LATITUDE_FORMAT}}            (e.g., "deg.ddddd")
+Cell E18: {{LATITUDE}}                   (e.g., 36.83556)
+Cell J18: {{LATITUDE_DIR}}               (e.g., "S" or "N")
+Cell N17: {{LONGITUDE_FORMAT}}           (e.g., "deg.ddddd")
+Cell N18: {{LONGITUDE}}                  (e.g., 174.6578)
+Cell R18: {{LONGITUDE_DIR}}              (e.g., "E" or "W")
+Cell V18: {{ELEVATION}}                  (e.g., 23)
+Cell W18: {{ELEVATION_UNITS}}            (e.g., "m")
+Cell AA18: {{ELEVATION_DATUM}}           (e.g., "WGS84")
+
+TELESCOPE EQUIPMENT:
+--------------------
+Cell E20: {{APERTURE}}                   (e.g., 23.5 in cm)
+Cell H20: {{APERTURE_UNITS}}             (e.g., "cm")
+Cell L20: {{FOCAL_RATIO}}                (e.g., 6.3)
+Cell T20: {{TELESCOPE_TYPE}}             (e.g., "SCT including Cass and Mak")
+
+TIMING & RECORDING:
+-------------------
+Cell C22: {{TIMING}}                     (e.g., "GPS PPS")
+Cell O22: {{TIMING_METHOD}}              (e.g., "Video Recording")
+Cell Y22: {{ASTEROID_VISIBLE}}           (e.g., "Yes")
+Cell E23: {{TIMING_DEVICE}}              (e.g., "SharpCap")
+
+DETECTOR/CAMERA:
+----------------
+Cell E25: {{DETECTOR}}                   (e.g., "SharpCap")
+Cell L25: {{VIDEO_FORMAT}}               (e.g., "SER")
+Cell O25: {{INTEGRATION}}                (e.g., "Other")
+Cell S25: {{INTEGRATION_UNITS}}          (e.g., "Frames")
+Cell Z26: {{CORRECTIONS_APPLIED}}        (e.g., "No")
+
+TIMING OBSERVATIONS (only hours filled):
+-----------------------------------------
+Cell E31: {{STARTED_OBSERVING_HOURS}}    (e.g., 10)
+Cell E37: {{STOPPED_OBSERVING_HOURS}}    (e.g., 10)
+
+EVENT OUTCOME:
+--------------
+Cell W38: {{WAS_MISS}}                   (e.g., "No")
+Cell D40: {{SECOND_STAR}}                (e.g., "No")
+Cell D42: {{COMMENTS}}                   (optional, any additional info)
+
+NOTES:
+------
+- Use the EXACT placeholder text including curly braces
+- Placeholders are case-sensitive
+- Leave cells for minutes/seconds blank (E31:G31, I31, E37:G37, I37) - user fills these
+- Leave timing observation rows 32-36 completely blank - user fills from video analysis
+- Leave condition fields blank (F27, H27, P27, V27) - user fills
