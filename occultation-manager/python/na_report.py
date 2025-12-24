@@ -10,38 +10,24 @@ import os
 import re
 from datetime import datetime
 from simple_xlsx import load_workbook
+from report_generator_base import ReportGeneratorBase
 
 
-class NAReportGenerator:
+class NAReportGenerator(ReportGeneratorBase):
     """Generates North American Occultation Report Forms using the official template"""
     
     # Local template file (now bundled with the project)
     TEMPLATE_FILENAME = 'NorthAmerica_AstReportForm_V5.6.12r.xlsx'
     
-    # Month names for report
-    MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 
-              'July', 'August', 'September', 'October', 'November', 'December']
-    
     def __init__(self, config):
         """Initialize with configuration manager"""
-        self.config = config
+        super(NAReportGenerator, self).__init__(config)
     
     def get_template_path(self):
         """Get path to local template file bundled with the project"""
         # Template is in the same directory as this script
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, self.TEMPLATE_FILENAME)
-    
-    def check_template_exists(self):
-        """Check if template file exists. Returns (success, message)"""
-        template_path = self.get_template_path()
-        
-        if os.path.exists(template_path):
-            return True, template_path
-        else:
-            error_msg = f"Template file not found:\n{template_path}\n\n" + \
-                       f"Please ensure {self.TEMPLATE_FILENAME} is in the same folder as na_report.py"
-            return False, error_msg
     
     def parse_star_catalog(self, star_name):
         """Parse star name to determine catalog and number"""
@@ -230,6 +216,7 @@ class NAReportGenerator:
             # Save report
             log("Saving report...")
             wb.save(report_path)
+            wb.close()  # Release file handle
             log(f"SUCCESS: Report generated: {report_path}")
             return report_path
             
@@ -487,14 +474,14 @@ class NAReportGenerator:
         else:
             event_date = 'unknown'
         
-        # Get asteroid number (###)
+        # Get asteroid number (###) - use object_no directly
         object_no = getattr(event, 'object_no', '')
         
         # Get asteroid name with spaces replaced by underscores
-        # Remove the number in parentheses if present (e.g., "Asteroid (123)" -> "Asteroid")
+        # Remove the leading number in parentheses: "(46584) 1998 QY42" -> "1998 QY42"
         object_name = getattr(event, 'object_name', '')
-        # Remove patterns like (123) or (12345)
-        object_name = re.sub(r'\s*\(\d+\)\s*', ' ', object_name).strip().replace(' ', '_')
+        # Remove leading pattern like (46584) from the start
+        object_name = re.sub(r'^\(\d+\)\s*', '', object_name).strip().replace(' ', '_')
         
         # Get observer surname from config
         observer_name = self.config.get_observer_name()

@@ -1188,29 +1188,45 @@ class OccultationManagerGUI(Form):
                         "Event Not Yet Occurred", MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
         
-        # Lazy load report generator (using simple_xlsx - pure Python, no C extensions)
-        try:
-            if self.report_generator is None:
-                print("Loading NA Report Generator (simple_xlsx)...")
-                from na_report import NAReportGenerator
-                self.report_generator = NAReportGenerator(self.config)
-                print("NAReportGenerator initialized successfully")
-        
-        except Exception as ex:
-            import traceback
-            error_details = traceback.format_exc()
-            MessageBox.Show(
-                f"Error loading report generator:\n\n{str(ex)}\n\nSee SharpCap log for details.",
-                "Initialization Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error)
-            print(f"Failed to initialize NAReportGenerator: {ex}")
-            print(error_details)
-            return
-        
         # Generate report
         try:
             print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
+            
+            # Show report type selection dialog
+            from report_type_dialog import ReportTypeSelectionDialog
+            report_type_dialog = ReportTypeSelectionDialog(self.theme_manager, event)
+            if report_type_dialog.ShowDialog() != DialogResult.OK:
+                print("User cancelled report type selection")
+                self.update_status("Report generation cancelled")
+                return
+            
+            report_type = report_type_dialog.get_selected_report_type()
+            print(f"Selected report type: {report_type}")
+            
+            # Create appropriate report generator based on selection
+            if report_type == 'north_america':
+                from na_report import NAReportGenerator
+                report_generator = NAReportGenerator(self.config)
+            elif report_type == 'trans_tasman':
+                # Force reload of tt_report module to pick up code changes
+                import sys
+                if 'tt_report' in sys.modules:
+                    del sys.modules['tt_report']
+                from tt_report import TTReportGenerator
+                report_generator = TTReportGenerator(self.config)
+            else:
+                MessageBox.Show(f"Report type '{report_type}' is not yet implemented.", 
+                              "Not Implemented", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                self.update_status("Report generation cancelled")
+                return
+            
+            # Check template exists
+            template_ok, message = report_generator.check_template_exists()
+            if not template_ok:
+                MessageBox.Show(message, "Template Not Found", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Error)
+                self.update_status("Report generation failed: template not found")
+                return
             
             # Show equipment selection dialog
             from equipment_dialogs import EquipmentSelectionDialog
@@ -1244,7 +1260,7 @@ class OccultationManagerGUI(Form):
             event.obs_location = location['obs_location']  # Store observing location
             
             self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-            output_path = self.report_generator.generate_report(event, telescope_id, camera_id)
+            output_path = report_generator.generate_report(event, telescope_id, camera_id)
             if output_path:
                 print(f"SUCCESS: Report generated: {output_path}")
                 self.update_status("Report generated successfully")

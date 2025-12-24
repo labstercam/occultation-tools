@@ -84,6 +84,12 @@ class SimpleWorkbook:
             else:
                 self.shared_strings.append('')
     
+    @property
+    def sheetnames(self):
+        """Get list of all sheet names in the workbook"""
+        sheets = self.workbook_xml.findall('.//spreadsheetml:sheet', NAMESPACES)
+        return [sheet_elem.get('name') for sheet_elem in sheets]
+    
     def get_sheet_by_name(self, name):
         """Get a worksheet by name"""
         if name in self.sheets:
@@ -160,12 +166,16 @@ class SimpleWorkbook:
             with zipfile.ZipFile(temp_path, 'w', zipfile.ZIP_DEFLATED) as new_zip:
                 # Copy all files from original, replacing modified sheets
                 for item in self.zip_file.namelist():
+                    # Skip calcChain.xml to avoid calculation chain corruption
+                    # Excel will regenerate it when the file is opened
+                    if item == 'xl/calcChain.xml':
+                        continue
+                    
                     # Check if this is a modified worksheet
                     modified = False
                     for sheet in self.sheets.values():
                         if item == sheet.sheet_path and sheet.modified:
                             # Write the modified sheet XML
-                            # IronPython doesn't support xml_declaration parameter
                             xml_bytes = ET.tostring(sheet.sheet_xml, encoding='utf-8')
                             xml_str = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + xml_bytes.decode('utf-8')
                             new_zip.writestr(item, xml_str)
@@ -194,6 +204,12 @@ class SimpleWorkbook:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
             raise
+    
+    def close(self):
+        """Close the workbook and release file handles"""
+        if self.zip_file:
+            self.zip_file.close()
+            self.zip_file = None
 
 
 class SimpleWorksheet:
@@ -290,7 +306,11 @@ class SimpleWorksheet:
             cell_elem.remove(v_elem)  # Remove <v> element
             is_elem = ET.SubElement(cell_elem, '{%s}is' % NAMESPACES['spreadsheetml'])
             t_elem = ET.SubElement(is_elem, '{%s}t' % NAMESPACES['spreadsheetml'])
-            t_elem.text = str(value)
+            # Ensure value is properly converted to string and sanitized
+            str_value = str(value) if value is not None else ''
+            # Remove any control characters that might cause XML issues
+            str_value = ''.join(char for char in str_value if ord(char) >= 32 or char in '\n\r\t')
+            t_elem.text = str_value
         
         self.modified = True
     
