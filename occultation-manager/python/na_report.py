@@ -278,6 +278,18 @@ class NAReportGenerator(ReportGeneratorBase):
         replacements['{{TIMING_METHOD}}'] = 'Video Recording'
         replacements['{{ASTEROID_VISIBLE}}'] = 'Yes'
         
+        # Set WAS_MISS based on observation type (inverse relationship)
+        # Positive = saw occultation = NOT a miss
+        # Negative = didn't see occultation = WAS a miss
+        if self._observation_type == 'Positive':
+            replacements['{{WAS_MISS}}'] = 'no'
+        elif self._observation_type == 'Negative':
+            replacements['{{WAS_MISS}}'] = 'yes'
+        elif self._observation_type == 'Unsure':
+            replacements['{{WAS_MISS}}'] = 'maybe'
+        else:
+            replacements['{{WAS_MISS}}'] = 'maybe'  # Default fallback
+        
         # COMMENTS
         comment_parts = []
         if self._telescope_name:
