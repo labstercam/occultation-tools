@@ -1,4 +1,4 @@
-# Multi-Region Report Generation Implementation
+�# Multi-Region Report Generation Implementation
 
 ## Summary
 
