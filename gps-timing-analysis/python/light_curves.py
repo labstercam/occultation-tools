@@ -574,3 +574,24 @@ def reduce_adv_light_curve(file,file_path,global_shutter=False, nlines =10, igno
         #flash_objects[f'{file}' +":"+obj_name] = lc.analyse_gps_flash(this_tangra_object,obj_name,exposure_ms = float(exps)*1000,flash_ms=100)
     #rdr.close()
     return light_curves
+
+## Functions to read NTP log files
+
+
+def read_ntp_peerstats(file_path, file):
+    data = pd.read_csv(file_path +file,delimiter = ' ',header=None)
+    data.columns = ['MJD','sec_frac','address','status','Offset (ms)','delay','dispersion','jitter']
+# Convert from Modified Julian Date
+    data['Date'] = [dt.strptime('1958-11-17','%Y-%M-%d') + timedelta(days=i) for i in data['MJD']]
+    data['Time'] = [timedelta(seconds =float(i)) for i in data['sec_frac'] ]
+    data['Time'] = data['Date'] + data['Time']
+    data['Time Rounded'] = [timedelta(minutes =round(i/60)) for i in data['sec_frac'] ]
+    data['Time Rounded'] = data['Date'] + data['Time Rounded']
+    data
+    data['Offset (ms)'] = data['Offset (ms)']*1000 
+    data['delay'] = data['delay']*1000 
+    data['dispersion'] = data['dispersion']*1000 
+    data['jitter'] = data['jitter']*1000 
+    data = data[['Date','Time','address','Offset (ms)','delay','dispersion','jitter','Time Rounded']]
+    data['Source file'] = file_path +'/'+file
+    return data
