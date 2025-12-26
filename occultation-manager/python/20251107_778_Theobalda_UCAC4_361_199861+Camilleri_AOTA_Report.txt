@@ -1,0 +1,41 @@
+AOTA analysis of the file D:\SharpCap Captures\(778) Theobalda\2025-11-07\10_44_15Z_.lc
+- analysed on Friday, November 7, 2025 at 10:51 AM UTC
+- using AOTA v4.2025.8.23
+
+Event #1
+
+  Event location in video frame ID's
+   D: 63.0  +1.0/-0.5
+   R: 67.0  +1.5/-0.5
+
+  Event time in UTC
+   D: 10 44 45.2 ± 0.4
+   R: 10 44 47.2 ± 0.5
+
+  Duration of transition in frames
+   D: 0
+   R: 0
+
+  SN at event locations
+   D: 4.4
+   R: 4.5
+   Ave: 4.5
+
+  Applied confidence level
+   D: 95%
+   R: 95%
+
+===== Camera details =====
+Camera                 : ADVS - corrected
+Frames integrated      : 0
+Video system           : ADVS or AAV
+Camera delays have NOT been applied by AOTA to the times
+
+==== Measurement info ====
+Measurement tool       : Tangra
+Measured at Field level: False
+# Measurements binned  : 1
+Normalisation          : None
+Time scale from tool   : True
+
+===== end of report ======
