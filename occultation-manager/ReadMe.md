@@ -1,25 +1,61 @@
 # Occultation Manager
 
-SharpCap Occulation Manager for Occult Watcher Cloud
-SharpCap Occultation Manager for Occult Watcher is a tool that fully automates occultation observations. It downloads personal observations announced in Occult Watcher Cloud. It includes an Event Manager to manage events, Sequence generation to create SharpCap sequences for doing the recordings (either in the tool itself or by using the sequences directly), and configuration management. It can prefill occultation reports using the event details from OWC and other sources.
+SharpCap Occultation Manager automates the complete occultation observation workflow, from event download through report submission. It integrates with Occult Watcher Cloud, generates SharpCap sequences for automated recording, and produces pre-filled Excel reports with integrated timing data.
 
-## The tool serves several purposes:
+## Key Features
 
-1. Enables full automation of observations from SharpCap, only requiring the use of OW Cloud to announce stations
-2. Provides a much simplified work-flow for SharpCap users - other tools usually require the use of Occult Watcher Desktop or Occult 4 to generate or manage predictions, with a lot of manual work to select and run the observations, even with the OWD SharpCap addins
-3. Provides a very easy and flexible way to generate SharpCap sequences to record events, with the ability for the user to edit the sequence template to their needs or edit the generate sequences
-4. Automates report generation
+**Event Management**
+- Downloads personal observations from Occult Watcher Cloud
+- Manages event list with filtering by date, location, and probability
+- Automatic SharpCap sequence generation
 
-## How to Install the SharpCap Addin
+**Streamlined Report Generation**
+- Single comprehensive dialog workflow (replaces 5 separate dialogs)
+- Integrates AOTA timing data for D/R times
+- Imports Tangra CSV light curves for observation timing and camera delay
+- Supports North America (IOTA V5.6.12r) and Trans-Tasman (RASNZ V4.1.2.G) formats
+- Auto-fills observer, telescope, and camera information
+- Remembers report type and folder location for faster workflow
+
+**Timing Integration**
+- Extracts start/end times from Tangra CSV files (HH:MM:SS.SS format)
+- Populates exposure time in seconds with 3 decimal precision
+- Camera acquisition delay correction from Tangra measurement parameters
+- Automatic placeholder population for all timing fields
+
+**Equipment Management**
+- Multiple telescope and camera configurations
+- Active equipment selection
+- Equipment details automatically populate reports
+
+## Benefits
+
+1. **Full Automation**: Complete workflow from event download to report generation within SharpCap
+2. **Simplified Workflow**: No need for Occult Watcher Desktop or Occult 4 for predictions
+3. **Flexible Sequences**: Customizable SharpCap sequence templates for any recording setup
+4. **Accurate Timing**: Direct integration of Tangra timing analysis into reports
+5. **Multi-Equipment**: Manage multiple telescopes, cameras, and observing sites
+
+## Workflow
+
+1. **Download Events**: Sync with Occult Watcher Cloud to get your announced stations
+2. **Generate Sequences**: Create SharpCap sequences for automated recording
+3. **Record Event**: Run the sequence to capture the occultation
+4. **Analyze in Tangra**: Process video to generate light curve CSV
+5. **Generate Report**: One-click report generation with integrated AOTA and Tangra data
+
+## Installation
+## Installation
+
 1. Download the Python code from **occultation-manager.zip** above by right clicking and selecting 'Save As'
-2. Unzip to a file locationn where you have read/write access. Suggest a new subfolder  \Documents\Sharpcap\occultation-manager
-3. Alternative, you could clone this GitHub respository if you are a GitHub user
+2. Unzip to a file location where you have read/write access. Suggest a new subfolder \Documents\SharpCap\occultation-manager
+3. Alternative: clone this GitHub repository if you are a GitHub user
 4. Start SharpCap
-5. In "File" - "SharpCap Settings" - "Startup Scripts" - find that folder and add the 'main' script
+5. In "File" → "SharpCap Settings" → "Startup Scripts" → find that folder and add the 'main' script
 
 <img width="666" height="155" alt="image" src="https://github.com/user-attachments/assets/42a9d9c9-4273-4a88-8d0a-428cca649afe" />
 
-5. Close SharpCap (the script will be loaded at the next start)
+6. Close SharpCap (the script will be loaded at the next start)
 
 A new button should appear in the SharpCap main toolbar. Press it to start the Occultation Manager.
 <img width="117" height="28" alt="image" src="https://github.com/user-attachments/assets/6dbdf7af-aea5-4637-a39a-ff8a435dce55" />
@@ -45,7 +81,48 @@ The Minimal template is a minimalist example. It assumes that you have already s
 
 You will need to test these templates and adapt them to your setup and to how you want to record. My advice is to use something like the Local Time Template which sets all the camera parameters as it is really easy to forget to set something manually and then mess up the observation.
 
-You will need to extensively test your own template(s) before trusting them of before they are safe to use for unattended observations. THere is the risk of failure, and the risk of damaging gear by snagging cables of leaving it pointed to the sun after sunrise.
+You will need to extensively test your own template(s) before trusting them or before they are safe to use for unattended observations. There is the risk of failure, and the risk of damaging gear by snagging cables or leaving it pointed to the sun after sunrise.
 
 ## Report Generation
-Reports are generated using regional templates. Currently North America and Trans-Tasman forms are implemented, SODIS still to do. The reports uses the information dowloaded from OWC, can look up the coordinates to find city/town and elevation, and populations the observer, telescope and camera information from the tool. It can handle multiple sites and different equipment.
+
+Reports are generated using a streamlined single-dialog workflow that combines:
+- Report format selection (North America / Trans-Tasman)
+- Telescope and camera selection
+- Observation type (Positive / Negative / Unsure)
+- AOTA file selection (.aota.xml for D/R times)
+- Tangra CSV file selection (light curve with timing data)
+
+### Supported Report Formats
+- **North America (IOTA V5.6.12r)**: IOTA standard report form
+- **Trans-Tasman (RASNZ V4.1.2.G)**: Australia/New Zealand report form
+- **SODIS Europe**: Planned for future implementation
+
+### Timing Data Integration
+
+**From AOTA Files (.aota.xml)**:
+- Disappearance (D) time with uncertainty
+- Reappearance (R) time with uncertainty
+- Event quality indicators
+
+**From Tangra CSV Files**:
+- Observation start time (HH:MM:SS.SS)
+- Observation end time (HH:MM:SS.SS)
+- Exposure time in seconds (3 decimal places)
+- Camera acquisition delay in seconds (from measurement parameters table)
+
+### Workflow Improvements
+- **Settings Persistence**: Remembers last report type and folder location
+- **Auto-Selection**: Automatically selects first available AOTA and Tangra files
+- **Smart Validation**: AOTA required for Positive/Unsure observations, optional for Negative
+- **One-Click Generation**: Single dialog replaces 5 separate dialogs
+
+### File Organization
+For efficient workflow, organize files in folders by event:
+```
+D:\Occultations\Reported\20251107 (778) Theobalda+\
+  ├── event.aota.xml          # AOTA timing file
+  ├── light_curve.csv         # Tangra CSV
+  └── video.ser              # Original recording
+```
+
+The dialog remembers the parent folder (e.g., `D:\Occultations\Reported\`) making it easy to switch between event folders.

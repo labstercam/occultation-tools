@@ -1,99 +1,116 @@
-# Occultation-manager Python code modules
-## Excel Report Generation
+# Occultation Manager - Python Modules
 
-The Occultation Manager includes Excel report generation functionality using a custom pure-Python Excel library called `simple_xlsx.py`.
+## Core Components
 
-### Why simple_xlsx?
+### Report Generation System
 
-IronPython (the Python implementation used by SharpCap) cannot load C extensions compiled for CPython. The popular `openpyxl` library has dependencies on C extensions (lxml, numpy) that cause IronPython to crash. Rather than requiring users to install separate Python environments, we created a minimal pure-Python Excel library.
+The Occultation Manager includes comprehensive Excel report generation with integrated timing analysis.
 
-### simple_xlsx Implementation
+#### simple_xlsx.py - Pure Python Excel Library
 
-**File**: `simple_xlsx.py` (364 lines)
+**Why simple_xlsx?**
+IronPython (used by SharpCap) cannot load C extensions. Popular libraries like `openpyxl` depend on lxml and numpy (C extensions), causing IronPython crashes. `simple_xlsx` provides Excel functionality using only Python standard library.
 
-**Core Design**:
-- Uses only Python standard library: `zipfile` and `xml.etree.ElementTree`
-- No external dependencies, no C extensions
-- Implements just enough Excel functionality for report generation
+**Implementation** (364 lines):
+- Uses only `zipfile` and `xml.etree.ElementTree`
+- No external dependencies or C extensions
+- Implements essential Excel operations for report generation
 
-**How .xlsx Files Work**:
-- `.xlsx` files are ZIP archives containing XML files
-- Main components:
-  - `xl/workbook.xml` - Workbook structure and sheet list
-  - `xl/_rels/workbook.xml.rels` - Relationships between files
-  - `xl/worksheets/sheet1.xml` - Individual worksheet data
-  - `xl/sharedStrings.xml` - Shared string table
-
-**Classes**:
-
-1. **SimpleWorkbook** - Manages the .xlsx ZIP file
-   - `load_workbook(filepath)` - Opens and parses the Excel file
-   - `get_sheet_by_name(name)` - Accesses a worksheet by name
-   - `save(filepath)` - Saves modified workbook to disk
-
-2. **SimpleWorksheet** - Handles individual worksheets
-   - `__getitem__(cell_ref)` - Read cell values: `ws['A1']`
-   - `__setitem__(cell_ref, value)` - Write cell values: `ws['A1'] = 'value'`
-   - Supports cell references like 'A1', 'B5', 'AA100'
-
-3. **SimpleCell** - Cell value wrapper
-   - `.value` property for getting/setting cell contents
+**Core Classes**:
+- `SimpleWorkbook` - Manages .xlsx ZIP files
+- `SimpleWorksheet` - Handles individual worksheets
+- `SimpleCell` - Cell value wrapper
 
 **Supported Operations**:
-- ✅ Load .xlsx template files
-- ✅ Read cell values
-- ✅ Write cell values (strings, numbers, dates)
+- ✅ Load .xlsx templates
+- ✅ Read/write cell values (strings, numbers, dates)
 - ✅ Save modified workbooks
 - ❌ Formulas (preserved but not calculated)
 - ❌ Formatting (preserved from template)
-- ❌ Charts, images, or complex features
 
-### Usage Example
+#### Report Generators
 
+**na_report.py** - North America (IOTA V5.6.12r)
+- Uses template: `NorthAmerica_AstReportForm_V5.6.12r.xlsx`
+- Populates 47 mapped cells with event and timing data
+- Filename format: `YYYYMMDD_asteroidnumber_asteroidname_starcatalog_starnumber-surname_station.xlsx`
+
+**tt_report.py** - Trans-Tasman (RASNZ V4.1.2.G)
+- Uses template: `TransTasman_AstReportForm_V4.1.2.G.xlsx`
+- Similar structure with regional-specific fields
+
+#### Timing Integration
+
+**light_curves_iron.py** - IronPython-Compatible Timing Analysis
+- Reads Tangra CSV light curve files
+- Extracts observation timing statistics
+- Compatible with IronPython (no pandas/numpy/scipy)
+- Uses only Python standard library (csv, datetime)
+
+**Key Functions**:
 ```python
-from simple_xlsx import load_workbook
+read_tangra_csv_iron(file_path)
+# Returns: filename, header details, apertures, light curve data
 
-# Load a template
-wb = load_workbook('template.xlsx')
-ws = wb.get_sheet_by_name('Sheet1')
+analyse_timestamps_iron(light_curve_data)
+# Returns: start_time, end_time, tdelta_median, tdelta_std
 
-# Read a cell
-title = ws['A1'].value
-
-# Write cells
-ws['B2'] = 'Observer Name'
-ws['C3'] = 42
-ws['D4'] = datetime.now()
-
-# Save
-wb.save('output.xlsx')
+get_observation_summary(tangra_csv_path)
+# Convenience wrapper combining read and analysis
 ```
 
-### NA Report Generator
+**Extracted Data**:
+- Start time (HH:MM:SS.SS format)
+- End time (HH:MM:SS.SS format)
+- Exposure time (median frame delta in seconds)
+- Camera acquisition delay (from measurement parameters table, rows 7-8)
 
-**File**: `na_report.py`
-
-Uses `simple_xlsx` to fill in the North American Occultation Report Form template (`NorthAmerica_AstReportForm_V5.6.12r.xlsx`).
-
-**Process**:
-1. Load template from local file
-2. Access 'DATA' worksheet
-3. Write event data to 47 mapped cells
-4. Write observer/telescope configuration
-5. Write recording times and metadata
-6. Generate IOTA-standard filename
-7. Save completed report
-
-**Filename Format**:
+**Report Placeholders Populated**:
 ```
-YYYYMMDD_asteroidnumber_asteroidname_starcatalog_starnumber-surname_station.xlsx
-Example: 20251213_46854_1998_QY42_UCAC4_485_038369-Camilleri_M_Home.xlsx
+{{STARTED_OBSERVING_HOURS}}
+{{STARTED_OBSERVING_MINUTES}}
+{{STARTED_OBSERVING_SECONDS}}
+{{STOPPED_OBSERVING_HOURS}}
+{{STOPPED_OBSERVING_MINUTES}}
+{{STOPPED_OBSERVING_SECONDS}}
+{{INTEGRATION}}                    # Exposure in seconds
+{{CAMERA_DELAY_CORRECTION}}        # Acquisition delay in seconds
+{{CORRECTIONS_APPLIED}}            # Set to "yes" when Tangra data present
 ```
 
-### Benefits
+### User Interface
 
-- ✅ Works natively in IronPython (no external Python installation needed)
-- ✅ No C extension compatibility issues
-- ✅ Simple, maintainable code (364 lines vs thousands in openpyxl)
-- ✅ Fast initialization (no heavy dependencies)
-- ✅ Reliable for template-based report generation
+**comprehensive_report_dialog.py** - Streamlined Report Generation
+Single dialog combining:
+1. Report format selection (NA/TT)
+2. Equipment selection (telescope/camera)
+3. Observation type (Positive/Negative/Unsure)
+4. File selection (AOTA and Tangra CSV)
+
+**Features**:
+- Settings persistence (remembers last report type and folder)
+- Auto-selection of first available files
+- Smart validation (AOTA required for Positive/Unsure)
+- Real-time status feedback
+
+**Other Dialogs**:
+- `aota_dialogs.py` - AOTA event selection and observation type
+- `equipment_dialogs.py` - Telescope and camera management
+- `gui_dialogs.py` - Location confirmation and utility dialogs
+
+### Configuration Management
+
+**config.py** - Settings Persistence
+Manages all configuration with JSON storage (`occultation_config.json`):
+- Observer information
+- Multiple telescopes and cameras
+- Active equipment selection
+- Report generation preferences (type, folder)
+- OWC credentials and API settings
+
+### Utility Modules
+
+- `aota_parser.py` - Parse AOTA XML timing files
+- `templates.py` - SharpCap sequence template management
+- `theme.py` - Dark/light mode theme support
+- `utils.py` - Common utility functions

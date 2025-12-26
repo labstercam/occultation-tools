@@ -2,50 +2,73 @@
 
 Python toolkit for analyzing GPS flash timing to validate camera timestamp accuracy. Critical for ensuring sub-millisecond timing precision in occultation observations.
 
-**Location:** `gps-timing-analysis/`
-
 ### Key Features
 
-- **TANGRA Light Curve Analysis**: Import and analyze TANGRA CSV files for timestamp quality
+- **Tangra Light Curve Analysis**: Import and analyze Tangra CSV files for timestamp quality
 - **GPS Flash Detection**: Automated detection and analysis of GPS 1PPS (one pulse per second) flashes
 - **Timestamp Offset Calculation**: Measure timing differences between recorded and actual GPS time
 - **Rolling Shutter Characterization**: Calculate inter-line timing delays for rolling shutter cameras
-- **ADV Video Processing**: Direct processing of ADV format astronomical videos
+- **Camera Acquisition Delay**: Extract timing corrections from Tangra measurement parameters
 - **Quality Validation**: Detect dropped frames, timing anomalies, and system issues
 
 ### Use Cases
 
-1. **Camera Calibration**: Determine timestamp offsets for new cameras and recording systems
-2. **System Validation**: Verify GPS receiver and timestamp accuracy before critical observations
-3. **Rolling Shutter Analysis**: Characterize line-by-line timing for accurate Y-position corrections
-4. **Quality Assurance**: Detect timing issues in recorded occultation videos
+1. **Camera Calibration**: Determine timestamp offsets and acquisition delays for new cameras
+2. **System Validation**: Verify GPS receiver and timestamp accuracy before observations
+3. **Rolling Shutter Analysis**: Characterize line-by-line timing for Y-position corrections
+4. **Quality Assurance**: Detect timing issues in recorded videos
+5. **Report Integration**: Extract timing data for automated report population
 
-### Quick Start
+### Core Functions
 
-```bash
-# Install dependencies
-cd gps-timing-analysis
-pip install -r requirements.txt
+#### read_tangra_csv(file_path)
+Reads Tangra CSV light curve files with full pandas support.
 
-# Import and use
-from light_curves import read_tangra_csv, analyse_timestamps, analyse_gps_flash
+**Returns Dictionary**:
+- `file_read_from`: Path to CSV file
+- `filename_from_tangra`: Original video filename
+- `details`: Header information (camera, video format, observer)
+- `apertures`: DataFrame with aperture definitions and coordinates
+- `light_curve`: DataFrame with timestamps and photometry
+- `column_names`: Light curve column headers
+- `acquisition_delay`: Camera acquisition delay in milliseconds (from rows 7-8)
 
-# Analyze TANGRA light curve
-tangra_data = read_tangra_csv('lightcurve.csv')
-stats = analyse_timestamps(tangra_data)
-print(f"Median frame time: {stats['tdelta_median']} ms")
+#### analyse_timestamps(tangra_data, percentiles=None)
+Analyzes frame timing statistics from the full tangra_data dictionary.
 
-# Calculate GPS offsets
-lcv = analyse_gps_flash(tangra_data, exposure_ms=50)
-```
+**Parameters**:
+- `tangra_data`: Full dictionary returned from `read_tangra_csv()`
+- `percentiles`: Optional list of percentiles to calculate (e.g., [1, 99])
 
-**See the [GPS Timing Analysis README](gps-timing-analysis/README.md) for complete documentation.**
+**Returns**:
+- `start_time`: First frame timestamp
+- `end_time`: Last frame timestamp
+- `tdelta_median`: Median frame time (exposure) in milliseconds
+- `tdelta_std`: Standard deviation of frame times
+- `tdelta_percentiles`: Distribution analysis
+
+#### analyse_gps_flash(tangra_data, col='signal_1', exposure_ms=50, flash_ms=100, background=None, do_plots=False)
+Calculates GPS timing offsets for system validation.
+
+**Parameters**:
+- `tangra_data`: Full dictionary from `read_tangra_csv()`
+- `col`: Column name containing GPS flash signal (default: 'signal_1')
+- `exposure_ms`: Camera exposure time in milliseconds
+- `flash_ms`: Expected GPS flash duration
+- `background`: Background level (None for auto-detect)
+- `do_plots`: Whether to generate diagnostic plots
 
 ### Integration with Occultation Manager
 
-While these tools are currently separate, they complement each other:
-- **Occultation Manager**: Automates event recording and report generation
-- **GPS Timing Analysis**: Validates that your recordings have accurate timestamps
+The Occultation Manager includes `light_curves_iron.py`, an IronPython-compatible version using only Python standard library (no pandas/numpy). This enables direct integration of Tangra timing data into report generation:
 
-Use GPS Timing Analysis to characterize your camera system, then use those validated settings with Occultation Manager for reliable automated observations.
+- Observation start/end times (HH:MM:SS.SS)
+- Exposure time in seconds
+- Camera acquisition delay in seconds
+
+**Workflow**:
+1. Record occultation with GPS calibration flashes (optional)
+2. Analyze in Tangra to generate CSV light curve
+3. Use GPS Timing Analysis to validate camera timing (if needed)
+4. Generate report in Occultation Manager with integrated timing data
 
