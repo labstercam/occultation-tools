@@ -1,37 +1,67 @@
 # GPS Timing Analysis - Examples
 
-This directory contains example notebooks and scripts demonstrating how to use the GPS timing analysis tools.
+Example notebooks and scripts demonstrating GPS timing validation and Tangra light curve analysis.
 
-## Planned Examples
+## Available Examples
 
-### 1. TANGRA Light Curve Analysis
-- `tangra_analysis_example.ipynb` - Complete workflow for analyzing TANGRA CSV files
-- Demonstrates timestamp validation and GPS offset calculation
+### process loopstats.ipynb
+Comprehensive notebook demonstrating:
+- Reading Tangra CSV light curve files
+- Timestamp statistical analysis
+- Frame timing validation
+- GPS offset calculation
+- Rolling shutter characterization
 
-### 2. ADV Rolling Shutter Analysis  
-- `adv_rolling_shutter_example.ipynb` - Characterize camera rolling shutter delays
-- Shows line-by-line timing analysis
+**Key Demonstrations**:
+- Load and parse Tangra CSV structure
+- Extract observation start/end times
+- Calculate median exposure and frame time statistics
+- Identify timing anomalies and dropped frames
+- Extract camera acquisition delay from measurement parameters
 
-### 3. Sample Data
-- `sample_data/` - Small example files for testing
-- TANGRA CSV examples
-- ADV file metadata (full videos too large for Git)
+### Sample Data
+
+The `sample_data/` directory contains example files for testing:
+- Tangra CSV light curves with GPS timing data
+- Example measurement parameter tables showing acquisition delay
 
 ## Running the Examples
 
-1. Install dependencies:
+1. **Install dependencies**:
 ```bash
 cd ../
 pip install -r requirements.txt
 ```
 
-2. Launch Jupyter:
+2. **Launch Jupyter**:
 ```bash
 jupyter notebook
 ```
 
-3. Open the example notebooks and follow along
+3. **Open and run notebooks**:
+   - Navigate to `process loopstats.ipynb`
+   - Execute cells to see timing analysis workflow
 
-## Creating Your Own Analysis
+## Practical Applications
 
-See the main README.md in the parent directory for detailed function documentation and workflow examples.
+**Pre-Observation Validation**:
+- Test camera timestamp accuracy with GPS flashes
+- Verify acquisition delay values
+- Check for timing drift or anomalies
+
+**Post-Observation Analysis**:
+- Validate recorded event timing
+- Extract timing data for report generation
+- Identify any recording issues
+
+**System Characterization**:
+- Measure camera acquisition delays
+- Characterize rolling shutter timing
+- Establish baseline timing accuracy
+
+## Integration with Occultation Manager
+
+These examples show the analysis workflow used by the Occultation Manager's `light_curves_iron.py` module. The same timing data extraction is used to auto-populate Excel reports with:
+- Observation start/end times
+- Exposure duration
+- Camera acquisition delay corrections

@@ -12,12 +12,28 @@ Location: `gps-timing-analysis/`
 ---
 
 ## Occultation Manager - SharpCap Add-in for Occult Watcher Cloud
-SharpCap Occultation Manager for Occult Watcher is a tool for SharpCap that fully automates occultation observations. It downloads personal observations announced in Occult Watcher Cloud. It includes an Event Manager to manage events, Sequence generation to create SharpCap sequences for doing the recordings (either in the tool itself or by using the sequences directly), and configuration management.
+SharpCap Occultation Manager automates the complete occultation observation workflow. It downloads personal observations from Occult Watcher Cloud, generates SharpCap sequences, and produces pre-filled Excel reports with integrated timing data from Tangra light curve analysis.
 
-The tool serves several purposes:
-1. Enables full automation of observations from SharpCap, only requiring the use of OW Cloud to announce stations
-2. Provides a much simplified work-flow for SharpCap users - other tools usually require the use of Occult Watcher Desktop or Occult 4 to generate or manage predictions, with a lot of manual work to select and run the observations, even with the OWD SharpCap addin
-3. Provides a very easy and flexible way to generate SharpCap sequences to record events, with the ability for the user to edit the sequence template to their needs or edit the generate sequences
+### Key Features
+
+**Event Management**
+- Downloads personal observations from Occult Watcher Cloud
+- Manages event list with filtering and sorting
+- Automatic sequence generation for SharpCap
+
+**Report Generation**
+- Streamlined single-dialog workflow combining all settings
+- Integrates AOTA timing data (D/R times)
+- Imports Tangra CSV light curves for observation timing and camera delay
+- Supports North America (IOTA) and Trans-Tasman (RASNZ) report formats
+- Auto-fills observer, telescope, and camera information
+- Remembers previous settings for faster workflow
+
+**Timing Integration**
+- Extracts start/end times from Tangra CSV files
+- Populates exposure time and camera acquisition delay
+- Automatic HH:MM:SS.SS time formatting
+- Camera delay correction from Tangra measurement parameters
 
 **See the [occultation-manager README](occultation-manager/ReadMe.md) for full documentation.**
 
@@ -55,24 +71,24 @@ pip install -r requirements.txt
 # Import and use
 from light_curves import read_tangra_csv, analyse_timestamps, analyse_gps_flash
 
-# Analyze TANGRA light curve
+# Analyze Tangra light curve
 tangra_data = read_tangra_csv('lightcurve.csv')
 stats = analyse_timestamps(tangra_data)
-print(f"Median frame time: {stats['tdelta_median']} ms")
+print(f"Median frame time: {stats['tdelta_median']:.3f} ms")
 
-# Calculate GPS offsets
+# Calculate GPS offsets (if GPS flash present)
 lcv = analyse_gps_flash(tangra_data, exposure_ms=50)
 ```
 
-**See the [GPS Timing Analysis README](gps-timing-analysis/README.md) for complete documentation.**
+**See the [GPS Timing Analysis README](gps-timing-analysis/ReadMe.md) for complete documentation.**
 
 ### Integration with Occultation Manager
 
-While these tools are currently separate, they complement each other:
-- **Occultation Manager**: Automates event recording and report generation
-- **GPS Timing Analysis**: Validates that your recordings have accurate timestamps
+The tools work together seamlessly:
+- **GPS Timing Analysis**: Validates camera timestamp accuracy and characterizes system timing
+- **Occultation Manager**: Uses Tangra CSV files (which include timing data) to auto-populate reports
 
-Use GPS Timing Analysis to characterize your camera system, then use those validated settings with Occultation Manager for reliable automated observations.
+The Occultation Manager now includes `light_curves_iron.py`, an IronPython-compatible version of the timing analysis functions, allowing direct integration of Tangra light curve data into the report generation workflow.
 
 ---
 
@@ -85,9 +101,10 @@ occultation-tools/
 │   └── ReadMe.md           # Manager documentation
 │
 ├── gps-timing-analysis/     # Timing validation toolkit
-│   ├── light_curves.py     # Core analysis functions
+│   ├── python/
+│   │   └── light_curves.py # Core analysis functions
 │   ├── requirements.txt    # Python dependencies
-│   ├── README.md          # Timing tool documentation
+│   ├── ReadMe.md          # Timing tool documentation
 │   └── examples/          # Example notebooks
 │
 └── README.md              # This file
