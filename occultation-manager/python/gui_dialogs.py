@@ -1474,7 +1474,8 @@ class LocationConfirmDialog(Form):
         btn_panel.Controls.Add(btn_cancel)
         
         # Apply theme
-        apply_theme_to_control(self, theme_manager)
+        theme_colors = theme_manager.get_current_theme()
+        apply_theme_to_control(self, theme_colors)
     
     def lookup_location_click(self, sender, e):
         """Look up city/town name from coordinates using reverse geocoding"""

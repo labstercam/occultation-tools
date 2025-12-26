@@ -89,7 +89,7 @@ Reports are generated using a streamlined single-dialog workflow that combines:
 - Report format selection (North America / Trans-Tasman)
 - Telescope and camera selection
 - Observation type (Positive / Negative / Unsure)
-- AOTA file selection (.aota.xml for D/R times)
+- AOTA file selection (.aota.xml OR .txt for D/R times and SNR)
 - Tangra CSV file selection (light curve with timing data)
 
 ### Supported Report Formats
@@ -99,10 +99,13 @@ Reports are generated using a streamlined single-dialog workflow that combines:
 
 ### Timing Data Integration
 
-**From AOTA Files (.aota.xml)**:
-- Disappearance (D) time with uncertainty
-- Reappearance (R) time with uncertainty
+**From AOTA Files (.aota.xml or AOTA_Report.txt)**:
+- Disappearance (D) time with uncertainty (±error in seconds)
+- Reappearance (R) time with uncertainty (±error in seconds)
+- Signal-to-Noise Ratio (SNR) from AOTA Report text files
 - Event quality indicators
+- Either file type accepted (XML or text report)
+- Automatic time comparison when both files provided (warns if times differ by >0.1s)
 
 **From Tangra CSV Files**:
 - Observation start time (HH:MM:SS.SS)
@@ -113,16 +116,22 @@ Reports are generated using a streamlined single-dialog workflow that combines:
 ### Workflow Improvements
 - **Settings Persistence**: Remembers last report type and folder location
 - **Auto-Selection**: Automatically selects first available AOTA and Tangra files
-- **Smart Validation**: AOTA required for Positive/Unsure observations, optional for Negative
+- **Smart Validation**: AOTA file (XML or Report) required for Positive/Unsure observations, optional for Negative
+- **Flexible Timing**: Accepts either AOTA.xml OR AOTA_Report.txt (or both for validation)
+- **Time Verification**: Compares D/R times when both AOTA sources provided
+- **Multi-Event Support**: Select specific event from AOTA Reports with multiple events
 - **One-Click Generation**: Single dialog replaces 5 separate dialogs
 
 ### File Organization
 For efficient workflow, organize files in folders by event:
 ```
 D:\Occultations\Reported\20251107 (778) Theobalda+\
-  ├── event.aota.xml          # AOTA timing file
+  ├── event.aota.xml          # AOTA XML timing file (optional)
+  ├── event_AOTA_Report.txt   # AOTA text report with D/R times and SNR (optional)
   ├── light_curve.csv         # Tangra CSV
   └── video.ser              # Original recording
 ```
+
+**Note**: You need either `event.aota.xml` OR `event_AOTA_Report.txt` (or both for cross-validation) for Positive/Unsure observations.
 
 The dialog remembers the parent folder (e.g., `D:\Occultations\Reported\`) making it easy to switch between event folders.

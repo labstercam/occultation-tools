@@ -31,7 +31,7 @@ class TTReportGenerator(ReportGeneratorBase):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, self.TEMPLATE_FILENAME)
     
-    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None):
+    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None, aota_report_data=None):
         """Generate a Trans-Tasman report using string replacement
         
         Args:
@@ -40,12 +40,14 @@ class TTReportGenerator(ReportGeneratorBase):
             camera_id: ID of camera to use
             observation_type: Type of observation ("Positive", "Negative", "Unsure")
             tangra_data: Optional dictionary with Tangra light curve analysis data
+            aota_report_data: Optional dictionary with AOTA Report timing/SNR data
         """
         # Store equipment IDs and observation type
         self._report_telescope_id = telescope_id
         self._report_camera_id = camera_id
         self._observation_type = observation_type or "Positive"
         self._tangra_data = tangra_data
+        self._aota_report_data = aota_report_data
         
         try:
             # Get report folder
@@ -306,6 +308,8 @@ class TTReportGenerator(ReportGeneratorBase):
             other_info = camera.get('other_info', '')
             if other_info:
                 replacements['{{COMMENTS}}'] = other_info
+                # Also populate detector-related info with the same data
+                replacements['{{OTHER_DETECTOR_RELATED_INFO}}'] = other_info
         
         # Camera delay correction from Tangra data
         if self._tangra_data and 'acquisition_delay' in self._tangra_data:
@@ -365,6 +369,10 @@ class TTReportGenerator(ReportGeneratorBase):
             if placeholder not in replacements:
                 replacements[placeholder] = ''
         
+        # AOTA REPORT TIMING DATA - populate if available
+        if self._aota_report_data:
+            self.import_aota_report_data(self._aota_report_data, replacements)
+        
         return replacements
     
     def import_aota_data(self, aota_event, replacements):
@@ -395,6 +403,59 @@ class TTReportGenerator(ReportGeneratorBase):
             replacements['{{AOTA_R_ERROR}}'] = format_aota_error(aota_event.r_error, aota_event.r_error_str)
         
         print(f"AOTA data imported: D={aota_event.d_hours}:{aota_event.d_minutes}:{aota_event.d_seconds_str}, R={aota_event.r_hours}:{aota_event.r_minutes}:{aota_event.r_seconds_str}")
+    
+    def import_aota_report_data(self, aota_report_summary, replacements):
+        """Import timing and SNR data from AOTA Report into replacements dictionary
+        
+        Args:
+            aota_report_summary: Dictionary from aota_report_parser.get_event_summary()
+            replacements: Dictionary of placeholders to update
+        """
+        if not aota_report_summary:
+            return
+        
+        # Update D (disappearance) times - check all components exist and are non-empty
+        d_hours = aota_report_summary.get('d_hours')
+        d_minutes = aota_report_summary.get('d_minutes')
+        d_seconds = aota_report_summary.get('d_seconds')
+        
+        if d_hours and d_minutes and d_seconds:
+            replacements['{{AOTA_D_HOURS}}'] = str(d_hours)
+            replacements['{{AOTA_D_MINUTES}}'] = str(d_minutes)
+            replacements['{{AOTA_D_SECONDS}}'] = str(d_seconds)
+            # Populate error/uncertainty if available
+            d_uncertainty = aota_report_summary.get('d_uncertainty')
+            if d_uncertainty is not None:
+                try:
+                    replacements['{{AOTA_D_ERROR}}'] = f"{float(d_uncertainty):.1f}"
+                except (ValueError, TypeError):
+                    print(f"Warning: Could not format d_uncertainty: {d_uncertainty}")
+        
+        # Update R (reappearance) times - check all components exist and are non-empty
+        r_hours = aota_report_summary.get('r_hours')
+        r_minutes = aota_report_summary.get('r_minutes')
+        r_seconds = aota_report_summary.get('r_seconds')
+        
+        if r_hours and r_minutes and r_seconds:
+            replacements['{{AOTA_R_HOURS}}'] = str(r_hours)
+            replacements['{{AOTA_R_MINUTES}}'] = str(r_minutes)
+            replacements['{{AOTA_R_SECONDS}}'] = str(r_seconds)
+            # Populate error/uncertainty if available
+            r_uncertainty = aota_report_summary.get('r_uncertainty')
+            if r_uncertainty is not None:
+                try:
+                    replacements['{{AOTA_R_ERROR}}'] = f"{float(r_uncertainty):.1f}"
+                except (ValueError, TypeError):
+                    print(f"Warning: Could not format r_uncertainty: {r_uncertainty}")
+        
+        # Update SNR if available and placeholder exists
+        snr = aota_report_summary.get('snr')
+        if snr is not None:
+            # Format SNR to 1 decimal place
+            replacements['{{SNR}}'] = f"{snr:.1f}"
+        
+        print(f"AOTA Report data imported: D={d_hours}:{d_minutes}:{d_seconds}, R={r_hours}:{r_minutes}:{r_seconds}, SNR={snr}")
+
     
     def _create_report_with_replacements(self, template_path, output_path, replacements):
         """Create report by replacing placeholders in the template"""
