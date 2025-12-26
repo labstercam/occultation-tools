@@ -186,6 +186,16 @@ class HelpDialog(Form):
         self.add_node_with_tag(obs_prep, "Plate Solving", "plate_solving")
         self.tree_topics.Nodes.Add(obs_prep)
         
+        # Report Generation
+        report_gen = TreeNode("Report Generation")
+        report_gen.Tag = "report_generation"
+        self.add_node_with_tag(report_gen, "Report Dialog", "report_dialog")
+        self.add_node_with_tag(report_gen, "File Selection", "file_selection")
+        self.add_node_with_tag(report_gen, "AOTA Files", "aota_files")
+        self.add_node_with_tag(report_gen, "Timing Data", "timing_data")
+        self.add_node_with_tag(report_gen, "Validation", "report_validation")
+        self.tree_topics.Nodes.Add(report_gen)
+        
         # Advanced Features
         advanced = TreeNode("Advanced Features")
         advanced.Tag = "advanced"
@@ -259,6 +269,12 @@ class HelpDialog(Form):
             "night_mode": self.get_night_mode_content().replace('\n','\r\n'),
             "tonights_events": self.get_tonights_events_content().replace('\n','\r\n'),
             "automation": self.get_automation_content().replace('\n','\r\n'),
+            "report_generation": self.get_report_generation_content().replace('\n','\r\n'),
+            "report_dialog": self.get_report_dialog_content().replace('\n','\r\n'),
+            "file_selection": self.get_file_selection_content().replace('\n','\r\n'),
+            "aota_files": self.get_aota_files_content().replace('\n','\r\n'),
+            "timing_data": self.get_timing_data_content().replace('\n','\r\n'),
+            "report_validation": self.get_report_validation_content().replace('\n','\r\n'),
             "troubleshooting": self.get_troubleshooting_content().replace('\n','\r\n'),
             "common_issues": self.get_common_issues_content().replace('\n','\r\n'),
             "error_messages": self.get_error_messages_content().replace('\n','\r\n'),
@@ -1617,6 +1633,454 @@ Exposure calculation:
 • Test with known star magnitudes
 • Use custom exposures for critical events"""
 
+    def get_report_generation_content(self):
+        return """REPORT GENERATION
+==================
+
+Automated Excel report creation with timing data integration.
+
+OVERVIEW
+--------
+Generates pre-filled Excel reports for IOTA (North America) and RASNZ (Trans-Tasman) formats.
+Integrates timing data from AOTA and Tangra light curve analysis.
+
+ACCESS
+------
+Tools → Generate Report (menu)
+Right-click event in grid → Generate Report
+
+WORKFLOW
+--------
+1. Select report format (North America / Trans-Tasman)
+2. Choose telescope and camera from configured equipment
+3. Set observation type (Positive / Negative / Unsure)
+4. Select folder containing event files
+5. Files auto-selected from folder (AOTA, Tangra CSV)
+6. Click Generate Report
+7. Excel file created in Reports subfolder
+
+FILE ORGANIZATION
+-----------------
+Organize files by event in dedicated folders:
+  event_folder/
+    ├── event.aota.xml (or AOTA_Report.txt)
+    ├── light_curve.csv
+    └── video.ser
+
+Dialog remembers last folder for faster workflow.
+
+REPORT FORMATS
+--------------
+• North America: IOTA V5.6.12r standard form
+• Trans-Tasman: RASNZ V4.1.2.G form
+
+FILENAME FORMAT
+---------------
+YYYYMMDD_number_name_catalog_star±Observer_Station.xlsx
+
+Example:
+20251107_778_Theobalda_Gaia_DR3_12345+Smith_Observatory.xlsx
+
+DATA SOURCES
+------------
+• Event data: From OWC download
+• Observer info: From configuration
+• Equipment: Selected telescope/camera
+• Timing: AOTA files and Tangra CSV
+• Location: From event station data
+
+REPORTS LOCATION
+----------------
+Saved to: [File Folder]/Reports/
+"""
+
+    def get_report_dialog_content(self):
+        return """REPORT DIALOG
+=============
+
+Streamlined single-dialog interface for report generation.
+
+DIALOG SECTIONS
+---------------
+
+1. REPORT FORMAT
+   Radio buttons to select:
+   • North America (IOTA)
+   • Trans-Tasman (RASNZ)
+   
+   Selection persists between sessions.
+
+2. EQUIPMENT SELECTION
+   Dropdowns populated from configuration:
+   • Telescope (configured scopes)
+   • Camera (configured cameras)
+   
+   Defaults to active equipment if set.
+
+3. OBSERVATION TYPE
+   Result of observation:
+   • Positive: Occultation detected (D & R times)
+   • Negative: No occultation observed
+   • Unsure: Uncertain detection
+
+4. FILE SELECTION
+   Three columns for file lists:
+   • AOTA XML: .aota.xml files
+   • AOTA Report: AOTA_Report.txt files
+   • Tangra CSV: .csv light curve files
+   
+   First file in each column auto-selected.
+   Files displayed from current folder.
+
+5. FOLDER SELECTION
+   • Button: Select different folder
+   • Label: Shows current folder path
+   • Remembers last location
+
+6. STATUS
+   Displays:
+   • Current selections
+   • File counts
+   • Validation messages
+   • Generation success/error
+
+BUTTONS
+-------
+• Generate Report: Creates Excel file
+• Cancel: Close without generating
+
+KEYBOARD
+--------
+• Enter: Generate Report
+• Escape: Cancel
+"""
+
+    def get_file_selection_content(self):
+        return """FILE SELECTION
+==============
+
+Three-column file selection for timing data sources.
+
+COLUMNS
+-------
+
+1. AOTA XML
+   • Lists: *.aota.xml files
+   • Contains: D/R times from AOTA analysis
+   • Format: XML with event timing data
+   • Optional: Not required for Negative
+
+2. AOTA REPORT  
+   • Lists: *AOTA_Report.txt files
+   • Contains: D/R times, uncertainties, SNR
+   • Format: Plain text report
+   • Alternative: Can replace AOTA XML
+   • Multi-event: Prompts to select event if multiple
+
+3. TANGRA CSV
+   • Lists: *.csv files  
+   • Contains: Light curve with timing
+   • Format: Tangra CSV export
+   • Provides: Start/end times, exposure, camera delay
+
+AUTO-SELECTION
+--------------
+First file in each column automatically selected when folder opened.
+Manual selection available by clicking files.
+
+FILE DISPLAY
+------------
+• Filename only (not full path)
+• Sorted alphabetically
+• Updated when folder changes
+
+FOLDER NAVIGATION
+-----------------
+• "Select Folder" button opens folder browser
+• Dialog remembers last folder between sessions
+• Parent folder path shown in dialog
+
+FILE REQUIREMENTS
+-----------------
+Positive/Unsure: AOTA XML OR AOTA Report required
+Negative: All files optional
+
+Multiple AOTA sources: Both can be selected for cross-validation.
+"""
+
+    def get_aota_files_content(self):
+        return """AOTA FILES
+===========
+
+Timing data from AOTA (Automated Occultation Timing Analysis).
+
+FILE TYPES
+----------
+
+1. AOTA XML (.aota.xml)
+   • Standard AOTA output format
+   • XML structure with event elements
+   • Contains D/R times with uncertainties
+   • Single or multiple events per file
+
+2. AOTA REPORT (AOTA_Report.txt)
+   • Plain text report format
+   • Human-readable timing data
+   • Includes SNR (Signal-to-Noise Ratio)
+   • Multi-event support with selection dialog
+
+EITHER/OR LOGIC
+---------------
+You can provide:
+• AOTA XML alone
+• AOTA Report alone
+• Both for cross-validation
+
+Both NOT required - use whichever you have.
+
+TIME COMPARISON
+---------------
+When both AOTA sources provided:
+• Times automatically compared
+• Warning if difference > 0.1 seconds
+• Dialog shows both time values
+• Allows verification of consistency
+• AOTA Report takes priority if both present
+
+MULTI-EVENT REPORTS
+-------------------
+AOTA Reports may contain multiple events:
+• Dialog displays event list
+• Shows D/R times for each event
+• Click to select correct event
+• Only selected event data used in report
+
+DATA EXTRACTED
+--------------
+
+From AOTA XML:
+• Disappearance time (H:M:S)
+• Disappearance uncertainty (±seconds)
+• Reappearance time (H:M:S)
+• Reappearance uncertainty (±seconds)
+
+From AOTA Report (additional):
+• All timing data from XML
+• Signal-to-Noise Ratio (SNR)
+• Average SNR at event locations
+
+REPORT FIELDS POPULATED
+-----------------------
+• D Hours, Minutes, Seconds
+• D Error (±uncertainty)
+• R Hours, Minutes, Seconds  
+• R Error (±uncertainty)
+• SNR (from AOTA Report only)
+
+FILE LOCATION
+-------------
+Place in same folder as Tangra CSV and video files.
+Dialog auto-selects first matching file.
+
+VALIDATION
+----------
+• Required for Positive observations
+• Required for Unsure observations
+• Optional for Negative observations
+• One of XML or Report must be present (not both required)
+"""
+
+    def get_timing_data_content(self):
+        return """TIMING DATA
+============
+
+Integrated timing from AOTA and Tangra sources.
+
+DATA SOURCES
+------------
+
+1. AOTA FILES
+   D/R Event Times:
+   • Disappearance time (UTC)
+   • Reappearance time (UTC)
+   • Uncertainties (±seconds)
+   • Signal-to-Noise Ratio
+
+2. TANGRA CSV
+   Observation Times:
+   • Recording start time
+   • Recording end time
+   • Frame exposure time
+   • Camera acquisition delay
+
+TANGRA CSV FORMAT
+-----------------
+Standard Tangra light curve export:
+• Header with measurement parameters
+• Acquisition delay in rows 7-8
+• Light curve data with timestamps
+• Frame time deltas for exposure calculation
+
+EXTRACTED VALUES
+----------------
+
+From Tangra CSV:
+• Start Time: First frame timestamp (HH:MM:SS.SS)
+• End Time: Last frame timestamp (HH:MM:SS.SS)
+• Exposure: Median frame delta (seconds, 3 decimals)
+• Camera Delay: From measurement parameters (milliseconds → seconds)
+
+From AOTA:
+• D Time: Hours, Minutes, Seconds
+• D Error: Uncertainty in seconds (1 decimal)
+• R Time: Hours, Minutes, Seconds
+• R Error: Uncertainty in seconds (1 decimal)
+• SNR: Average signal-to-noise ratio (1 decimal)
+
+REPORT PLACEHOLDERS
+-------------------
+Auto-populated in Excel templates:
+
+Observation Times:
+• {{STARTED_OBSERVING_HOURS}}
+• {{STARTED_OBSERVING_MINUTES}}
+• {{STARTED_OBSERVING_SECONDS}}
+• {{STOPPED_OBSERVING_HOURS}}
+• {{STOPPED_OBSERVING_MINUTES}}
+• {{STOPPED_OBSERVING_SECONDS}}
+
+Event Times:
+• {{AOTA_D_HOURS}}
+• {{AOTA_D_MINUTES}}
+• {{AOTA_D_SECONDS}}
+• {{AOTA_D_ERROR}}
+• {{AOTA_R_HOURS}}
+• {{AOTA_R_MINUTES}}
+• {{AOTA_R_SECONDS}}
+• {{AOTA_R_ERROR}}
+
+Camera:
+• {{INTEGRATION}} (exposure seconds)
+• {{INTEGRATION_UNITS}} ("Seconds")
+• {{CAMERA_DELAY_CORRECTION}}
+• {{CORRECTIONS_APPLIED}} ("yes" when Tangra data present)
+• {{SNR}} (from AOTA Report)
+• {{OTHER_DETECTOR_RELATED_INFO}} (camera notes)
+
+PRECISION
+---------
+• Times: Full precision from source files
+• Exposure: 3 decimal places (millisecond precision)
+• Uncertainties: 1 decimal place
+• SNR: 1 decimal place
+
+ERROR HANDLING
+--------------
+• Missing files: Placeholders remain empty
+• Parse errors: Logged to console, graceful degradation
+• Invalid values: Type checking with fallbacks
+• Missing components: Validated before use
+"""
+
+    def get_report_validation_content(self):
+        return """REPORT VALIDATION
+==================
+
+Automatic validation before report generation.
+
+REQUIRED FIELDS
+---------------
+
+All Observation Types:
+• Report format selected
+• Telescope selected
+• Camera selected
+• Observation type selected
+
+Positive Observations:
+• AOTA XML OR AOTA Report required
+• Cannot generate without timing data
+
+Unsure Observations:
+• AOTA XML OR AOTA Report required
+• Same as Positive requirement
+
+Negative Observations:
+• AOTA files optional (miss report)
+• Tangra CSV optional
+• Can generate with event data only
+
+FILE VALIDATION
+---------------
+
+AOTA Files:
+• Must have .aota.xml OR AOTA_Report.txt
+• Both allowed for cross-validation
+• Parsed for timing data structure
+• Multi-event reports require selection
+
+Tangra CSV:
+• Must be valid CSV format
+• Header with measurement parameters
+• Light curve data with timestamps
+• Optional but recommended
+
+TIME COMPARISON
+---------------
+When both AOTA sources present:
+• D times compared (tolerance 0.1 seconds)
+• R times compared (tolerance 0.1 seconds)
+• Warning dialog if times differ
+• Shows both time values for verification
+• User acknowledges discrepancy
+• Report generation continues with AOTA Report data
+
+TOLERANCE
+---------
+0.1 second tolerance accounts for:
+• Rounding differences
+• Analysis precision variations
+• Display format differences
+
+Differences > 0.1s indicate potential issues.
+
+VALIDATION MESSAGES
+-------------------
+
+Errors (prevent generation):
+• "Report format not selected"
+• "Telescope not selected"
+• "Camera not selected"
+• "Observation type not selected"
+• "AOTA file required for Positive observations"
+• "AOTA file required for Unsure observations"
+
+Warnings (allow generation):
+• "AOTA times differ by X.X seconds"
+• "No Tangra CSV selected (timing data incomplete)"
+• "Could not parse AOTA file (check format)"
+
+Success:
+• "Report generated: [filename]"
+• "Report saved to: [path]"
+
+FILE CHECKS
+-----------
+• File existence verified
+• File read permissions checked
+• Parse errors caught and reported
+• Template file existence confirmed
+• Output folder created if needed
+• Output file writable confirmed
+
+POST-GENERATION
+---------------
+• Excel file created in Reports folder
+• Full path displayed in status
+• File can be opened immediately
+• Dialog remains open for additional reports
+"""
+
     def get_night_mode_content(self):
         return """NIGHT MODE
 ==========
@@ -1675,12 +2139,14 @@ FEATURES:
 • Automated event download from OccultWatcher Cloud
 • Interactive observation preparation tools  
 • Automated sequence generation and execution
+• Excel report generation with timing integration
+• AOTA Report and Tangra CSV data import
 • Night vision preserving interface
 • Station filtering and event management
 • Template-based sequence customization
 
 WORKFLOW:
-Download → Filter → Prepare → Generate → Execute
+Download → Filter → Prepare → Generate → Execute → Report
 
 This tool streamlines the entire occultation observation process from planning through automated execution, helping observers maximize their success rate while minimizing manual intervention during critical observation periods.
 

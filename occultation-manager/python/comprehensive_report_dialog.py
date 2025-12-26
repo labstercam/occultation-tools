@@ -43,10 +43,12 @@ class ComprehensiveReportDialog(Form):
         self.observation_type = None
         self.selected_aota_path = None
         self.selected_tangra_path = None
+        self.selected_aota_report_path = None
         
         # File lists
         self.aota_files = []
         self.csv_files = []
+        self.aota_report_files = []
         self.current_folder = None
         
         self.setup_ui()
@@ -64,7 +66,7 @@ class ComprehensiveReportDialog(Form):
     def setup_ui(self):
         """Setup user interface"""
         self.Text = "Generate Report"
-        self.Size = Size(1000, 680)
+        self.Size = Size(1000, 720)  # Increased from 680 to 720 to prevent button clipping
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -73,7 +75,7 @@ class ComprehensiveReportDialog(Form):
         # Main scroll panel
         main_panel = Panel()
         main_panel.Location = Point(10, 10)
-        main_panel.Size = Size(970, 595)
+        main_panel.Size = Size(970, 625)  # Increased from 595 to 625 (form increased 680->720)
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
         
@@ -202,7 +204,7 @@ class ComprehensiveReportDialog(Form):
         
         # Folder selection
         lbl_folder = Label()
-        lbl_folder.Text = "Folder containing AOTA and Tangra CSV files:"
+        lbl_folder.Text = "Folder containing AOTA, Tangra CSV, and AOTA Report files:"
         lbl_folder.Location = Point(15, 25)
         lbl_folder.Size = Size(900, 20)
         grp_files.Controls.Add(lbl_folder)
@@ -220,60 +222,81 @@ class ComprehensiveReportDialog(Form):
         btn_browse.Click += self.browse_folder_click
         grp_files.Controls.Add(btn_browse)
         
-        # Two-column layout for file lists
+        # Three-column layout for file lists
         # AOTA files (left)
         lbl_aota = Label()
-        lbl_aota.Text = "AOTA Files (.aota.xml):"
+        lbl_aota.Text = "AOTA Files:"
         lbl_aota.Location = Point(15, 85)
-        lbl_aota.Size = Size(200, 20)
+        lbl_aota.Size = Size(120, 20)
         grp_files.Controls.Add(lbl_aota)
         
         self.aota_count_label = Label()
-        self.aota_count_label.Text = "No folder selected"
-        self.aota_count_label.Location = Point(220, 85)
-        self.aota_count_label.Size = Size(240, 20)
+        self.aota_count_label.Text = "No folder"
+        self.aota_count_label.Location = Point(135, 85)
+        self.aota_count_label.Size = Size(165, 20)
         self.aota_count_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.aota_count_label)
         
         self.aota_listbox = ListBox()
         self.aota_listbox.Location = Point(15, 108)
-        self.aota_listbox.Size = Size(445, 65)
+        self.aota_listbox.Size = Size(285, 65)
         self.aota_listbox.SelectionMode = SelectionMode.One
         self.aota_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.aota_listbox)
         
-        # Tangra CSV files (right)
+        # Tangra CSV files (middle)
         lbl_csv = Label()
-        lbl_csv.Text = "Tangra CSV Files:"
-        lbl_csv.Location = Point(475, 85)
-        lbl_csv.Size = Size(200, 20)
+        lbl_csv.Text = "Tangra CSV:"
+        lbl_csv.Location = Point(315, 85)
+        lbl_csv.Size = Size(120, 20)
         grp_files.Controls.Add(lbl_csv)
         
         self.csv_count_label = Label()
-        self.csv_count_label.Text = "No folder selected"
-        self.csv_count_label.Location = Point(680, 85)
-        self.csv_count_label.Size = Size(240, 20)
+        self.csv_count_label.Text = "No folder"
+        self.csv_count_label.Location = Point(435, 85)
+        self.csv_count_label.Size = Size(165, 20)
         self.csv_count_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.csv_count_label)
         
         self.csv_listbox = ListBox()
-        self.csv_listbox.Location = Point(475, 108)
-        self.csv_listbox.Size = Size(445, 65)
+        self.csv_listbox.Location = Point(315, 108)
+        self.csv_listbox.Size = Size(285, 65)
         self.csv_listbox.SelectionMode = SelectionMode.One
         self.csv_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.csv_listbox)
         
+        # AOTA Report files (right)
+        lbl_report = Label()
+        lbl_report.Text = "AOTA Report:"
+        lbl_report.Location = Point(615, 85)
+        lbl_report.Size = Size(120, 20)
+        grp_files.Controls.Add(lbl_report)
+        
+        self.report_count_label = Label()
+        self.report_count_label.Text = "No folder"
+        self.report_count_label.Location = Point(735, 85)
+        self.report_count_label.Size = Size(185, 20)
+        self.report_count_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.report_count_label)
+        
+        self.report_listbox = ListBox()
+        self.report_listbox.Location = Point(615, 108)
+        self.report_listbox.Size = Size(305, 65)
+        self.report_listbox.SelectionMode = SelectionMode.One
+        self.report_listbox.SelectedIndexChanged += self.selection_changed
+        grp_files.Controls.Add(self.report_listbox)
+        
         # ===== BOTTOM BUTTONS =====
         self.status_label = Label()
         self.status_label.Text = "Please complete all sections above"
-        self.status_label.Location = Point(20, 625)
+        self.status_label.Location = Point(20, 655)  # Moved down from 625
         self.status_label.Size = Size(700, 20)
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
         
         self.btn_generate = Button()
         self.btn_generate.Text = "Generate Report"
-        self.btn_generate.Location = Point(750, 620)
+        self.btn_generate.Location = Point(750, 650)  # Moved down from 620
         self.btn_generate.Size = Size(140, 35)
         self.btn_generate.Enabled = False
         self.btn_generate.Click += self.generate_click
@@ -282,7 +305,7 @@ class ComprehensiveReportDialog(Form):
         
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
-        btn_cancel.Location = Point(900, 620)
+        btn_cancel.Location = Point(900, 650)  # Moved down from 620 to match generate button
         btn_cancel.Size = Size(80, 35)
         btn_cancel.Click += self.cancel_click
         self.Controls.Add(btn_cancel)
@@ -408,15 +431,18 @@ class ComprehensiveReportDialog(Form):
             self.scan_folder(folder_path)
     
     def scan_folder(self, folder_path):
-        """Scan folder for AOTA and CSV files"""
+        """Scan folder for AOTA, CSV, and AOTA Report files"""
         self.aota_files = []
         self.csv_files = []
+        self.aota_report_files = []
         self.aota_listbox.Items.Clear()
         self.csv_listbox.Items.Clear()
+        self.report_listbox.Items.Clear()
         
         if not os.path.exists(folder_path):
             self.aota_count_label.Text = "Folder not found"
             self.csv_count_label.Text = "Folder not found"
+            self.report_count_label.Text = "Folder not found"
             return
         
         try:
@@ -426,6 +452,9 @@ class ComprehensiveReportDialog(Form):
                 if filename.lower().endswith('.aota.xml'):
                     self.aota_files.append(full_path)
                     self.aota_listbox.Items.Add(filename)
+                elif filename.lower().endswith('_aota_report.txt'):
+                    self.aota_report_files.append(full_path)
+                    self.report_listbox.Items.Add(filename)
                 elif filename.lower().endswith('.csv'):
                     self.csv_files.append(full_path)
                     self.csv_listbox.Items.Add(filename)
@@ -433,6 +462,7 @@ class ComprehensiveReportDialog(Form):
             # Update count labels
             aota_count = len(self.aota_files)
             csv_count = len(self.csv_files)
+            report_count = len(self.aota_report_files)
             
             if aota_count == 0:
                 self.aota_count_label.Text = "No AOTA files found"
@@ -448,11 +478,20 @@ class ComprehensiveReportDialog(Form):
             else:
                 self.csv_count_label.Text = f"{csv_count} files found"
             
+            if report_count == 0:
+                self.report_count_label.Text = "No Report files found"
+            elif report_count == 1:
+                self.report_count_label.Text = "1 file found"
+            else:
+                self.report_count_label.Text = f"{report_count} files found"
+            
             # Auto-select first files
             if aota_count > 0:
                 self.aota_listbox.SelectedIndex = 0
             if csv_count > 0:
                 self.csv_listbox.SelectedIndex = 0
+            if report_count > 0:
+                self.report_listbox.SelectedIndex = 0
             
             self.update_button_state()
             
@@ -465,6 +504,7 @@ class ComprehensiveReportDialog(Form):
             )
             self.aota_count_label.Text = "Error"
             self.csv_count_label.Text = "Error"
+            self.report_count_label.Text = "Error"
     
     def selection_changed(self, sender, e):
         """Handle file selection changed"""
@@ -483,6 +523,7 @@ class ComprehensiveReportDialog(Form):
         
         aota_selected = self.aota_listbox.SelectedIndex >= 0
         csv_selected = self.csv_listbox.SelectedIndex >= 0
+        report_selected = self.report_listbox.SelectedIndex >= 0
         
         # Determine observation type
         if self.rb_positive.Checked:
@@ -505,9 +546,9 @@ class ComprehensiveReportDialog(Form):
         if not csv_selected:
             missing.append("Tangra CSV file")
         
-        # AOTA requirement depends on observation type
-        if obs_type in ["Positive", "Unsure"] and not aota_selected:
-            missing.append("AOTA file")
+        # AOTA requirement depends on observation type - either AOTA.xml OR AOTA Report is needed
+        if obs_type in ["Positive", "Unsure"] and not aota_selected and not report_selected:
+            missing.append("AOTA file or AOTA Report")
         
         if missing:
             self.status_label.Text = "Missing: " + ", ".join(missing)
@@ -563,17 +604,23 @@ class ComprehensiveReportDialog(Form):
             )
             return
         
-        # AOTA optional for Negative
+        # AOTA or AOTA Report - at least one required for Positive/Unsure
         if self.aota_listbox.SelectedIndex >= 0:
             self.selected_aota_path = self.aota_files[self.aota_listbox.SelectedIndex]
-        elif self.observation_type in ["Positive", "Unsure"]:
-            MessageBox.Show(
-                f"AOTA file is required for {self.observation_type} observations.",
-                "No AOTA File",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning
-            )
-            return
+        
+        if self.report_listbox.SelectedIndex >= 0:
+            self.selected_aota_report_path = self.aota_report_files[self.report_listbox.SelectedIndex]
+        
+        # For Positive/Unsure, need at least one of AOTA.xml or AOTA Report
+        if self.observation_type in ["Positive", "Unsure"]:
+            if not self.selected_aota_path and not self.selected_aota_report_path:
+                MessageBox.Show(
+                    f"Either AOTA file or AOTA Report is required for {self.observation_type} observations.",
+                    "Missing AOTA Data",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                )
+                return
         
         self.DialogResult = DialogResult.OK
         self.Close()
@@ -601,3 +648,6 @@ class ComprehensiveReportDialog(Form):
     
     def get_selected_tangra_path(self):
         return self.selected_tangra_path
+    
+    def get_selected_aota_report_path(self):
+        return self.selected_aota_report_path

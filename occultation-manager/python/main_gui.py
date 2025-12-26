@@ -1225,6 +1225,7 @@ class OccultationManagerGUI(Form):
             observation_type = comprehensive_dialog.get_observation_type()
             aota_file_path = comprehensive_dialog.get_selected_aota_path()
             tangra_csv_path = comprehensive_dialog.get_selected_tangra_path()
+            aota_report_path = comprehensive_dialog.get_selected_aota_report_path()
             
             print(f"Report type: {report_type}")
             print(f"Telescope ID: {telescope_id}")
@@ -1232,6 +1233,7 @@ class OccultationManagerGUI(Form):
             print(f"Observation type: {observation_type}")
             print(f"AOTA file: {aota_file_path if aota_file_path else 'None'}")
             print(f"Tangra CSV: {tangra_csv_path if tangra_csv_path else 'None'}")
+            print(f"AOTA Report: {aota_report_path if aota_report_path else 'None'}")
             
             # Create appropriate report generator
             if report_type == 'north_america':
@@ -1344,23 +1346,130 @@ class OccultationManagerGUI(Form):
                     )
                     tangra_data = None
             
-            self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, tangra_data)
-            
-            # If AOTA data was imported, add it to the report
-            if output_path and aota_event:
+            # Process AOTA Report file if selected
+            aota_report_data = None
+            if aota_report_path:
                 try:
-                    print("Adding AOTA data to report...")
-                    self._add_aota_to_existing_report(output_path, report_generator, aota_event)
-                    print("AOTA data successfully added to report")
+                    print(f"Processing AOTA Report: {aota_report_path}")
+                    import aota_report_parser as arp
+                    parsed_report = arp.parse_aota_report(aota_report_path)
+                    
+                    # Bug fix #8: Check if parsed_report is None (file read error)
+                    if parsed_report is None:
+                        print("Failed to parse AOTA Report file")
+                        MessageBox.Show(
+                            "Failed to read or parse AOTA Report file.",
+                            "Parse Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        )
+                    elif parsed_report and parsed_report['events']:
+                        # Check if multiple events exist
+                        if len(parsed_report['events']) > 1:
+                            from System.Windows.Forms import Form, Label, ListBox, Button, FormStartPosition
+                            from System.Drawing import Point, Size
+                            
+                            # Create event selection dialog
+                            event_dialog = Form()
+                            event_dialog.Text = "Select AOTA Report Event"
+                            event_dialog.Size = Size(500, 300)
+                            event_dialog.StartPosition = FormStartPosition.CenterParent
+                            event_dialog.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
+                            event_dialog.MaximizeBox = False
+                            event_dialog.MinimizeBox = False
+                            
+                            lbl = Label()
+                            lbl.Text = "Multiple events found in AOTA Report. Please select one:"
+                            lbl.Location = Point(20, 20)
+                            lbl.Size = Size(450, 40)
+                            event_dialog.Controls.Add(lbl)
+                            
+                            listbox = ListBox()
+                            listbox.Location = Point(20, 70)
+                            listbox.Size = Size(450, 120)
+                            
+                            for evt in parsed_report['events']:
+                                d_time = evt.get('d_time_utc', 'N/A')
+                                r_time = evt.get('r_time_utc', 'N/A')
+                                display = f"Event #{evt['event_number']}  D: {d_time}  R: {r_time} UTC"
+                                listbox.Items.Add(display)
+                            
+                            listbox.SelectedIndex = 0
+                            event_dialog.Controls.Add(listbox)
+                            
+                            btn_ok = Button()
+                            btn_ok.Text = "OK"
+                            btn_ok.Location = Point(300, 210)
+                            btn_ok.Size = Size(80, 30)
+                            btn_ok.DialogResult = DialogResult.OK
+                            event_dialog.Controls.Add(btn_ok)
+                            event_dialog.AcceptButton = btn_ok
+                            
+                            btn_cancel = Button()
+                            btn_cancel.Text = "Cancel"
+                            btn_cancel.Location = Point(390, 210)
+                            btn_cancel.Size = Size(80, 30)
+                            btn_cancel.DialogResult = DialogResult.Cancel
+                            event_dialog.Controls.Add(btn_cancel)
+                            event_dialog.CancelButton = btn_cancel
+                            
+                            if event_dialog.ShowDialog() == DialogResult.OK:
+                                selected_index = listbox.SelectedIndex
+                                aota_report_data = arp.get_event_summary(parsed_report, selected_index)
+                                print(f"Selected AOTA Report event #{selected_index + 1}")
+                            else:
+                                print("AOTA Report event selection cancelled")
+                        else:
+                            # Single event, use it automatically
+                            aota_report_data = arp.get_event_summary(parsed_report, 0)
+                            print(f"Using AOTA Report event data")
+                        
+                        if aota_report_data:
+                            print(f"  D time: {aota_report_data['d_hours']}:{aota_report_data['d_minutes']}:{aota_report_data['d_seconds']}")
+                            print(f"  R time: {aota_report_data['r_hours']}:{aota_report_data['r_minutes']}:{aota_report_data['r_seconds']}")
+                            print(f"  SNR: {aota_report_data['snr']}")
+                    else:
+                        print("No valid events found in AOTA Report")
+                        
                 except Exception as ex:
                     import traceback
                     error_details = traceback.format_exc()
-                    print(f"Warning: Could not add AOTA data to report: {ex}")
+                    print(f"Error processing AOTA Report: {ex}")
+                    print(error_details)
+                    MessageBox.Show(
+                        f"Error processing AOTA Report:\n\n{str(ex)}",
+                        "AOTA Report Processing Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    )
+                    aota_report_data = None
+            
+            # Compare AOTA.xml and AOTA Report times if both are available
+            if aota_event and aota_report_data:
+                self._compare_aota_sources(aota_event, aota_report_data)
+            
+            # Use AOTA Report data if AOTA.xml is not available
+            if aota_report_data and not aota_event:
+                print("Using AOTA Report data (no AOTA.xml file provided)")
+            
+            self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
+            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, tangra_data, aota_report_data)
+            
+            # If AOTA.xml data exists but AOTA Report wasn't used, add AOTA.xml data to the report
+            # (AOTA Report data is already included in generate_report if it was provided)
+            if output_path and aota_event and not aota_report_data:
+                try:
+                    print("Adding AOTA.xml data to report...")
+                    self._add_aota_to_existing_report(output_path, report_generator, aota_event)
+                    print("AOTA.xml data successfully added to report")
+                except Exception as ex:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"Warning: Could not add AOTA.xml data to report: {ex}")
                     print(error_details)
                     # Don't fail the whole report generation, just warn
                     MessageBox.Show(
-                        f"Report generated but AOTA data could not be added:\n\n{str(ex)}",
+                        f"Report generated but AOTA.xml data could not be added:\n\n{str(ex)}",
                         "Warning",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning
@@ -1385,6 +1494,78 @@ class OccultationManagerGUI(Form):
             self.update_status("Report generation failed")
             MessageBox.Show(f"Error generating report:\n\n{error_msg}", 
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    
+    def _compare_aota_sources(self, aota_event, aota_report_data):
+        """Compare D/R times from AOTA.xml and AOTA Report and warn if different
+        
+        Args:
+            aota_event: AOTAEvent object from AOTA.xml
+            aota_report_data: Dictionary from AOTA Report parser
+        """
+        def time_to_seconds(hours, minutes, seconds):
+            """Convert time components to total seconds for comparison"""
+            try:
+                h = int(hours) if hours else 0
+                m = int(minutes) if minutes else 0
+                s = float(seconds) if seconds else 0.0
+                return h * 3600 + m * 60 + s
+            except:
+                return None
+        
+        # Compare D times
+        aota_d_seconds = time_to_seconds(aota_event.d_hours, aota_event.d_minutes, aota_event.d_seconds)
+        report_d_seconds = time_to_seconds(
+            aota_report_data.get('d_hours'),
+            aota_report_data.get('d_minutes'),
+            aota_report_data.get('d_seconds')
+        )
+        
+        # Compare R times
+        aota_r_seconds = time_to_seconds(aota_event.r_hours, aota_event.r_minutes, aota_event.r_seconds)
+        report_r_seconds = time_to_seconds(
+            aota_report_data.get('r_hours'),
+            aota_report_data.get('r_minutes'),
+            aota_report_data.get('r_seconds')
+        )
+        
+        # Check for differences (allow 0.1 second tolerance for rounding)
+        tolerance = 0.1
+        d_differs = False
+        r_differs = False
+        
+        if aota_d_seconds is not None and report_d_seconds is not None:
+            if abs(aota_d_seconds - report_d_seconds) > tolerance:
+                d_differs = True
+        
+        if aota_r_seconds is not None and report_r_seconds is not None:
+            if abs(aota_r_seconds - report_r_seconds) > tolerance:
+                r_differs = True
+        
+        if d_differs or r_differs:
+            from System.Windows.Forms import MessageBox, MessageBoxButtons, MessageBoxIcon
+            
+            warning_msg = "Warning: AOTA.xml and AOTA Report times differ!\n\n"
+            
+            if d_differs:
+                warning_msg += f"Disappearance (D):\n"
+                aota_d_str = f"{aota_event.d_hours or 0:02d}:{aota_event.d_minutes or 0:02d}:{aota_event.d_seconds or 0:05.2f}"
+                report_d_str = f"{aota_report_data.get('d_hours', '?')}:{aota_report_data.get('d_minutes', '?')}:{aota_report_data.get('d_seconds', '?')}"
+                warning_msg += f"  AOTA.xml:    {aota_d_str}\n"
+                warning_msg += f"  AOTA Report: {report_d_str}\n\n"
+            
+            if r_differs:
+                warning_msg += f"Reappearance (R):\n"
+                aota_r_str = f"{aota_event.r_hours or 0:02d}:{aota_event.r_minutes or 0:02d}:{aota_event.r_seconds or 0:05.2f}"
+                report_r_str = f"{aota_report_data.get('r_hours', '?')}:{aota_report_data.get('r_minutes', '?')}:{aota_report_data.get('r_seconds', '?')}"
+                warning_msg += f"  AOTA.xml:    {aota_r_str}\n"
+                warning_msg += f"  AOTA Report: {report_r_str}\n\n"
+            
+            warning_msg += "AOTA Report times will be used in the Excel report.\n"
+            warning_msg += "Please verify which times are correct."
+            
+            print(f"WARNING: {warning_msg}")
+            MessageBox.Show(warning_msg, "Time Difference Detected", 
+                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
     
     def _add_aota_to_existing_report(self, output_path, report_generator, aota_event):
         """Add AOTA data to an existing report by re-processing it

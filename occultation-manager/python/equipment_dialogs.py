@@ -35,7 +35,8 @@ class TelescopeManagerDialog(Form):
         self.load_telescopes()
         
         if theme_manager:
-            apply_theme_to_control(self, theme_manager)
+            theme_colors = theme_manager.get_current_theme()
+            apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
         """Setup the UI controls"""
@@ -365,7 +366,8 @@ class CameraManagerDialog(Form):
         self.load_cameras()
         
         if theme_manager:
-            apply_theme_to_control(self, theme_manager)
+            theme_colors = theme_manager.get_current_theme()
+            apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
         """Setup the UI controls"""
@@ -760,7 +762,8 @@ class EquipmentSelectionDialog(Form):
         self.setup_ui()
         
         if theme_manager:
-            apply_theme_to_control(self, theme_manager)
+            theme_colors = theme_manager.get_current_theme()
+            apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
         """Setup the UI controls"""
