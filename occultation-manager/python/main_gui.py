@@ -1192,23 +1192,52 @@ class OccultationManagerGUI(Form):
         try:
             print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
             
-            # Show report type selection dialog
-            from report_type_dialog import ReportTypeSelectionDialog
-            report_type_dialog = ReportTypeSelectionDialog(self.theme_manager, event)
-            if report_type_dialog.ShowDialog() != DialogResult.OK:
-                print("User cancelled report type selection")
+            # Show location confirmation dialog FIRST (before comprehensive dialog)
+            from gui_dialogs import LocationConfirmDialog
+            location_dialog = LocationConfirmDialog(event, self.theme_manager)
+            if location_dialog.ShowDialog() != DialogResult.OK:
+                print("User cancelled location confirmation")
                 self.update_status("Report generation cancelled")
                 return
             
-            report_type = report_type_dialog.get_selected_report_type()
-            print(f"Selected report type: {report_type}")
+            # Get the confirmed location from the dialog
+            location = location_dialog.get_location()
             
-            # Create appropriate report generator based on selection
+            # Update event with user-confirmed/edited location
+            event.latitude = location['latitude']
+            event.longitude = location['longitude']
+            event.elevation = location['elevation']
+            event.obs_location = location['obs_location']
+            
+            # Show COMPREHENSIVE REPORT DIALOG - combines everything!
+            from comprehensive_report_dialog import ComprehensiveReportDialog
+            comprehensive_dialog = ComprehensiveReportDialog(self.config, self.theme_manager, event)
+            
+            if comprehensive_dialog.ShowDialog() != DialogResult.OK:
+                print("User cancelled report generation")
+                self.update_status("Report generation cancelled")
+                return
+            
+            # Get all selections from comprehensive dialog
+            report_type = comprehensive_dialog.get_report_type()
+            telescope_id = comprehensive_dialog.get_telescope_id()
+            camera_id = comprehensive_dialog.get_camera_id()
+            observation_type = comprehensive_dialog.get_observation_type()
+            aota_file_path = comprehensive_dialog.get_selected_aota_path()
+            tangra_csv_path = comprehensive_dialog.get_selected_tangra_path()
+            
+            print(f"Report type: {report_type}")
+            print(f"Telescope ID: {telescope_id}")
+            print(f"Camera ID: {camera_id}")
+            print(f"Observation type: {observation_type}")
+            print(f"AOTA file: {aota_file_path if aota_file_path else 'None'}")
+            print(f"Tangra CSV: {tangra_csv_path if tangra_csv_path else 'None'}")
+            
+            # Create appropriate report generator
             if report_type == 'north_america':
                 from na_report import NAReportGenerator
                 report_generator = NAReportGenerator(self.config)
             elif report_type == 'trans_tasman':
-                # Force reload of tt_report module to pick up code changes
                 import sys
                 if 'tt_report' in sys.modules:
                     del sys.modules['tt_report']
@@ -1228,108 +1257,55 @@ class OccultationManagerGUI(Form):
                 self.update_status("Report generation failed: template not found")
                 return
             
-            # Show equipment selection dialog
-            from equipment_dialogs import EquipmentSelectionDialog
-            equipment_dialog = EquipmentSelectionDialog(self.config, self.theme_manager, event)
-            if equipment_dialog.ShowDialog() != DialogResult.OK:
-                print("User cancelled equipment selection")
-                self.update_status("Report generation cancelled")
-                return
-            
-            # Get selected equipment IDs
-            telescope_id = equipment_dialog.get_selected_telescope_id()
-            camera_id = equipment_dialog.get_selected_camera_id()
-            print("main_gui: Telescope ID from dialog = {}".format(telescope_id))
-            print("main_gui: Camera ID from dialog = {}".format(camera_id))
-            
-            # Show location confirmation dialog
-            from gui_dialogs import LocationConfirmDialog
-            location_dialog = LocationConfirmDialog(event, self.theme_manager)
-            if location_dialog.ShowDialog() != DialogResult.OK:
-                print("User cancelled location confirmation")
-                self.update_status("Report generation cancelled")
-                return
-            
-            # Get the confirmed location from the dialog
-            location = location_dialog.get_location()
-            
-            # Update event with user-confirmed/edited location
-            # These values persist and will be prepopulated for future report generation
-            event.latitude = location['latitude']
-            event.longitude = location['longitude']
-            event.elevation = location['elevation']
-            event.obs_location = location['obs_location']  # Store observing location
-            
-            # OBSERVATION TYPE SELECTION - Ask user about observation result
-            observation_type = None
+            # Process AOTA file if selected
             aota_event = None
-            
-            try:
-                from aota_dialogs import ObservationTypeDialog
-                type_dialog = ObservationTypeDialog(self.theme_manager, event.get_asteroid_display_name())
-                if type_dialog.ShowDialog() == DialogResult.OK:
-                    observation_type = type_dialog.get_selected_type()
-                    print(f"Selected observation type: {observation_type}")
-                else:
-                    print("User cancelled observation type selection")
-                    self.update_status("Report generation cancelled")
-                    return
-            except Exception as ex:
-                import traceback
-                error_details = traceback.format_exc()
-                print(f"Error showing observation type dialog: {ex}")
-                print(error_details)
-                # Fallback to old behavior
-                observation_type = "Positive"
-            
-            # AOTA FILE IMPORT - Only for Positive or Unsure observations
-            if observation_type in ["Positive", "Unsure"]:
+            if aota_file_path:
                 try:
-                    # Show file picker dialog
-                    from aota_dialogs import AOTAFilePickerDialog
-                    file_picker = AOTAFilePickerDialog(self.theme_manager, event.get_asteroid_display_name())
-                    if file_picker.ShowDialog() == DialogResult.OK:
-                        aota_file_path = file_picker.get_selected_file_path()
-                        
-                        # Parse AOTA file
-                        from aota_parser import parse_aota_file
-                        aota_result = parse_aota_file(aota_file_path)
-                        
-                        if aota_result:
-                            # Check if multiple valid events exist
-                            if aota_result.has_multiple_valid_events():
-                                # Show event selection dialog
-                                from aota_dialogs import AOTAEventSelectionDialog
-                                event_selector = AOTAEventSelectionDialog(
-                                    self.theme_manager, 
-                                    aota_result, 
-                                    event.get_asteroid_display_name()
-                                )
-                                if event_selector.ShowDialog() == DialogResult.OK:
-                                    aota_event = event_selector.get_selected_event()
-                                    print(f"Selected AOTA event: {aota_event}")
-                                else:
-                                    print("AOTA event selection cancelled")
+                    print(f"Processing AOTA file: {aota_file_path}")
+                    from aota_parser import parse_aota_file
+                    aota_result = parse_aota_file(aota_file_path)
+                    
+                    if aota_result:
+                        # Check if multiple valid events exist
+                        if aota_result.has_multiple_valid_events():
+                            from aota_dialogs import AOTAEventSelectionDialog
+                            event_selector = AOTAEventSelectionDialog(
+                                self.theme_manager, 
+                                aota_result, 
+                                event.get_asteroid_display_name()
+                            )
+                            if event_selector.ShowDialog() == DialogResult.OK:
+                                aota_event = event_selector.get_selected_event()
+                                print(f"Selected AOTA event: {aota_event}")
                             else:
-                                # Single valid event or no valid events
-                                aota_event = aota_result.get_single_valid_event()
-                                if aota_event:
-                                    print(f"Using single AOTA event: {aota_event}")
-                                else:
+                                print("AOTA event selection cancelled")
+                                if observation_type in ["Positive", "Unsure"]:
                                     MessageBox.Show(
-                                        "No valid events found in AOTA file.\n\n" +
-                                        "The file may contain only non-events or invalid data.",
-                                        "No Valid Events",
+                                        "AOTA event selection is required for Positive/Unsure observations.",
+                                        "AOTA Required",
                                         MessageBoxButtons.OK,
                                         MessageBoxIcon.Warning
                                     )
+                                    self.update_status("Report generation cancelled")
+                                    return
                         else:
-                            MessageBox.Show(
-                                "Failed to parse AOTA file.\n\nPlease check the file format.",
-                                "Parse Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error
-                            )
+                            aota_event = aota_result.get_single_valid_event()
+                            if aota_event:
+                                print(f"Using single AOTA event: {aota_event}")
+                            else:
+                                MessageBox.Show(
+                                    "No valid events found in AOTA file.",
+                                    "No Valid Events",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning
+                                )
+                    else:
+                        MessageBox.Show(
+                            "Failed to parse AOTA file.",
+                            "Parse Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error
+                        )
                 except Exception as ex:
                     import traceback
                     error_details = traceback.format_exc()
@@ -1341,12 +1317,35 @@ class OccultationManagerGUI(Form):
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error
                     )
-            elif observation_type == "Negative":
-                # Negative observation - no AOTA import needed
-                print("Negative observation selected - skipping AOTA import")
+            
+            # Process Tangra CSV file
+            tangra_data = None
+            if tangra_csv_path:
+                try:
+                    print(f"Processing Tangra CSV: {tangra_csv_path}")
+                    import light_curves_iron as lc
+                    tangra_data = lc.get_observation_summary(tangra_csv_path, percentiles=[1, 99])
+                    print(f"Tangra data extracted successfully")
+                    print(f"  Start time: {tangra_data['start_time']}")
+                    print(f"  End time: {tangra_data['end_time']}")
+                    print(f"  Exposure (ms): {tangra_data['tdelta_median']:.3f}")
+                    if 'acquisition_delay' in tangra_data:
+                        print(f"  Camera acquisition delay (ms): {tangra_data['acquisition_delay']:.3f}")
+                except Exception as ex:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"Error processing Tangra CSV: {ex}")
+                    print(error_details)
+                    MessageBox.Show(
+                        f"Error processing Tangra CSV:\n\n{str(ex)}",
+                        "Tangra Processing Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    )
+                    tangra_data = None
             
             self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type)
+            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, tangra_data)
             
             # If AOTA data was imported, add it to the report
             if output_path and aota_event:

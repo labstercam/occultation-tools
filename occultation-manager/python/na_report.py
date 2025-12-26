@@ -31,7 +31,7 @@ class NAReportGenerator(ReportGeneratorBase):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, self.TEMPLATE_FILENAME)
     
-    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None):
+    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None):
         """Generate a North American report using placeholder replacement
         
         Args:
@@ -39,11 +39,13 @@ class NAReportGenerator(ReportGeneratorBase):
             telescope_id: ID of telescope to use
             camera_id: ID of camera to use
             observation_type: Type of observation ("Positive", "Negative", "Unsure")
+            tangra_data: Optional dictionary with Tangra light curve analysis data
         """
         # Store equipment IDs and observation type
         self._report_telescope_id = telescope_id
         self._report_camera_id = camera_id
         self._observation_type = observation_type or "Positive"
+        self._tangra_data = tangra_data
         
         try:
             # Get report folder
@@ -220,24 +222,79 @@ class NAReportGenerator(ReportGeneratorBase):
             replacements['{{TELESCOPE_TYPE}}'] = ''
             self._telescope_name = ''
         
-        # RECORDING TIMES
-        if hasattr(event, 'start_time') and event.start_time:
-            replacements['{{START_OBSERVING_HOURS}}'] = str(event.start_time.hour)
-            replacements['{{START_OBSERVING_MINS}}'] = str(event.start_time.minute)
-            replacements['{{START_OBSERVING_SECS}}'] = str(event.start_time.second)
+        # RECORDING TIMES - use Tangra data if available
+        if self._tangra_data:
+            # Parse start time from Tangra data (format: "HH:MM:SS.ffffff")
+            start_time_str = self._tangra_data.get('start_time', '')
+            if start_time_str:
+                try:
+                    # Parse the time string
+                    time_parts = start_time_str.split(':')
+                    if len(time_parts) >= 3:
+                        hours = int(time_parts[0])
+                        minutes = int(time_parts[1])
+                        seconds_parts = time_parts[2].split('.')
+                        seconds = int(seconds_parts[0])
+                        # Get fractional seconds
+                        if len(seconds_parts) > 1:
+                            frac = float('0.' + seconds_parts[1])
+                            seconds_decimal = seconds + frac
+                        else:
+                            seconds_decimal = float(seconds)
+                        
+                        replacements['{{STARTED_OBSERVING_HOURS}}'] = str(hours)
+                        replacements['{{STARTED_OBSERVING_MINUTES}}'] = str(minutes)
+                        replacements['{{STARTED_OBSERVING_SECONDS}}'] = '{:.2f}'.format(seconds_decimal)
+                except Exception as ex:
+                    print(f"Warning: Could not parse Tangra start time: {ex}")
+                    replacements['{{STARTED_OBSERVING_HOURS}}'] = ''
+                    replacements['{{STARTED_OBSERVING_MINUTES}}'] = ''
+                    replacements['{{STARTED_OBSERVING_SECONDS}}'] = ''
+            
+            # Parse end time from Tangra data
+            end_time_str = self._tangra_data.get('end_time', '')
+            if end_time_str:
+                try:
+                    time_parts = end_time_str.split(':')
+                    if len(time_parts) >= 3:
+                        hours = int(time_parts[0])
+                        minutes = int(time_parts[1])
+                        seconds_parts = time_parts[2].split('.')
+                        seconds = int(seconds_parts[0])
+                        # Get fractional seconds
+                        if len(seconds_parts) > 1:
+                            frac = float('0.' + seconds_parts[1])
+                            seconds_decimal = seconds + frac
+                        else:
+                            seconds_decimal = float(seconds)
+                        
+                        replacements['{{STOPPED_OBSERVING_HOURS}}'] = str(hours)
+                        replacements['{{STOPPED_OBSERVING_MINUTES}}'] = str(minutes)
+                        replacements['{{STOPPED_OBSERVING_SECONDS}}'] = '{:.2f}'.format(seconds_decimal)
+                except Exception as ex:
+                    print(f"Warning: Could not parse Tangra end time: {ex}")
+                    replacements['{{STOPPED_OBSERVING_HOURS}}'] = ''
+                    replacements['{{STOPPED_OBSERVING_MINUTES}}'] = ''
+                    replacements['{{STOPPED_OBSERVING_SECONDS}}'] = ''
+        elif hasattr(event, 'start_time') and event.start_time:
+            # Fallback to event start_time if no Tangra data
+            replacements['{{STARTED_OBSERVING_HOURS}}'] = str(event.start_time.hour)
+            replacements['{{STARTED_OBSERVING_MINUTES}}'] = str(event.start_time.minute)
+            replacements['{{STARTED_OBSERVING_SECONDS}}'] = str(event.start_time.second)
         else:
-            replacements['{{START_OBSERVING_HOURS}}'] = ''
-            replacements['{{START_OBSERVING_MINS}}'] = ''
-            replacements['{{START_OBSERVING_SECS}}'] = ''
+            replacements['{{STARTED_OBSERVING_HOURS}}'] = ''
+            replacements['{{STARTED_OBSERVING_MINUTES}}'] = ''
+            replacements['{{STARTED_OBSERVING_SECONDS}}'] = ''
         
-        if hasattr(event, 'end_time') and event.end_time:
-            replacements['{{STOP_OBSERVING_HOURS}}'] = str(event.end_time.hour)
-            replacements['{{STOP_OBSERVING_MINS}}'] = str(event.end_time.minute)
-            replacements['{{STOP_OBSERVING_SECS}}'] = str(event.end_time.second)
-        else:
-            replacements['{{STOP_OBSERVING_HOURS}}'] = ''
-            replacements['{{STOP_OBSERVING_MINS}}'] = ''
-            replacements['{{STOP_OBSERVING_SECS}}'] = ''
+        if hasattr(event, 'end_time') and event.end_time and not self._tangra_data:
+            # Fallback to event end_time if no Tangra data
+            replacements['{{STOPPED_OBSERVING_HOURS}}'] = str(event.end_time.hour)
+            replacements['{{STOPPED_OBSERVING_MINUTES}}'] = str(event.end_time.minute)
+            replacements['{{STOPPED_OBSERVING_SECONDS}}'] = str(event.end_time.second)
+        elif not self._tangra_data:
+            replacements['{{STOPPED_OBSERVING_HOURS}}'] = ''
+            replacements['{{STOPPED_OBSERVING_MINUTES}}'] = ''
+            replacements['{{STOPPED_OBSERVING_SECONDS}}'] = ''
         
         # CAMERA/DETECTOR INFORMATION
         camera_data = self.get_camera_data(self._report_camera_id)
@@ -264,11 +321,20 @@ class NAReportGenerator(ReportGeneratorBase):
         
         # Other detector info (include exposure if available)
         detector_info = other_info
-        if hasattr(event, 'exposure_ms') and event.exposure_ms:
+        
+        # Use Tangra data for exposure if available
+        if self._tangra_data and 'tdelta_median' in self._tangra_data:
+            exposure_ms = self._tangra_data['tdelta_median']
+            if detector_info:
+                detector_info += f' | Exp {exposure_ms:.3f}ms'
+            else:
+                detector_info = f'Exp {exposure_ms:.3f}ms'
+        elif hasattr(event, 'exposure_ms') and event.exposure_ms:
             if detector_info:
                 detector_info += f' | Exp {event.exposure_ms}ms'
             else:
                 detector_info = f'Exp {event.exposure_ms}ms'
+        
         replacements['{{OTHER_DETECTOR_INFO}}'] = detector_info if detector_info else ''
         
         replacements['{{VIDEO_FORMAT}}'] = video_format

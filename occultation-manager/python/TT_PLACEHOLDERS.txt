@@ -57,15 +57,20 @@ Cell E23: {{TIMING_DEVICE}}              (e.g., "SharpCap")
 DETECTOR/CAMERA:
 ----------------
 Cell E25: {{DETECTOR}}                   (e.g., "SharpCap")
-Cell L25: {{VIDEO_FORMAT}}               (e.g., "SER")
-Cell O25: {{INTEGRATION}}                (e.g., "Other")
-Cell S25: {{INTEGRATION_UNITS}}          (e.g., "Frames")
-Cell Z26: {{CORRECTIONS_APPLIED}}        (e.g., "No")
+Cell L25: {{VIDEO_FORMAT}}             (e.g., "SER")
+Cell O25: {{INTEGRATION}}                (e.g., "0.040") - From Tangra CSV median exposure in seconds
+Cell S25: {{INTEGRATION_UNITS}}          (e.g., "Seconds") - Set to "Seconds" when using Tangra data
+Cell Z26: {{CORRECTIONS_APPLIED}}        (e.g., "yes") - Set to "yes" when Tangra data provides camera delay
+Cell AA26: {{CAMERA_DELAY_CORRECTION}}   (e.g., "0.045") - From Tangra CSV max delay in seconds
 
 TIMING OBSERVATIONS (only hours filled):
 -----------------------------------------
 Cell E31: {{STARTED_OBSERVING_HOURS}}    (e.g., 10)
+Cell G31: {{STARTED_OBSERVING_MINUTES}}  (e.g., 3) - From Tangra CSV
+Cell I31: {{STARTED_OBSERVING_SECONDS}}  (e.g., 42.15) - From Tangra CSV
 Cell E37: {{STOPPED_OBSERVING_HOURS}}    (e.g., 10)
+Cell G37: {{STOPPED_OBSERVING_MINUTES}}  (e.g., 8) - From Tangra CSV
+Cell I37: {{STOPPED_OBSERVING_SECONDS}}  (e.g., 15.32) - From Tangra CSV
 
 EVENT OUTCOME:
 --------------
