@@ -31,7 +31,7 @@ class TTReportGenerator(ReportGeneratorBase):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, self.TEMPLATE_FILENAME)
     
-    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None):
+    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None):
         """Generate a Trans-Tasman report using string replacement
         
         Args:
@@ -39,11 +39,13 @@ class TTReportGenerator(ReportGeneratorBase):
             telescope_id: ID of telescope to use
             camera_id: ID of camera to use
             observation_type: Type of observation ("Positive", "Negative", "Unsure")
+            tangra_data: Optional dictionary with Tangra light curve analysis data
         """
         # Store equipment IDs and observation type
         self._report_telescope_id = telescope_id
         self._report_camera_id = camera_id
         self._observation_type = observation_type or "Positive"
+        self._tangra_data = tangra_data
         
         try:
             # Get report folder
@@ -211,11 +213,61 @@ class TTReportGenerator(ReportGeneratorBase):
             if telescope_type:
                 replacements['{{TELESCOPE_TYPE}}'] = telescope_type
         
-        # Timing observations
-        if hasattr(event, 'start_time') and event.start_time:
+        # Timing observations - use Tangra data if available
+        if self._tangra_data:
+            # Parse start time from Tangra data (format: "HH:MM:SS.ffffff")
+            start_time_str = self._tangra_data.get('start_time', '')
+            if start_time_str:
+                try:
+                    from datetime import datetime
+                    # Parse the time string
+                    time_parts = start_time_str.split(':')
+                    if len(time_parts) >= 3:
+                        hours = int(time_parts[0])
+                        minutes = int(time_parts[1])
+                        seconds_parts = time_parts[2].split('.')
+                        seconds = int(seconds_parts[0])
+                        # Get fractional seconds
+                        if len(seconds_parts) > 1:
+                            frac = float('0.' + seconds_parts[1])
+                            seconds_decimal = seconds + frac
+                        else:
+                            seconds_decimal = float(seconds)
+                        
+                        replacements['{{STARTED_OBSERVING_HOURS}}'] = str(hours)
+                        replacements['{{STARTED_OBSERVING_MINUTES}}'] = str(minutes)
+                        replacements['{{STARTED_OBSERVING_SECONDS}}'] = '{:.2f}'.format(seconds_decimal)
+                except Exception as ex:
+                    print(f"Warning: Could not parse Tangra start time: {ex}")
+            
+            # Parse end time from Tangra data
+            end_time_str = self._tangra_data.get('end_time', '')
+            if end_time_str:
+                try:
+                    time_parts = end_time_str.split(':')
+                    if len(time_parts) >= 3:
+                        hours = int(time_parts[0])
+                        minutes = int(time_parts[1])
+                        seconds_parts = time_parts[2].split('.')
+                        seconds = int(seconds_parts[0])
+                        # Get fractional seconds
+                        if len(seconds_parts) > 1:
+                            frac = float('0.' + seconds_parts[1])
+                            seconds_decimal = seconds + frac
+                        else:
+                            seconds_decimal = float(seconds)
+                        
+                        replacements['{{STOPPED_OBSERVING_HOURS}}'] = str(hours)
+                        replacements['{{STOPPED_OBSERVING_MINUTES}}'] = str(minutes)
+                        replacements['{{STOPPED_OBSERVING_SECONDS}}'] = '{:.2f}'.format(seconds_decimal)
+                except Exception as ex:
+                    print(f"Warning: Could not parse Tangra end time: {ex}")
+        elif hasattr(event, 'start_time') and event.start_time:
+            # Fallback to event start_time if no Tangra data
             replacements['{{STARTED_OBSERVING_HOURS}}'] = str(event.start_time.hour)
         
-        if hasattr(event, 'end_time') and event.end_time:
+        if hasattr(event, 'end_time') and event.end_time and not self._tangra_data:
+            # Fallback to event end_time if no Tangra data
             replacements['{{STOPPED_OBSERVING_HOURS}}'] = str(event.end_time.hour)
         
         # Camera/detector info
@@ -237,14 +289,33 @@ class TTReportGenerator(ReportGeneratorBase):
             if video_format:
                 replacements['{{VIDEO_FORMAT}}'] = video_format
             
-            exposure_integration = camera.get('exposure_integration', 'Other')
-            if exposure_integration:
-                replacements['{{INTEGRATION}}'] = exposure_integration
-                replacements['{{INTEGRATION_UNITS}}'] = 'Frames'
+            # Integration time from Tangra data if available
+            if self._tangra_data and 'tdelta_median' in self._tangra_data:
+                # Convert ms to seconds with 3 decimal places
+                exposure_ms = self._tangra_data['tdelta_median']
+                exposure_sec = exposure_ms / 1000.0
+                replacements['{{INTEGRATION}}'] = '{:.3f}'.format(exposure_sec)
+                replacements['{{INTEGRATION_UNITS}}'] = 'Seconds'
+            else:
+                # Fallback to camera settings
+                exposure_integration = camera.get('exposure_integration', 'Other')
+                if exposure_integration:
+                    replacements['{{INTEGRATION}}'] = exposure_integration
+                    replacements['{{INTEGRATION_UNITS}}'] = 'Frames'
             
             other_info = camera.get('other_info', '')
             if other_info:
                 replacements['{{COMMENTS}}'] = other_info
+        
+        # Camera delay correction from Tangra data
+        if self._tangra_data and 'acquisition_delay' in self._tangra_data:
+            # Use acquisition delay from Tangra (in ms, convert to seconds)
+            delay_ms = self._tangra_data['acquisition_delay']
+            delay_sec = delay_ms / 1000.0
+            replacements['{{CAMERA_DELAY_CORRECTION}}'] = '{:.3f}'.format(delay_sec)
+            replacements['{{CORRECTIONS_APPLIED}}'] = 'yes'
+        else:
+            replacements['{{CORRECTIONS_APPLIED}}'] = 'No'
         
         # Default values
         replacements['{{TIMING_METHOD}}'] = 'Video Recording'
@@ -263,7 +334,6 @@ class TTReportGenerator(ReportGeneratorBase):
             replacements['{{WAS_MISS}}'] = 'maybe'  # Default fallback
         
         replacements['{{SECOND_STAR}}'] = 'No'
-        replacements['{{CORRECTIONS_APPLIED}}'] = 'No'
         
         # NOTE: AOTA TIMING DATA placeholders are NOT initialized here.
         # They remain in the template as {{AOTA_D_HOURS}} etc. so that
@@ -281,7 +351,8 @@ class TTReportGenerator(ReportGeneratorBase):
             '{{LONGITUDE_FORMAT}}', '{{LONGITUDE}}', '{{LONGITUDE_DIR}}',
             '{{ELEVATION}}', '{{ELEVATION_UNITS}}', '{{ELEVATION_DATUM}}',
             '{{APERTURE}}', '{{APERTURE_UNITS}}', '{{FOCAL_RATIO}}', '{{TELESCOPE_TYPE}}',
-            '{{STARTED_OBSERVING_HOURS}}', '{{STOPPED_OBSERVING_HOURS}}',
+            '{{STARTED_OBSERVING_HOURS}}', '{{STARTED_OBSERVING_MINUTES}}', '{{STARTED_OBSERVING_SECONDS}}',
+            '{{STOPPED_OBSERVING_HOURS}}', '{{STOPPED_OBSERVING_MINUTES}}', '{{STOPPED_OBSERVING_SECONDS}}',
             '{{TIMING}}', '{{TIMING_DEVICE}}', '{{DETECTOR}}', '{{VIDEO_FORMAT}}',
             '{{INTEGRATION}}', '{{INTEGRATION_UNITS}}', '{{COMMENTS}}',
             '{{TIMING_METHOD}}', '{{ASTEROID_VISIBLE}}', '{{WAS_MISS}}',

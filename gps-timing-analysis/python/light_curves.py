@@ -57,6 +57,20 @@ def read_tangra_csv(file):
     details = pd.read_csv(file,skiprows=6,nrows=1)
     details
     
+    # Read acquisition delay from the measurement parameters table (row 7-8)
+    acquisition_delay = None
+    try:
+        params_header = pd.read_csv(file, skiprows=6, nrows=1)
+        params_data = pd.read_csv(file, skiprows=7, nrows=1)
+        if 'Acquisition Delay (ms)' in params_header.columns:
+            delay_col = params_header.columns.get_loc('Acquisition Delay (ms)')
+            if delay_col < len(params_data.columns):
+                delay_value = params_data.iloc[0, delay_col]
+                if pd.notna(delay_value):
+                    acquisition_delay = float(delay_value)
+    except Exception as ex:
+        print(f"Warning: Could not read acquisition delay: {ex}")
+    
     # Find where the light curve data starts
     
     try:
@@ -71,6 +85,7 @@ def read_tangra_csv(file):
     apertures_raw = pd.read_csv(file,skiprows=8,nrows=lc_start - 9 - 3)
     apertures_raw.columns = apertures_raw.columns.str.replace(' ','')
     apertures = apertures_raw[['Object','StartingX','StartingY']]
+    
     def readtime(x):
         if x is None or x == '':
             return None
@@ -82,7 +97,7 @@ def read_tangra_csv(file):
     #light_curve.dropna(inplace=True)
     
 #    print('File name from TANGRA ',filename)
-    return {"file_read_from":file, "filename_from_tangra":filename,"details":details,"apertures_raw":apertures_raw,"apertures":apertures,"light_curve":light_curve}
+    return {"file_read_from":file, "filename_from_tangra":filename,"details":details,"apertures_raw":apertures_raw,"apertures":apertures,"light_curve":light_curve,"acquisition_delay":acquisition_delay}
     
     
 
@@ -126,6 +141,10 @@ def analyse_timestamps(tangra_object,percentiles=None):
     diff_stats['file_read_from']=tangra_object['file_read_from']
     diff_stats['filename_from_tangra']=tangra_object['filename_from_tangra']
     diff_stats['start_time'] = times_list[0].strftime('%H:%M:%S.%f')[0:12]
+    
+    # Include acquisition delay from Tangra if available
+    if 'acquisition_delay' in tangra_object and tangra_object['acquisition_delay'] is not None:
+        diff_stats['acquisition_delay'] = tangra_object['acquisition_delay']
     
     diff_stats = pd.DataFrame(diff_stats).transpose().reset_index()
     cols =['file_read_from','filename_from_tangra','start_time','min', 'max', 'median', 'mean', 'std', 'first_frame_no',

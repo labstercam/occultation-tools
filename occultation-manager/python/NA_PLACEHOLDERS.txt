@@ -54,19 +54,19 @@ Cell T20: {{TELESCOPE_TYPE}}           (Telescope type, e.g., "SCT")
 
 RECORDING TIMES:
 ----------------
-Cell F31: {{START_OBSERVING_HOURS}}    (Started observing - hours)
-Cell H31: {{START_OBSERVING_MINS}}     (Started observing - minutes)
-Cell J31: {{START_OBSERVING_SECS}}     (Started observing - seconds)
-Cell F37: {{STOP_OBSERVING_HOURS}}     (Stopped observing - hours)
-Cell H37: {{STOP_OBSERVING_MINS}}      (Stopped observing - minutes)
-Cell J37: {{STOP_OBSERVING_SECS}}      (Stopped observing - seconds)
+Cell F31: {{STARTED_OBSERVING_HOURS}}    (Started observing - hours)
+Cell H31: {{STARTED_OBSERVING_MINUTES}}  (Started observing - minutes) - From Tangra CSV
+Cell J31: {{STARTED_OBSERVING_SECONDS}}  (Started observing - seconds) - From Tangra CSV
+Cell F37: {{STOPPED_OBSERVING_HOURS}}     (Stopped observing - hours)
+Cell H37: {{STOPPED_OBSERVING_MINUTES}}   (Stopped observing - minutes) - From Tangra CSV
+Cell J37: {{STOPPED_OBSERVING_SECONDS}}   (Stopped observing - seconds) - From Tangra CSV
 
 CAMERA/DETECTOR INFORMATION:
 ----------------------------
 Cell E22: {{TIMING}}                   (Timing method, e.g., "GPS - other linking")
 Cell E23: {{TIMING_DEVICE}}            (Timing device, e.g., "SharpCap")
 Cell E25: {{DETECTOR}}                 (Detector/software, e.g., "SharpCap")
-Cell V25: {{OTHER_DETECTOR_INFO}}      (Other detector info + exposure)
+Cell V25: {{OTHER_DETECTOR_INFO}}      (Other detector info + exposure) - Includes exposure from Tangra CSV
 Cell L25: {{VIDEO_FORMAT}}             (Video format, e.g., "SER")
 Cell P25: {{EXPOSURE_INTEGRATION}}     (Exposure/integration method, e.g., "Other")
 

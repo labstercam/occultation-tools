@@ -47,6 +47,10 @@ class ConfigManager:
             'active_telescope_id': None,  # ID of currently selected telescope
             'active_camera_id': None,  # ID of currently selected camera
             
+            # Report generation preferences
+            'last_report_type': 'north_america',  # 'north_america' or 'trans_tasman'
+            'last_report_folder': '',  # Parent folder of last AOTA/Tangra folder
+            
             # API configuration
             'host': 'https://www.occultwatcher.net:443',
             'url_path': '/api2/v1/events/details-list',
@@ -534,3 +538,22 @@ class ConfigManager:
             self.config['active_camera_id'] = camera_id
             return True
         return False
+    
+    # Report generation preferences
+    def get_last_report_type(self):
+        """Get the last used report type"""
+        return self.config.get('last_report_type', 'north_america')
+    
+    def set_last_report_type(self, report_type):
+        """Set the last used report type"""
+        self.config['last_report_type'] = report_type
+        self.save_config()
+    
+    def get_last_report_folder(self):
+        """Get the parent folder of last selected AOTA/Tangra folder"""
+        return self.config.get('last_report_folder', '')
+    
+    def set_last_report_folder(self, folder_path):
+        """Set the parent folder of last selected AOTA/Tangra folder"""
+        self.config['last_report_folder'] = os.path.normpath(folder_path) if folder_path else ''
+        self.save_config()
