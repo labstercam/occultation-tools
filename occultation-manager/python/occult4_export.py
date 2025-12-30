@@ -4,6 +4,10 @@ Exports occultation observation data in the Occult 4 XML format (Version 2.15+)
 
 This module generates XML files compatible with the Occult 4 software for 
 asteroid occultation analysis. It uses data already collected for NA and TT reports.
+
+Note: EventFits section is omitted from the exported XML. This section (containing
+elliptic fits, uncertainties, shape model fits, etc.) will be added by IOTA after
+the observation reports are processed.
 """
 
 import os
@@ -48,6 +52,44 @@ class Occult4Exporter:
             filename = self._generate_filename(event)
             output_path = os.path.join(report_folder, filename)
             
+            # Generate XML content
+            xml_content = self._build_xml(event, telescope_id, camera_id, 
+                                         observation_type, tangra_data, 
+                                         aota_report_data, observer_data)
+            
+            # Write to file
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(xml_content)
+            
+            print(f"Occult 4 XML exported to: {output_path}")
+            return output_path
+            
+        except Exception as ex:
+            print(f"ERROR: Failed to export Occult 4 XML - {str(ex)}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def export_observation_to_path(self, output_path, event, telescope_id=None, camera_id=None, 
+                                   observation_type=None, tangra_data=None, aota_report_data=None,
+                                   observer_data=None):
+        """
+        Export observation data to Occult 4 XML format with a specified output path
+        
+        Args:
+            output_path: Full path where the XML file should be saved
+            event: OccultationEvent object with event details
+            telescope_id: ID of telescope used
+            camera_id: ID of camera used
+            observation_type: Type of observation ("Positive", "Negative", "Unsure")
+            tangra_data: Optional dictionary with Tangra light curve analysis data
+            aota_report_data: Optional dictionary with AOTA Report timing/SNR data
+            observer_data: Optional dictionary with additional observer information
+        
+        Returns:
+            Path to the generated XML file, or None if generation failed
+        """
+        try:
             # Generate XML content
             xml_content = self._build_xml(event, telescope_id, camera_id, 
                                          observation_type, tangra_data, 
@@ -117,12 +159,7 @@ class Occult4Exporter:
         lines.append(self._build_star_issues_line(event))
         lines.append(self._build_asteroid_line(event))
         
-        # Event fits section (minimal for now)
-        lines.append('           <EventFits>')
-        lines.append(self._build_solve_flags_line())
-        lines.append(self._build_elliptic_fit_line())
-        lines.append(self._build_ellipse_uncertainty_line())
-        lines.append('           </EventFits>')
+        # EventFits section omitted - will be added by IOTA after report processing
         
         lines.append('       </Details>')
         
@@ -176,9 +213,10 @@ class Occult4Exporter:
         ra_hours = event.ra_hours if hasattr(event, 'ra_hours') else 0.0
         dec_degrees = event.dec_degrees if hasattr(event, 'dec_degrees') else 0.0
         
-        # Format RA and Dec with proper precision
-        ra_str = f'{ra_hours:.10f}'
-        dec_str = f'{dec_degrees:+.9f}'  # Include sign
+        # Format RA and Dec with proper precision per OBS.XML format specs
+        # J2000 coordinates: RA has 10 decimals, Dec has 9 decimals
+        ra_j2000 = f'{ra_hours:.10f}'
+        dec_j2000 = f'{dec_degrees:+.9f}'  # Include sign
         
         # Uncertainties (defaults if not available)
         ra_uncertainty = '0'  # mas
@@ -190,22 +228,23 @@ class Occult4Exporter:
         # Issues flag (0 = no issues)
         issues_flag = '0'
         
-        # Apparent RA/Dec (same as J2000 for simplicity)
-        ra_apparent = ra_str
-        dec_apparent = dec_str
+        # Apparent RA/Dec (same as J2000 for simplicity, but with reduced precision)
+        # Apparent coordinates: RA has 8 decimals, Dec has 7 decimals
+        ra_apparent = f'{ra_hours:.8f}'
+        dec_apparent = f'{dec_degrees:+.7f}'
         
-        # Magnitudes
+        # Magnitudes - format with 2 decimal places
         star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
-        mag_b = star_mag
-        mag_g = star_mag
-        mag_r = star_mag
+        mag_b = f'{star_mag:.2f}'
+        mag_g = f'{star_mag:.2f}'
+        mag_r = f'{star_mag:.2f}'
         
         # EPIC ID (not typically used)
         epic_id = ''
         
         star_line = (
             f'           <Star>{star_catalog}|{star_number}|{gaia_version}|{gaia_id}|'
-            f'{ra_str}|{dec_str}|{ra_uncertainty}|{dec_uncertainty}|'
+            f'{ra_j2000}|{dec_j2000}|{ra_uncertainty}|{dec_uncertainty}|'
             f'{star_diameter}|{issues_flag}|{ra_apparent}|{dec_apparent}|'
             f'{mag_b}|{mag_g}|{mag_r}|{epic_id}</Star>'
         )
@@ -300,51 +339,6 @@ class Occult4Exporter:
         
         return asteroid_line
     
-    def _build_solve_flags_line(self):
-        """Build the SolveFlags line (all zeros for manual observations)"""
-        # All flags set to 0 (not included in automatic fitting)
-        flags = '|'.join(['0'] * 9)
-        return f'              <SolveFlags>{flags}</SolveFlags>'
-    
-    def _build_elliptic_fit_line(self):
-        """Build the EllipticFit line (minimal data for single observations)"""
-        # All values set to 0 or default
-        # X, Y, Major axis, Minor Axis, PA Major Axis, Fit quality, Used Assumed Diameter,
-        # Flag for future review, Center of Mass X, Center of Mass Y
-        x = '0'
-        y = '0'
-        major_axis = '0'
-        minor_axis = '0'
-        pa = '0'
-        fit_quality = '0'  # No reliable position or size
-        used_assumed = '0'
-        future_review = '0'
-        com_x = '0'
-        com_y = '0'
-        
-        elliptic_line = (
-            f'              <EllipticFit>{x}|{y}|{major_axis}|{minor_axis}|{pa}|'
-            f'{fit_quality}|{used_assumed}|{future_review}|{com_x}|{com_y}</EllipticFit>'
-        )
-        
-        return elliptic_line
-    
-    def _build_ellipse_uncertainty_line(self):
-        """Build the EllipseUncertainty line"""
-        # All standard deviations set to 0
-        sdev_x = '0'
-        sdev_y = '0'
-        sdev_major = '0'
-        sdev_minor = '0'
-        sdev_pa = '0'
-        
-        uncertainty_line = (
-            f'              <EllipseUncertainty>{sdev_x}|{sdev_y}|{sdev_major}|'
-            f'{sdev_minor}|{sdev_pa}</EllipseUncertainty>'
-        )
-        
-        return uncertainty_line
-    
     def _build_prediction_line(self, event):
         """Build the Prediction line with predicted event details"""
         # Sequential reference number
@@ -427,7 +421,7 @@ class Occult4Exporter:
         near_location = event.obs_location if hasattr(event, 'obs_location') and event.obs_location else ''
         
         # State/country
-        state_country = self.config.get_iota_region() if self.config else ''
+        state_country = self.config.get_observer_state() if self.config else ''
         if observer_data:
             state_country = observer_data.get('state_country', state_country)
         
@@ -586,13 +580,21 @@ class Occult4Exporter:
     
     def _get_d_time(self, tangra_data, aota_report_data, event):
         """Get disappearance time from available data sources"""
-        # Try AOTA report data first
-        if aota_report_data and 'd_time' in aota_report_data:
-            return self._format_time_hms(aota_report_data['d_time'])
+        # Try AOTA report data first (has d_hours, d_minutes, d_seconds)
+        if aota_report_data and 'd_hours' in aota_report_data:
+            hours = str(aota_report_data.get('d_hours', '0')).zfill(2)
+            minutes = str(aota_report_data.get('d_minutes', '0')).zfill(2)
+            seconds = str(aota_report_data.get('d_seconds', '0.0'))
+            # Ensure seconds has proper format (at least .xx)
+            if '.' not in seconds:
+                seconds = seconds.zfill(2) + '.00'
+            else:
+                parts = seconds.split('.')
+                seconds = parts[0].zfill(2) + '.' + parts[1].ljust(2, '0')[:2]
+            return f'{hours} {minutes} {seconds}'
         
-        # Try Tangra data
-        if tangra_data and 'd_time' in tangra_data:
-            return self._format_time_hms(tangra_data['d_time'])
+        # Tangra data doesn't have d_time - skip it
+        # Note: Tangra CSV only has observation start/end times, not event times
         
         # Fall back to event predicted time
         if hasattr(event, 'event_datetime') and event.event_datetime:
@@ -604,13 +606,21 @@ class Occult4Exporter:
     
     def _get_r_time(self, tangra_data, aota_report_data, event):
         """Get reappearance time from available data sources"""
-        # Try AOTA report data first
-        if aota_report_data and 'r_time' in aota_report_data:
-            return self._format_time_hms(aota_report_data['r_time'])
+        # Try AOTA report data first (has r_hours, r_minutes, r_seconds)
+        if aota_report_data and 'r_hours' in aota_report_data:
+            hours = str(aota_report_data.get('r_hours', '0')).zfill(2)
+            minutes = str(aota_report_data.get('r_minutes', '0')).zfill(2)
+            seconds = str(aota_report_data.get('r_seconds', '0.0'))
+            # Ensure seconds has proper format (at least .xx)
+            if '.' not in seconds:
+                seconds = seconds.zfill(2) + '.00'
+            else:
+                parts = seconds.split('.')
+                seconds = parts[0].zfill(2) + '.' + parts[1].ljust(2, '0')[:2]
+            return f'{hours} {minutes} {seconds}'
         
-        # Try Tangra data
-        if tangra_data and 'r_time' in tangra_data:
-            return self._format_time_hms(tangra_data['r_time'])
+        # Tangra data doesn't have r_time - skip it
+        # Note: Tangra CSV only has observation start/end times, not event times
         
         # If we have a D time and duration, calculate R time
         if hasattr(event, 'event_datetime') and event.event_datetime and hasattr(event, 'event_duration'):
