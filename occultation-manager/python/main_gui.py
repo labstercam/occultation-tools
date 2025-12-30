@@ -1476,10 +1476,49 @@ class OccultationManagerGUI(Form):
                     )
             
             if output_path:
+                # Generate Occult4 XML export with the same filename as the report
+                xml_output_path = None
+                try:
+                    print("Generating Occult4 XML export...")
+                    from occult4_export import Occult4Exporter
+                    occult4_exporter = Occult4Exporter(self.config)
+                    
+                    # Generate XML filename from report filename
+                    report_dir = os.path.dirname(output_path)
+                    report_basename = os.path.splitext(os.path.basename(output_path))[0]
+                    xml_filename = report_basename + '.xml'
+                    xml_path = os.path.join(report_dir, xml_filename)
+                    
+                    # Export observation data using the proper public API
+                    xml_output_path = occult4_exporter.export_observation_to_path(
+                        xml_path, event, telescope_id, camera_id, 
+                        observation_type, tangra_data, aota_report_data, None
+                    )
+                except Exception as ex:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"Warning: Failed to export Occult4 XML - {str(ex)}")
+                    print(error_details)
+                    # Show warning to user
+                    MessageBox.Show(
+                        f"Occult4 XML export failed:\n\n{str(ex)}\n\nReport was generated successfully, but XML export failed.",
+                        "XML Export Warning",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    )
+                    xml_output_path = None
+                
                 print(f"SUCCESS: Report generated: {output_path}")
-                self.update_status("Report generated successfully")
-                MessageBox.Show(f"Report generated successfully.\n\nFile saved to:\n{output_path}", 
-                            "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                
+                # Update status and message based on whether XML was also generated
+                if xml_output_path:
+                    self.update_status("Report and XML generated successfully")
+                    MessageBox.Show(f"Report and Occult4 XML generated successfully.\n\nFiles saved to:\n{output_path}\n{xml_output_path}", 
+                                "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                else:
+                    self.update_status("Report generated successfully")
+                    MessageBox.Show(f"Report generated successfully.\n\nFile saved to:\n{output_path}", 
+                                "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
             else:
                 print(f"ERROR: Report generation failed (check log)")
                 self.update_status("Report generation failed")
