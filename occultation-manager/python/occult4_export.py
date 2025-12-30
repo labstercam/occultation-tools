@@ -209,35 +209,157 @@ class Occult4Exporter:
             gaia_version = 1
             gaia_id = star_number
         
-        # Get RA and Dec in required format
-        ra_hours = event.ra_hours if hasattr(event, 'ra_hours') else 0.0
-        dec_degrees = event.dec_degrees if hasattr(event, 'dec_degrees') else 0.0
+        # Get occelmnt_data if available (preferred source)
+        occelmnt_data = event.original_data.get('occelmnt_data', {}) if hasattr(event, 'original_data') else {}
         
-        # Format RA and Dec with proper precision per OBS.XML format specs
+        # DEBUG: Log occelmnt_data contents
+        print("\n" + "="*80)
+        print("DEBUG: Building Star line for Occult4 XML export")
+        print("="*80)
+        print("Has occelmnt_data: {}".format(bool(occelmnt_data)))
+        if occelmnt_data:
+            print("\nJ2000 coordinates from occelmnt_data:")
+            print("  star_ra_j2000: {}".format(occelmnt_data.get('star_ra_j2000', 'NOT FOUND')))
+            print("  star_dec_j2000: {}".format(occelmnt_data.get('star_dec_j2000', 'NOT FOUND')))
+            print("\nApparent coordinates from occelmnt_data:")
+            print("  star_ra_apparent: {}".format(occelmnt_data.get('star_ra_apparent', 'NOT FOUND')))
+            print("  star_dec_apparent: {}".format(occelmnt_data.get('star_dec_apparent', 'NOT FOUND')))
+        print("\nFallback coordinates from event object:")
+        print("  event.ra_hours: {}".format(event.ra_hours if hasattr(event, 'ra_hours') else 'NOT FOUND'))
+        print("  event.dec_degrees: {}".format(event.dec_degrees if hasattr(event, 'dec_degrees') else 'NOT FOUND'))
+        print("="*80)
+        
+        # Get RA and Dec in required format - prefer occelmnt_data
         # J2000 coordinates: RA has 10 decimals, Dec has 9 decimals
+        if 'star_ra_j2000' in occelmnt_data and occelmnt_data['star_ra_j2000']:
+            try:
+                ra_hours = float(occelmnt_data['star_ra_j2000'])
+            except (ValueError, TypeError):
+                ra_hours = event.ra_hours if hasattr(event, 'ra_hours') else 0.0
+        else:
+            ra_hours = event.ra_hours if hasattr(event, 'ra_hours') else 0.0
+            
+        if 'star_dec_j2000' in occelmnt_data and occelmnt_data['star_dec_j2000']:
+            try:
+                dec_degrees = float(occelmnt_data['star_dec_j2000'])
+            except (ValueError, TypeError):
+                dec_degrees = event.dec_degrees if hasattr(event, 'dec_degrees') else 0.0
+        else:
+            dec_degrees = event.dec_degrees if hasattr(event, 'dec_degrees') else 0.0
+        
         ra_j2000 = f'{ra_hours:.10f}'
         dec_j2000 = f'{dec_degrees:+.9f}'  # Include sign
         
-        # Uncertainties (defaults if not available)
+        # Uncertainties from occelmnt_data if available
+        # Use 1-sigma position error for both RA and Dec (isotropic uncertainty)
         ra_uncertainty = '0'  # mas
         dec_uncertainty = '0'  # mas
+        if 'error_position_1sigma' in occelmnt_data and occelmnt_data['error_position_1sigma']:
+            try:
+                # Convert from arcsec to mas - use same value for both RA and Dec
+                pos_unc = float(occelmnt_data['error_position_1sigma']) * 1000
+                ra_uncertainty = f'{pos_unc:.1f}'
+                dec_uncertainty = f'{pos_unc:.1f}'
+            except (ValueError, TypeError):
+                pass
         
-        # Star diameter (default)
+        # Star diameter from occelmnt_data (preferred) or default
         star_diameter = '0'  # mas
+        if 'star_diameter_mas' in occelmnt_data and occelmnt_data['star_diameter_mas']:
+            try:
+                diam = float(occelmnt_data['star_diameter_mas'])
+                star_diameter = f'{diam:.2f}'
+            except (ValueError, TypeError):
+                pass
         
-        # Issues flag (0 = no issues)
-        issues_flag = '0'
+        # Issues flag from occelmnt quality indicators
+        issues_flag = '0'  # 0=no issues, 1=high RUWE, 2=duplicate source, 3=both
+        try:
+            if 'quality_ruwe' in occelmnt_data and occelmnt_data['quality_ruwe']:
+                ruwe = float(occelmnt_data['quality_ruwe'])
+                if ruwe > 1.4:
+                    issues_flag = '1'
+            if 'quality_duplicate_source' in occelmnt_data and occelmnt_data['quality_duplicate_source']:
+                dup = int(float(occelmnt_data['quality_duplicate_source']))
+                if dup == 1:
+                    issues_flag = '3' if issues_flag == '1' else '2'
+        except (ValueError, TypeError):
+            pass
         
-        # Apparent RA/Dec (same as J2000 for simplicity, but with reduced precision)
+        # Apparent RA/Dec from occelmnt_data (different from J2000!)
         # Apparent coordinates: RA has 8 decimals, Dec has 7 decimals
-        ra_apparent = f'{ra_hours:.8f}'
-        dec_apparent = f'{dec_degrees:+.7f}'
+        ra_apparent = None
+        dec_apparent = None
         
-        # Magnitudes - format with 2 decimal places
-        star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
-        mag_b = f'{star_mag:.2f}'
-        mag_g = f'{star_mag:.2f}'
-        mag_r = f'{star_mag:.2f}'
+        if 'star_ra_apparent' in occelmnt_data:
+            ra_app_str = str(occelmnt_data['star_ra_apparent']).strip()
+            if ra_app_str and ra_app_str != '':
+                try:
+                    ra_app = float(ra_app_str)
+                    ra_apparent = f'{ra_app:.8f}'
+                except (ValueError, TypeError):
+                    pass
+            
+        if 'star_dec_apparent' in occelmnt_data:
+            dec_app_str = str(occelmnt_data['star_dec_apparent']).strip()
+            if dec_app_str and dec_app_str != '':
+                try:
+                    dec_app = float(dec_app_str)
+                    dec_apparent = f'{dec_app:+.7f}'
+                except (ValueError, TypeError):
+                    pass
+        
+        # If apparent coordinates not available, fall back to J2000
+        if ra_apparent is None:
+            ra_apparent = f'{ra_hours:.8f}'  # Fallback to J2000
+            print("WARNING: Using J2000 RA as fallback for apparent RA")
+        if dec_apparent is None:
+            dec_apparent = f'{dec_degrees:+.7f}'  # Fallback to J2000
+            print("WARNING: Using J2000 Dec as fallback for apparent Dec")
+        
+        # DEBUG: Show final values that will be written to XML
+        print("\nFINAL VALUES for XML export:")
+        print("  J2000 RA:     {}".format(ra_j2000))
+        print("  J2000 Dec:    {}".format(dec_j2000))
+        print("  Apparent RA:  {}".format(ra_apparent))
+        print("  Apparent Dec: {}".format(dec_apparent))
+        print("  Are they different? RA: {}, Dec: {}".format(ra_j2000 != ra_apparent, dec_j2000 != dec_apparent))
+        print("="*80 + "\n")
+        
+        # Magnitudes from occelmnt_data (Mb, Mv, Mr) - format with 2 decimal places
+        # Use occelmnt color-specific magnitudes if available
+        if 'star_mag_b' in occelmnt_data and occelmnt_data['star_mag_b']:
+            try:
+                mag_b_val = float(occelmnt_data['star_mag_b'])
+                mag_b = f'{mag_b_val:.2f}'
+            except (ValueError, TypeError):
+                star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
+                mag_b = f'{star_mag:.2f}'
+        else:
+            star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
+            mag_b = f'{star_mag:.2f}'
+            
+        if 'star_mag_v' in occelmnt_data and occelmnt_data['star_mag_v']:
+            try:
+                mag_v_val = float(occelmnt_data['star_mag_v'])
+                mag_g = f'{mag_v_val:.2f}'  # Mg field uses V magnitude
+            except (ValueError, TypeError):
+                star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
+                mag_g = f'{star_mag:.2f}'
+        else:
+            star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
+            mag_g = f'{star_mag:.2f}'
+            
+        if 'star_mag_r' in occelmnt_data and occelmnt_data['star_mag_r']:
+            try:
+                mag_r_val = float(occelmnt_data['star_mag_r'])
+                mag_r = f'{mag_r_val:.2f}'
+            except (ValueError, TypeError):
+                star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
+                mag_r = f'{star_mag:.2f}'
+        else:
+            star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
+            mag_r = f'{star_mag:.2f}'
         
         # EPIC ID (not typically used)
         epic_id = ''
@@ -281,11 +403,43 @@ class Occult4Exporter:
     
     def _build_star_issues_line(self, event):
         """Build the StarIssues line with reliability and quality indicators"""
-        # Default values for all fields
-        reliability = '0'  # RUWE or equivalent
+        # Get occelmnt_data if available
+        occelmnt_data = event.original_data.get('occelmnt_data', {}) if hasattr(event, 'original_data') else {}
+        
+        # Reliability (RUWE) from occelmnt_data
+        reliability = '0'
+        if 'quality_ruwe' in occelmnt_data and occelmnt_data['quality_ruwe']:
+            try:
+                ruwe = float(occelmnt_data['quality_ruwe'])
+                reliability = f'{ruwe:.2f}'
+            except (ValueError, TypeError):
+                pass
+        
+        # Duplicated source flag from occelmnt_data
         duplicated_flag = '-1'  # -1 = not specified
+        if 'quality_duplicate_source' in occelmnt_data and occelmnt_data['quality_duplicate_source']:
+            try:
+                duplicated_flag = str(int(float(occelmnt_data['quality_duplicate_source'])))
+            except (ValueError, TypeError):
+                pass
+        
+        # No proper motion flag from occelmnt_data
         no_proper_motion = '-1'  # -1 = not specified
+        if 'quality_no_pm' in occelmnt_data and occelmnt_data['quality_no_pm']:
+            try:
+                no_proper_motion = str(int(float(occelmnt_data['quality_no_pm'])))
+            except (ValueError, TypeError):
+                pass
+        
+        # UCAC4 proper motion flag from occelmnt_data
         ucac4_proper_motion = '0'  # 0 = not applicable
+        if 'quality_ucac4_pm' in occelmnt_data and occelmnt_data['quality_ucac4_pm']:
+            try:
+                ucac4_proper_motion = str(int(float(occelmnt_data['quality_ucac4_pm'])))
+            except (ValueError, TypeError):
+                pass
+        
+        # Double star data (defaults if not available)
         brightness_ratio = '1.2'  # Default ratio
         brightness_ratio_uncertainty = '10'  # Default 10%
         ra_offset = '0'  # mas
@@ -304,33 +458,100 @@ class Occult4Exporter:
     
     def _build_asteroid_line(self, event):
         """Build the Asteroid line with motion coefficients and physical data"""
-        # Asteroid identification
-        asteroid_number = event.object_no if hasattr(event, 'object_no') and event.object_no else ''
-        asteroid_name = event.object_name if hasattr(event, 'object_name') and event.object_name else ''
+        # Get occelmnt_data if available (preferred source)
+        occelmnt_data = event.original_data.get('occelmnt_data', {}) if hasattr(event, 'original_data') else {}
+        
+        # Asteroid identification - prefer occelmnt_data
+        if 'object_number' in occelmnt_data and occelmnt_data['object_number']:
+            asteroid_number = str(occelmnt_data['object_number'])
+        else:
+            asteroid_number = event.object_no if hasattr(event, 'object_no') and event.object_no else ''
+            
+        if 'object_name' in occelmnt_data and occelmnt_data['object_name']:
+            asteroid_name = str(occelmnt_data['object_name'])
+        else:
+            asteroid_name = event.object_name if hasattr(event, 'object_name') and event.object_name else ''
         
         # Clean asteroid name (remove number if present)
         if asteroid_name:
             import re
             asteroid_name = re.sub(r'^\(\d+\)\s*', '', asteroid_name)
         
-        # Motion coefficients (all zeros if not available - would need ephemeris data)
-        dx = '0'  # Earth radii/hr
+        # Motion coefficients from occelmnt_data (Earth radii/hr)
+        # These are PREDICTION data from Occult4/Occelmnt
+        dx = '0'
         dy = '0'
-        d2x = '0'  # Earth radii/hr²
+        d2x = '0'
         d2y = '0'
-        d3x = '0'  # Earth radii/hr³
+        d3x = '0'
         d3y = '0'
         
-        # Parallax
+        if 'motion_dx' in occelmnt_data and occelmnt_data['motion_dx']:
+            try:
+                dx_val = float(occelmnt_data['motion_dx'])
+                dx = f'{dx_val:.6f}'  # 6 decimal precision for motion coefficients
+            except (ValueError, TypeError):
+                pass
+        if 'motion_dy' in occelmnt_data and occelmnt_data['motion_dy']:
+            try:
+                dy_val = float(occelmnt_data['motion_dy'])
+                dy = f'{dy_val:.6f}'
+            except (ValueError, TypeError):
+                pass
+        if 'motion_d2x' in occelmnt_data and occelmnt_data['motion_d2x']:
+            try:
+                d2x_val = float(occelmnt_data['motion_d2x'])
+                d2x = f'{d2x_val:.6f}'
+            except (ValueError, TypeError):
+                pass
+        if 'motion_d2y' in occelmnt_data and occelmnt_data['motion_d2y']:
+            try:
+                d2y_val = float(occelmnt_data['motion_d2y'])
+                d2y = f'{d2y_val:.6f}'
+            except (ValueError, TypeError):
+                pass
+        if 'motion_d3x' in occelmnt_data and occelmnt_data['motion_d3x']:
+            try:
+                d3x_val = float(occelmnt_data['motion_d3x'])
+                d3x = f'{d3x_val:.6f}'
+            except (ValueError, TypeError):
+                pass
+        if 'motion_d3y' in occelmnt_data and occelmnt_data['motion_d3y']:
+            try:
+                d3y_val = float(occelmnt_data['motion_d3y'])
+                d3y = f'{d3y_val:.6f}'
+            except (ValueError, TypeError):
+                pass
+        
+        # Parallax (not available in occelmnt_data)
         parallax = '0'  # arcsec
         d_parallax = '0'  # arcsec/hr
         
-        # Diameter
+        # Diameter from occelmnt_data (preferred)
         diameter = '0'  # km (nominal mean diameter)
         diameter_uncertainty = '0'  # km
         
-        # Visual magnitude
+        if 'object_diameter_km' in occelmnt_data and occelmnt_data['object_diameter_km']:
+            try:
+                diam = float(occelmnt_data['object_diameter_km'])
+                diameter = f'{diam:.1f}'
+            except (ValueError, TypeError):
+                pass
+        if 'object_diameter_uncertainty' in occelmnt_data and occelmnt_data['object_diameter_uncertainty']:
+            try:
+                diam_unc = float(occelmnt_data['object_diameter_uncertainty'])
+                diameter_uncertainty = f'{diam_unc:.1f}'
+            except (ValueError, TypeError):
+                pass
+        
+        # Visual magnitude from occelmnt_data (object_mag_v is V magnitude)
         mv = '0'
+        if 'object_mag_v' in occelmnt_data and occelmnt_data['object_mag_v']:
+            try:
+                mv_val = float(occelmnt_data['object_mag_v'])
+                mv = f'{mv_val:.2f}'
+            except (ValueError, TypeError):
+                pass
         
         asteroid_line = (
             f'           <Asteroid>{asteroid_number}|{asteroid_name}|{dx}|{dy}|{d2x}|{d2y}|'
