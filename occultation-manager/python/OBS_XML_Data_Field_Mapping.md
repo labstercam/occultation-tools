@@ -97,13 +97,95 @@ Parsed from `AOTA_Report.txt` (Tangra output):
 - `video_system` - Video system type
 - `measurement_tool` - Measurement tool used (e.g., "Tangra")
 
-### 4. Tangra Light Curve Data
+### 4. Occelmnt Data (from OWC API)
+**Downloaded via `get_owc_events()` and stored in event's `occelmnt` field.**
+
+The Occelmnt structure contains detailed prediction data from Occult4 calculations. This is the **PREFERRED SOURCE** for star, asteroid, and motion data when available.
+
+**From `<Elements>` tag (comma-separated):**
+- Index 0: Source (orbit source and prediction date)
+- Index 1: Duration (maximum duration in seconds)
+- Index 2-4: Year, Month, Day of event
+- Index 5: UT at closest approach (decimal hours)
+- Index 6-7: **X, Y** - Shadow coordinates at closest approach (Earth radii)
+- Index 8-9: **dX, dY** - Hourly rate of change in X, Y (Earth radii/hr) ✅
+- Index 10-11: **d2X, d2Y** - 2nd order rate of change (Earth radii/hr²) ✅
+- Index 12-13: **d3X, d3Y** - 3rd order rate of change (Earth radii/hr³) ✅
+
+**From `<Star>` tag (comma-separated, 14 fields total):**
+- Index 0: Identifier (catalog designation)
+- Index 1: **RA** - BCRS J2000 position (decimal hours) ✅
+- Index 2: **Dec** - BCRS J2000 position (decimal degrees) ✅
+- Index 3: **Mb** - Blue magnitude ✅
+- Index 4: **Mv** - Visual magnitude ✅
+- Index 5: **Mr** - Red magnitude ✅
+- Index 6: **dia** - Stellar diameter in mas ✅
+- Index 7: Double star code (0=none, 1=WDS, 2=other, 4=variable, cumulative)
+- Index 8: K2 flag ("K" if Kepler2 target, blank otherwise)
+- Index 9: **RA Apparent** - Apparent RA of date (decimal hours) ✅
+- Index 10: **Dec Apparent** - Apparent Dec of date (decimal degrees) ✅
+- Index 11: MagDropsAdjusted_NearbyStars - Flag: 0=not adjusted, 1=adjusted
+- Index 12: BrightNearbyCount - Bright nearby stars count (or -1 if not checked)
+- Index 13: TotalNearbyCount - All nearby stars count (or -1 if not checked)
+
+**From `<Object>` tag (comma-separated):**
+- Index 0: Number (asteroid number or PxMyy for planet moons)
+- Index 1: Name
+- Index 2: **Magnitude** - Asteroid magnitude ✅
+- Index 3: **Diameter** (km) - augmented by star diameter ✅
+- Index 4: Distance (AU)
+- Index 5: Number of rings
+- Index 6: Number of moons
+- Index 7: dRA - Hourly rate of change in RA (s/hr)
+- Index 8: dDec - Hourly rate of change in Dec (arcsec/hr)
+- Index 9: Taxonomic class
+- Index 10: **Diameter uncertainty** (km) ✅
+- Index 11: Planet moon in shadow flag
+- Index 12: **MagV_Asteroid** - V magnitude ✅
+- Index 13: **MagR_Asteroid** - R magnitude ✅
+
+**From `<Earth>` tag (comma-separated):**
+- Index 0: Substellar longitude (deg)
+- Index 1: Substellar latitude (deg)
+- Index 2: Subsolar longitude (deg)
+- Index 3: Subsolar latitude (deg)
+- Index 4: JWST flag (1=true, 0=false)
+
+**From `<Errors>` tag (comma-separated):**
+- Index 0: Path width uncertainty (fraction of path width)
+- Index 1: **Major axis** of error ellipse (arcsec) ✅
+- Index 2: **Minor axis** of error ellipse (arcsec) ✅
+- Index 3: **PA** of major axis (degrees) ✅
+- Index 4: **1-sigma** star/asteroid position error (arcsec) ✅
+- Index 5: Error basis description string
+- Index 6: **Reliability** (RUWE value, or -1/-2/-3/-4 for special cases) ✅
+- Index 7: **Duplicate Source** flag (0/1/-1) ✅
+- Index 8: **Non-GAIA proper motion** flag (0/1/-1) ✅
+- Index 9: **Proper motion using UCAC4** flag (0/1/-1) ✅
+
+**From `<Orbit>` tag (comma-separated):**
+- Orbital elements for plotting (not needed for observation reporting)
+
+**From `<Moons>` tag (if present):**
+- Moon data (not needed for single observation reporting)
+
+**Access in code:**
+```python
+if event.original_data.get('occelmnt'):
+    occelmnt = event.original_data['occelmnt']
+    elements = occelmnt['Occultations']['Event']['Elements'].split(',')
+    star = occelmnt['Occultations']['Event']['Star'].split(',')
+    obj = occelmnt['Occultations']['Event']['Object'].split(',')
+    errors = occelmnt['Occultations']['Event']['Errors'].split(',')
+```
+
+### 5. Tangra Light Curve Data
 Structure not yet fully defined, but likely includes:
 - Light curve data points
 - Event detection parameters
 - Additional SNR metrics
 
-### 5. OWC Downloaded Events (from owc_downloaded_events.json)
+### 6. OWC Downloaded Events (from owc_downloaded_events.json)
 Additional fields available in raw OWC data (not all parsed into OccultationEvent):
 
 **Extended Star Data:**
@@ -178,38 +260,42 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 
 | Field | Source | Data Path | Precision | Notes |
 |-------|--------|-----------|-----------|-------|
-| 1. Catalogue | Event | Parse from `event.star_id` | - | e.g., "UCAC4" from "UCAC4 570-020044" |
-| 2. Number | Event | Parse from `event.star_id` | - | e.g., "570-020044" |
+| 1. Catalogue | Occelmnt/Event | `star[0]` from Occelmnt, or parse `event.star_id` | - | e.g., "UCAC4" from "UCAC4 570-020044" |
+| 2. Number | Occelmnt/Event | `star[0]` from Occelmnt, or parse `event.star_id` | - | e.g., "570-020044" |
 | 3. Gaia version | **NOT AVAILABLE** | - | - | Use -1 (not specified) unless catalog is "Gaia DR3" etc. |
 | 4. Gaia id | **NOT AVAILABLE** | - | - | Use "0" unless Gaia catalog identified |
-| 5. RA J2000 | Event | `event.ra_hours` (from OWC `RAJ2000Hours`) | 10 decimals | hh.hhhhhhhhhh format |
-| 6. Dec J2000 | Event | `event.dec_degrees` (from OWC `DEJ2000Deg`) | 9 decimals | ±dd.ddddddddd format with sign |
-| 7. RA uncertainty | **NOT AVAILABLE** | - | - | Use "0" |
-| 8. Dec uncertainty | **NOT AVAILABLE** | - | - | Use "0" |
-| 9. Stellar diameter | OWC Raw | `StellarDiaMas` from OWC | - | Often null, use "0" if not available |
-| 10. Issues flag | **NOT AVAILABLE** | - | - | Use "0" (no issues) |
-| 11. RA Apparent | **NOT AVAILABLE** | - | 8 decimals | Use "0.00000000" - not provided by OWC |
-| 12. Dec Apparent | **NOT AVAILABLE** | - | 7 decimals | Use "+0.0000000" - not provided by OWC |
-| 13. Mb | **NOT AVAILABLE** | - | 2 decimals | Use star_mag or "0" |
-| 14. Mg | Event | `event.star_mag` | 2 decimals | Gaia G or V magnitude |
-| 15. Mr | **NOT AVAILABLE** | - | 2 decimals | Use star_mag or "0" |
-| 16. EPIC ID | **NOT AVAILABLE** | - | - | Leave blank |
+| 5. RA J2000 | **Occelmnt** | `star[1]` (decimal hours) | 10 decimals | **PREFERRED:** hh.hhhhhhhhhh format |
+| 5. RA J2000 (alt) | Event | `event.ra_hours` (from OWC `RAJ2000Hours`) | 10 decimals | Use if Occelmnt not available |
+| 6. Dec J2000 | **Occelmnt** | `star[2]` (decimal degrees) | 9 decimals | **PREFERRED:** ±dd.ddddddddd format with sign |
+| 6. Dec J2000 (alt) | Event | `event.dec_degrees` (from OWC `DEJ2000Deg`) | 9 decimals | Use if Occelmnt not available |
+| 7. RA uncertainty | **Occelmnt** | Calculate from `errors[4]` (1-sigma in arcsec) | mas | Convert arcsec to mas (*1000), apportion to RA |
+| 8. Dec uncertainty | **Occelmnt** | Calculate from `errors[4]` (1-sigma in arcsec) | mas | Convert arcsec to mas (*1000), apportion to Dec |
+| 9. Stellar diameter | **Occelmnt** | `star[6]` (mas) | mas | Stellar diameter in milliarcseconds |
+| 9. Stellar diameter (alt) | OWC Raw | `StellarDiaMas` from OWC | mas | Use if Occelmnt not available, often null |
+| 10. Issues flag | **NOT AVAILABLE** | - | - | Use "0" (no issues) - could derive from star[7] double star code |
+| 11. RA Apparent | **Occelmnt** | `star[9]` (decimal hours) | 8 decimals | **PREFERRED:** hh.hhhhhhhh format |
+| 12. Dec Apparent | **Occelmnt** | `star[10]` (decimal degrees) | 7 decimals | **PREFERRED:** ±dd.ddddddd format |
+| 13. Mb | **Occelmnt** | `star[3]` | 2 decimals | Gaia blue magnitude |
+| 14. Mg | **Occelmnt** | `star[4]` | 2 decimals | **PREFERRED:** Gaia G or V magnitude |
+| 14. Mg (alt) | Event | `event.star_mag` | 2 decimals | Use if Occelmnt not available |
+| 15. Mr | **Occelmnt** | `star[5]` | 2 decimals | Gaia red magnitude |
+| 16. EPIC ID | **NOT AVAILABLE** | - | - | Leave blank (or use star[8] K2 flag) |
 
 #### StarIssues Line (11 fields)
 **XML Format:** `<StarIssues>Reliability|Dup flag|No PM|UCAC4 PM|Brightness ratio|Ratio unc%|RA offset|Dec offset|RA sdev|Dec sdev|Component ID</StarIssues>`
 
-| Field | Source | Value | Notes |
-|-------|--------|-------|-------|
-| 1. Reliability | **NOT AVAILABLE** | "0" | RUWE not available |
-| 2. Duplicated Source flag | **NOT AVAILABLE** | "-1" | Not specified |
-| 3. No Proper Motion | **NOT AVAILABLE** | "-1" | Not specified |
-| 4. UCAC4 Proper Motion | **NOT AVAILABLE** | "0" | Not applicable |
-| 5. Brightness ratio | Default | "1.2" | Default value |
+| Field | Source | Data Path | Notes |
+|-------|--------|-----------|-------|
+| 1. Reliability | **Occelmnt** | `errors[6]` | RUWE or special codes: -1=not set, -2=unreliable Hip, -3=in UBSC, -4=Hip2 duplicate |
+| 2. Duplicated Source flag | **Occelmnt** | `errors[7]` | 0=no, 1=yes, -1=not set |
+| 3. No Proper Motion | **Occelmnt** | `errors[8]` | 0=has PM, 1=no PM, -1=not set |
+| 4. UCAC4 Proper Motion | **Occelmnt** | `errors[9]` | 0=no, 1=UCAC4 PM added, -1=not set |
+| 5. Brightness ratio | Default | "1.2" | Default value (no double star data in Occelmnt) |
 | 6. Ratio uncertainty % | Default | "10" | Default value |
-| 7. RA offset mas | Default | "0" | No double star solution |
-| 8. Dec offset mas | Default | "0" | No double star solution |
-| 9. RA sdev mas | Default | "0" | No double star solution |
-| 10. Dec sdev mas | Default | "0" | No double star solution |
+| 7. RA offset mas | Default | "0" | No double star solution yet |
+| 8. Dec offset mas | Default | "0" | No double star solution yet |
+| 9. RA sdev mas | Default | "0" | No double star solution yet |
+| 10. Dec sdev mas | Default | "0" | No double star solution yet |
 | 11. Component ID | **NOT AVAILABLE** | "" | Blank |
 
 #### Asteroid Line (12 fields)
@@ -217,19 +303,23 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 
 | Field | Source | Data Path | Notes |
 |-------|--------|-----------|-------|
-| 1. Number | Event | Parse from `event.object_name` | Extract number from "(119355) 2001 SU232" |
-| 2. Name | Event | Parse from `event.object_name` | Extract name, remove number |
-| 3. dX | **NOT AVAILABLE** | "0" | Motion coefficient - need ephemeris |
-| 4. dY | **NOT AVAILABLE** | "0" | Motion coefficient - need ephemeris |
-| 5. d2X | **NOT AVAILABLE** | "0" | Motion coefficient - need ephemeris |
-| 6. d2Y | **NOT AVAILABLE** | "0" | Motion coefficient - need ephemeris |
-| 7. d3X | **NOT AVAILABLE** | "0" | Motion coefficient - need ephemeris |
-| 8. d3Y | **NOT AVAILABLE** | "0" | Motion coefficient - need ephemeris |
-| 9. Parallax | **NOT AVAILABLE** | "0" | Need ephemeris calculation |
-| 10. dParallax | **NOT AVAILABLE** | "0" | Need ephemeris calculation |
-| 11. Diameter | OWC Raw | `AstDiaKm` | From OWC, use "0" if not available |
-| 12. Diameter unc | **NOT AVAILABLE** | "0" | Not provided by OWC |
-| 13. Mv | OWC Raw | `AstMag` | From OWC, use "0" if not available |
+| 1. Number | **Occelmnt** | `object[0]` | **PREFERRED:** Asteroid number or PxMyy format |
+| 1. Number (alt) | Event | Parse from `event.object_name` | Extract number from "(119355) 2001 SU232" |
+| 2. Name | **Occelmnt** | `object[1]` | **PREFERRED:** Asteroid name |
+| 2. Name (alt) | Event | Parse from `event.object_name` | Extract name, remove number |
+| 3. dX | **Occelmnt** | `elements[8]` | **AVAILABLE!** Motion coefficient in Earth radii/hr |
+| 4. dY | **Occelmnt** | `elements[9]` | **AVAILABLE!** Motion coefficient in Earth radii/hr |
+| 5. d2X | **Occelmnt** | `elements[10]` | **AVAILABLE!** 2nd order coefficient in Earth radii/hr² |
+| 6. d2Y | **Occelmnt** | `elements[11]` | **AVAILABLE!** 2nd order coefficient in Earth radii/hr² |
+| 7. d3X | **Occelmnt** | `elements[12]` | **AVAILABLE!** 3rd order coefficient in Earth radii/hr³ |
+| 8. d3Y | **Occelmnt** | `elements[13]` | **AVAILABLE!** 3rd order coefficient in Earth radii/hr³ |
+| 9. Parallax | **NOT AVAILABLE** | "0" | Not in Occelmnt - would need ephemeris calculation |
+| 10. dParallax | **NOT AVAILABLE** | "0" | Not in Occelmnt - would need ephemeris calculation |
+| 11. Diameter | **Occelmnt** | `object[3]` (km) | **PREFERRED:** Augmented by star diameter |
+| 11. Diameter (alt) | OWC Raw | `AstDiaKm` | Use if Occelmnt not available |
+| 12. Diameter unc | **Occelmnt** | `object[10]` (km) | **AVAILABLE!** Diameter uncertainty |
+| 13. Mv | **Occelmnt** | `object[12]` | **PREFERRED:** V magnitude of asteroid |
+| 13. Mv (alt) | OWC Raw | `AstMag` | Use if Occelmnt not available |
 
 ---
 
@@ -366,9 +456,16 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 
 ### ✅ Available from Current Sources
 - Event date/time (PREDICTION from OWC)
-- Star catalog and coordinates (RA/Dec J2000 from OWC `RAJ2000Hours` and `DEJ2000Deg`)
-- Star magnitude
-- Asteroid number and name
+- **Star coordinates:** RA/Dec J2000 from Occelmnt `<Star>` (preferred) or OWC `RAJ2000Hours`/`DEJ2000Deg`
+- **Star coordinates:** RA/Dec Apparent from Occelmnt `<Star>` indices 9-10 ✨ NEW!
+- **Star magnitudes:** Mb, Mv (Mg), Mr from Occelmnt `<Star>` indices 3-5 ✨ NEW!
+- **Star diameter:** From Occelmnt `<Star>` index 6 (mas) ✨ NEW!
+- **Star quality flags:** RUWE/Reliability, Duplicate Source, No PM, UCAC4 PM from Occelmnt `<Errors>` ✨ NEW!
+- **Star position uncertainty:** From Occelmnt `<Errors>` index 4 (1-sigma in arcsec) ✨ NEW!
+- **Asteroid motion coefficients:** dX, dY, d2X, d2Y, d3X, d3Y from Occelmnt `<Elements>` ✨ NEW!
+- **Asteroid diameter & uncertainty:** From Occelmnt `<Object>` indices 3, 10 ✨ NEW!
+- **Asteroid magnitude:** From Occelmnt `<Object>` index 12 (MagV) ✨ NEW!
+- Asteroid number and name (from Occelmnt or event data)
 - Observer location (lat/lon/elevation)
 - Observer name and contact info
 - Telescope aperture and type
@@ -378,17 +475,14 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 - Signal-to-noise ratio (from AOTA Report)
 
 ### ❌ NOT Available (Use Defaults)
-- Gaia version and ID (unless parsed from catalog)
-- Star position uncertainties (RA/Dec)
-- Gaia quality flags (RUWE, duplicate source, proper motion)
-- Gaia photometry (Mb, Mr magnitudes)
-- **RA/Dec Apparent coordinates** (different from J2000, not provided by OWC)
-- Stellar diameter (sometimes available, often null)
-- Asteroid motion coefficients (dX, dY, d2X, d2Y, d3X, d3Y)
-- Parallax data
-- Asteroid diameter uncertainty
+- Gaia version and ID (unless parsed from catalog name)
+- **RA/Dec Apparent coordinates** - ~~NOT available~~ **NOW AVAILABLE from Occelmnt!** ✅
+- **Stellar diameter** - ~~Often null~~ **NOW AVAILABLE from Occelmnt!** ✅
+- **Asteroid motion coefficients** - ~~Need ephemeris~~ **NOW AVAILABLE from Occelmnt!** ✅
+- Parallax and dParallax (still not available - would need separate calculation)
+- **Asteroid diameter uncertainty** - ~~Not available~~ **NOW AVAILABLE from Occelmnt!** ✅
 - Second observer names
-- Observing conditions (stability, transparency)
+- Observing conditions (stability, transparency) - need user input
 - Time adjustment value
 - Personal equation (PEqn)
 - Plot codes
@@ -401,40 +495,76 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 - Time source code (from camera timing)
 - Event code (from observation_type)
 - Weight (could calculate from SNR)
+- **RA/Dec uncertainty apportionment** (convert 1-sigma position error to separate RA/Dec uncertainties)
 
 ### 🔑 Key Distinction
-- **PREDICTION data** (from OWC): Event time, location → goes in `<Prediction>` line
+- **PREDICTION data** (from OWC/Occelmnt): Event time, location → goes in `<Prediction>` line
 - **OBSERVED data** (from AOTA Report): D/R times, uncertainties, SNR → goes in `<D>` and `<R>` lines
+
+### ⭐ Occelmnt Data Priority
+When both OWC and Occelmnt have the same data, **prefer Occelmnt** as it contains the authoritative Occult4 calculation results with higher precision and more complete information.
+
+**Occelmnt provides:**
+- More precise star coordinates (J2000 and Apparent)
+- Complete star photometry (Mb, Mv, Mr)
+- Star quality metrics (RUWE, duplicate flags, proper motion flags)
+- Asteroid motion coefficients (all orders)
+- Asteroid diameter with uncertainty
+- Position uncertainties
+
+**OWC provides:**
+- Event logistics (station names, times, locations)
+- Observing conditions at prediction time
+- Quick reference magnitudes
+- Event ranking and metadata
 
 ---
 
 ## Implementation Notes
 
-1. **Parser functions needed:**
-   - Parse star catalog name from star_id string
-   - Parse asteroid number from object_name string
-   - Convert decimal degrees to DMS format
+1. **Occelmnt access pattern:**
+   ```python
+   if event.original_data.get('occelmnt'):
+       occelmnt = event.original_data['occelmnt']
+       try:
+           elements = occelmnt['Occultations']['Event']['Elements'].split(',')
+           star = occelmnt['Occultations']['Event']['Star'].split(',')
+           obj = occelmnt['Occultations']['Event']['Object'].split(',')
+           errors = occelmnt['Occultations']['Event']['Errors'].split(',')
+           # Extract data with proper error handling
+       except (KeyError, IndexError) as e:
+           # Fall back to OWC data
+   ```
+
+2. **Parser functions needed:**
+   - Parse star catalog name from star_id or star[0] string
+   - Parse asteroid number from object_name or object[0] string
+   - Convert decimal degrees/hours to DMS format
+   - Convert 1-sigma position error to RA/Dec uncertainties
    - Map telescope type string to code
    - Map camera data to observing method code
    - Map timing info to time source code
    - Map observation_type to event code
 
-2. **Data validation:**
+3. **Data validation:**
+   - Check for missing Occelmnt data (fall back to OWC data)
    - Check for missing AOTA report data (D/R times)
    - Check for missing telescope/camera selection
    - Validate coordinate ranges
    - Validate time formats
+   - Handle empty/null fields in Occelmnt CSV data
 
-3. **Default values:**
+4. **Default values:**
    - Use "0" for unavailable numeric fields
    - Use blank string "" for unavailable text fields
    - Use "_" for unstated observing conditions
    - Use "-1" for not-specified flags
 
-4. **Precision requirements:**
-   - RA J2000: 10 decimal places
-   - Dec J2000: 9 decimal places
-   - RA Apparent: 8 decimal places
-   - Dec Apparent: 7 decimal places
+5. **Precision requirements:**
+   - RA J2000: 10 decimal places (from Occelmnt star[1])
+   - Dec J2000: 9 decimal places (from Occelmnt star[2])
+   - RA Apparent: 8 decimal places (from Occelmnt star[9])
+   - Dec Apparent: 7 decimal places (from Occelmnt star[10])
    - Magnitudes: 2 decimal places
    - Times: Typically 1-2 decimal places on seconds
+   - Motion coefficients: Use full precision from Occelmnt

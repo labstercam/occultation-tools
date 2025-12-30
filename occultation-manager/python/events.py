@@ -218,15 +218,126 @@ class EventProcessor:
                         print(f"HTTP Error: {e.code} - {e.reason}")
                         eventOccelmnt = None
 
+                    # Extract Occelmnt data with error handling
+                    object_no = ""
+                    owcloudurl = ""
+                    
+                    # Initialize Occelmnt data fields for OBS.XML export
+                    occelmnt_data = {}
+                    
                     if eventOccelmnt:
-                        elements = eventOccelmnt['Occultations']['Event']['Elements'].split(',')
-                        star = eventOccelmnt['Occultations']['Event']['Star'].split(',')
-                        object_data = eventOccelmnt['Occultations']['Event']['Object'].split(',')
-                        owcloudurl = 'https://cloud.occultwatcher.net' + eventOccelmnt['Occultations']['Event']['OWC']
-                        object_no = object_data[0]
-                    else:
-                        object_no = ""
-                        owcloudurl = ""
+                        try:
+                            elements = eventOccelmnt['Occultations']['Event']['Elements'].split(',')
+                            star = eventOccelmnt['Occultations']['Event']['Star'].split(',')
+                            object_data = eventOccelmnt['Occultations']['Event']['Object'].split(',')
+                            owcloudurl = 'https://cloud.occultwatcher.net' + eventOccelmnt['Occultations']['Event']['OWC']
+                            object_no = object_data[0] if len(object_data) > 0 else ""
+                            
+                            # Extract additional Occelmnt fields for OBS.XML
+                            # Star data (16 fields)
+                            if len(star) >= 16:
+                                occelmnt_data['star_identifier'] = star[0]
+                                occelmnt_data['star_ra_j2000'] = star[1]  # decimal hours
+                                occelmnt_data['star_dec_j2000'] = star[2]  # decimal degrees
+                                occelmnt_data['star_mag_b'] = star[3]
+                                occelmnt_data['star_mag_v'] = star[4]
+                                occelmnt_data['star_mag_r'] = star[5]
+                                occelmnt_data['star_diameter_mas'] = star[6]
+                                occelmnt_data['star_double_flag'] = star[7]
+                                occelmnt_data['star_k2_flag'] = star[8]
+                                occelmnt_data['star_ra_apparent'] = star[9]  # decimal hours
+                                occelmnt_data['star_dec_apparent'] = star[10]  # decimal degrees
+                                occelmnt_data['star_mag_drops_adjusted'] = star[11]
+                                occelmnt_data['star_bright_nearby_count'] = star[12]
+                                occelmnt_data['star_total_nearby_count'] = star[13]
+                                occelmnt_data['star_unknown_14'] = star[14]
+                                occelmnt_data['star_unknown_15'] = star[15]
+                            
+                            # Object data (15 fields)
+                            if len(object_data) >= 15:
+                                occelmnt_data['object_number'] = object_data[0]
+                                occelmnt_data['object_name'] = object_data[1]
+                                occelmnt_data['object_magnitude'] = object_data[2]  # Asteroid magnitude
+                                occelmnt_data['object_diameter_km'] = object_data[3]
+                                occelmnt_data['object_distance_au'] = object_data[4]
+                                occelmnt_data['object_rings'] = object_data[5]
+                                occelmnt_data['object_moons'] = object_data[6]
+                                occelmnt_data['object_dra'] = object_data[7]  # s/hr
+                                occelmnt_data['object_ddec'] = object_data[8]  # arcsec/hr
+                                occelmnt_data['object_taxonomic_class'] = object_data[9]
+                                occelmnt_data['object_diameter_uncertainty'] = object_data[10]
+                                occelmnt_data['object_moon_shadow_flag'] = object_data[11]
+                                occelmnt_data['object_mag_v'] = object_data[12]  # V magnitude
+                                occelmnt_data['object_mag_r'] = object_data[13]  # R magnitude
+                                occelmnt_data['object_unknown_14'] = object_data[14]
+                            
+                            # Elements data (14 fields) - ACTUAL FORMAT from real data
+                            # Index 0: Source/ephemeris string (e.g., "JPL#29:2025-02-13@2025-12-30[OWC]")
+                            # Index 1: Duration in seconds
+                            # Indices 2-5: Event date/time (year, month, day, hours)
+                            # Indices 6-11: Motion coefficients (dX, dY, d2X, d2Y, d3X, d3Y)
+                            # Indices 12-13: Unknown (possibly higher-order terms)
+                            if len(elements) >= 14:
+                                occelmnt_data['event_ephemeris_source'] = elements[0]
+                                occelmnt_data['event_duration_sec'] = elements[1]
+                                occelmnt_data['event_year'] = elements[2]
+                                occelmnt_data['event_month'] = elements[3]
+                                occelmnt_data['event_day'] = elements[4]
+                                occelmnt_data['event_hours'] = elements[5]
+                                occelmnt_data['motion_dx'] = elements[6]
+                                occelmnt_data['motion_dy'] = elements[7]
+                                occelmnt_data['motion_d2x'] = elements[8]
+                                occelmnt_data['motion_d2y'] = elements[9]
+                                occelmnt_data['motion_d3x'] = elements[10]
+                                occelmnt_data['motion_d3y'] = elements[11]
+                                occelmnt_data['elements_unknown_12'] = elements[12]
+                                occelmnt_data['elements_unknown_13'] = elements[13]
+                            
+                            # Errors data (10 fields) - optional quality flags
+                            try:
+                                errors = eventOccelmnt['Occultations']['Event']['Errors'].split(',')
+                                if len(errors) >= 10:
+                                    occelmnt_data['error_path_width_unc'] = errors[0]  # Fraction of path width
+                                    occelmnt_data['error_ellipse_major'] = errors[1]  # arcsec
+                                    occelmnt_data['error_ellipse_minor'] = errors[2]  # arcsec
+                                    occelmnt_data['error_ellipse_pa'] = errors[3]  # degrees
+                                    occelmnt_data['error_position_1sigma'] = errors[4]  # arcsec
+                                    occelmnt_data['error_basis_description'] = errors[5]  # String
+                                    occelmnt_data['quality_ruwe'] = errors[6]
+                                    occelmnt_data['quality_duplicate_source'] = errors[7]
+                                    occelmnt_data['quality_no_pm'] = errors[8]
+                                    occelmnt_data['quality_ucac4_pm'] = errors[9]
+                            except (KeyError, IndexError):
+                                pass  # Errors section is optional
+                            
+                            # Earth data (5 fields) - optional observer geocentric position
+                            try:
+                                earth = eventOccelmnt['Occultations']['Event']['Earth'].split(',')
+                                if len(earth) >= 5:
+                                    occelmnt_data['earth_x'] = earth[0]
+                                    occelmnt_data['earth_y'] = earth[1]
+                                    occelmnt_data['earth_z'] = earth[2]
+                                    occelmnt_data['earth_vx'] = earth[3]
+                                    occelmnt_data['earth_vy'] = earth[4]
+                            except (KeyError, IndexError):
+                                pass  # Earth section is optional
+                            
+                            # Orbit data (6 fields) - optional orbital elements
+                            try:
+                                orbit = eventOccelmnt['Occultations']['Event']['Orbit'].split(',')
+                                if len(orbit) >= 6:
+                                    occelmnt_data['orbit_a'] = orbit[0]
+                                    occelmnt_data['orbit_e'] = orbit[1]
+                                    occelmnt_data['orbit_i'] = orbit[2]
+                                    occelmnt_data['orbit_node'] = orbit[3]
+                                    occelmnt_data['orbit_peri'] = orbit[4]
+                                    occelmnt_data['orbit_m'] = orbit[5]
+                            except (KeyError, IndexError):
+                                pass  # Orbit section is optional
+                            
+                        except (KeyError, IndexError, AttributeError) as e:
+                            print(f"Warning: Error parsing Occelmnt data for event {eventId}: {e}")
+                            # Keep default values (empty strings and dict)
 
                     # Calculate exposure using config values
                     mag_ref = config.get_mag_for_40ms_exposure()
@@ -275,6 +386,11 @@ class EventProcessor:
                         'star_id': star_id, 'object_no': object_no, 'object_name': name, 'exposure': exposure,
                         'elevation': elevation, 'obs_location': obs_location
                     }
+                    
+                    # Add Occelmnt data fields if available
+                    if occelmnt_data:
+                        occultation['occelmnt_data'] = occelmnt_data
+                    
                     if owcloudurl:
                         occultation['owcloudurl'] = owcloudurl
 

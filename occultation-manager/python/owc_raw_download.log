@@ -5,40 +5,40 @@ Number of events: 2
 
 
 --------------------------------------------------------------------------------
-Event: (165690) 2001 PA3
+Event: (119355) 2001 SU232
 Station: Camilleri M Home
 
 All station keys: ['ChordOffsetKm', 'CloudCover', 'CombMag', 'CountryCode', 'ErrorInTimeSec', 'EventTimeUtc', 'HighCloud', 'IsOwnStation', 'IsPrimaryStation', 'Latitude', 'Longitude', 'MoonAlt', 'MoonAz', 'MoonDist', 'MoonPhase', 'OccultDistanceKm', 'Report', 'ReportComment', 'ReportedDuration', 'StarAlt', 'StarAz', 'StarColour', 'StateCode', 'StationId', 'StationName', 'StationPos', 'SunAlt', 'TempDegC', 'WeatherInfoAvailable', 'Wind']
 
 All station data:
-  ChordOffsetKm = -8.9000000000000004
-  CloudCover = 10
-  CombMag = 13.69
+  ChordOffsetKm = 27.399999999999999
+  CloudCover = 2
+  CombMag = 13.5
   CountryCode = None
-  ErrorInTimeSec = 0.80000000000000004
-  EventTimeUtc = 2025-12-23T09:28:50.247
+  ErrorInTimeSec = 4.2000000000000002
+  EventTimeUtc = 2025-12-30T11:17:45.453
   HighCloud = False
   IsOwnStation = True
   IsPrimaryStation = True
   Latitude = -36.835560000000001
   Longitude = 174.65780000000001
-  MoonAlt = 7.7999999999999998
-  MoonAz = 250.09999999999999
-  MoonDist = 93.0
-  MoonPhase = 1.0
-  OccultDistanceKm = -9.0
+  MoonAlt = 20.399999999999999
+  MoonAz = 318.0
+  MoonDist = 43.0
+  MoonPhase = 7.0
+  OccultDistanceKm = 56.700000000000003
   Report = 0
   ReportComment = None
   ReportedDuration = None
-  StarAlt = 24.899999999999999
-  StarAz = 347.0
-  StarColour = 3
+  StarAlt = 29.0
+  StarAz = 5.4000000000000004
+  StarColour = 4
   StateCode = None
   StationId = 1
   StationName = Camilleri M Home
-  StationPos = 2
-  SunAlt = -16.899999999999999
-  TempDegC = 20
+  StationPos = 1
+  SunAlt = -27.800000000000001
+  TempDegC = 18
   WeatherInfoAvailable = True
   Wind = 3
 
@@ -48,42 +48,42 @@ ELEVATION FIELD CHECK:
   'Height' field NOT FOUND
 
 --------------------------------------------------------------------------------
-Event: (230656) Kovacspal
+Event: (272097) 2005 GY69
 Station: Camilleri M Home
 
 All station keys: ['ChordOffsetKm', 'CloudCover', 'CombMag', 'CountryCode', 'ErrorInTimeSec', 'EventTimeUtc', 'HighCloud', 'IsOwnStation', 'IsPrimaryStation', 'Latitude', 'Longitude', 'MoonAlt', 'MoonAz', 'MoonDist', 'MoonPhase', 'OccultDistanceKm', 'Report', 'ReportComment', 'ReportedDuration', 'StarAlt', 'StarAz', 'StarColour', 'StateCode', 'StationId', 'StationName', 'StationPos', 'SunAlt', 'TempDegC', 'WeatherInfoAvailable', 'Wind']
 
 All station data:
-  ChordOffsetKm = -8.1999999999999993
-  CloudCover = 0
-  CombMag = 12.800000000000001
+  ChordOffsetKm = 8.6999999999999993
+  CloudCover = 2
+  CombMag = 12.0
   CountryCode = None
-  ErrorInTimeSec = 5.9000000000000004
-  EventTimeUtc = 2025-12-24T11:26:59.948
+  ErrorInTimeSec = 4.2999999999999998
+  EventTimeUtc = 2025-12-30T11:53:35.839
   HighCloud = False
   IsOwnStation = True
   IsPrimaryStation = True
   Latitude = -36.835560000000001
   Longitude = 174.65780000000001
-  MoonAlt = -8.0999999999999996
-  MoonAz = 243.69999999999999
-  MoonDist = 108.0
-  MoonPhase = 1.0
-  OccultDistanceKm = -29.0
+  MoonAlt = 15.4
+  MoonAz = 311.30000000000001
+  MoonDist = 50.0
+  MoonPhase = 7.0
+  OccultDistanceKm = 21.699999999999999
   Report = 0
   ReportComment = None
   ReportedDuration = None
-  StarAlt = 14.9
-  StarAz = 350.19999999999999
-  StarColour = 3
+  StarAlt = 23.199999999999999
+  StarAz = 4.2999999999999998
+  StarColour = 5
   StateCode = None
   StationId = 1
   StationName = Camilleri M Home
   StationPos = 1
-  SunAlt = -28.199999999999999
-  TempDegC = 0
-  WeatherInfoAvailable = False
-  Wind = 0
+  SunAlt = -29.5
+  TempDegC = 18
+  WeatherInfoAvailable = True
+  Wind = 3
 
 ELEVATION FIELD CHECK:
   'Elevation' field NOT FOUND
