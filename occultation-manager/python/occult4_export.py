@@ -165,10 +165,11 @@ class Occult4Exporter:
         
         # Observations section
         lines.append('       <Observations>')
-        lines.append(self._build_prediction_line(event))
+        # Observer comes FIRST, then Prediction (order matters for Occult 4 parser!)
         lines.append(self._build_observer_section(event, telescope_id, camera_id, 
                                                    observation_type, tangra_data, 
                                                    aota_report_data, observer_data))
+        lines.append(self._build_prediction_line(event))
         lines.append('       </Observations>')
         
         # Added and LastEdited dates
@@ -361,8 +362,8 @@ class Occult4Exporter:
             star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
             mag_r = f'{star_mag:.2f}'
         
-        # EPIC ID (not typically used)
-        epic_id = ''
+        # EPIC ID (not typically used - default to 0)
+        epic_id = '0'
         
         star_line = (
             f'           <Star>{star_catalog}|{star_number}|{gaia_version}|{gaia_id}|'
@@ -569,29 +570,36 @@ class Occult4Exporter:
         longitude = self._format_dms(event.longitude if hasattr(event, 'longitude') else 0, is_longitude=True)
         latitude = self._format_dms(event.latitude if hasattr(event, 'latitude') else 0, is_longitude=False)
         
-        # Time - separate fields for hr, min, sec
+        # Time - format as single field with Occult 4 spacing: " h  m ss.ss" or " hh  m ss.ss"
+        # Example: " 8  2  7.88" (note leading space, double space between parts)
         if hasattr(event, 'event_datetime') and event.event_datetime:
             dt = event.event_datetime
-            hour = str(dt.hour)
-            minute = str(dt.minute)
-            # Format seconds with one decimal place: s.s
-            second = f'{dt.second + dt.microsecond/1000000.0:.1f}'
+            hour = dt.hour
+            minute = dt.minute
+            second = dt.second + dt.microsecond/1000000.0
+            # Format: H M SS.S - no leading space, single space between parts
+            seconds_str = f'{second:.2f}'.rstrip('0').rstrip('.')
+            if '.' not in seconds_str:
+                seconds_str += '.0'
+            time_str = f'{hour:d} {minute:d} {seconds_str}'
         else:
-            hour = '0'
-            minute = '0'
-            second = '0.0'
+            time_str = '0 0 0.0'
         
-        # Event comments
+        # Event comments - use occelmnt ephemeris source if available
+        occelmnt_data = event.original_data.get('occelmnt_data', {}) if hasattr(event, 'original_data') else {}
         comments = ''
+        if 'event_ephemeris_source' in occelmnt_data and occelmnt_data['event_ephemeris_source']:
+            comments = str(occelmnt_data['event_ephemeris_source'])
         
+        # Build prediction line - time is single field, then comments
         prediction_line = (
-            f'           <Prediction>{seq_num}|{longitude}|{latitude}|{hour}|{minute}|{second}|{comments}</Prediction>'
+            f'           <Prediction>{seq_num}|{longitude}|{latitude}|{time_str}|{comments}</Prediction>'
         )
         
         return prediction_line
     
     def _format_dms(self, decimal_degrees, is_longitude=True):
-        """Convert decimal degrees to DMS format: ±ddd mm ss.s"""
+        """Convert decimal degrees to DMS format: ±ddd mm ss.s (1 decimal place for seconds)"""
         is_negative = decimal_degrees < 0
         abs_degrees = abs(decimal_degrees)
         
@@ -602,11 +610,12 @@ class Occult4Exporter:
         
         sign = '-' if is_negative else '+'
         
-        # Both longitude and latitude use ss.s format (one decimal place)
+        # Occult 4 format: seconds with 1 decimal place
+        # Example: "+174 39 28.4" or "-36 50  7.4"
         if is_longitude:
-            return f'{sign}{degrees:03d} {minutes:02d} {seconds:04.1f}'
+            return f'{sign}{degrees:03d} {minutes:02d} {seconds:4.1f}'
         else:
-            return f'{sign}{degrees:02d} {minutes:02d} {seconds:04.1f}'
+            return f'{sign}{degrees:02d} {minutes:02d} {seconds:4.1f}'
     
     def _build_observer_section(self, event, telescope_id, camera_id, 
                                observation_type, tangra_data, aota_report_data, 
@@ -630,19 +639,37 @@ class Occult4Exporter:
         # Observer names
         observer1 = self.config.get_observer_name() if self.config else ''
         observer2 = ''
-        more_than_2 = ''
+        more_than_2 = '0'  # Default to 0, not empty
         
         # Override with observer_data if provided
         if observer_data:
             observer1 = observer_data.get('observer1', observer1)
             observer2 = observer_data.get('observer2', observer2)
-            more_than_2 = observer_data.get('more_than_2', more_than_2)
+            more_than_2 = observer_data.get('more_than_2', '0')  # Default to 0
         
-        # Near location
-        near_location = event.obs_location if hasattr(event, 'obs_location') and event.obs_location else ''
+        # Near location - parse from obs_location, remove country code
+        near_location = ''
+        if hasattr(event, 'obs_location') and event.obs_location:
+            # Remove common country codes like ", NZ" or ", USA"
+            loc = event.obs_location
+            if ',' in loc:
+                near_location = loc.split(',')[0].strip()
+            else:
+                near_location = loc.strip()
         
-        # State/country
-        state_country = self.config.get_observer_state() if self.config else ''
+        # State/country - try to get from obs_location or config
+        state_country = ''
+        if hasattr(event, 'obs_location') and event.obs_location:
+            # Try to extract country from obs_location (e.g., "Auckland, NZ" -> "NZ")
+            if ',' in event.obs_location:
+                parts = event.obs_location.split(',')
+                if len(parts) > 1:
+                    state_country = parts[-1].strip()
+        
+        # Fall back to config
+        if not state_country:
+            state_country = self.config.get_observer_state() if self.config else ''
+        
         if observer_data:
             state_country = observer_data.get('state_country', state_country)
         
@@ -653,23 +680,44 @@ class Occult4Exporter:
         # Altitude
         altitude = int(event.elevation) if hasattr(event, 'elevation') else 0
         
+        # DEBUG: Check elevation value
+        print("\nDEBUG: Observer ID Altitude")
+        print("  hasattr(event, 'elevation'): {}".format(hasattr(event, 'elevation')))
+        if hasattr(event, 'elevation'):
+            print("  event.elevation: {}".format(event.elevation))
+            print("  altitude (int): {}".format(altitude))
+        else:
+            print("  event.elevation: NOT FOUND")
+        
         # Datum
-        datum = '_'  # WGS84
+        datum = ' '  # Space for WGS84 (default)
         
         # Telescope aperture and type
         telescope_aperture = ''
         telescope_type = '_'  # unstated
         
+        # DEBUG: Check telescope data
+        print("\nDEBUG: Telescope data")
+        print("  telescope_id: {}".format(telescope_id))
+        
         telescope_data = self._get_telescope_data(telescope_id)
+        print("  telescope_data: {}".format(telescope_data))
+        
         if telescope_data:
             aperture = telescope_data.get('aperture', '')
+            print("  aperture from telescope_data: '{}'".format(aperture))
             if aperture:
                 try:
-                    telescope_aperture = str(float(aperture))
-                except:
+                    # Convert from mm to cm and round to integer
+                    aperture_cm = int(round(float(aperture) / 10.0))
+                    telescope_aperture = str(aperture_cm)
+                    print("  telescope_aperture after conversion: '{}' cm".format(telescope_aperture))
+                except Exception as e:
+                    print("  ERROR converting aperture: {}".format(e))
                     pass
             
             tel_type = telescope_data.get('type', '').lower()
+            print("  telescope type from telescope_data: '{}'".format(tel_type))
             if 'refractor' in tel_type:
                 telescope_type = '1'
             elif 'newtonian' in tel_type:
@@ -678,6 +726,7 @@ class Occult4Exporter:
                 telescope_type = '3'
             elif 'dob' in tel_type:
                 telescope_type = '4'
+            print("  telescope_type code: '{}'".format(telescope_type))
         
         # Observing method
         observing_method = 'b'  # Digital SLR-camera video (default)
@@ -769,7 +818,7 @@ class Occult4Exporter:
         weight = ''
         
         # Plot code (blank to include)
-        plot_code = '_' if event_code in ['D', 'd', 'G', 'g'] else 'x'
+        plot_code = ' ' if event_code in ['D', 'd', 'G', 'g'] else 'x'
         
         d_line = f'               <D>{time_str}|{event_code}|{accuracy}|{peqn}|{weight}|{plot_code}</D>'
         
@@ -793,7 +842,7 @@ class Occult4Exporter:
         weight = ''
         
         # Plot code
-        plot_code = '_' if event_code in ['R', 'r', 'B', 'b'] else 'x'
+        plot_code = ' ' if event_code in ['R', 'r', 'B', 'b'] else 'x'
         
         r_line = f'               <R>{time_str}|{event_code}|{accuracy}|{peqn}|{weight}|{plot_code}</R>'
         
@@ -801,18 +850,27 @@ class Occult4Exporter:
     
     def _get_d_time(self, tangra_data, aota_report_data, event):
         """Get disappearance time from available data sources"""
+        # DEBUG: Check what data we received
+        print("\nDEBUG: _get_d_time called")
+        print("  aota_report_data: {}".format(aota_report_data))
+        if aota_report_data:
+            print("  'd_hours' in aota_report_data: {}".format('d_hours' in aota_report_data))
+            if 'd_hours' in aota_report_data:
+                print("    d_hours: {}".format(aota_report_data.get('d_hours')))
+                print("    d_minutes: {}".format(aota_report_data.get('d_minutes')))
+                print("    d_seconds: {}".format(aota_report_data.get('d_seconds')))
+        
         # Try AOTA report data first (has d_hours, d_minutes, d_seconds)
         if aota_report_data and 'd_hours' in aota_report_data:
-            hours = str(aota_report_data.get('d_hours', '0')).zfill(2)
-            minutes = str(aota_report_data.get('d_minutes', '0')).zfill(2)
-            seconds = str(aota_report_data.get('d_seconds', '0.0'))
-            # Ensure seconds has proper format (at least .xx)
-            if '.' not in seconds:
-                seconds = seconds.zfill(2) + '.00'
-            else:
-                parts = seconds.split('.')
-                seconds = parts[0].zfill(2) + '.' + parts[1].ljust(2, '0')[:2]
-            return f'{hours} {minutes} {seconds}'
+            hours = int(aota_report_data.get('d_hours', 0))
+            minutes = int(aota_report_data.get('d_minutes', 0))
+            seconds = float(aota_report_data.get('d_seconds', 0.0))
+            # Occult 4 format: H M SS.S - no leading space, single space between parts
+            # Format seconds with appropriate decimal places (remove trailing zeros)
+            seconds_str = f'{seconds:.2f}'.rstrip('0').rstrip('.')
+            if '.' not in seconds_str:
+                seconds_str += '.0'  # Ensure at least one decimal place
+            return f'{hours:d} {minutes:d} {seconds_str}'
         
         # Tangra data doesn't have d_time - skip it
         # Note: Tangra CSV only has observation start/end times, not event times
@@ -821,24 +879,36 @@ class Occult4Exporter:
         if hasattr(event, 'event_datetime') and event.event_datetime:
             dt = event.event_datetime
             seconds_with_fraction = dt.second + dt.microsecond / 1000000.0
-            return f'{dt.hour:02d} {dt.minute:02d} {seconds_with_fraction:05.2f}'
+            seconds_str = f'{seconds_with_fraction:.2f}'.rstrip('0').rstrip('.')
+            if '.' not in seconds_str:
+                seconds_str += '.0'
+            return f'{dt.hour:d} {dt.minute:d} {seconds_str}'
         
-        return '00 00 00.00'
+        return '0 0 0.0'
     
     def _get_r_time(self, tangra_data, aota_report_data, event):
         """Get reappearance time from available data sources"""
+        # DEBUG: Check what data we have
+        print("\nDEBUG: _get_r_time called")
+        print("  aota_report_data: {}".format(aota_report_data))
+        if aota_report_data:
+            print("  'r_hours' in aota_report_data: {}".format('r_hours' in aota_report_data))
+            if 'r_hours' in aota_report_data:
+                print("    r_hours: {}".format(aota_report_data.get('r_hours')))
+                print("    r_minutes: {}".format(aota_report_data.get('r_minutes')))
+                print("    r_seconds: {}".format(aota_report_data.get('r_seconds')))
+        
         # Try AOTA report data first (has r_hours, r_minutes, r_seconds)
         if aota_report_data and 'r_hours' in aota_report_data:
-            hours = str(aota_report_data.get('r_hours', '0')).zfill(2)
-            minutes = str(aota_report_data.get('r_minutes', '0')).zfill(2)
-            seconds = str(aota_report_data.get('r_seconds', '0.0'))
-            # Ensure seconds has proper format (at least .xx)
-            if '.' not in seconds:
-                seconds = seconds.zfill(2) + '.00'
-            else:
-                parts = seconds.split('.')
-                seconds = parts[0].zfill(2) + '.' + parts[1].ljust(2, '0')[:2]
-            return f'{hours} {minutes} {seconds}'
+            hours = int(aota_report_data.get('r_hours', 0))
+            minutes = int(aota_report_data.get('r_minutes', 0))
+            seconds = float(aota_report_data.get('r_seconds', 0.0))
+            # Occult 4 format: H M SS.S - no leading space, single space between parts
+            # Format seconds with appropriate decimal places (remove trailing zeros)
+            seconds_str = f'{seconds:.2f}'.rstrip('0').rstrip('.')
+            if '.' not in seconds_str:
+                seconds_str += '.0'  # Ensure at least one decimal place
+            return f'{hours:d} {minutes:d} {seconds_str}'
         
         # Tangra data doesn't have r_time - skip it
         # Note: Tangra CSV only has observation start/end times, not event times
@@ -848,9 +918,12 @@ class Occult4Exporter:
             from datetime import timedelta
             dt = event.event_datetime + timedelta(seconds=event.event_duration)
             seconds_with_fraction = dt.second + dt.microsecond / 1000000.0
-            return f'{dt.hour:02d} {dt.minute:02d} {seconds_with_fraction:05.2f}'
+            seconds_str = f'{seconds_with_fraction:.2f}'.rstrip('0').rstrip('.')
+            if '.' not in seconds_str:
+                seconds_str += '.0'
+            return f'{dt.hour:d} {dt.minute:d} {seconds_str}'
         
-        return '00 00 00.00'
+        return '0 0 0.0'
     
     def _format_time_hms(self, time_value):
         """Format time value to hh mm ss.ss format"""

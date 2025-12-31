@@ -1,0 +1,33 @@
+<AsteroidOccultations>
+  <FileVersion>2.15</FileVersion>
+  <Event>
+    <Date>2024|6|27|8.0</Date>
+    <Details>
+      <Star>UCAC4|260-126299|3|5962282228962714112|17.6137084068|-38.076709899|0.47|0.32|0.00|0|17.64209978|-38.0927604|16.33|15.83|15.08|0</Star>
+        <StarIssues>0.95|0|0|0|1.20|10|0.00|0.00|0.00|0.00|</StarIssues>
+      <Asteroid>778|Theobalda|-8.95963574|2.07578145|0.0010665|0.0013935|0.0000013|-0.0000001|2.93202|-0.00012|61.1|3.0|15.70</Asteroid>
+      <EventFits>
+        <SolveFlags>1|1|0|0|0|1|0|0|0</SolveFlags>
+        <EllipticFit>0.0|0.0|61.1|61.1|0.0|1|1|0|0.0|0.0</EllipticFit>
+        <EllipseUncertainty>0.1|0.5|||</EllipseUncertainty>
+      </EventFits>
+      <Astrometry>
+        <ReferenceTime>2024|6|27|8.0350877|0.203|0.01</ReferenceTime>
+        <MainBody>778|-4109.8|-1118.1|-1.8908|-0.5082|0.0112|0.0112|0|1|0|f4|2.9|23.9|0.00|0.00|9.00|-9.00</MainBody>
+        <MainAtConjunction>778|-455.2|-1964.8|2024|6|27.3321306|0.0000022|1.4|0.9270|11.2|193.215|0</MainAtConjunction>
+        <MPC>2025 5 1||LlYIs75V0000GT5o01000001r</MPC>
+      </Astrometry>
+    </Details>
+    <Observations>
+      <Observer>
+        <ID>1|M Camilleri||0|Auckland|NZ|+174 39 28.4|-36 50  7.4|21| |24|3|a|a</ID>
+        <Conditions>2|1|4.1||</Conditions>
+        <D> 8  2  4.6|D|0.2||| </D>
+        <R> 8  2  8.0|R|0.2||| </R>
+      </Observer>
+      <Prediction>2|+174 43 45. |-36 37 30. | 8  2  7.88|JPL#61+Ephem</Prediction>
+    </Observations>
+    <Added>2025|12|30</Added>
+    <LastEdited>2024|7|17</LastEdited>
+  </Event>
+</AsteroidOccultations>
