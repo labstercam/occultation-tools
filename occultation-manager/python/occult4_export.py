@@ -621,7 +621,9 @@ class Occult4Exporter:
         if observer_data:
             observer1 = observer_data.get('observer1', observer1)
             observer2 = observer_data.get('observer2', observer2)
-            more_than_2 = observer_data.get('more_than_2', '0')  # Default to 0
+            more_than_2_override = observer_data.get('more_than_2', '')
+            if more_than_2_override:  # Only use if provided
+                more_than_2 = more_than_2_override
         
         # Near location - parse from obs_location, remove country code
         near_location = ''
@@ -632,6 +634,10 @@ class Occult4Exporter:
                 near_location = loc.split(',')[0].strip()
             else:
                 near_location = loc.strip()
+        
+        # Override with observer_data if provided and not empty
+        if observer_data and observer_data.get('near_location'):
+            near_location = observer_data.get('near_location')
         
         # State/country - try to get from obs_location or config
         state_country = ''
@@ -646,8 +652,9 @@ class Occult4Exporter:
         if not state_country:
             state_country = self.config.get_observer_state() if self.config else ''
         
-        if observer_data:
-            state_country = observer_data.get('state_country', state_country)
+        # Override with observer_data if provided and not empty
+        if observer_data and observer_data.get('state_country'):
+            state_country = observer_data.get('state_country')
         
         # Coordinates
         longitude = self._format_dms(event.longitude if hasattr(event, 'longitude') else 0, is_longitude=True)
