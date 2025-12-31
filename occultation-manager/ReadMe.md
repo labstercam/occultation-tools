@@ -13,7 +13,11 @@ SharpCap Occultation Manager automates the complete occultation observation work
 - Single comprehensive dialog workflow (replaces 5 separate dialogs)
 - Integrates AOTA timing data for D/R times
 - Imports Tangra CSV light curves for observation timing and camera delay
-- Supports North America (IOTA V5.6.12r) and Trans-Tasman (RASNZ V4.1.2.G) formats
+- Supports multiple output formats:
+  - North America (IOTA V5.6.12r) - Excel
+  - Trans-Tasman (RASNZ V4.1.2.G) - Excel
+  - Occult 4 XML Export (Version 2.15+) - OBS.XML format
+- All formats generated in same workflow using shared data
 - Auto-fills observer, telescope, and camera information
 - Remembers report type and folder location for faster workflow
 
@@ -41,8 +45,8 @@ SharpCap Occultation Manager automates the complete occultation observation work
 1. **Download Events**: Sync with Occult Watcher Cloud to get your announced stations
 2. **Generate Sequences**: Create SharpCap sequences for automated recording
 3. **Record Event**: Run the sequence to capture the occultation
-4. **Analyze in Tangra**: Process video to generate light curve CSV
-5. **Generate Report**: One-click report generation with integrated AOTA and Tangra data
+4. **Analyze in Tangra**: Process video to generate light curve CSV and AOTA report
+5. **Generate Reports**: One-click generation of Excel reports (NA/TT) and/or Occult 4 XML with integrated AOTA and Tangra data
 
 ## Installation
 ## Installation

@@ -39,6 +39,42 @@ IronPython (used by SharpCap) cannot load C extensions. Popular libraries like `
 - Uses template: `TransTasman_AstReportForm_V4.1.2.G.xlsx`
 - Similar structure with regional-specific fields
 
+**occult4_export.py** - Occult 4 XML Export (Version 2.15+)
+- Generates OBS.XML files compatible with Occult 4 software
+- Integrated into report workflow alongside NA and TT reports
+- Uses data already collected from AOTA reports and Tangra analysis
+- Exports single observation data in standardized XML format for IOTA
+
+**Key Features**:
+- Automatic filename generation matching observation details
+- Precision coordinate handling (J2000 vs Apparent RA/Dec)
+- Telescope aperture conversion (mm to cm, rounded to integer)
+- Variable precision time formatting (removes trailing zeros)
+- Timing accuracy from AOTA report uncertainties
+- Observer location extraction from geocoded data
+- Equipment type code mapping (telescope, camera, timing)
+
+**Data Sources**:
+1. AOTA Report: D/R times, uncertainties, SNR
+2. Tangra CSV: Observation start/end times, exposure, camera delay
+3. Event data: Star/asteroid coordinates, prediction times
+4. Configuration: Observer details, telescope/camera specifications
+5. Occelmnt data: Preferred source for astrometric data
+
+**Exported Data Structure**:
+- Star section: J2000 and apparent coordinates, magnitudes, uncertainties
+- Asteroid section: Object details, motion vectors, ephemeris source
+- Date section: Observation date in yyyy mm dd format
+- Observations section: Observer ID, prediction, D/R event times with accuracies
+- Conditions section: Seeing, transparency, SNR
+
+**Format Notes**:
+- Time format: `H M SS.S` (no leading zeros, variable decimal precision)
+- Coordinate format: `±ddd mm ss.s` (1 decimal place for seconds)
+- Telescope aperture: Integer cm (converted from mm configuration)
+- Plot codes: Space character for included events
+- All timing uses observed AOTA times when available, falls back to predictions
+
 #### Timing Integration
 
 **light_curves_iron.py** - IronPython-Compatible Timing Analysis
