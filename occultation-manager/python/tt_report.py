@@ -275,11 +275,11 @@ class TTReportGenerator(ReportGeneratorBase):
         # Camera/detector info
         camera = self.get_camera_data(self._report_camera_id)
         if camera:
-            timing = camera.get('timing_tt', camera.get('timing', 'GPS - other linking'))
+            timing = camera.get('timing', 'GPS - other linking')
             if timing:
                 replacements['{{TIMING}}'] = timing
             
-            timing_device = camera.get('timing_device_tt', camera.get('timing_device', 'SharpCap'))
+            timing_device = camera.get('timing_device', 'SharpCap')
             if timing_device:
                 replacements['{{TIMING_DEVICE}}'] = timing_device
             
