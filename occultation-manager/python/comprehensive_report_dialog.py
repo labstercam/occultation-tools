@@ -356,28 +356,52 @@ class ComprehensiveReportDialog(Form):
             
             self.combo_telescope.SelectedIndex = selected_index
         
-        # Load cameras
+        # Load cameras - FILTER BY CURRENT REPORT TYPE
         self.combo_camera.Items.Clear()
-        cameras = self.config.get_cameras()
+        all_cameras = self.config.get_cameras()
+        
+        # Determine current report type
+        if self.rb_na.Checked:
+            current_report_type = 'NA'
+        elif self.rb_tt.Checked:
+            current_report_type = 'TT'
+        else:
+            current_report_type = None  # No report type selected yet
+        
+        # Filter cameras by report_type (exact match only)
+        if current_report_type:
+            cameras = [c for c in all_cameras 
+                      if c.get('report_type', 'NA') == current_report_type]
+        else:
+            cameras = all_cameras  # Show all if no report type selected
+        
         active_camera = self.config.get_active_camera()
         active_cam_id = active_camera.get('id') if active_camera else None
         
         if not cameras:
-            # Add placeholder when no cameras configured
-            self.combo_camera.Items.Add("No cameras configured - click Manage...")
+            # No cameras match this report type
+            msg = f"No cameras for {current_report_type} - click Manage..." if current_report_type else "No cameras configured - click Manage..."
+            self.combo_camera.Items.Add(msg)
             self.combo_camera.SelectedIndex = 0
             self.combo_camera.Enabled = False
         else:
             self.combo_camera.Enabled = True
             selected_index = 0
+            active_found = False
+            
             for i, camera in enumerate(cameras):
                 name = camera.get('name', 'Unnamed')
                 if camera.get('id') == active_cam_id:
                     name = "★ " + name
                     selected_index = i
+                    active_found = True
                 self.combo_camera.Items.Add(name)
             
-            self.combo_camera.SelectedIndex = selected_index
+            # Only select active if it's in this filtered list
+            if active_found:
+                self.combo_camera.SelectedIndex = selected_index
+            elif cameras:
+                self.combo_camera.SelectedIndex = 0
     
     def manage_telescopes_click(self, sender, e):
         """Open telescope management dialog"""
@@ -395,6 +419,7 @@ class ComprehensiveReportDialog(Form):
     
     def report_type_changed(self, sender, e):
         """Handle report type radio button change"""
+        self.load_equipment()  # Reload to filter cameras by report type
         self.update_button_state()
     
     def equipment_changed(self, sender, e):
@@ -574,7 +599,15 @@ class ComprehensiveReportDialog(Form):
         
         # Equipment
         telescopes = self.config.get_telescopes()
-        cameras = self.config.get_cameras()
+        all_cameras = self.config.get_cameras()
+        
+        # Filter cameras by report type (exact match only)
+        if self.report_type == 'north_america':
+            cameras = [c for c in all_cameras if c.get('report_type', 'NA') == 'NA']
+        elif self.report_type == 'trans_tasman':
+            cameras = [c for c in all_cameras if c.get('report_type', 'NA') == 'TT']
+        else:
+            cameras = all_cameras
         
         if self.combo_telescope.SelectedIndex >= 0 and self.combo_telescope.SelectedIndex < len(telescopes):
             telescope = telescopes[self.combo_telescope.SelectedIndex]

@@ -481,7 +481,7 @@ class ConfigManager:
         cameras = self.get_cameras()
         return cameras[0] if cameras else None
     
-    def add_camera(self, name, detector, timing_na, timing_device_na, timing_tt, timing_device_tt, other_info='', video_format='SER', exposure_integration='Other'):
+    def add_camera(self, name, detector, report_type, timing, timing_device, other_info='', video_format='SER', exposure_integration='Other'):
         """Add a new camera configuration"""
         import uuid
         cameras = self.get_cameras()
@@ -489,10 +489,9 @@ class ConfigManager:
             'id': str(uuid.uuid4()),
             'name': name,
             'detector': detector,
-            'timing_na': timing_na,
-            'timing_device_na': timing_device_na,
-            'timing_tt': timing_tt,
-            'timing_device_tt': timing_device_tt,
+            'report_type': report_type,
+            'timing': timing,
+            'timing_device': timing_device,
             'other_info': other_info,
             'video_format': video_format,
             'exposure_integration': exposure_integration
@@ -506,17 +505,16 @@ class ConfigManager:
         
         return camera['id']
     
-    def update_camera(self, camera_id, name, detector, timing_na, timing_device_na, timing_tt, timing_device_tt, other_info='', video_format='SER', exposure_integration='Other'):
+    def update_camera(self, camera_id, name, detector, report_type, timing, timing_device, other_info='', video_format='SER', exposure_integration='Other'):
         """Update an existing camera configuration"""
         cameras = self.get_cameras()
         for camera in cameras:
             if camera.get('id') == camera_id:
                 camera['name'] = name
                 camera['detector'] = detector
-                camera['timing_na'] = timing_na
-                camera['timing_device_na'] = timing_device_na
-                camera['timing_tt'] = timing_tt
-                camera['timing_device_tt'] = timing_device_tt
+                camera['report_type'] = report_type
+                camera['timing'] = timing
+                camera['timing_device'] = timing_device
                 camera['other_info'] = other_info
                 camera['video_format'] = video_format
                 camera['exposure_integration'] = exposure_integration
