@@ -301,8 +301,8 @@ class NAReportGenerator(ReportGeneratorBase):
         # CAMERA/DETECTOR INFORMATION
         camera_data = self.get_camera_data(self._report_camera_id)
         if camera_data:
-            timing = camera_data.get('timing', 'GPS - other linking')
-            timing_device = camera_data.get('timing_device', 'SharpCap')
+            timing = camera_data.get('timing_na', camera_data.get('timing', 'GPS - other linking'))
+            timing_device = camera_data.get('timing_device_na', camera_data.get('timing_device', 'SharpCap'))
             detector = camera_data.get('detector', 'SharpCap')
             other_info = camera_data.get('other_info', '')
             video_format = camera_data.get('video_format', 'SER')
