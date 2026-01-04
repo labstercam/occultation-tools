@@ -5026,3 +5026,793 @@ All data items:
 Checking for elevation fields:
   FOUND 'elevation': 23.0
 ================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.0
+  dec = 29.815670000000001
+  elevation = 23.0
+  end_time = 2025-12-30T11:54:18
+  event_duration = 0.27000000000000002
+  event_time = 2025-12-30T11:53:35
+  event_uncertainty = 4.2999999999999998
+  exposure = 0.080000000000000002
+  goto_time = 2025-12-30T11:48:52
+  id = (272097) 2005 GY69 : UCAC4 600-032123 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 8.6999999999999993
+  name = (272097) 2005 GY69 - Camilleri M Home
+  object_name = (272097) 2005 GY69
+  object_no = 272097
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1824-272097-90208-649873-U032123/3227582', 'Orbit': '0,205.1214,2025,12,29,275.5954,339.0799,5.1487,0.09885,3.12357,2.81480,15.89,5.0,0.15', 'Object': '272097,2005 GY69,20.73,4.076,2.4303,0,0,-2.333,-0.45,,1.0,0,-5.00,-5.00,', 'Errors': '11.432,0.0363,0.0240,94,0.0241,Known errors,1.40,0,-1,-1', 'ID': '20251230_032123,61039.34', 'Elements': 'JPL#29:2025-02-13@2025-12-30[OWC],0.27,2025,12,30,11.8859722,0.0134495,-0.9154475,-8.3938294,-0.1233742,0.0004315,-0.0007008,0.0000014,0.0000000', 'Earth': '178.2446,29.8038,2.37,-23.13,False', 'Star': 'UCAC4 600-032123,6.35261365,29.8156699,12.89,12.02,11.11,0.1,0,,6.38088234,29.8038151,8.71,9.17,0,0,0'}}}
+  occelmnt_data = {'event_hours': '11.8859722', 'star_mag_drops_adjusted': '8.71', 'quality_ruwe': '1.40', 'object_diameter_uncertainty': '1.0', 'star_ra_j2000': '6.35261365', 'object_mag_r': '-5.00', 'star_unknown_14': '0', 'object_dra': '-2.333', 'star_diameter_mas': '0.1', 'earth_vx': '-23.13', 'object_diameter_km': '4.076', 'object_distance_au': '2.4303', 'event_duration_sec': '0.27', 'event_ephemeris_source': 'JPL#29:2025-02-13@2025-12-30[OWC]', 'object_ddec': '-0.45', 'object_name': '2005 GY69', 'star_mag_r': '11.11', 'object_mag_v': '-5.00', 'star_ra_apparent': '6.38088234', 'orbit_m': '275.5954', 'object_rings': '0', 'object_moon_shadow_flag': '0', 'star_total_nearby_count': '0', 'motion_d2x': '-8.3938294', 'motion_dx': '0.0134495', 'earth_y': '29.8038', 'star_unknown_15': '0', 'error_ellipse_minor': '0.0240', 'earth_vy': 'False', 'object_taxonomic_class': '', 'elements_unknown_12': '0.0000014', 'orbit_a': '0', 'event_year': '2025', 'motion_d3y': '-0.0007008', 'quality_duplicate_source': '0', 'motion_d2y': '-0.1233742', 'quality_ucac4_pm': '-1', 'earth_x': '178.2446', 'star_double_flag': '0', 'orbit_i': '2025', 'error_ellipse_pa': '94', 'event_month': '12', 'star_bright_nearby_count': '9.17', 'star_identifier': 'UCAC4 600-032123', 'orbit_e': '205.1214', 'star_mag_v': '12.02', 'motion_dy': '-0.9154475', 'error_position_1sigma': '0.0241', 'motion_d3x': '0.0004315', 'event_day': '30', 'error_basis_description': 'Known errors', 'orbit_peri': '29', 'star_dec_apparent': '29.8038151', 'error_path_width_unc': '11.432', 'object_number': '272097', 'elements_unknown_13': '0.0000000', 'star_mag_b': '12.89', 'object_moons': '0', 'star_dec_j2000': '29.8156699', 'orbit_node': '12', 'object_unknown_14': '', 'object_magnitude': '20.73', 'quality_no_pm': '-1', 'error_ellipse_major': '0.0363', 'star_k2_flag': '', 'earth_z': '2.37'}
+  ow_eventid = 3da9c182-4344-4b29-bc64-d33c307906f4
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-272097-90208-649873-U032123/3227582
+  ra = 6.3526129999999998
+  recording_duration = 86
+  source = OWCloud
+  star_alt = 23.199999999999999
+  star_az = 4.2999999999999998
+  star_id = UCAC4 600-032123
+  star_mag = 12.0
+  start_time = 2025-12-30T11:52:52
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.5
+  dec = 23.952359999999999
+  elevation = 23.0
+  end_time = 2025-12-30T11:18:27
+  event_duration = 0.40999999999999998
+  event_time = 2025-12-30T11:17:45
+  event_uncertainty = 4.2000000000000002
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-30T11:13:02
+  id = (119355) 2001 SU232 : UCAC4 570-020044 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.9000000000000004
+  name = (119355) 2001 SU232 - Camilleri M Home
+  object_name = (119355) 2001 SU232
+  object_no = 119355
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1824-119355-82281-649506-U020044/3227581', 'Orbit': '0,10.9345,2025,12,30,358.9547,80.3185,1.7946,0.04596,2.79843,2.66983,15.78,5.0,0.15', 'Object': '119355,2001 SU232,19.45,4.600,1.7016,0,0,-2.359,0.93,,0.4,0,-5.00,-5.00,', 'Errors': '7.467,0.0363,0.0240,87,0.0435,Known errors,1.90,0,-1,-1', 'ID': '20251230_020044,61039.34', 'Elements': 'JPL#31:2025-11-05@2025-12-30[OWC],0.41,2025,12,30,11.2902423,-0.0250601,-0.8743823,-6.2598050,0.1804543,0.0012051,-0.0000355,0.0000013,0.0000000', 'Earth': '178.7949,23.9621,11.30,-23.13,False', 'Star': 'UCAC4 570-020044,5.79320326,23.9523550,14.18,13.50,12.71,0.0,0,,5.82020478,23.9620864,5.95,6.29,0,0,0'}}}
+  occelmnt_data = {'event_hours': '11.2902423', 'star_mag_drops_adjusted': '5.95', 'quality_ruwe': '1.90', 'object_diameter_uncertainty': '0.4', 'star_ra_j2000': '5.79320326', 'object_mag_r': '-5.00', 'star_unknown_14': '0', 'object_dra': '-2.359', 'star_diameter_mas': '0.0', 'earth_vx': '-23.13', 'object_diameter_km': '4.600', 'object_distance_au': '1.7016', 'event_duration_sec': '0.41', 'event_ephemeris_source': 'JPL#31:2025-11-05@2025-12-30[OWC]', 'object_ddec': '0.93', 'object_name': '2001 SU232', 'star_mag_r': '12.71', 'object_mag_v': '-5.00', 'star_ra_apparent': '5.82020478', 'orbit_m': '358.9547', 'object_rings': '0', 'object_moon_shadow_flag': '0', 'star_total_nearby_count': '0', 'motion_d2x': '-6.2598050', 'motion_dx': '-0.0250601', 'earth_y': '23.9621', 'star_unknown_15': '0', 'error_ellipse_minor': '0.0240', 'earth_vy': 'False', 'object_taxonomic_class': '', 'elements_unknown_12': '0.0000013', 'orbit_a': '0', 'event_year': '2025', 'motion_d3y': '-0.0000355', 'quality_duplicate_source': '0', 'motion_d2y': '0.1804543', 'quality_ucac4_pm': '-1', 'earth_x': '178.7949', 'star_double_flag': '0', 'orbit_i': '2025', 'error_ellipse_pa': '87', 'event_month': '12', 'star_bright_nearby_count': '6.29', 'star_identifier': 'UCAC4 570-020044', 'orbit_e': '10.9345', 'star_mag_v': '13.50', 'motion_dy': '-0.8743823', 'error_position_1sigma': '0.0435', 'motion_d3x': '0.0012051', 'event_day': '30', 'error_basis_description': 'Known errors', 'orbit_peri': '30', 'star_dec_apparent': '23.9620864', 'error_path_width_unc': '7.467', 'object_number': '119355', 'elements_unknown_13': '0.0000000', 'star_mag_b': '14.18', 'object_moons': '0', 'star_dec_j2000': '23.9523550', 'orbit_node': '12', 'object_unknown_14': '', 'object_magnitude': '19.45', 'quality_no_pm': '-1', 'error_ellipse_major': '0.0363', 'star_k2_flag': '', 'earth_z': '11.30'}
+  ow_eventid = 971f1be1-610c-43ac-a555-fb8fc7dcb234
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-119355-82281-649506-U020044/3227581
+  ra = 5.7932030000000001
+  recording_duration = 85
+  source = OWCloud
+  star_alt = 29.0
+  star_az = 5.4000000000000004
+  star_id = UCAC4 570-020044
+  star_mag = 13.5
+  start_time = 2025-12-30T11:17:02
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.69
+  dec = 26.934360000000002
+  elevation = 23.0
+  end_time = 2025-12-23T09:29:20
+  event_duration = 0.73999999999999999
+  event_time = 2025-12-23T09:28:50
+  event_uncertainty = 0.80000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-23T09:24:20
+  id = (165690) 2001 PA3 : UCAC4 585-005213 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (165690) 2001 PA3 - Camilleri M Home
+  object_name = (165690) 2001 PA3
+  object_no = 165690
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1817-165690-32776-649700-U005213/3211650', 'Orbit': '0,57.1655,2025,12,23,47.4059,296.3418,10.8658,0.13594,3.24436,2.80333,14.28,5.0,0.15', 'Object': '165690,2001 PA3,19.37,4.500,2.3408,0,0,0.027,-12.90,,0.5,0,19.30,18.33,', 'Errors': '2.154,0.0032,0.0003,73,0.0032,Known errors,1.00,0,-1,-1', 'ID': '20251223_005213,61031.86', 'Elements': 'JPL#49:2025-11-27@2025-12-23[OWC],0.74,2025,12,23,9.2218370,0.1716234,0.0046681,0.0933864,-3.4357410,0.0046702,0.0007811,0.0000008,0.0000006', 'Earth': '164.2788,27.0573,41.46,-23.43,False', 'Star': 'UCAC4 585-005213,2.29318229,26.9343572,14.02,13.74,13.31,0.0,0,,2.31843120,27.0573108,5.56,5.03,0,0,0'}}}
+  ow_eventid = 30878418-e475-47bf-8cb8-59502026b8e6
+  owcloudurl = https://cloud.occultwatcher.net/event/1817-165690-32776-649700-U005213/3211650
+  ra = 2.2931819999999998
+  recording_duration = 60
+  source = OWCloud
+  star_alt = 24.899999999999999
+  star_az = 347.0
+  star_id = UCAC4 585-005213
+  star_mag = 13.699999999999999
+  start_time = 2025-12-23T09:28:20
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.800000000000001
+  dec = 37.433799999999998
+  elevation = 23.0
+  end_time = 2025-12-24T11:27:46
+  event_duration = 0.28999999999999998
+  event_time = 2025-12-24T11:26:59
+  event_uncertainty = 5.9000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-24T11:22:11
+  id = (230656) Kovacspal : UCAC4 638-017526 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 7.0
+  name = (230656) Kovacspal - Camilleri M Home
+  object_name = (230656) Kovacspal
+  object_no = 230656
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1818-230656-62808-650356-U017526/3211727', 'Orbit': '0,339.6678,2025,12,24,98.9204,7.1111,10.6265,0.14271,3.03285,2.60002,15.87,5.0,0.15', 'Object': '230656,Kovacspal,19.79,2.600,1.7200,0,0,-2.105,-7.37,Asteroid,0.4,0,-5.00,-5.00,', 'Errors': '12.678,0.0433,0.0243,74,0.5761,Star+JplPeakEphemUncert,1.00,0,0,0', 'ID': '20251224_017526,60971.29', 'Elements': 'JPL +INTG:14-Dec-2024,0.29,2025,12,24,11.4314792,0.2706931,-0.9204167,-4.9015537,-1.4409028,0.0024539,-0.0010861,0.0000013,0.0000004', 'Earth': '161.9224,37.4954,8.45,-23.41,False', 'Star': 'UCAC4 638-017526,4.41326946,37.4337964,13.26,12.79,12.16,0.0,0,,4.44273944,37.4954317,6.99,7.18,0,-1,-1'}}}
+  ow_eventid = 442c78d6-cbce-4cfa-a043-58c5b55c1747
+  owcloudurl = https://cloud.occultwatcher.net/event/1818-230656-62808-650356-U017526/3211727
+  ra = 4.4132699999999998
+  recording_duration = 95
+  source = OWCloud
+  star_alt = 14.9
+  star_az = 350.19999999999999
+  star_id = UCAC4 638-017526
+  star_mag = 12.800000000000001
+  start_time = 2025-12-24T11:26:11
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.0
+  dec = 29.815670000000001
+  elevation = 23.0
+  end_time = 2025-12-30T11:54:18
+  event_duration = 0.27000000000000002
+  event_time = 2025-12-30T11:53:35
+  event_uncertainty = 4.2999999999999998
+  exposure = 0.080000000000000002
+  goto_time = 2025-12-30T11:48:52
+  id = (272097) 2005 GY69 : UCAC4 600-032123 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 8.6999999999999993
+  name = (272097) 2005 GY69 - Camilleri M Home
+  object_name = (272097) 2005 GY69
+  object_no = 272097
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'ID': '20251230_032123,61039.34', 'OWC': '/event/1824-272097-90208-649873-U032123/3227582', 'Errors': '11.432,0.0363,0.0240,94,0.0241,Known errors,1.40,0,-1,-1', 'Orbit': '0,205.1214,2025,12,29,275.5954,339.0799,5.1487,0.09885,3.12357,2.81480,15.89,5.0,0.15', 'Star': 'UCAC4 600-032123,6.35261365,29.8156699,12.89,12.02,11.11,0.1,0,,6.38088234,29.8038151,8.71,9.17,0,0,0', 'Object': '272097,2005 GY69,20.73,4.076,2.4303,0,0,-2.333,-0.45,,1.0,0,-5.00,-5.00,', 'Elements': 'JPL#29:2025-02-13@2025-12-30[OWC],0.27,2025,12,30,11.8859722,0.0134495,-0.9154475,-8.3938294,-0.1233742,0.0004315,-0.0007008,0.0000014,0.0000000', 'Earth': '178.2446,29.8038,2.37,-23.13,False'}}}
+  occelmnt_data = {'object_number': '272097', 'error_path_width_unc': '11.432', 'motion_d2x': '-8.3938294', 'motion_d3x': '0.0004315', 'orbit_e': '205.1214', 'object_name': '2005 GY69', 'star_mag_r': '11.11', 'object_ddec': '-0.45', 'star_ra_j2000': '6.35261365', 'star_double_flag': '0', 'object_rings': '0', 'earth_y': '29.8038', 'orbit_peri': '29', 'error_position_1sigma': '0.0241', 'object_diameter_uncertainty': '1.0', 'star_identifier': 'UCAC4 600-032123', 'event_hours': '11.8859722', 'error_ellipse_major': '0.0363', 'motion_d2y': '-0.1233742', 'event_year': '2025', 'earth_vy': 'False', 'elements_unknown_13': '0.0000000', 'quality_ruwe': '1.40', 'star_dec_apparent': '29.8038151', 'star_mag_v': '12.02', 'event_duration_sec': '0.27', 'motion_dx': '0.0134495', 'object_mag_v': '-5.00', 'earth_vx': '-23.13', 'object_unknown_14': '', 'motion_d3y': '-0.0007008', 'star_bright_nearby_count': '9.17', 'object_taxonomic_class': '', 'star_mag_drops_adjusted': '8.71', 'error_ellipse_pa': '94', 'star_diameter_mas': '0.1', 'star_dec_j2000': '29.8156699', 'elements_unknown_12': '0.0000014', 'orbit_node': '12', 'quality_no_pm': '-1', 'object_distance_au': '2.4303', 'object_magnitude': '20.73', 'orbit_i': '2025', 'star_unknown_15': '0', 'orbit_m': '275.5954', 'orbit_a': '0', 'event_day': '30', 'object_mag_r': '-5.00', 'earth_x': '178.2446', 'star_ra_apparent': '6.38088234', 'earth_z': '2.37', 'object_moon_shadow_flag': '0', 'star_total_nearby_count': '0', 'quality_duplicate_source': '0', 'motion_dy': '-0.9154475', 'event_ephemeris_source': 'JPL#29:2025-02-13@2025-12-30[OWC]', 'star_unknown_14': '0', 'error_ellipse_minor': '0.0240', 'quality_ucac4_pm': '-1', 'object_diameter_km': '4.076', 'object_dra': '-2.333', 'event_month': '12', 'error_basis_description': 'Known errors', 'object_moons': '0', 'star_k2_flag': '', 'star_mag_b': '12.89'}
+  ow_eventid = 3da9c182-4344-4b29-bc64-d33c307906f4
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-272097-90208-649873-U032123/3227582
+  ra = 6.3526129999999998
+  recording_duration = 86
+  source = OWCloud
+  star_alt = 23.199999999999999
+  star_az = 4.2999999999999998
+  star_id = UCAC4 600-032123
+  star_mag = 12.0
+  start_time = 2025-12-30T11:52:52
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.5
+  dec = 23.952359999999999
+  elevation = 23.0
+  end_time = 2025-12-30T11:18:27
+  event_duration = 0.40999999999999998
+  event_time = 2025-12-30T11:17:45
+  event_uncertainty = 4.2000000000000002
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-30T11:13:02
+  id = (119355) 2001 SU232 : UCAC4 570-020044 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.9000000000000004
+  name = (119355) 2001 SU232 - Camilleri M Home
+  object_name = (119355) 2001 SU232
+  object_no = 119355
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'ID': '20251230_020044,61039.34', 'OWC': '/event/1824-119355-82281-649506-U020044/3227581', 'Errors': '7.467,0.0363,0.0240,87,0.0435,Known errors,1.90,0,-1,-1', 'Orbit': '0,10.9345,2025,12,30,358.9547,80.3185,1.7946,0.04596,2.79843,2.66983,15.78,5.0,0.15', 'Star': 'UCAC4 570-020044,5.79320326,23.9523550,14.18,13.50,12.71,0.0,0,,5.82020478,23.9620864,5.95,6.29,0,0,0', 'Object': '119355,2001 SU232,19.45,4.600,1.7016,0,0,-2.359,0.93,,0.4,0,-5.00,-5.00,', 'Elements': 'JPL#31:2025-11-05@2025-12-30[OWC],0.41,2025,12,30,11.2902423,-0.0250601,-0.8743823,-6.2598050,0.1804543,0.0012051,-0.0000355,0.0000013,0.0000000', 'Earth': '178.7949,23.9621,11.30,-23.13,False'}}}
+  occelmnt_data = {'object_number': '119355', 'error_path_width_unc': '7.467', 'motion_d2x': '-6.2598050', 'motion_d3x': '0.0012051', 'orbit_e': '10.9345', 'object_name': '2001 SU232', 'star_mag_r': '12.71', 'object_ddec': '0.93', 'star_ra_j2000': '5.79320326', 'star_double_flag': '0', 'object_rings': '0', 'earth_y': '23.9621', 'orbit_peri': '30', 'error_position_1sigma': '0.0435', 'object_diameter_uncertainty': '0.4', 'star_identifier': 'UCAC4 570-020044', 'event_hours': '11.2902423', 'error_ellipse_major': '0.0363', 'motion_d2y': '0.1804543', 'event_year': '2025', 'earth_vy': 'False', 'elements_unknown_13': '0.0000000', 'quality_ruwe': '1.90', 'star_dec_apparent': '23.9620864', 'star_mag_v': '13.50', 'event_duration_sec': '0.41', 'motion_dx': '-0.0250601', 'object_mag_v': '-5.00', 'earth_vx': '-23.13', 'object_unknown_14': '', 'motion_d3y': '-0.0000355', 'star_bright_nearby_count': '6.29', 'object_taxonomic_class': '', 'star_mag_drops_adjusted': '5.95', 'error_ellipse_pa': '87', 'star_diameter_mas': '0.0', 'star_dec_j2000': '23.9523550', 'elements_unknown_12': '0.0000013', 'orbit_node': '12', 'quality_no_pm': '-1', 'object_distance_au': '1.7016', 'object_magnitude': '19.45', 'orbit_i': '2025', 'star_unknown_15': '0', 'orbit_m': '358.9547', 'orbit_a': '0', 'event_day': '30', 'object_mag_r': '-5.00', 'earth_x': '178.7949', 'star_ra_apparent': '5.82020478', 'earth_z': '11.30', 'object_moon_shadow_flag': '0', 'star_total_nearby_count': '0', 'quality_duplicate_source': '0', 'motion_dy': '-0.8743823', 'event_ephemeris_source': 'JPL#31:2025-11-05@2025-12-30[OWC]', 'star_unknown_14': '0', 'error_ellipse_minor': '0.0240', 'quality_ucac4_pm': '-1', 'object_diameter_km': '4.600', 'object_dra': '-2.359', 'event_month': '12', 'error_basis_description': 'Known errors', 'object_moons': '0', 'star_k2_flag': '', 'star_mag_b': '14.18'}
+  ow_eventid = 971f1be1-610c-43ac-a555-fb8fc7dcb234
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-119355-82281-649506-U020044/3227581
+  ra = 5.7932030000000001
+  recording_duration = 85
+  source = OWCloud
+  star_alt = 29.0
+  star_az = 5.4000000000000004
+  star_id = UCAC4 570-020044
+  star_mag = 13.5
+  start_time = 2025-12-30T11:17:02
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.69
+  dec = 26.934360000000002
+  elevation = 23.0
+  end_time = 2025-12-23T09:29:20
+  event_duration = 0.73999999999999999
+  event_time = 2025-12-23T09:28:50
+  event_uncertainty = 0.80000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-23T09:24:20
+  id = (165690) 2001 PA3 : UCAC4 585-005213 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (165690) 2001 PA3 - Camilleri M Home
+  object_name = (165690) 2001 PA3
+  object_no = 165690
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'ID': '20251223_005213,61031.86', 'OWC': '/event/1817-165690-32776-649700-U005213/3211650', 'Errors': '2.154,0.0032,0.0003,73,0.0032,Known errors,1.00,0,-1,-1', 'Orbit': '0,57.1655,2025,12,23,47.4059,296.3418,10.8658,0.13594,3.24436,2.80333,14.28,5.0,0.15', 'Star': 'UCAC4 585-005213,2.29318229,26.9343572,14.02,13.74,13.31,0.0,0,,2.31843120,27.0573108,5.56,5.03,0,0,0', 'Object': '165690,2001 PA3,19.37,4.500,2.3408,0,0,0.027,-12.90,,0.5,0,19.30,18.33,', 'Elements': 'JPL#49:2025-11-27@2025-12-23[OWC],0.74,2025,12,23,9.2218370,0.1716234,0.0046681,0.0933864,-3.4357410,0.0046702,0.0007811,0.0000008,0.0000006', 'Earth': '164.2788,27.0573,41.46,-23.43,False'}}}
+  ow_eventid = 30878418-e475-47bf-8cb8-59502026b8e6
+  owcloudurl = https://cloud.occultwatcher.net/event/1817-165690-32776-649700-U005213/3211650
+  ra = 2.2931819999999998
+  recording_duration = 60
+  source = OWCloud
+  star_alt = 24.899999999999999
+  star_az = 347.0
+  star_id = UCAC4 585-005213
+  star_mag = 13.699999999999999
+  start_time = 2025-12-23T09:28:20
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.800000000000001
+  dec = 37.433799999999998
+  elevation = 23.0
+  end_time = 2025-12-24T11:27:46
+  event_duration = 0.28999999999999998
+  event_time = 2025-12-24T11:26:59
+  event_uncertainty = 5.9000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-24T11:22:11
+  id = (230656) Kovacspal : UCAC4 638-017526 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 7.0
+  name = (230656) Kovacspal - Camilleri M Home
+  object_name = (230656) Kovacspal
+  object_no = 230656
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'ID': '20251224_017526,60971.29', 'OWC': '/event/1818-230656-62808-650356-U017526/3211727', 'Errors': '12.678,0.0433,0.0243,74,0.5761,Star+JplPeakEphemUncert,1.00,0,0,0', 'Orbit': '0,339.6678,2025,12,24,98.9204,7.1111,10.6265,0.14271,3.03285,2.60002,15.87,5.0,0.15', 'Star': 'UCAC4 638-017526,4.41326946,37.4337964,13.26,12.79,12.16,0.0,0,,4.44273944,37.4954317,6.99,7.18,0,-1,-1', 'Object': '230656,Kovacspal,19.79,2.600,1.7200,0,0,-2.105,-7.37,Asteroid,0.4,0,-5.00,-5.00,', 'Elements': 'JPL +INTG:14-Dec-2024,0.29,2025,12,24,11.4314792,0.2706931,-0.9204167,-4.9015537,-1.4409028,0.0024539,-0.0010861,0.0000013,0.0000004', 'Earth': '161.9224,37.4954,8.45,-23.41,False'}}}
+  ow_eventid = 442c78d6-cbce-4cfa-a043-58c5b55c1747
+  owcloudurl = https://cloud.occultwatcher.net/event/1818-230656-62808-650356-U017526/3211727
+  ra = 4.4132699999999998
+  recording_duration = 95
+  source = OWCloud
+  star_alt = 14.9
+  star_az = 350.19999999999999
+  star_id = UCAC4 638-017526
+  star_mag = 12.800000000000001
+  start_time = 2025-12-24T11:26:11
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.0
+  dec = 29.815670000000001
+  elevation = 23.0
+  end_time = 2025-12-30T11:54:18
+  event_duration = 0.27000000000000002
+  event_time = 2025-12-30T11:53:35
+  event_uncertainty = 4.2999999999999998
+  exposure = 0.080000000000000002
+  goto_time = 2025-12-30T11:48:52
+  id = (272097) 2005 GY69 : UCAC4 600-032123 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 8.6999999999999993
+  name = (272097) 2005 GY69 - Camilleri M Home
+  object_name = (272097) 2005 GY69
+  object_no = 272097
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Errors': '11.432,0.0363,0.0240,94,0.0241,Known errors,1.40,0,-1,-1', 'Elements': 'JPL#29:2025-02-13@2025-12-30[OWC],0.27,2025,12,30,11.8859722,0.0134495,-0.9154475,-8.3938294,-0.1233742,0.0004315,-0.0007008,0.0000014,0.0000000', 'Orbit': '0,205.1214,2025,12,29,275.5954,339.0799,5.1487,0.09885,3.12357,2.81480,15.89,5.0,0.15', 'Earth': '178.2446,29.8038,2.37,-23.13,False', 'Object': '272097,2005 GY69,20.73,4.076,2.4303,0,0,-2.333,-0.45,,1.0,0,-5.00,-5.00,', 'OWC': '/event/1824-272097-90208-649873-U032123/3227582', 'Star': 'UCAC4 600-032123,6.35261365,29.8156699,12.89,12.02,11.11,0.1,0,,6.38088234,29.8038151,8.71,9.17,0,0,0', 'ID': '20251230_032123,61039.34'}}}
+  occelmnt_data = {'star_ra_j2000': '6.35261365', 'object_taxonomic_class': '', 'earth_vy': 'False', 'quality_duplicate_source': '0', 'orbit_a': '0', 'star_dec_j2000': '29.8156699', 'motion_d2x': '-8.3938294', 'error_position_1sigma': '0.0241', 'object_moons': '0', 'object_diameter_uncertainty': '1.0', 'star_unknown_14': '0', 'object_rings': '0', 'star_dec_apparent': '29.8038151', 'star_unknown_15': '0', 'orbit_peri': '29', 'orbit_i': '2025', 'object_magnitude': '20.73', 'motion_dy': '-0.9154475', 'elements_unknown_13': '0.0000000', 'star_mag_b': '12.89', 'object_distance_au': '2.4303', 'object_ddec': '-0.45', 'object_name': '2005 GY69', 'error_ellipse_pa': '94', 'motion_dx': '0.0134495', 'star_k2_flag': '', 'star_mag_drops_adjusted': '8.71', 'star_identifier': 'UCAC4 600-032123', 'object_moon_shadow_flag': '0', 'star_bright_nearby_count': '9.17', 'motion_d3x': '0.0004315', 'star_mag_v': '12.02', 'quality_ruwe': '1.40', 'quality_ucac4_pm': '-1', 'object_diameter_km': '4.076', 'motion_d3y': '-0.0007008', 'error_basis_description': 'Known errors', 'object_number': '272097', 'object_dra': '-2.333', 'orbit_m': '275.5954', 'quality_no_pm': '-1', 'event_month': '12', 'star_double_flag': '0', 'event_year': '2025', 'event_day': '30', 'star_total_nearby_count': '0', 'error_ellipse_minor': '0.0240', 'earth_y': '29.8038', 'object_mag_r': '-5.00', 'error_path_width_unc': '11.432', 'elements_unknown_12': '0.0000014', 'star_ra_apparent': '6.38088234', 'event_duration_sec': '0.27', 'error_ellipse_major': '0.0363', 'motion_d2y': '-0.1233742', 'star_mag_r': '11.11', 'earth_vx': '-23.13', 'earth_z': '2.37', 'orbit_node': '12', 'event_ephemeris_source': 'JPL#29:2025-02-13@2025-12-30[OWC]', 'star_diameter_mas': '0.1', 'object_mag_v': '-5.00', 'earth_x': '178.2446', 'object_unknown_14': '', 'orbit_e': '205.1214', 'event_hours': '11.8859722'}
+  ow_eventid = 3da9c182-4344-4b29-bc64-d33c307906f4
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-272097-90208-649873-U032123/3227582
+  ra = 6.3526129999999998
+  recording_duration = 86
+  source = OWCloud
+  star_alt = 23.199999999999999
+  star_az = 4.2999999999999998
+  star_id = UCAC4 600-032123
+  star_mag = 12.0
+  start_time = 2025-12-30T11:52:52
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.5
+  dec = 23.952359999999999
+  elevation = 23.0
+  end_time = 2025-12-30T11:18:27
+  event_duration = 0.40999999999999998
+  event_time = 2025-12-30T11:17:45
+  event_uncertainty = 4.2000000000000002
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-30T11:13:02
+  id = (119355) 2001 SU232 : UCAC4 570-020044 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.9000000000000004
+  name = (119355) 2001 SU232 - Camilleri M Home
+  object_name = (119355) 2001 SU232
+  object_no = 119355
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Errors': '7.467,0.0363,0.0240,87,0.0435,Known errors,1.90,0,-1,-1', 'Elements': 'JPL#31:2025-11-05@2025-12-30[OWC],0.41,2025,12,30,11.2902423,-0.0250601,-0.8743823,-6.2598050,0.1804543,0.0012051,-0.0000355,0.0000013,0.0000000', 'Orbit': '0,10.9345,2025,12,30,358.9547,80.3185,1.7946,0.04596,2.79843,2.66983,15.78,5.0,0.15', 'Earth': '178.7949,23.9621,11.30,-23.13,False', 'Object': '119355,2001 SU232,19.45,4.600,1.7016,0,0,-2.359,0.93,,0.4,0,-5.00,-5.00,', 'OWC': '/event/1824-119355-82281-649506-U020044/3227581', 'Star': 'UCAC4 570-020044,5.79320326,23.9523550,14.18,13.50,12.71,0.0,0,,5.82020478,23.9620864,5.95,6.29,0,0,0', 'ID': '20251230_020044,61039.34'}}}
+  occelmnt_data = {'star_ra_j2000': '5.79320326', 'object_taxonomic_class': '', 'earth_vy': 'False', 'quality_duplicate_source': '0', 'orbit_a': '0', 'star_dec_j2000': '23.9523550', 'motion_d2x': '-6.2598050', 'error_position_1sigma': '0.0435', 'object_moons': '0', 'object_diameter_uncertainty': '0.4', 'star_unknown_14': '0', 'object_rings': '0', 'star_dec_apparent': '23.9620864', 'star_unknown_15': '0', 'orbit_peri': '30', 'orbit_i': '2025', 'object_magnitude': '19.45', 'motion_dy': '-0.8743823', 'elements_unknown_13': '0.0000000', 'star_mag_b': '14.18', 'object_distance_au': '1.7016', 'object_ddec': '0.93', 'object_name': '2001 SU232', 'error_ellipse_pa': '87', 'motion_dx': '-0.0250601', 'star_k2_flag': '', 'star_mag_drops_adjusted': '5.95', 'star_identifier': 'UCAC4 570-020044', 'object_moon_shadow_flag': '0', 'star_bright_nearby_count': '6.29', 'motion_d3x': '0.0012051', 'star_mag_v': '13.50', 'quality_ruwe': '1.90', 'quality_ucac4_pm': '-1', 'object_diameter_km': '4.600', 'motion_d3y': '-0.0000355', 'error_basis_description': 'Known errors', 'object_number': '119355', 'object_dra': '-2.359', 'orbit_m': '358.9547', 'quality_no_pm': '-1', 'event_month': '12', 'star_double_flag': '0', 'event_year': '2025', 'event_day': '30', 'star_total_nearby_count': '0', 'error_ellipse_minor': '0.0240', 'earth_y': '23.9621', 'object_mag_r': '-5.00', 'error_path_width_unc': '7.467', 'elements_unknown_12': '0.0000013', 'star_ra_apparent': '5.82020478', 'event_duration_sec': '0.41', 'error_ellipse_major': '0.0363', 'motion_d2y': '0.1804543', 'star_mag_r': '12.71', 'earth_vx': '-23.13', 'earth_z': '11.30', 'orbit_node': '12', 'event_ephemeris_source': 'JPL#31:2025-11-05@2025-12-30[OWC]', 'star_diameter_mas': '0.0', 'object_mag_v': '-5.00', 'earth_x': '178.7949', 'object_unknown_14': '', 'orbit_e': '10.9345', 'event_hours': '11.2902423'}
+  ow_eventid = 971f1be1-610c-43ac-a555-fb8fc7dcb234
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-119355-82281-649506-U020044/3227581
+  ra = 5.7932030000000001
+  recording_duration = 85
+  source = OWCloud
+  star_alt = 29.0
+  star_az = 5.4000000000000004
+  star_id = UCAC4 570-020044
+  star_mag = 13.5
+  start_time = 2025-12-30T11:17:02
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.69
+  dec = 26.934360000000002
+  elevation = 23.0
+  end_time = 2025-12-23T09:29:20
+  event_duration = 0.73999999999999999
+  event_time = 2025-12-23T09:28:50
+  event_uncertainty = 0.80000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-23T09:24:20
+  id = (165690) 2001 PA3 : UCAC4 585-005213 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (165690) 2001 PA3 - Camilleri M Home
+  object_name = (165690) 2001 PA3
+  object_no = 165690
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Errors': '2.154,0.0032,0.0003,73,0.0032,Known errors,1.00,0,-1,-1', 'Elements': 'JPL#49:2025-11-27@2025-12-23[OWC],0.74,2025,12,23,9.2218370,0.1716234,0.0046681,0.0933864,-3.4357410,0.0046702,0.0007811,0.0000008,0.0000006', 'Orbit': '0,57.1655,2025,12,23,47.4059,296.3418,10.8658,0.13594,3.24436,2.80333,14.28,5.0,0.15', 'Earth': '164.2788,27.0573,41.46,-23.43,False', 'Object': '165690,2001 PA3,19.37,4.500,2.3408,0,0,0.027,-12.90,,0.5,0,19.30,18.33,', 'OWC': '/event/1817-165690-32776-649700-U005213/3211650', 'Star': 'UCAC4 585-005213,2.29318229,26.9343572,14.02,13.74,13.31,0.0,0,,2.31843120,27.0573108,5.56,5.03,0,0,0', 'ID': '20251223_005213,61031.86'}}}
+  ow_eventid = 30878418-e475-47bf-8cb8-59502026b8e6
+  owcloudurl = https://cloud.occultwatcher.net/event/1817-165690-32776-649700-U005213/3211650
+  ra = 2.2931819999999998
+  recording_duration = 60
+  source = OWCloud
+  star_alt = 24.899999999999999
+  star_az = 347.0
+  star_id = UCAC4 585-005213
+  star_mag = 13.699999999999999
+  start_time = 2025-12-23T09:28:20
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.800000000000001
+  dec = 37.433799999999998
+  elevation = 23.0
+  end_time = 2025-12-24T11:27:46
+  event_duration = 0.28999999999999998
+  event_time = 2025-12-24T11:26:59
+  event_uncertainty = 5.9000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-24T11:22:11
+  id = (230656) Kovacspal : UCAC4 638-017526 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 7.0
+  name = (230656) Kovacspal - Camilleri M Home
+  object_name = (230656) Kovacspal
+  object_no = 230656
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Errors': '12.678,0.0433,0.0243,74,0.5761,Star+JplPeakEphemUncert,1.00,0,0,0', 'Elements': 'JPL +INTG:14-Dec-2024,0.29,2025,12,24,11.4314792,0.2706931,-0.9204167,-4.9015537,-1.4409028,0.0024539,-0.0010861,0.0000013,0.0000004', 'Orbit': '0,339.6678,2025,12,24,98.9204,7.1111,10.6265,0.14271,3.03285,2.60002,15.87,5.0,0.15', 'Earth': '161.9224,37.4954,8.45,-23.41,False', 'Object': '230656,Kovacspal,19.79,2.600,1.7200,0,0,-2.105,-7.37,Asteroid,0.4,0,-5.00,-5.00,', 'OWC': '/event/1818-230656-62808-650356-U017526/3211727', 'Star': 'UCAC4 638-017526,4.41326946,37.4337964,13.26,12.79,12.16,0.0,0,,4.44273944,37.4954317,6.99,7.18,0,-1,-1', 'ID': '20251224_017526,60971.29'}}}
+  ow_eventid = 442c78d6-cbce-4cfa-a043-58c5b55c1747
+  owcloudurl = https://cloud.occultwatcher.net/event/1818-230656-62808-650356-U017526/3211727
+  ra = 4.4132699999999998
+  recording_duration = 95
+  source = OWCloud
+  star_alt = 14.9
+  star_az = 350.19999999999999
+  star_id = UCAC4 638-017526
+  star_mag = 12.800000000000001
+  start_time = 2025-12-24T11:26:11
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.0
+  dec = 29.815670000000001
+  elevation = 23.0
+  end_time = 2025-12-30T11:54:18
+  event_duration = 0.27000000000000002
+  event_time = 2025-12-30T11:53:35
+  event_uncertainty = 4.2999999999999998
+  exposure = 0.080000000000000002
+  goto_time = 2025-12-30T11:48:52
+  id = (272097) 2005 GY69 : UCAC4 600-032123 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 8.6999999999999993
+  name = (272097) 2005 GY69 - Camilleri M Home
+  object_name = (272097) 2005 GY69
+  object_no = 272097
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1824-272097-90208-649873-U032123/3227582', 'Errors': '11.432,0.0363,0.0240,94,0.0241,Known errors,1.40,0,-1,-1', 'Earth': '178.2446,29.8038,2.37,-23.13,False', 'Star': 'UCAC4 600-032123,6.35261365,29.8156699,12.89,12.02,11.11,0.1,0,,6.38088234,29.8038151,8.71,9.17,0,0,0', 'Elements': 'JPL#29:2025-02-13@2025-12-30[OWC],0.27,2025,12,30,11.8859722,0.0134495,-0.9154475,-8.3938294,-0.1233742,0.0004315,-0.0007008,0.0000014,0.0000000', 'Object': '272097,2005 GY69,20.73,4.076,2.4303,0,0,-2.333,-0.45,,1.0,0,-5.00,-5.00,', 'ID': '20251230_032123,61039.34', 'Orbit': '0,205.1214,2025,12,29,275.5954,339.0799,5.1487,0.09885,3.12357,2.81480,15.89,5.0,0.15'}}}
+  occelmnt_data = {'orbit_i': '2025', 'quality_ruwe': '1.40', 'object_taxonomic_class': '', 'motion_dx': '0.0134495', 'object_dra': '-2.333', 'star_diameter_mas': '0.1', 'star_mag_drops_adjusted': '8.71', 'error_ellipse_pa': '94', 'error_position_1sigma': '0.0241', 'star_k2_flag': '', 'object_magnitude': '20.73', 'star_unknown_15': '0', 'star_bright_nearby_count': '9.17', 'earth_z': '2.37', 'event_ephemeris_source': 'JPL#29:2025-02-13@2025-12-30[OWC]', 'star_unknown_14': '0', 'elements_unknown_13': '0.0000000', 'earth_y': '29.8038', 'event_year': '2025', 'quality_ucac4_pm': '-1', 'orbit_e': '205.1214', 'orbit_a': '0', 'object_unknown_14': '', 'star_double_flag': '0', 'star_ra_j2000': '6.35261365', 'motion_d3x': '0.0004315', 'error_basis_description': 'Known errors', 'star_mag_v': '12.02', 'object_moon_shadow_flag': '0', 'star_mag_r': '11.11', 'event_month': '12', 'event_duration_sec': '0.27', 'event_hours': '11.8859722', 'star_ra_apparent': '6.38088234', 'motion_d2y': '-0.1233742', 'object_rings': '0', 'orbit_peri': '29', 'object_name': '2005 GY69', 'motion_d2x': '-8.3938294', 'object_diameter_uncertainty': '1.0', 'elements_unknown_12': '0.0000014', 'quality_no_pm': '-1', 'star_dec_j2000': '29.8156699', 'star_identifier': 'UCAC4 600-032123', 'error_path_width_unc': '11.432', 'earth_vx': '-23.13', 'earth_vy': 'False', 'earth_x': '178.2446', 'star_dec_apparent': '29.8038151', 'object_moons': '0', 'error_ellipse_minor': '0.0240', 'object_diameter_km': '4.076', 'object_number': '272097', 'event_day': '30', 'star_mag_b': '12.89', 'object_distance_au': '2.4303', 'motion_d3y': '-0.0007008', 'object_mag_v': '-5.00', 'error_ellipse_major': '0.0363', 'object_mag_r': '-5.00', 'object_ddec': '-0.45', 'orbit_node': '12', 'quality_duplicate_source': '0', 'orbit_m': '275.5954', 'star_total_nearby_count': '0', 'motion_dy': '-0.9154475'}
+  ow_eventid = 3da9c182-4344-4b29-bc64-d33c307906f4
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-272097-90208-649873-U032123/3227582
+  ra = 6.3526129999999998
+  recording_duration = 86
+  source = OWCloud
+  star_alt = 23.199999999999999
+  star_az = 4.2999999999999998
+  star_id = UCAC4 600-032123
+  star_mag = 12.0
+  start_time = 2025-12-30T11:52:52
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.5
+  dec = 23.952359999999999
+  elevation = 23.0
+  end_time = 2025-12-30T11:18:27
+  event_duration = 0.40999999999999998
+  event_time = 2025-12-30T11:17:45
+  event_uncertainty = 4.2000000000000002
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-30T11:13:02
+  id = (119355) 2001 SU232 : UCAC4 570-020044 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.9000000000000004
+  name = (119355) 2001 SU232 - Camilleri M Home
+  object_name = (119355) 2001 SU232
+  object_no = 119355
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1824-119355-82281-649506-U020044/3227581', 'Errors': '7.467,0.0363,0.0240,87,0.0435,Known errors,1.90,0,-1,-1', 'Earth': '178.7949,23.9621,11.30,-23.13,False', 'Star': 'UCAC4 570-020044,5.79320326,23.9523550,14.18,13.50,12.71,0.0,0,,5.82020478,23.9620864,5.95,6.29,0,0,0', 'Elements': 'JPL#31:2025-11-05@2025-12-30[OWC],0.41,2025,12,30,11.2902423,-0.0250601,-0.8743823,-6.2598050,0.1804543,0.0012051,-0.0000355,0.0000013,0.0000000', 'Object': '119355,2001 SU232,19.45,4.600,1.7016,0,0,-2.359,0.93,,0.4,0,-5.00,-5.00,', 'ID': '20251230_020044,61039.34', 'Orbit': '0,10.9345,2025,12,30,358.9547,80.3185,1.7946,0.04596,2.79843,2.66983,15.78,5.0,0.15'}}}
+  occelmnt_data = {'orbit_i': '2025', 'quality_ruwe': '1.90', 'object_taxonomic_class': '', 'motion_dx': '-0.0250601', 'object_dra': '-2.359', 'star_diameter_mas': '0.0', 'star_mag_drops_adjusted': '5.95', 'error_ellipse_pa': '87', 'error_position_1sigma': '0.0435', 'star_k2_flag': '', 'object_magnitude': '19.45', 'star_unknown_15': '0', 'star_bright_nearby_count': '6.29', 'earth_z': '11.30', 'event_ephemeris_source': 'JPL#31:2025-11-05@2025-12-30[OWC]', 'star_unknown_14': '0', 'elements_unknown_13': '0.0000000', 'earth_y': '23.9621', 'event_year': '2025', 'quality_ucac4_pm': '-1', 'orbit_e': '10.9345', 'orbit_a': '0', 'object_unknown_14': '', 'star_double_flag': '0', 'star_ra_j2000': '5.79320326', 'motion_d3x': '0.0012051', 'error_basis_description': 'Known errors', 'star_mag_v': '13.50', 'object_moon_shadow_flag': '0', 'star_mag_r': '12.71', 'event_month': '12', 'event_duration_sec': '0.41', 'event_hours': '11.2902423', 'star_ra_apparent': '5.82020478', 'motion_d2y': '0.1804543', 'object_rings': '0', 'orbit_peri': '30', 'object_name': '2001 SU232', 'motion_d2x': '-6.2598050', 'object_diameter_uncertainty': '0.4', 'elements_unknown_12': '0.0000013', 'quality_no_pm': '-1', 'star_dec_j2000': '23.9523550', 'star_identifier': 'UCAC4 570-020044', 'error_path_width_unc': '7.467', 'earth_vx': '-23.13', 'earth_vy': 'False', 'earth_x': '178.7949', 'star_dec_apparent': '23.9620864', 'object_moons': '0', 'error_ellipse_minor': '0.0240', 'object_diameter_km': '4.600', 'object_number': '119355', 'event_day': '30', 'star_mag_b': '14.18', 'object_distance_au': '1.7016', 'motion_d3y': '-0.0000355', 'object_mag_v': '-5.00', 'error_ellipse_major': '0.0363', 'object_mag_r': '-5.00', 'object_ddec': '0.93', 'orbit_node': '12', 'quality_duplicate_source': '0', 'orbit_m': '358.9547', 'star_total_nearby_count': '0', 'motion_dy': '-0.8743823'}
+  ow_eventid = 971f1be1-610c-43ac-a555-fb8fc7dcb234
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-119355-82281-649506-U020044/3227581
+  ra = 5.7932030000000001
+  recording_duration = 85
+  source = OWCloud
+  star_alt = 29.0
+  star_az = 5.4000000000000004
+  star_id = UCAC4 570-020044
+  star_mag = 13.5
+  start_time = 2025-12-30T11:17:02
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.69
+  dec = 26.934360000000002
+  elevation = 23.0
+  end_time = 2025-12-23T09:29:20
+  event_duration = 0.73999999999999999
+  event_time = 2025-12-23T09:28:50
+  event_uncertainty = 0.80000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-23T09:24:20
+  id = (165690) 2001 PA3 : UCAC4 585-005213 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (165690) 2001 PA3 - Camilleri M Home
+  object_name = (165690) 2001 PA3
+  object_no = 165690
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1817-165690-32776-649700-U005213/3211650', 'Errors': '2.154,0.0032,0.0003,73,0.0032,Known errors,1.00,0,-1,-1', 'Earth': '164.2788,27.0573,41.46,-23.43,False', 'Star': 'UCAC4 585-005213,2.29318229,26.9343572,14.02,13.74,13.31,0.0,0,,2.31843120,27.0573108,5.56,5.03,0,0,0', 'Elements': 'JPL#49:2025-11-27@2025-12-23[OWC],0.74,2025,12,23,9.2218370,0.1716234,0.0046681,0.0933864,-3.4357410,0.0046702,0.0007811,0.0000008,0.0000006', 'Object': '165690,2001 PA3,19.37,4.500,2.3408,0,0,0.027,-12.90,,0.5,0,19.30,18.33,', 'ID': '20251223_005213,61031.86', 'Orbit': '0,57.1655,2025,12,23,47.4059,296.3418,10.8658,0.13594,3.24436,2.80333,14.28,5.0,0.15'}}}
+  ow_eventid = 30878418-e475-47bf-8cb8-59502026b8e6
+  owcloudurl = https://cloud.occultwatcher.net/event/1817-165690-32776-649700-U005213/3211650
+  ra = 2.2931819999999998
+  recording_duration = 60
+  source = OWCloud
+  star_alt = 24.899999999999999
+  star_az = 347.0
+  star_id = UCAC4 585-005213
+  star_mag = 13.699999999999999
+  start_time = 2025-12-23T09:28:20
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.800000000000001
+  dec = 37.433799999999998
+  elevation = 23.0
+  end_time = 2025-12-24T11:27:46
+  event_duration = 0.28999999999999998
+  event_time = 2025-12-24T11:26:59
+  event_uncertainty = 5.9000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-24T11:22:11
+  id = (230656) Kovacspal : UCAC4 638-017526 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 7.0
+  name = (230656) Kovacspal - Camilleri M Home
+  object_name = (230656) Kovacspal
+  object_no = 230656
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'OWC': '/event/1818-230656-62808-650356-U017526/3211727', 'Errors': '12.678,0.0433,0.0243,74,0.5761,Star+JplPeakEphemUncert,1.00,0,0,0', 'Earth': '161.9224,37.4954,8.45,-23.41,False', 'Star': 'UCAC4 638-017526,4.41326946,37.4337964,13.26,12.79,12.16,0.0,0,,4.44273944,37.4954317,6.99,7.18,0,-1,-1', 'Elements': 'JPL +INTG:14-Dec-2024,0.29,2025,12,24,11.4314792,0.2706931,-0.9204167,-4.9015537,-1.4409028,0.0024539,-0.0010861,0.0000013,0.0000004', 'Object': '230656,Kovacspal,19.79,2.600,1.7200,0,0,-2.105,-7.37,Asteroid,0.4,0,-5.00,-5.00,', 'ID': '20251224_017526,60971.29', 'Orbit': '0,339.6678,2025,12,24,98.9204,7.1111,10.6265,0.14271,3.03285,2.60002,15.87,5.0,0.15'}}}
+  ow_eventid = 442c78d6-cbce-4cfa-a043-58c5b55c1747
+  owcloudurl = https://cloud.occultwatcher.net/event/1818-230656-62808-650356-U017526/3211727
+  ra = 4.4132699999999998
+  recording_duration = 95
+  source = OWCloud
+  star_alt = 14.9
+  star_az = 350.19999999999999
+  star_id = UCAC4 638-017526
+  star_mag = 12.800000000000001
+  start_time = 2025-12-24T11:26:11
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.0
+  dec = 29.815670000000001
+  elevation = 23.0
+  end_time = 2025-12-30T11:54:18
+  event_duration = 0.27000000000000002
+  event_time = 2025-12-30T11:53:35
+  event_uncertainty = 4.2999999999999998
+  exposure = 0.080000000000000002
+  goto_time = 2025-12-30T11:48:52
+  id = (272097) 2005 GY69 : UCAC4 600-032123 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 8.6999999999999993
+  name = (272097) 2005 GY69 - Camilleri M Home
+  object_name = (272097) 2005 GY69
+  object_no = 272097
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Star': 'UCAC4 600-032123,6.35261365,29.8156699,12.89,12.02,11.11,0.1,0,,6.38088234,29.8038151,8.71,9.17,0,0,0', 'Errors': '11.432,0.0363,0.0240,94,0.0241,Known errors,1.40,0,-1,-1', 'OWC': '/event/1824-272097-90208-649873-U032123/3227582', 'Orbit': '0,205.1214,2025,12,29,275.5954,339.0799,5.1487,0.09885,3.12357,2.81480,15.89,5.0,0.15', 'Object': '272097,2005 GY69,20.73,4.076,2.4303,0,0,-2.333,-0.45,,1.0,0,-5.00,-5.00,', 'Earth': '178.2446,29.8038,2.37,-23.13,False', 'Elements': 'JPL#29:2025-02-13@2025-12-30[OWC],0.27,2025,12,30,11.8859722,0.0134495,-0.9154475,-8.3938294,-0.1233742,0.0004315,-0.0007008,0.0000014,0.0000000', 'ID': '20251230_032123,61039.34'}}}
+  occelmnt_data = {'star_ra_apparent': '6.38088234', 'error_ellipse_minor': '0.0240', 'error_position_1sigma': '0.0241', 'star_dec_apparent': '29.8038151', 'object_dra': '-2.333', 'motion_dy': '-0.9154475', 'star_diameter_mas': '0.1', 'object_moons': '0', 'earth_x': '178.2446', 'event_month': '12', 'earth_vx': '-23.13', 'error_ellipse_major': '0.0363', 'star_total_nearby_count': '0', 'error_path_width_unc': '11.432', 'earth_y': '29.8038', 'motion_d3y': '-0.0007008', 'object_mag_r': '-5.00', 'star_mag_r': '11.11', 'orbit_i': '2025', 'quality_no_pm': '-1', 'event_year': '2025', 'event_ephemeris_source': 'JPL#29:2025-02-13@2025-12-30[OWC]', 'object_number': '272097', 'star_double_flag': '0', 'motion_dx': '0.0134495', 'motion_d2y': '-0.1233742', 'object_diameter_km': '4.076', 'object_moon_shadow_flag': '0', 'orbit_node': '12', 'object_taxonomic_class': '', 'elements_unknown_13': '0.0000000', 'star_mag_drops_adjusted': '8.71', 'object_ddec': '-0.45', 'object_name': '2005 GY69', 'motion_d3x': '0.0004315', 'star_unknown_14': '0', 'star_bright_nearby_count': '9.17', 'object_magnitude': '20.73', 'event_duration_sec': '0.27', 'object_mag_v': '-5.00', 'star_identifier': 'UCAC4 600-032123', 'error_basis_description': 'Known errors', 'object_unknown_14': '', 'error_ellipse_pa': '94', 'orbit_peri': '29', 'star_mag_b': '12.89', 'star_k2_flag': '', 'orbit_a': '0', 'earth_vy': 'False', 'orbit_m': '275.5954', 'event_day': '30', 'quality_duplicate_source': '0', 'star_ra_j2000': '6.35261365', 'quality_ucac4_pm': '-1', 'earth_z': '2.37', 'elements_unknown_12': '0.0000014', 'star_unknown_15': '0', 'event_hours': '11.8859722', 'quality_ruwe': '1.40', 'orbit_e': '205.1214', 'star_dec_j2000': '29.8156699', 'motion_d2x': '-8.3938294', 'object_rings': '0', 'star_mag_v': '12.02', 'object_distance_au': '2.4303', 'object_diameter_uncertainty': '1.0'}
+  ow_eventid = 3da9c182-4344-4b29-bc64-d33c307906f4
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-272097-90208-649873-U032123/3227582
+  ra = 6.3526129999999998
+  recording_duration = 86
+  source = OWCloud
+  star_alt = 23.199999999999999
+  star_az = 4.2999999999999998
+  star_id = UCAC4 600-032123
+  star_mag = 12.0
+  start_time = 2025-12-30T11:52:52
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.5
+  dec = 23.952359999999999
+  elevation = 23.0
+  end_time = 2025-12-30T11:18:27
+  event_duration = 0.40999999999999998
+  event_time = 2025-12-30T11:17:45
+  event_uncertainty = 4.2000000000000002
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-30T11:13:02
+  id = (119355) 2001 SU232 : UCAC4 570-020044 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.9000000000000004
+  name = (119355) 2001 SU232 - Camilleri M Home
+  object_name = (119355) 2001 SU232
+  object_no = 119355
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Star': 'UCAC4 570-020044,5.79320326,23.9523550,14.18,13.50,12.71,0.0,0,,5.82020478,23.9620864,5.95,6.29,0,0,0', 'Errors': '7.467,0.0363,0.0240,87,0.0435,Known errors,1.90,0,-1,-1', 'OWC': '/event/1824-119355-82281-649506-U020044/3227581', 'Orbit': '0,10.9345,2025,12,30,358.9547,80.3185,1.7946,0.04596,2.79843,2.66983,15.78,5.0,0.15', 'Object': '119355,2001 SU232,19.45,4.600,1.7016,0,0,-2.359,0.93,,0.4,0,-5.00,-5.00,', 'Earth': '178.7949,23.9621,11.30,-23.13,False', 'Elements': 'JPL#31:2025-11-05@2025-12-30[OWC],0.41,2025,12,30,11.2902423,-0.0250601,-0.8743823,-6.2598050,0.1804543,0.0012051,-0.0000355,0.0000013,0.0000000', 'ID': '20251230_020044,61039.34'}}}
+  occelmnt_data = {'star_ra_apparent': '5.82020478', 'error_ellipse_minor': '0.0240', 'error_position_1sigma': '0.0435', 'star_dec_apparent': '23.9620864', 'object_dra': '-2.359', 'motion_dy': '-0.8743823', 'star_diameter_mas': '0.0', 'object_moons': '0', 'earth_x': '178.7949', 'event_month': '12', 'earth_vx': '-23.13', 'error_ellipse_major': '0.0363', 'star_total_nearby_count': '0', 'error_path_width_unc': '7.467', 'earth_y': '23.9621', 'motion_d3y': '-0.0000355', 'object_mag_r': '-5.00', 'star_mag_r': '12.71', 'orbit_i': '2025', 'quality_no_pm': '-1', 'event_year': '2025', 'event_ephemeris_source': 'JPL#31:2025-11-05@2025-12-30[OWC]', 'object_number': '119355', 'star_double_flag': '0', 'motion_dx': '-0.0250601', 'motion_d2y': '0.1804543', 'object_diameter_km': '4.600', 'object_moon_shadow_flag': '0', 'orbit_node': '12', 'object_taxonomic_class': '', 'elements_unknown_13': '0.0000000', 'star_mag_drops_adjusted': '5.95', 'object_ddec': '0.93', 'object_name': '2001 SU232', 'motion_d3x': '0.0012051', 'star_unknown_14': '0', 'star_bright_nearby_count': '6.29', 'object_magnitude': '19.45', 'event_duration_sec': '0.41', 'object_mag_v': '-5.00', 'star_identifier': 'UCAC4 570-020044', 'error_basis_description': 'Known errors', 'object_unknown_14': '', 'error_ellipse_pa': '87', 'orbit_peri': '30', 'star_mag_b': '14.18', 'star_k2_flag': '', 'orbit_a': '0', 'earth_vy': 'False', 'orbit_m': '358.9547', 'event_day': '30', 'quality_duplicate_source': '0', 'star_ra_j2000': '5.79320326', 'quality_ucac4_pm': '-1', 'earth_z': '11.30', 'elements_unknown_12': '0.0000013', 'star_unknown_15': '0', 'event_hours': '11.2902423', 'quality_ruwe': '1.90', 'orbit_e': '10.9345', 'star_dec_j2000': '23.9523550', 'motion_d2x': '-6.2598050', 'object_rings': '0', 'star_mag_v': '13.50', 'object_distance_au': '1.7016', 'object_diameter_uncertainty': '0.4'}
+  ow_eventid = 971f1be1-610c-43ac-a555-fb8fc7dcb234
+  owcloudurl = https://cloud.occultwatcher.net/event/1824-119355-82281-649506-U020044/3227581
+  ra = 5.7932030000000001
+  recording_duration = 85
+  source = OWCloud
+  star_alt = 29.0
+  star_az = 5.4000000000000004
+  star_id = UCAC4 570-020044
+  star_mag = 13.5
+  start_time = 2025-12-30T11:17:02
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.69
+  dec = 26.934360000000002
+  elevation = 23.0
+  end_time = 2025-12-23T09:29:20
+  event_duration = 0.73999999999999999
+  event_time = 2025-12-23T09:28:50
+  event_uncertainty = 0.80000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-23T09:24:20
+  id = (165690) 2001 PA3 : UCAC4 585-005213 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (165690) 2001 PA3 - Camilleri M Home
+  object_name = (165690) 2001 PA3
+  object_no = 165690
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Star': 'UCAC4 585-005213,2.29318229,26.9343572,14.02,13.74,13.31,0.0,0,,2.31843120,27.0573108,5.56,5.03,0,0,0', 'Errors': '2.154,0.0032,0.0003,73,0.0032,Known errors,1.00,0,-1,-1', 'OWC': '/event/1817-165690-32776-649700-U005213/3211650', 'Orbit': '0,57.1655,2025,12,23,47.4059,296.3418,10.8658,0.13594,3.24436,2.80333,14.28,5.0,0.15', 'Object': '165690,2001 PA3,19.37,4.500,2.3408,0,0,0.027,-12.90,,0.5,0,19.30,18.33,', 'Earth': '164.2788,27.0573,41.46,-23.43,False', 'Elements': 'JPL#49:2025-11-27@2025-12-23[OWC],0.74,2025,12,23,9.2218370,0.1716234,0.0046681,0.0933864,-3.4357410,0.0046702,0.0007811,0.0000008,0.0000006', 'ID': '20251223_005213,61031.86'}}}
+  ow_eventid = 30878418-e475-47bf-8cb8-59502026b8e6
+  owcloudurl = https://cloud.occultwatcher.net/event/1817-165690-32776-649700-U005213/3211650
+  ra = 2.2931819999999998
+  recording_duration = 60
+  source = OWCloud
+  star_alt = 24.899999999999999
+  star_az = 347.0
+  star_id = UCAC4 585-005213
+  star_mag = 13.699999999999999
+  start_time = 2025-12-23T09:28:20
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 12.800000000000001
+  dec = 37.433799999999998
+  elevation = 23.0
+  end_time = 2025-12-24T11:27:46
+  event_duration = 0.28999999999999998
+  event_time = 2025-12-24T11:26:59
+  event_uncertainty = 5.9000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2025-12-24T11:22:11
+  id = (230656) Kovacspal : UCAC4 638-017526 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 7.0
+  name = (230656) Kovacspal - Camilleri M Home
+  object_name = (230656) Kovacspal
+  object_no = 230656
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Star': 'UCAC4 638-017526,4.41326946,37.4337964,13.26,12.79,12.16,0.0,0,,4.44273944,37.4954317,6.99,7.18,0,-1,-1', 'Errors': '12.678,0.0433,0.0243,74,0.5761,Star+JplPeakEphemUncert,1.00,0,0,0', 'OWC': '/event/1818-230656-62808-650356-U017526/3211727', 'Orbit': '0,339.6678,2025,12,24,98.9204,7.1111,10.6265,0.14271,3.03285,2.60002,15.87,5.0,0.15', 'Object': '230656,Kovacspal,19.79,2.600,1.7200,0,0,-2.105,-7.37,Asteroid,0.4,0,-5.00,-5.00,', 'Earth': '161.9224,37.4954,8.45,-23.41,False', 'Elements': 'JPL +INTG:14-Dec-2024,0.29,2025,12,24,11.4314792,0.2706931,-0.9204167,-4.9015537,-1.4409028,0.0024539,-0.0010861,0.0000013,0.0000004', 'ID': '20251224_017526,60971.29'}}}
+  ow_eventid = 442c78d6-cbce-4cfa-a043-58c5b55c1747
+  owcloudurl = https://cloud.occultwatcher.net/event/1818-230656-62808-650356-U017526/3211727
+  ra = 4.4132699999999998
+  recording_duration = 95
+  source = OWCloud
+  star_alt = 14.9
+  star_az = 350.19999999999999
+  star_id = UCAC4 638-017526
+  star_mag = 12.800000000000001
+  start_time = 2025-12-24T11:26:11
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================

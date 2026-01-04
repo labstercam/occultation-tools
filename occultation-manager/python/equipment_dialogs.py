@@ -391,7 +391,7 @@ class CameraManagerDialog(Form):
         details_group = GroupBox()
         details_group.Text = "Camera Details"
         details_group.Location = Point(int(290 * sf), int(20 * sf))
-        details_group.Size = Size(int(430 * sf), int(425 * sf))
+        details_group.Size = Size(int(430 * sf), int(505 * sf))
         self.Controls.Add(details_group)
         
         y_pos = 30
@@ -424,44 +424,123 @@ class CameraManagerDialog(Form):
         
         y_pos += 40
         
-        # Timing
-        lbl_timing = Label()
-        lbl_timing.Text = "Timing:"
-        lbl_timing.Location = Point(int(15 * sf), int(y_pos * sf))
-        lbl_timing.Size = Size(int(130 * sf), int(20 * sf))
-        details_group.Controls.Add(lbl_timing)
+        # Timing - North America (NA)
+        lbl_timing_na = Label()
+        lbl_timing_na.Text = "Timing (NA):"
+        lbl_timing_na.Location = Point(int(15 * sf), int(y_pos * sf))
+        lbl_timing_na.Size = Size(int(130 * sf), int(20 * sf))
+        details_group.Controls.Add(lbl_timing_na)
         
-        self.combo_timing = ComboBox()
-        self.combo_timing.Location = Point(int(150 * sf), int(y_pos * sf))
-        self.combo_timing.Size = Size(int(260 * sf), int(20 * sf))
-        self.combo_timing.DropDownStyle = ComboBoxStyle.DropDown
-        timing_options = [
+        self.combo_timing_na = ComboBox()
+        self.combo_timing_na.Location = Point(int(150 * sf), int(y_pos * sf))
+        self.combo_timing_na.Size = Size(int(260 * sf), int(20 * sf))
+        self.combo_timing_na.DropDownStyle = ComboBoxStyle.DropDown
+        timing_options_na = [
+            "GPS - time inserted",
             "GPS - other linking",
-            "GPS - Video Time Inserter",
-            "GPS - KIWI",
-            "WWV",
-            "Visual",
-            "Audio",
-            "Other"
+            "Video + audio time signal",
+            "Tape Recorder + time signal",
+            "Eye-Ear + time signal",
+            "Stopwatch",
+            "Radio broadcast - calibrated",
+            "other"
         ]
-        for opt in timing_options:
-            self.combo_timing.Items.Add(opt)
-        self.combo_timing.Text = "GPS - other linking"
-        details_group.Controls.Add(self.combo_timing)
+        for opt in timing_options_na:
+            self.combo_timing_na.Items.Add(opt)
+        self.combo_timing_na.Text = "GPS - other linking"
+        details_group.Controls.Add(self.combo_timing_na)
         
         y_pos += 40
         
-        # Timing Device
-        lbl_timing_device = Label()
-        lbl_timing_device.Text = "Timing Device:"
-        lbl_timing_device.Location = Point(int(15 * sf), int(y_pos * sf))
-        lbl_timing_device.Size = Size(int(130 * sf), int(20 * sf))
-        details_group.Controls.Add(lbl_timing_device)
+        # Timing Device - North America (NA)
+        lbl_timing_device_na = Label()
+        lbl_timing_device_na.Text = "Timing Device (NA):"
+        lbl_timing_device_na.Location = Point(int(15 * sf), int(y_pos * sf))
+        lbl_timing_device_na.Size = Size(int(130 * sf), int(20 * sf))
+        details_group.Controls.Add(lbl_timing_device_na)
         
-        self.txt_timing_device = TextBox()
-        self.txt_timing_device.Location = Point(int(150 * sf), int(y_pos * sf))
-        self.txt_timing_device.Size = Size(int(260 * sf), int(20 * sf))
-        details_group.Controls.Add(self.txt_timing_device)
+        self.combo_timing_device_na = ComboBox()
+        self.combo_timing_device_na.Location = Point(int(150 * sf), int(y_pos * sf))
+        self.combo_timing_device_na.Size = Size(int(260 * sf), int(20 * sf))
+        self.combo_timing_device_na.DropDownStyle = ComboBoxStyle.DropDown
+        timing_device_na_options = [
+            "ADVS",
+            "AFT or OFT Flash Tag",
+            "ASTRID",
+            "Beeperbox",
+            "Cellphone",
+            "Computer NTP",
+            "GPS",
+            "GPS-ABC",
+            "IOTA-VTI",
+            "KIWI-OSD",
+            "Stopwatch",
+            "WWV Radio Time",
+            "Other - Specify in Comments"
+        ]
+        for opt in timing_device_na_options:
+            self.combo_timing_device_na.Items.Add(opt)
+        self.combo_timing_device_na.Text = ""
+        details_group.Controls.Add(self.combo_timing_device_na)
+        
+        y_pos += 40
+        
+        # Timing - Trans-Tasman (TT)
+        lbl_timing_tt = Label()
+        lbl_timing_tt.Text = "Timing (TT):"
+        lbl_timing_tt.Location = Point(int(15 * sf), int(y_pos * sf))
+        lbl_timing_tt.Size = Size(int(130 * sf), int(20 * sf))
+        details_group.Controls.Add(lbl_timing_tt)
+        
+        self.combo_timing_tt = ComboBox()
+        self.combo_timing_tt.Location = Point(int(150 * sf), int(y_pos * sf))
+        self.combo_timing_tt.Size = Size(int(260 * sf), int(20 * sf))
+        self.combo_timing_tt.DropDownStyle = ComboBoxStyle.DropDown
+        timing_options_tt = [
+            "GPS - time inserted",
+            "GPS - other linking",
+            "Video + audio time signal",
+            "Tape Recorder + time signal",
+            "Eye-Ear + time signal",
+            "Stopwatch",
+            "Radio broadcast - calibrated",
+            "other"
+        ]
+        for opt in timing_options_tt:
+            self.combo_timing_tt.Items.Add(opt)
+        self.combo_timing_tt.Text = "GPS - other linking"
+        details_group.Controls.Add(self.combo_timing_tt)
+        
+        y_pos += 40
+        
+        # Timing Device - Trans-Tasman (TT)
+        lbl_timing_device_tt = Label()
+        lbl_timing_device_tt.Text = "Timing Device (TT):"
+        lbl_timing_device_tt.Location = Point(int(15 * sf), int(y_pos * sf))
+        lbl_timing_device_tt.Size = Size(int(130 * sf), int(20 * sf))
+        details_group.Controls.Add(lbl_timing_device_tt)
+        
+        self.combo_timing_device_tt = ComboBox()
+        self.combo_timing_device_tt.Location = Point(int(150 * sf), int(y_pos * sf))
+        self.combo_timing_device_tt.Size = Size(int(260 * sf), int(20 * sf))
+        self.combo_timing_device_tt.DropDownStyle = ComboBoxStyle.DropDown
+        timing_device_tt_options = [
+            "Stopwatch",
+            "WWV Radio Time",
+            "Beeperbox",
+            "GPS",
+            "Computer NTP",
+            "KIWI-OSD",
+            "IOTA-VTI",
+            "GPS-ABC",
+            "ADVS",
+            "Cellphone",
+            "Other - Specify in Comments"
+        ]
+        for opt in timing_device_tt_options:
+            self.combo_timing_device_tt.Items.Add(opt)
+        self.combo_timing_device_tt.Text = ""
+        details_group.Controls.Add(self.combo_timing_device_tt)
         
         y_pos += 40
         
@@ -562,10 +641,10 @@ class CameraManagerDialog(Form):
         self.btn_delete.Enabled = False
         details_group.Controls.Add(self.btn_delete)
         
-        # Close button
+        # Close button (positioned under camera list)
         btn_close = Button()
         btn_close.Text = "Close"
-        btn_close.Location = Point(int(610 * sf), int(520 * sf))
+        btn_close.Location = Point(int(85 * sf), int(460 * sf))
         btn_close.Size = Size(int(100 * sf), int(30 * sf))
         btn_close.Click += self.close_dialog
         self.Controls.Add(btn_close)
@@ -599,8 +678,10 @@ class CameraManagerDialog(Form):
             # Load camera details
             self.txt_name.Text = camera.get('name', '')
             self.txt_detector.Text = camera.get('detector', '')
-            self.combo_timing.Text = camera.get('timing', 'GPS - other linking')
-            self.txt_timing_device.Text = camera.get('timing_device', '')
+            self.combo_timing_na.Text = camera.get('timing_na', camera.get('timing', 'GPS - other linking'))
+            self.combo_timing_device_na.Text = camera.get('timing_device_na', camera.get('timing_device', ''))
+            self.combo_timing_tt.Text = camera.get('timing_tt', camera.get('timing', 'GPS - other linking'))
+            self.combo_timing_device_tt.Text = camera.get('timing_device_tt', camera.get('timing_device', ''))
             self.combo_video_format.Text = camera.get('video_format', 'SER')
             self.combo_exposure.Text = camera.get('exposure_integration', 'Other')
             self.txt_other_info.Text = camera.get('other_info', '')
@@ -623,8 +704,10 @@ class CameraManagerDialog(Form):
         """Clear all input fields"""
         self.txt_name.Text = ""
         self.txt_detector.Text = ""
-        self.combo_timing.Text = "GPS - other linking"
-        self.txt_timing_device.Text = ""
+        self.combo_timing_na.Text = "GPS - other linking"
+        self.combo_timing_device_na.Text = ""
+        self.combo_timing_tt.Text = "GPS - other linking"
+        self.combo_timing_device_tt.Text = ""
         self.combo_video_format.Text = "SER"
         self.combo_exposure.Text = "Other"
         self.txt_other_info.Text = ""
@@ -638,8 +721,10 @@ class CameraManagerDialog(Form):
         """Add a new camera"""
         name = self.txt_name.Text.strip()
         detector = self.txt_detector.Text.strip()
-        timing = self.combo_timing.Text
-        timing_device = self.txt_timing_device.Text.strip()
+        timing_na = self.combo_timing_na.Text
+        timing_device_na = self.combo_timing_device_na.Text
+        timing_tt = self.combo_timing_tt.Text
+        timing_device_tt = self.combo_timing_device_tt.Text
         video_format = self.combo_video_format.Text
         exposure_integration = self.combo_exposure.Text
         other_info = self.txt_other_info.Text.strip()
@@ -654,7 +739,8 @@ class CameraManagerDialog(Form):
                           MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
         
-        self.config.add_camera(name, detector, timing, timing_device, other_info, video_format, exposure_integration)
+        self.config.add_camera(name, detector, timing_na, timing_device_na, timing_tt, timing_device_tt,
+                              other_info, video_format, exposure_integration)
         self.config.save_config()
         self.load_cameras()
         self.clear_fields()
@@ -669,8 +755,10 @@ class CameraManagerDialog(Form):
         
         name = self.txt_name.Text.strip()
         detector = self.txt_detector.Text.strip()
-        timing = self.combo_timing.Text
-        timing_device = self.txt_timing_device.Text.strip()
+        timing_na = self.combo_timing_na.Text
+        timing_device_na = self.combo_timing_device_na.Text
+        timing_tt = self.combo_timing_tt.Text
+        timing_device_tt = self.combo_timing_device_tt.Text
         video_format = self.combo_video_format.Text
         exposure_integration = self.combo_exposure.Text
         other_info = self.txt_other_info.Text.strip()
@@ -685,8 +773,8 @@ class CameraManagerDialog(Form):
                           MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
         
-        self.config.update_camera(self.selected_camera_id, name, detector, timing, timing_device, 
-                                 other_info, video_format, exposure_integration)
+        self.config.update_camera(self.selected_camera_id, name, detector, timing_na, timing_device_na,
+                                 timing_tt, timing_device_tt, other_info, video_format, exposure_integration)
         self.config.save_config()
         self.load_cameras()
         
