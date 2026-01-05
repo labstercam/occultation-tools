@@ -600,7 +600,7 @@ class Occult4Exporter:
         lines = []
         lines.append('           <Observer>')
         lines.append(self._build_observer_id_line(event, telescope_id, camera_id, observer_data))
-        lines.append(self._build_conditions_line(observer_data))
+        lines.append(self._build_conditions_line(aota_report_data, observer_data))
         lines.append(self._build_d_event_line(event, observation_type, tangra_data, aota_report_data))
         lines.append(self._build_r_event_line(event, observation_type, tangra_data, aota_report_data))
         lines.append('           </Observer>')
@@ -692,21 +692,17 @@ class Occult4Exporter:
             elif 'dob' in tel_type:
                 telescope_type = '4'
         
-        # Observing method
-        observing_method = 'b'  # Digital SLR-camera video (default)
+        # Observing method - read from camera configuration
         camera_data = self._get_camera_data(camera_id)
+        observing_method = 'b'  # Digital SLR-camera video (default)
         if camera_data:
-            # Try to determine method from camera type
-            camera_type = camera_data.get('type', '').lower()
-            if 'video' in camera_type:
-                observing_method = 'b'
-            elif 'photometer' in camera_type:
-                observing_method = 'c'
-            elif 'dslr' in camera_type or 'sequential' in camera_type:
-                observing_method = 'd'
+            observing_method = camera_data.get('occult4_method', 'b')
         
-        # Time source
+        # Time source - read from camera configuration
         time_source = 'a'  # GPS (default)
+        if camera_data:
+            time_source = camera_data.get('occult4_time', 'a')
+        # Allow override from observer_data if provided
         if observer_data:
             time_source = observer_data.get('time_source', time_source)
         
@@ -740,7 +736,7 @@ class Occult4Exporter:
                 return c
         return None
     
-    def _build_conditions_line(self, observer_data):
+    def _build_conditions_line(self, aota_report_data, observer_data):
         """Build the Conditions line with observing conditions"""
         # Default values
         stability = '_'  # unstated
@@ -749,11 +745,22 @@ class Occult4Exporter:
         time_adjustment = '0'  # ±s.ss
         comment = ''
         
-        # Override with observer_data if provided
+        # Get SNR from AOTA report data if available
+        if aota_report_data and 'snr' in aota_report_data:
+            snr_value = aota_report_data.get('snr')
+            if snr_value is not None:
+                # Cap SNR at maximum value of 20.0 per Occult 4 specification
+                snr_value = min(snr_value, 20.0)
+                # Format to 1 decimal place
+                sn = f"{snr_value:.1f}"
+        
+        # Override with observer_data if provided (observer_data takes precedence)
         if observer_data:
             stability = observer_data.get('stability', stability)
             transparency = observer_data.get('transparency', transparency)
-            sn = observer_data.get('sn', sn)
+            # Only override SNR if explicitly provided in observer_data
+            if 'sn' in observer_data:
+                sn = observer_data.get('sn', sn)
             time_adjustment = observer_data.get('time_adjustment', time_adjustment)
             comment = observer_data.get('comment', comment)
         

@@ -17,12 +17,23 @@ Reads Tangra CSV light curve files with complete metadata extraction.
 - `light_curve`: DataFrame with timestamps and photometry
 - `column_names`: Light curve column headers
 - `acquisition_delay`: Camera acquisition delay (ms) from measurement parameters table
+- `video_format`: Video format from measurement parameters (ADVS, SER, AAV-NTSC, etc.)
 
 **Tangra CSV Structure**:
 - **Rows 1-2**: Header with filename and details
-- **Rows 7-8**: Measurement parameters table (includes acquisition delay)
+- **Rows 7-8**: Measurement parameters table (header and data)
+  - Includes "Acquisition Delay (ms)" column
+  - Includes "Video File Format" column (handles leading spaces)
 - **Row 9+**: Aperture definitions
 - **Remaining rows**: Light curve data with timestamps
+
+**Video Format Mapping**:
+- ADV/ADVS → ADVS
+- AAV-NTSC → AAV-NTSC
+- AAV-PAL → AAV-PAL
+- PAL/CCIR → PAL/CCIR
+- NTSC/EIA → NTSC/EIA
+- SER, AVI, MP4, FITS → as-is
 
 #### analyse_timestamps(light_curve_data, percentiles=[1, 99])
 Statistical analysis of frame timing.
@@ -36,6 +47,8 @@ Statistical analysis of frame timing.
 - `tdelta_min`, `tdelta_max`: Timing range
 - `tdelta_percentiles`: Distribution analysis
 - `num_frames`: Total frame count
+- `video_format`: Video format from input data
+- `exposure_integration`: 'Exposure' or 'Integration' based on timing consistency (std < 10% of median)
 
 #### analyse_gps_flash(tangra_data, exposure_ms, gps_y=None, aperture_name=None)
 Analyzes GPS 1PPS flashes to calculate camera timestamp offsets.

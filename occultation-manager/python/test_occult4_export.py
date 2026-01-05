@@ -16,6 +16,9 @@ class MockConfig:
     def get_observer_name(self):
         return 'Test Observer'
     
+    def get_observer_state(self):
+        return 'CA'
+    
     def get_iota_region(self):
         return 'US'
     
@@ -23,7 +26,7 @@ class MockConfig:
         return [{'id': 'test1', 'aperture': '20', 'type': 'SCT'}]
     
     def get_cameras(self):
-        return [{'id': 'cam1', 'type': 'video'}]
+        return [{'id': 'cam1', 'type': 'video', 'occult4_method': 'b', 'occult4_time': 'a'}]
 
 
 class MockEvent:

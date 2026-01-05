@@ -59,17 +59,49 @@ def read_tangra_csv(file):
     
     # Read acquisition delay from the measurement parameters table (row 7-8)
     acquisition_delay = None
+    video_format = ''
     try:
         params_header = pd.read_csv(file, skiprows=6, nrows=1)
         params_data = pd.read_csv(file, skiprows=7, nrows=1)
+        
+        # Extract acquisition delay
         if 'Acquisition Delay (ms)' in params_header.columns:
             delay_col = params_header.columns.get_loc('Acquisition Delay (ms)')
             if delay_col < len(params_data.columns):
                 delay_value = params_data.iloc[0, delay_col]
                 if pd.notna(delay_value):
                     acquisition_delay = float(delay_value)
+        
+        # Extract video format
+        # Column name might have leading space, so strip all column names
+        stripped_cols = {col.strip(): col for col in params_header.columns}
+        if 'Video File Format' in stripped_cols:
+            original_col_name = stripped_cols['Video File Format']
+            format_col = params_header.columns.get_loc(original_col_name)
+            if format_col < len(params_data.columns):
+                format_value = params_data.iloc[0, format_col]
+                if pd.notna(format_value):
+                    format_str = str(format_value).strip().upper()
+                    # Map Tangra format codes to report format names
+                    if format_str == 'ADV' or format_str == 'ADVS':
+                        video_format = 'ADVS'
+                    elif 'AAV' in format_str:
+                        if 'NTSC' in format_str:
+                            video_format = 'AAV-NTSC'
+                        elif 'PAL' in format_str:
+                            video_format = 'AAV-PAL'
+                        else:
+                            video_format = 'ADVS'
+                    elif 'PAL' in format_str or 'CCIR' in format_str:
+                        video_format = 'PAL/CCIR'
+                    elif 'NTSC' in format_str or 'EIA' in format_str:
+                        video_format = 'NTSC/EIA'
+                    elif format_str in ['SER', 'AVI', 'MP4', 'FITS']:
+                        video_format = format_str
+                    else:
+                        video_format = format_str
     except Exception as ex:
-        print(f"Warning: Could not read acquisition delay: {ex}")
+        print(f"Warning: Could not read acquisition delay or video format: {ex}")
     
     # Find where the light curve data starts
     
@@ -97,7 +129,7 @@ def read_tangra_csv(file):
     #light_curve.dropna(inplace=True)
     
 #    print('File name from TANGRA ',filename)
-    return {"file_read_from":file, "filename_from_tangra":filename,"details":details,"apertures_raw":apertures_raw,"apertures":apertures,"light_curve":light_curve,"acquisition_delay":acquisition_delay}
+    return {"file_read_from":file, "filename_from_tangra":filename,"details":details,"apertures_raw":apertures_raw,"apertures":apertures,"light_curve":light_curve,"acquisition_delay":acquisition_delay,"video_format":video_format}
     
     
 
@@ -142,9 +174,19 @@ def analyse_timestamps(tangra_object,percentiles=None):
     diff_stats['filename_from_tangra']=tangra_object['filename_from_tangra']
     diff_stats['start_time'] = times_list[0].strftime('%H:%M:%S.%f')[0:12]
     
+    # Include video format from Tangra if available
+    if 'video_format' in tangra_object:
+        diff_stats['video_format'] = tangra_object['video_format']
+    
     # Include acquisition delay from Tangra if available
     if 'acquisition_delay' in tangra_object and tangra_object['acquisition_delay'] is not None:
         diff_stats['acquisition_delay'] = tangra_object['acquisition_delay']
+    
+    # Determine exposure/integration type based on timing consistency
+    if diff_stats['std'] < (diff_stats['median'] * 0.1):
+        diff_stats['exposure_integration'] = 'Exposure'
+    else:
+        diff_stats['exposure_integration'] = 'Integration'
     
     diff_stats = pd.DataFrame(diff_stats).transpose().reset_index()
     cols =['file_read_from','filename_from_tangra','start_time','min', 'max', 'median', 'mean', 'std', 'first_frame_no',

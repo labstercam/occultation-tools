@@ -12,6 +12,7 @@ from System.Windows.Forms import (
     ComboBoxStyle, SelectionMode, FormBorderStyle, FormStartPosition
 )
 from System.Drawing import Point, Size, Color, Font, FontStyle
+from System import Array
 from theme import apply_theme_to_control
 
 class TelescopeManagerDialog(Form):
@@ -473,42 +474,62 @@ class CameraManagerDialog(Form):
         self.combo_timing_device.DropDownStyle = ComboBoxStyle.DropDown
         details_group.Controls.Add(self.combo_timing_device)
         
-        y_pos += 40
-        
-        # Video Format
-        lbl_video_format = Label()
-        lbl_video_format.Text = "Video Format:"
-        lbl_video_format.Location = Point(int(15 * sf), int(y_pos * sf))
-        lbl_video_format.Size = Size(int(130 * sf), int(20 * sf))
-        details_group.Controls.Add(lbl_video_format)
-        
-        self.combo_video_format = ComboBox()
-        self.combo_video_format.Location = Point(int(150 * sf), int(y_pos * sf))
-        self.combo_video_format.Size = Size(int(260 * sf), int(20 * sf))
-        self.combo_video_format.DropDownStyle = ComboBoxStyle.DropDown
-        details_group.Controls.Add(self.combo_video_format)
-        
-        # Initialize timing options for default report type (after all combos are created)
+        # Initialize timing options for default report type
         self.update_timing_options()
         
         y_pos += 40
         
-        # Exposure/Integration
-        lbl_exposure = Label()
-        lbl_exposure.Text = "Exposure/Integration:"
-        lbl_exposure.Location = Point(int(15 * sf), int(y_pos * sf))
-        lbl_exposure.Size = Size(int(130 * sf), int(20 * sf))
-        details_group.Controls.Add(lbl_exposure)
+        # Occult 4 Method
+        lbl_occult4_method = Label()
+        lbl_occult4_method.Text = "Occult 4 Method:"
+        lbl_occult4_method.Location = Point(int(15 * sf), int(y_pos * sf))
+        lbl_occult4_method.Size = Size(int(130 * sf), int(20 * sf))
+        details_group.Controls.Add(lbl_occult4_method)
         
-        self.combo_exposure = ComboBox()
-        self.combo_exposure.Location = Point(int(150 * sf), int(y_pos * sf))
-        self.combo_exposure.Size = Size(int(260 * sf), int(20 * sf))
-        self.combo_exposure.DropDownStyle = ComboBoxStyle.DropDown
-        exposure_options = ["Other", "Integration", "Exposure"]
-        for opt in exposure_options:
-            self.combo_exposure.Items.Add(opt)
-        self.combo_exposure.Text = "Other"
-        details_group.Controls.Add(self.combo_exposure)
+        self.combo_occult4_method = ComboBox()
+        self.combo_occult4_method.Location = Point(int(150 * sf), int(y_pos * sf))
+        self.combo_occult4_method.Size = Size(int(260 * sf), int(20 * sf))
+        self.combo_occult4_method.DropDownStyle = ComboBoxStyle.DropDownList
+        method_items = [
+            ' - unspecified',
+            'a - Analogue & digital video',
+            'b - Digital SLR-camera video',
+            'c - Photometer',
+            'd - Sequential images',
+            'e - Drift scan',
+            'f - Visual',
+            'g - Other'
+        ]
+        self.combo_occult4_method.Items.AddRange(Array[object](method_items))
+        self.combo_occult4_method.SelectedIndex = 2  # Default to 'b - Digital SLR-camera video'
+        details_group.Controls.Add(self.combo_occult4_method)
+        
+        y_pos += 40
+        
+        # Occult 4 Time
+        lbl_occult4_time = Label()
+        lbl_occult4_time.Text = "Occult 4 Time:"
+        lbl_occult4_time.Location = Point(int(15 * sf), int(y_pos * sf))
+        lbl_occult4_time.Size = Size(int(130 * sf), int(20 * sf))
+        details_group.Controls.Add(lbl_occult4_time)
+        
+        self.combo_occult4_time = ComboBox()
+        self.combo_occult4_time.Location = Point(int(150 * sf), int(y_pos * sf))
+        self.combo_occult4_time.Size = Size(int(260 * sf), int(20 * sf))
+        self.combo_occult4_time.DropDownStyle = ComboBoxStyle.DropDownList
+        time_items = [
+            ' - unspecified',
+            'a - GPS',
+            'b - NTP',
+            'c - Telephone (fixed or mobile)',
+            'd - Radio time signal',
+            'e - Internal clock of recorder',
+            'f - Stopwatch',
+            'g - Other'
+        ]
+        self.combo_occult4_time.Items.AddRange(Array[object](time_items))
+        self.combo_occult4_time.SelectedIndex = 1  # Default to 'a - GPS'
+        details_group.Controls.Add(self.combo_occult4_time)
         
         y_pos += 40
         
@@ -584,6 +605,11 @@ class CameraManagerDialog(Form):
         self.lst_cameras.Items.Clear()
         self.camera_map.clear()
         cameras = self.config.get_cameras()
+        
+        # Handle empty camera list
+        if not cameras:
+            return
+            
         active_camera = self.config.get_active_camera()
         active_id = active_camera.get('id') if active_camera else None
         
@@ -601,18 +627,16 @@ class CameraManagerDialog(Form):
         self.update_timing_options()
     
     def update_timing_options(self):
-        """Update timing, timing device, detector, and video format options based on selected report type"""
+        """Update timing, timing device, and detector options based on selected report type"""
         report_type = self.combo_report_type.Text
         current_timing = self.combo_timing.Text
         current_device = self.combo_timing_device.Text
         current_detector = self.combo_detector.Text
-        current_video_format = self.combo_video_format.Text
         
         # Clear current options
         self.combo_timing.Items.Clear()
         self.combo_timing_device.Items.Clear()
         self.combo_detector.Items.Clear()
-        self.combo_video_format.Items.Clear()
         
         if report_type == "NA":
             # NA timing options
@@ -671,16 +695,6 @@ class CameraManagerDialog(Form):
                 "Watec 910HX",
                 "Other - List in Comments"
             ]
-            # NA video format options
-            video_format_options = [
-                "AAV-NTSC",
-                "AAV-PAL",
-                "ADVS",
-                "CCD Drift",
-                "FITS Images",
-                "NTSC/EIA",
-                "PAL/CCIR"
-            ]
         else:  # TT
             # TT timing options
             timing_options = [
@@ -733,16 +747,6 @@ class CameraManagerDialog(Form):
                 "QHY 174GPS",
                 "Other - List in Comments"
             ]
-            # TT video format options
-            video_format_options = [
-                "NTSC/EIA",
-                "PAL/CCIR",
-                "CCD Drift",
-                "ADVS",
-                "AAV-NTSC",
-                "FITS",
-                "AAV-PAL"
-            ]
         
         # Populate timing options
         for opt in timing_options:
@@ -755,10 +759,6 @@ class CameraManagerDialog(Form):
         # Populate detector options
         for opt in detector_options:
             self.combo_detector.Items.Add(opt)
-        
-        # Populate video format options
-        for opt in video_format_options:
-            self.combo_video_format.Items.Add(opt)
         
         # Restore previous values if they exist in new list
         if current_timing in timing_options:
@@ -775,11 +775,6 @@ class CameraManagerDialog(Form):
             self.combo_detector.Text = current_detector
         else:
             self.combo_detector.Text = ""
-        
-        if current_video_format in video_format_options:
-            self.combo_video_format.Text = current_video_format
-        else:
-            self.combo_video_format.Text = ""
     
     def camera_selected(self, sender, e):
         """Handle camera selection"""
@@ -807,8 +802,33 @@ class CameraManagerDialog(Form):
             # Now load timing values (after options are updated)
             self.combo_timing.Text = camera.get('timing', 'GPS - other linking')
             self.combo_timing_device.Text = camera.get('timing_device', '')
-            self.combo_video_format.Text = camera.get('video_format', 'SER')
-            self.combo_exposure.Text = camera.get('exposure_integration', 'Other')
+            
+            # Load Occult 4 Method
+            occult4_method = camera.get('occult4_method', 'b')  # Default to 'b'
+            method_found = False
+            for i in range(self.combo_occult4_method.Items.Count):
+                item_text = self.combo_occult4_method.Items[i].ToString()
+                # Handle both single char codes and blank/unspecified
+                if item_text.startswith(occult4_method + ' ') or (occult4_method == ' ' and item_text == ' - unspecified'):
+                    self.combo_occult4_method.SelectedIndex = i
+                    method_found = True
+                    break
+            if not method_found:
+                self.combo_occult4_method.SelectedIndex = 2  # Fallback to 'b - Digital SLR-camera video'
+            
+            # Load Occult 4 Time
+            occult4_time = camera.get('occult4_time', 'a')  # Default to 'a'
+            time_found = False
+            for i in range(self.combo_occult4_time.Items.Count):
+                item_text = self.combo_occult4_time.Items[i].ToString()
+                # Handle both single char codes and blank/unspecified
+                if item_text.startswith(occult4_time + ' ') or (occult4_time == ' ' and item_text == ' - unspecified'):
+                    self.combo_occult4_time.SelectedIndex = i
+                    time_found = True
+                    break
+            if not time_found:
+                self.combo_occult4_time.SelectedIndex = 1  # Fallback to 'a - GPS'
+            
             self.txt_other_info.Text = camera.get('other_info', '')
             
             # Enable buttons
@@ -832,8 +852,8 @@ class CameraManagerDialog(Form):
         self.combo_report_type.Text = "NA"
         self.combo_timing.Text = "GPS - other linking"
         self.combo_timing_device.Text = ""
-        self.combo_video_format.Text = ""
-        self.combo_exposure.Text = "Other"
+        self.combo_occult4_method.SelectedIndex = 2  # Default to 'b - Digital SLR-camera video'
+        self.combo_occult4_time.SelectedIndex = 1  # Default to 'a - GPS'
         self.txt_other_info.Text = ""
         self.btn_update.Enabled = False
         self.btn_delete.Enabled = False
@@ -848,8 +868,11 @@ class CameraManagerDialog(Form):
         report_type = self.combo_report_type.Text
         timing = self.combo_timing.Text
         timing_device = self.combo_timing_device.Text
-        video_format = self.combo_video_format.Text
-        exposure_integration = self.combo_exposure.Text
+        
+        # Extract Occult 4 codes (first character before ' - ')
+        occult4_method = self.combo_occult4_method.Text.split(' ')[0] if self.combo_occult4_method.Text else 'b'
+        occult4_time = self.combo_occult4_time.Text.split(' ')[0] if self.combo_occult4_time.Text else 'a'
+        
         other_info = self.txt_other_info.Text.strip()
         
         if not name:
@@ -862,8 +885,7 @@ class CameraManagerDialog(Form):
                           MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
         
-        self.config.add_camera(name, detector, report_type, timing, timing_device,
-                              other_info, video_format, exposure_integration)
+        self.config.add_camera(name, detector, report_type, timing, timing_device, occult4_method, occult4_time, other_info)
         self.config.save_config()
         self.load_cameras()
         self.clear_fields()
@@ -881,8 +903,11 @@ class CameraManagerDialog(Form):
         report_type = self.combo_report_type.Text
         timing = self.combo_timing.Text
         timing_device = self.combo_timing_device.Text
-        video_format = self.combo_video_format.Text
-        exposure_integration = self.combo_exposure.Text
+        
+        # Extract Occult 4 codes (first character before ' - ')
+        occult4_method = self.combo_occult4_method.Text.split(' ')[0] if self.combo_occult4_method.Text else 'b'
+        occult4_time = self.combo_occult4_time.Text.split(' ')[0] if self.combo_occult4_time.Text else 'a'
+        
         other_info = self.txt_other_info.Text.strip()
         
         if not name:
@@ -895,8 +920,7 @@ class CameraManagerDialog(Form):
                           MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
         
-        self.config.update_camera(self.selected_camera_id, name, detector, report_type, timing, timing_device,
-                                 other_info, video_format, exposure_integration)
+        self.config.update_camera(self.selected_camera_id, name, detector, report_type, timing, timing_device, occult4_method, occult4_time, other_info)
         self.config.save_config()
         self.load_cameras()
         

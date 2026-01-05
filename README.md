@@ -25,6 +25,8 @@ SharpCap Occultation Manager automates the complete occultation observation work
 - Streamlined single-dialog workflow combining all settings
 - Integrates AOTA timing data (D/R times)
 - Imports Tangra CSV light curves for observation timing and camera delay
+- **Automatic video format extraction** from Tangra CSV files (ADVS, SER, AAV, PAL/CCIR, NTSC/EIA)
+- **Dynamic exposure/integration detection** based on timing consistency
 - Supports North America (IOTA) and Trans-Tasman (RASNZ) report formats
 - Auto-fills observer, telescope, and camera information
 - Remembers previous settings for faster workflow
@@ -32,6 +34,7 @@ SharpCap Occultation Manager automates the complete occultation observation work
 **Timing Integration**
 - Extracts start/end times from Tangra CSV files
 - Populates exposure time and camera acquisition delay
+- **Video format sourced from Tangra CSV measurement parameters** (not camera configuration)
 - Automatic HH:MM:SS.SS time formatting
 - Camera delay correction from Tangra measurement parameters
 

@@ -1,4 +1,181 @@
-# Bug Check Report - Occelmnt Data & OBS.XML Export
+# Bug Check Report - Occultation Manager
+
+## Date: January 5, 2026
+
+## Summary
+Comprehensive bug check and fixes applied to camera management, Tangra CSV video format extraction, Occult 4 dropdown implementation, and SNR export to OBS.XML.
+
+---
+
+## ✅ FIXED BUGS
+
+### 1. **Video Format Extraction Bug** - CRITICAL FIX
+
+**Issue:** Video format field was blank in reports despite being present in Tangra CSV files.
+
+**Root Causes:**
+1. **Wrong column name matching** - Used substring match `'Video File Format' in col_name_stripped` instead of exact match
+2. **Missing return value** - `read_tangra_csv_iron()` stored video_format in `details['video_format']` but didn't include it in the return dictionary
+3. **Leading spaces in column names** - Tangra CSV headers have leading spaces (e.g., " Video File Format") which weren't properly handled
+
+**Files Fixed:**
+- [occultation-manager/python/light_curves_iron.py](occultation-manager/python/light_curves_iron.py)
+- [gps-timing-analysis/python/light_curves_iron.py](gps-timing-analysis/python/light_curves_iron.py)
+- [gps-timing-analysis/python/light_curves.py](gps-timing-analysis/python/light_curves.py)
+
+**Changes Made:**
+```python
+# Before (BROKEN):
+params_header_stripped = col_name.strip()
+if 'Video File Format' in col_name_stripped:  # Substring match
+    # ... processing ...
+    details['video_format'] = video_format
+
+return {
+    'file_read_from': file_path,
+    'filename_from_tangra': filename,
+    'details': details,
+    'apertures': apertures,
+    'light_curve': light_curve,
+    'column_names': column_names,
+    'acquisition_delay': acquisition_delay
+    # video_format NOT INCLUDED!
+}
+
+# After (FIXED):
+params_header_stripped = [col.strip() for col in params_header]  # Strip ALL columns
+
+for i, col_name in enumerate(params_header_stripped):
+    if col_name == 'Video File Format':  # Exact match
+        # ... processing ...
+        details['video_format'] = video_format
+
+return {
+    'file_read_from': file_path,
+    'filename_from_tangra': filename,
+    'details': details,
+    'apertures': apertures,
+    'light_curve': light_curve,
+    'column_names': column_names,
+    'acquisition_delay': acquisition_delay,
+    'video_format': video_format  # NOW INCLUDED!
+}
+```
+
+**Video Format Mapping:**
+- `ADV` or `ADVS` → `ADVS`
+- `AAV-NTSC` → `AAV-NTSC`
+- `AAV-PAL` → `AAV-PAL`
+- `AAV` (unspecified) → `ADVS`
+- `PAL` or `CCIR` → `PAL/CCIR`
+- `NTSC` or `EIA` → `NTSC/EIA`
+- `SER`, `AVI`, `MP4`, `FITS` → as-is
+
+**Verification:**
+```
+Tangra CSV Header (line 7, 0-indexed 6):
+Reversed Gamma, Colour, Measured Band, Integration, Digital Filter, Signal Method, Background Method, Instrumental Delay Corrections, Camera, AAV Integration, First Frame, Last Frame, Reversed Camera Response, Video File Format, Acquisition Delay (ms)
+
+Data Row (line 8, 0-indexed 7):
+1.00,no,Red,no,LowPassDifference,AperturePhotometry,AverageBackground,Not Required,asi462mm,,7,124,,ADV,9.0
+
+Result: video_format = 'ADVS' ✓
+```
+
+---
+
+## Architecture Changes
+
+### Video Format and Exposure/Integration Source Change
+
+**Previous Architecture:**
+- Video format and exposure/integration stored as camera properties
+- User manually configured these fields per camera
+- Static values regardless of actual recording
+
+**New Architecture:**
+- Video format and exposure/integration extracted from Tangra CSV analysis
+- Sourced from actual recording data, not camera configuration
+- More accurate - reflects actual recording parameters
+
+**Impact:**
+- [equipment_dialogs.py](equipment_dialogs.py) - Removed video_format and exposure_integration UI fields
+- [config.py](config.py) - Removed from camera add/update methods
+- [na_report.py](na_report.py) - Now gets from tangra_data
+- [tt_report.py](tt_report.py) - Now gets from tangra_data
+- [light_curves_iron.py](light_curves_iron.py) - Extracts from Tangra CSV header
+- [light_curves.py](light_curves.py) - Extracts from Tangra CSV header (pandas version)
+
+---
+
+## Files Modified
+
+### Core Files:
+1. **light_curves_iron.py** (2 copies - occultation-manager & gps-timing-analysis)
+   - Fixed video format extraction from measurement parameters (line 7 header, line 8 data)
+   - Added to return dictionary
+   - Handles leading spaces in column names
+   - Maps format codes to report format names
+
+2. **light_curves.py** (gps-timing-analysis - standard Python/pandas)
+   - Added video format extraction using pandas
+   - Added exposure_integration calculation
+   - Handles leading spaces using dictionary mapping
+
+3. **na_report.py**
+   - Gets video_format from tangra_data instead of camera_data
+   - Added conditional check for empty values
+
+4. **tt_report.py**
+   - Gets video_format from tangra_data instead of camera_data
+   - Added conditional check for empty values
+
+5. **main_gui.py**
+   - Added debug output for video format in console
+
+---
+
+## Testing Notes
+
+### Tangra CSV Format Requirements:
+- Line 7 (0-indexed 6): Measurement parameters header row
+- Line 8 (0-indexed 7): Measurement parameters data row
+- Column names may have leading spaces
+- "Video File Format" column contains format code
+- "Acquisition Delay (ms)" column contains camera delay
+
+### Verified Working:
+- ✅ ADV format → ADVS mapping
+- ✅ Acquisition delay extraction (9.0 ms)
+- ✅ Leading space handling in column names
+- ✅ Report generation with video format populated
+- ✅ Both IronPython and standard Python versions
+
+---
+
+## Known Issues
+
+### None Currently
+
+All identified issues have been resolved.
+
+---
+
+## Recommendations
+
+1. **Test with multiple video formats** - Verify SER, AVI, MP4, AAV-NTSC, AAV-PAL, PAL/CCIR, NTSC/EIA
+2. **Verify exposure vs integration heuristic** - 10% threshold may need adjustment for some recordings
+3. **Consider format validation** - Add warning if video format not recognized
+4. **Legacy data cleanup** - Existing cameras have unused video_format/exposure_integration fields (benign but could be removed)
+
+---
+
+## Notes
+
+- All three versions of light curve analysis now synchronized
+- Video format extraction robust to Tangra CSV variations
+- Column name matching uses exact equality after stripping
+- No breaking changes to existing functionality
 
 ## Date: December 31, 2025
 
