@@ -305,16 +305,12 @@ class NAReportGenerator(ReportGeneratorBase):
             timing_device = camera_data.get('timing_device', 'SharpCap')
             detector = camera_data.get('detector', 'SharpCap')
             other_info = camera_data.get('other_info', '')
-            video_format = camera_data.get('video_format', 'SER')
-            exposure_integration = camera_data.get('exposure_integration', 'Other')
             camera_name = camera_data.get('name', '')
         else:
             timing = 'GPS - other linking'
             timing_device = 'SharpCap'
             detector = 'SharpCap'
             other_info = 'SharpCap'
-            video_format = 'SER'
-            exposure_integration = 'Other'
             camera_name = ''
         
         replacements['{{TIMING}}'] = timing
@@ -339,8 +335,21 @@ class NAReportGenerator(ReportGeneratorBase):
         
         replacements['{{OTHER_DETECTOR_INFO}}'] = detector_info if detector_info else ''
         
-        replacements['{{VIDEO_FORMAT}}'] = video_format
-        replacements['{{EXPOSURE_INTEGRATION}}'] = exposure_integration
+        # Get video format from Tangra data if available
+        if self._tangra_data and 'video_format' in self._tangra_data:
+            video_format_value = self._tangra_data['video_format']
+            if video_format_value:  # Only use if not empty string
+                replacements['{{VIDEO_FORMAT}}'] = video_format_value
+            else:
+                replacements['{{VIDEO_FORMAT}}'] = ''
+        else:
+            replacements['{{VIDEO_FORMAT}}'] = ''
+        
+        # Get exposure/integration from Tangra data if available
+        if self._tangra_data and 'exposure_integration' in self._tangra_data:
+            replacements['{{EXPOSURE_INTEGRATION}}'] = self._tangra_data['exposure_integration']
+        else:
+            replacements['{{EXPOSURE_INTEGRATION}}'] = ''
         
         # ADDITIONAL FIELDS
         replacements['{{TIMING_METHOD}}'] = 'Video Recording'

@@ -1,89 +1,46 @@
 ================================================================================
 RAW OWC DOWNLOAD DATA - COMPLETE DUMP
 ================================================================================
-Number of events: 2
+Number of events: 1
 
 
 --------------------------------------------------------------------------------
-Event: (119355) 2001 SU232
+Event: (7340) 1991 UA2
 Station: Camilleri M Home
 
 All station keys: ['ChordOffsetKm', 'CloudCover', 'CombMag', 'CountryCode', 'ErrorInTimeSec', 'EventTimeUtc', 'HighCloud', 'IsOwnStation', 'IsPrimaryStation', 'Latitude', 'Longitude', 'MoonAlt', 'MoonAz', 'MoonDist', 'MoonPhase', 'OccultDistanceKm', 'Report', 'ReportComment', 'ReportedDuration', 'StarAlt', 'StarAz', 'StarColour', 'StateCode', 'StationId', 'StationName', 'StationPos', 'SunAlt', 'TempDegC', 'WeatherInfoAvailable', 'Wind']
 
 All station data:
-  ChordOffsetKm = 27.399999999999999
-  CloudCover = 2
-  CombMag = 13.5
+  ChordOffsetKm = -1.0
+  CloudCover = 0
+  CombMag = 13.18
   CountryCode = None
-  ErrorInTimeSec = 4.2000000000000002
-  EventTimeUtc = 2025-12-30T11:17:45.453
+  ErrorInTimeSec = 0.29999999999999999
+  EventTimeUtc = 2026-01-05T08:52:18.129
   HighCloud = False
   IsOwnStation = True
   IsPrimaryStation = True
   Latitude = -36.835560000000001
   Longitude = 174.65780000000001
-  MoonAlt = 20.399999999999999
-  MoonAz = 318.0
-  MoonDist = 43.0
-  MoonPhase = 7.0
-  OccultDistanceKm = 56.700000000000003
+  MoonAlt = -6.0999999999999996
+  MoonAz = 69.900000000000006
+  MoonDist = 33.0
+  MoonPhase = 11.0
+  OccultDistanceKm = -1.7
   Report = 0
   ReportComment = None
   ReportedDuration = None
-  StarAlt = 29.0
-  StarAz = 5.4000000000000004
-  StarColour = 4
+  StarAlt = 14.800000000000001
+  StarAz = 44.0
+  StarColour = 3
   StateCode = None
   StationId = 1
   StationName = Camilleri M Home
-  StationPos = 1
-  SunAlt = -27.800000000000001
-  TempDegC = 18
-  WeatherInfoAvailable = True
-  Wind = 3
-
-ELEVATION FIELD CHECK:
-  'Elevation' field NOT FOUND
-  'Altitude' field NOT FOUND
-  'Height' field NOT FOUND
-
---------------------------------------------------------------------------------
-Event: (272097) 2005 GY69
-Station: Camilleri M Home
-
-All station keys: ['ChordOffsetKm', 'CloudCover', 'CombMag', 'CountryCode', 'ErrorInTimeSec', 'EventTimeUtc', 'HighCloud', 'IsOwnStation', 'IsPrimaryStation', 'Latitude', 'Longitude', 'MoonAlt', 'MoonAz', 'MoonDist', 'MoonPhase', 'OccultDistanceKm', 'Report', 'ReportComment', 'ReportedDuration', 'StarAlt', 'StarAz', 'StarColour', 'StateCode', 'StationId', 'StationName', 'StationPos', 'SunAlt', 'TempDegC', 'WeatherInfoAvailable', 'Wind']
-
-All station data:
-  ChordOffsetKm = 8.6999999999999993
-  CloudCover = 2
-  CombMag = 12.0
-  CountryCode = None
-  ErrorInTimeSec = 4.2999999999999998
-  EventTimeUtc = 2025-12-30T11:53:35.839
-  HighCloud = False
-  IsOwnStation = True
-  IsPrimaryStation = True
-  Latitude = -36.835560000000001
-  Longitude = 174.65780000000001
-  MoonAlt = 15.4
-  MoonAz = 311.30000000000001
-  MoonDist = 50.0
-  MoonPhase = 7.0
-  OccultDistanceKm = 21.699999999999999
-  Report = 0
-  ReportComment = None
-  ReportedDuration = None
-  StarAlt = 23.199999999999999
-  StarAz = 4.2999999999999998
-  StarColour = 5
-  StateCode = None
-  StationId = 1
-  StationName = Camilleri M Home
-  StationPos = 1
-  SunAlt = -29.5
-  TempDegC = 18
-  WeatherInfoAvailable = True
-  Wind = 3
+  StationPos = 0
+  SunAlt = -11.6
+  TempDegC = 0
+  WeatherInfoAvailable = False
+  Wind = 0
 
 ELEVATION FIELD CHECK:
   'Elevation' field NOT FOUND

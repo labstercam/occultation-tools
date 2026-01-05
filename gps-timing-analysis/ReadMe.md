@@ -5,10 +5,12 @@ Python toolkit for analyzing GPS flash timing to validate camera timestamp accur
 ### Key Features
 
 - **Tangra Light Curve Analysis**: Import and analyze Tangra CSV files for timestamp quality
+- **Video Format Extraction**: Automatic extraction of video format from Tangra measurement parameters
 - **GPS Flash Detection**: Automated detection and analysis of GPS 1PPS (one pulse per second) flashes
 - **Timestamp Offset Calculation**: Measure timing differences between recorded and actual GPS time
 - **Rolling Shutter Characterization**: Calculate inter-line timing delays for rolling shutter cameras
 - **Camera Acquisition Delay**: Extract timing corrections from Tangra measurement parameters
+- **Exposure/Integration Detection**: Determine recording mode from timing consistency
 - **Quality Validation**: Detect dropped frames, timing anomalies, and system issues
 
 ### Use Cases
@@ -32,6 +34,7 @@ Reads Tangra CSV light curve files with full pandas support.
 - `light_curve`: DataFrame with timestamps and photometry
 - `column_names`: Light curve column headers
 - `acquisition_delay`: Camera acquisition delay in milliseconds (from rows 7-8)
+- `video_format`: Video format code (ADVS, SER, AAV-NTSC, AAV-PAL, PAL/CCIR, NTSC/EIA, etc.)
 
 #### analyse_timestamps(tangra_data, percentiles=None)
 Analyzes frame timing statistics from the full tangra_data dictionary.
@@ -46,6 +49,8 @@ Analyzes frame timing statistics from the full tangra_data dictionary.
 - `tdelta_median`: Median frame time (exposure) in milliseconds
 - `tdelta_std`: Standard deviation of frame times
 - `tdelta_percentiles`: Distribution analysis
+- `video_format`: Video format from input data
+- `exposure_integration`: 'Exposure' or 'Integration' based on timing variance
 
 #### analyse_gps_flash(tangra_data, col='signal_1', exposure_ms=50, flash_ms=100, background=None, do_plots=False)
 Calculates GPS timing offsets for system validation.

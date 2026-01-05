@@ -33,11 +33,13 @@ IronPython (used by SharpCap) cannot load C extensions. Popular libraries like `
 **na_report.py** - North America (IOTA V5.6.12r)
 - Uses template: `NorthAmerica_AstReportForm_V5.6.12r.xlsx`
 - Populates 47 mapped cells with event and timing data
+- **Video format and exposure/integration** sourced from Tangra CSV analysis
 - Filename format: `YYYYMMDD_asteroidnumber_asteroidname_starcatalog_starnumber-surname_station.xlsx`
 
 **tt_report.py** - Trans-Tasman (RASNZ V4.1.2.G)
 - Uses template: `TransTasman_AstReportForm_V4.1.2.G.xlsx`
 - Similar structure with regional-specific fields
+- **Video format and exposure/integration** sourced from Tangra CSV analysis
 
 **occult4_export.py** - Occult 4 XML Export (Version 2.15+)
 - Generates OBS.XML files compatible with Occult 4 software
@@ -48,6 +50,7 @@ IronPython (used by SharpCap) cannot load C extensions. Popular libraries like `
 **Key Features**:
 - Automatic filename generation matching observation details
 - Precision coordinate handling (J2000 vs Apparent RA/Dec)
+- **Dynamic data extraction** from Tangra CSV files (video format, timing parameters)
 - Telescope aperture conversion (mm to cm, rounded to integer)
 - Variable precision time formatting (removes trailing zeros)
 - Timing accuracy from AOTA report uncertainties
@@ -79,17 +82,17 @@ IronPython (used by SharpCap) cannot load C extensions. Popular libraries like `
 
 **light_curves_iron.py** - IronPython-Compatible Timing Analysis
 - Reads Tangra CSV light curve files
-- Extracts observation timing statistics
+- Extracts observation timing statistics and video format
 - Compatible with IronPython (no pandas/numpy/scipy)
 - Uses only Python standard library (csv, datetime)
 
 **Key Functions**:
 ```python
 read_tangra_csv_iron(file_path)
-# Returns: filename, header details, apertures, light curve data
+# Returns: filename, header details, apertures, light curve data, video_format
 
 analyse_timestamps_iron(light_curve_data)
-# Returns: start_time, end_time, tdelta_median, tdelta_std
+# Returns: start_time, end_time, tdelta_median, tdelta_std, video_format, exposure_integration
 
 get_observation_summary(tangra_csv_path)
 # Convenience wrapper combining read and analysis
@@ -100,6 +103,14 @@ get_observation_summary(tangra_csv_path)
 - End time (HH:MM:SS.SS format)
 - Exposure time (median frame delta in seconds)
 - Camera acquisition delay (from measurement parameters table, rows 7-8)
+- **Video format** (from measurement parameters: ADV→ADVS, AAV variants, PAL/CCIR, NTSC/EIA, SER, AVI, MP4, FITS)
+- **Exposure/Integration type** (calculated from timing consistency)
+
+**Tangra CSV Parsing**:
+- **Lines 7-8 (0-indexed 6-7)**: Measurement parameters header and data
+  - Extracts "Video File Format" column (handles leading spaces in column names)
+  - Extracts "Acquisition Delay (ms)" column
+- Maps Tangra format codes to report-standard format names
 
 **Report Placeholders Populated**:
 ```
@@ -110,6 +121,8 @@ get_observation_summary(tangra_csv_path)
 {{STOPPED_OBSERVING_MINUTES}}
 {{STOPPED_OBSERVING_SECONDS}}
 {{INTEGRATION}}                    # Exposure in seconds
+{{VIDEO_FORMAT}}                   # Video format from Tangra CSV
+{{EXPOSURE_INTEGRATION}}           # Exposure or Integration based on timing consistency
 {{CAMERA_DELAY_CORRECTION}}        # Acquisition delay in seconds
 {{CORRECTIONS_APPLIED}}            # Set to "yes" when Tangra data present
 ```

@@ -481,7 +481,7 @@ class ConfigManager:
         cameras = self.get_cameras()
         return cameras[0] if cameras else None
     
-    def add_camera(self, name, detector, report_type, timing, timing_device, other_info='', video_format='SER', exposure_integration='Other'):
+    def add_camera(self, name, detector, report_type, timing, timing_device, occult4_method='b', occult4_time='a', other_info=''):
         """Add a new camera configuration"""
         import uuid
         cameras = self.get_cameras()
@@ -492,9 +492,9 @@ class ConfigManager:
             'report_type': report_type,
             'timing': timing,
             'timing_device': timing_device,
-            'other_info': other_info,
-            'video_format': video_format,
-            'exposure_integration': exposure_integration
+            'occult4_method': occult4_method,
+            'occult4_time': occult4_time,
+            'other_info': other_info
         }
         cameras.append(camera)
         self.config['cameras'] = cameras
@@ -505,7 +505,7 @@ class ConfigManager:
         
         return camera['id']
     
-    def update_camera(self, camera_id, name, detector, report_type, timing, timing_device, other_info='', video_format='SER', exposure_integration='Other'):
+    def update_camera(self, camera_id, name, detector, report_type, timing, timing_device, occult4_method='b', occult4_time='a', other_info=''):
         """Update an existing camera configuration"""
         cameras = self.get_cameras()
         for camera in cameras:
@@ -515,9 +515,9 @@ class ConfigManager:
                 camera['report_type'] = report_type
                 camera['timing'] = timing
                 camera['timing_device'] = timing_device
+                camera['occult4_method'] = occult4_method
+                camera['occult4_time'] = occult4_time
                 camera['other_info'] = other_info
-                camera['video_format'] = video_format
-                camera['exposure_integration'] = exposure_integration
                 self.config['cameras'] = cameras
                 return True
         return False

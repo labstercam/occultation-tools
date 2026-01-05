@@ -1331,6 +1331,8 @@ class OccultationManagerGUI(Form):
                     print(f"  Start time: {tangra_data['start_time']}")
                     print(f"  End time: {tangra_data['end_time']}")
                     print(f"  Exposure (ms): {tangra_data['tdelta_median']:.3f}")
+                    if 'video_format' in tangra_data:
+                        print(f"  Video format: {tangra_data['video_format']}")
                     if 'acquisition_delay' in tangra_data:
                         print(f"  Camera acquisition delay (ms): {tangra_data['acquisition_delay']:.3f}")
                 except Exception as ex:

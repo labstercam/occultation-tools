@@ -287,9 +287,11 @@ class TTReportGenerator(ReportGeneratorBase):
             if detector:
                 replacements['{{DETECTOR}}'] = detector
             
-            video_format = camera.get('video_format', 'SER')
-            if video_format:
-                replacements['{{VIDEO_FORMAT}}'] = video_format
+            # Get video format from Tangra data if available
+            if self._tangra_data and 'video_format' in self._tangra_data:
+                video_format_value = self._tangra_data['video_format']
+                if video_format_value:  # Only use if not empty string
+                    replacements['{{VIDEO_FORMAT}}'] = video_format_value
             
             # Integration time from Tangra data if available
             if self._tangra_data and 'tdelta_median' in self._tangra_data:
@@ -298,12 +300,6 @@ class TTReportGenerator(ReportGeneratorBase):
                 exposure_sec = exposure_ms / 1000.0
                 replacements['{{INTEGRATION}}'] = '{:.3f}'.format(exposure_sec)
                 replacements['{{INTEGRATION_UNITS}}'] = 'Seconds'
-            else:
-                # Fallback to camera settings
-                exposure_integration = camera.get('exposure_integration', 'Other')
-                if exposure_integration:
-                    replacements['{{INTEGRATION}}'] = exposure_integration
-                    replacements['{{INTEGRATION_UNITS}}'] = 'Frames'
             
             other_info = camera.get('other_info', '')
             if other_info:

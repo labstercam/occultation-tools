@@ -59,12 +59,60 @@ def read_tangra_csv_iron(file_path):
     
     # Read the details (line 7, 0-indexed line 6)
     details = {}
+    video_format = ''
     if len(lines) > 6:
         # Parse the details line
         detail_reader = csv.reader([lines[6]])
         detail_row = list(detail_reader)[0]
         # Store as a simple dictionary
         details['raw_data'] = detail_row
+        # Note: video_format will be extracted later from measurement parameters section
+        details['video_format'] = video_format
+    
+    # Extract video format from measurement parameters (lines 7-8, 0-indexed 6-7)
+    try:
+        if len(lines) > 7:
+            # Read header row (line 7, 0-indexed 6)
+            params_header_reader = csv.reader([lines[6]])
+            params_header = list(params_header_reader)[0]
+            # Read data row (line 8, 0-indexed 7)
+            params_data_reader = csv.reader([lines[7]])
+            params_data = list(params_data_reader)[0]
+            
+            # Strip all column names for consistent matching
+            params_header_stripped = [col.strip() for col in params_header]
+            
+            # Find Video File Format column
+            for i, col_name in enumerate(params_header_stripped):
+                if col_name == 'Video File Format':
+                    if i < len(params_data):
+                        format_value = params_data[i].strip().upper()
+                        if format_value:
+                            # Map Tangra format codes to report format names
+                            if format_value == 'ADV' or format_value == 'ADVS':
+                                video_format = 'ADVS'
+                            elif 'AAV' in format_value:
+                                if 'NTSC' in format_value:
+                                    video_format = 'AAV-NTSC'
+                                elif 'PAL' in format_value:
+                                    video_format = 'AAV-PAL'
+                                else:
+                                    video_format = 'ADVS'  # AAV defaults to ADVS
+                            elif 'PAL' in format_value or 'CCIR' in format_value:
+                                video_format = 'PAL/CCIR'
+                            elif 'NTSC' in format_value or 'EIA' in format_value:
+                                video_format = 'NTSC/EIA'
+                            elif format_value == 'SER':
+                                video_format = 'SER'
+                            elif format_value in ['AVI', 'MP4', 'FITS']:
+                                video_format = format_value
+                            else:
+                                video_format = format_value  # Use as-is if not recognized
+                            details['video_format'] = video_format
+                    break
+    except (ValueError, IndexError):
+        # If parsing fails, video_format stays empty string
+        pass
     
     # Find where the light curve data starts by looking for 'FrameNo' or 'BinNo'
     lc_start = -1
@@ -177,7 +225,8 @@ def read_tangra_csv_iron(file_path):
         'details': details,
         'apertures': apertures,
         'light_curve': light_curve,
-        'column_names': column_names
+        'column_names': column_names,
+        'video_format': video_format
     }
 
 
@@ -323,6 +372,14 @@ def analyse_timestamps_iron(tangra_object, percentiles=None):
     start_time = times_list[0].strftime('%H:%M:%S.%f')[:12] if times_list[0] else ''
     end_time = times_list[-1].strftime('%H:%M:%S.%f')[:12] if times_list[-1] else ''
     
+    # Get video format from tangra_object if available
+    video_format = tangra_object.get('video_format', '')
+    
+    # Determine exposure/integration type
+    # If median exposure is consistent, it's likely single frame exposure
+    # Otherwise might be integration
+    exposure_integration = 'Exposure' if tdelta_std < (tdelta_median * 0.1) else 'Integration'
+    
     # Build result dictionary
     result = {
         'file_read_from': tangra_object['file_read_from'],
@@ -344,7 +401,9 @@ def analyse_timestamps_iron(tangra_object, percentiles=None):
         'n_late_frames': n_late_frames,
         'n_delayed_frames': n_delayed_frames,
         'n_repeated_frames': n_repeated_frames,
-        'n_blank_cells': n_blank_cells
+        'n_blank_cells': n_blank_cells,
+        'video_format': video_format,
+        'exposure_integration': exposure_integration
     }
     
     # Calculate percentiles if requested
