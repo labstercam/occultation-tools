@@ -1454,8 +1454,11 @@ class OccultationManagerGUI(Form):
             if aota_report_data and not aota_event:
                 print("Using AOTA Report data (no AOTA.xml file provided)")
             
+            # Determine if AOTA XML was used (for OTE determination)
+            aota_xml_used = bool(aota_event and not aota_report_data)
+            
             self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, tangra_data, aota_report_data)
+            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, tangra_data, aota_report_data, aota_xml_used)
             
             # If AOTA.xml data exists but AOTA Report wasn't used, add AOTA.xml data to the report
             # (AOTA Report data is already included in generate_report if it was provided)

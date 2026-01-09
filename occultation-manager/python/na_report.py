@@ -31,7 +31,7 @@ class NAReportGenerator(ReportGeneratorBase):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, self.TEMPLATE_FILENAME)
     
-    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None, aota_report_data=None):
+    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None, aota_report_data=None, aota_xml_used=False):
         """Generate a North American report using placeholder replacement
         
         Args:
@@ -41,6 +41,7 @@ class NAReportGenerator(ReportGeneratorBase):
             observation_type: Type of observation ("Positive", "Negative", "Unsure")
             tangra_data: Optional dictionary with Tangra light curve analysis data
             aota_report_data: Optional dictionary with AOTA Report timing/SNR data
+            aota_xml_used: Boolean indicating if AOTA XML file was used (for OTE determination)
         """
         # Store equipment IDs and observation type
         self._report_telescope_id = telescope_id
@@ -48,6 +49,7 @@ class NAReportGenerator(ReportGeneratorBase):
         self._observation_type = observation_type or "Positive"
         self._tangra_data = tangra_data
         self._aota_report_data = aota_report_data
+        self._aota_xml_used = aota_xml_used
         
         try:
             # Get report folder
@@ -355,6 +357,14 @@ class NAReportGenerator(ReportGeneratorBase):
         replacements['{{TIMING_METHOD}}'] = 'Video Recording'
         replacements['{{ASTEROID_VISIBLE}}'] = 'Yes'
         
+        # Determine OTE (Occultation Timing Extraction) method
+        # For NA report values: Manual, AOTA w/ CamDelay Corrections, Occular, 
+        # R-OTE w/ CamDelay Corrections, R-OTE w/o CamDelay Corrections, PYOTE, 
+        # Other - Specify in Comments
+        # Default: PYOTE
+        ote_value = self._determine_ote_value_na()
+        replacements['{{OTE}}'] = ote_value
+        
         # Set WAS_MISS based on observation type (inverse relationship)
         # Positive = saw occultation = NOT a miss
         # Negative = didn't see occultation = WAS a miss
@@ -416,6 +426,33 @@ class NAReportGenerator(ReportGeneratorBase):
             replacements['{{AOTA_R_ERROR}}'] = format_aota_error(aota_event.r_error, aota_event.r_error_str)
         
         print(f"AOTA data imported: D={aota_event.d_hours}:{aota_event.d_minutes}:{aota_event.d_seconds_str}, R={aota_event.r_hours}:{aota_event.r_minutes}:{aota_event.r_seconds_str}")
+    
+    def _determine_ote_value_na(self):
+        """Determine the OTE (Occultation Timing Extraction) value for North America report
+        
+        Returns the appropriate OTE string based on the data source loaded.
+        
+        For NA report, valid values are:
+        - Manual
+        - AOTA w/ CamDelay Corrections
+        - Occular
+        - R-OTE w/ CamDelay Corrections
+        - R-OTE w/o CamDelay Corrections
+        - PYOTE
+        - Other - Specify in Comments
+        
+        Default: PYOTE
+        """
+        # Check if AOTA Report data is available
+        if self._aota_report_data:
+            return "AOTA w/ CamDelay Corrections"
+        
+        # Check if AOTA XML was used
+        if self._aota_xml_used:
+            return "AOTA w/ CamDelay Corrections"
+        
+        # Default to PYOTE for NA reports
+        return "PYOTE"
     
     def import_aota_report_data(self, aota_report_summary, replacements):
         """Import timing and SNR data from AOTA Report into replacements dictionary

@@ -65,6 +65,7 @@ CAMERA/DETECTOR INFORMATION:
 ----------------------------
 Cell E22: {{TIMING}}                   (Timing method, e.g., "GPS - other linking")
 Cell E23: {{TIMING_DEVICE}}            (Timing device, e.g., "SharpCap")
+Cell E24: {{OTE}}                      (OTE used, e.g., "PYOTE")
 Cell E25: {{DETECTOR}}                 (Detector/software, e.g., "SharpCap")
 Cell V25: {{OTHER_DETECTOR_INFO}}      (Other detector info + exposure) - Includes exposure from Tangra CSV
 Cell L25: {{VIDEO_FORMAT}}             (Video format, e.g., "SER")

@@ -53,6 +53,7 @@ Cell C22: {{TIMING}}                     (e.g., "GPS PPS")
 Cell O22: {{TIMING_METHOD}}              (e.g., "Video Recording")
 Cell Y22: {{ASTEROID_VISIBLE}}           (e.g., "Yes")
 Cell E23: {{TIMING_DEVICE}}              (e.g., "SharpCap")
+Cell C24: {{OTE}}                        (e.g., "AOTA (part of OCCULT4)")
 
 DETECTOR/CAMERA:
 ----------------
