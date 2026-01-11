@@ -18,11 +18,13 @@ class ConfigManager:
             'my_occultations_file': 'occultations.json',
             'my_latest_occultations_file': 'occultations_latest.json',
             'sequence_path': '',  # Will be set to my_file_folder if empty
+            'days_to_retain_events': 14,  # Number of days to retain events (1-400)
             
             # Recording parameters
             'base_duration': 60,
             'goto_lead_time': 240,
             'mag_for_40ms_exposure': 12.0,
+            'default_gain': 450,
             'sync_mount': True,
             'display_utc': True,
             
@@ -182,6 +184,12 @@ class ConfigManager:
     def set_sequence_path(self, path):
         self.config['sequence_path'] = os.path.normpath(path)
     
+    def get_days_to_retain_events(self):
+        return self.config.get('days_to_retain_events', 14)
+    
+    def set_days_to_retain_events(self, days):
+        self.config['days_to_retain_events'] = int(days)
+    
     # Recording parameters
     def get_base_duration(self):
         return self.config['base_duration']
@@ -200,6 +208,12 @@ class ConfigManager:
     
     def set_mag_for_40ms_exposure(self, magnitude):
         self.config['mag_for_40ms_exposure'] = float(magnitude)
+    
+    def get_default_gain(self):
+        return self.config.get('default_gain', 450)
+    
+    def set_default_gain(self, gain):
+        self.config['default_gain'] = int(gain)
 
     def get_sync_mount(self):
         return self.config['sync_mount']
@@ -349,6 +363,11 @@ class ConfigManager:
         
         if self.config['mag_for_40ms_exposure'] <= 0:
             errors.append("Magnitude for 40ms exposure must be positive")
+        
+        # Check retention days
+        retention_days = self.config.get('days_to_retain_events', 14)
+        if retention_days < 1 or retention_days > 400:
+            errors.append("Days to retain events must be between 1 and 400")
 
         if not isinstance(self.config['sync_mount'], bool):
             errors.append("Sync mount must be a boolean value")    

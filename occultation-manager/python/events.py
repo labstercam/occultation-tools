@@ -117,7 +117,8 @@ class EventProcessor:
             EventProcessor.save_occultations(result, self.config.get_occultations_file(), self.config)
         existing_occultations = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
 
-        merged_occultations = EventProcessor.merge_occultation_lists(existing_occultations, latest_occultations, id_key='id', retention_days=14)
+        retention_days = self.config.get_days_to_retain_events()
+        merged_occultations = EventProcessor.merge_occultation_lists(existing_occultations, latest_occultations, id_key='id', retention_days=retention_days)
         EventProcessor.save_occultations(merged_occultations, self.config.get_occultations_file(), self.config)
         return latest_occultations
     
@@ -406,6 +407,8 @@ class OccultationEvent:
         self.original_data = event_data
         self.selected = True
         self.custom_exposure = None  # Track custom exposure settings
+        self.custom_gain = None  # Track custom gain settings
+        self.custom_recording_duration = None  # Track custom recording duration override
         self._parse_event_data(event_data)
         self._calculate_derived_values()
     
@@ -525,6 +528,15 @@ class OccultationEvent:
 
                 else:
                     self.exposure_ms = 40
+            
+            # Calculate gain value
+            if self.custom_gain is not None:
+                # Use custom gain if set
+                self.gain_value = int(self.custom_gain)
+            else:
+                # Use default gain from config
+                self.gain_value = int(self.config.get_default_gain())
+            
             # Parse the main event datetime from the stored ISO string
             self.event_datetime = self._parse_iso_datetime(self.event_time)
 
@@ -545,13 +557,18 @@ class OccultationEvent:
             except Exception:
                 base_dur = 0
 
-            # Use the stored event_duration and uncertainty to compute recording duration
-            try:
-                rec_dur = round(base_dur + (self.event_duration if self.event_duration > 5 else 0) + 6 * (self.event_uncertainty if self.event_uncertainty > 2 else 0))
-                self.recording_duration = int(rec_dur)
-            except Exception:
-                # Fallback: keep existing recording_duration if present
-                pass
+            # Calculate recording duration
+            if self.custom_recording_duration is not None:
+                # Use custom recording duration if set
+                self.recording_duration = int(self.custom_recording_duration)
+            else:
+                # Use the stored event_duration and uncertainty to compute recording duration
+                try:
+                    rec_dur = round(base_dur + (self.event_duration if self.event_duration > 5 else 0) + 6 * (self.event_uncertainty if self.event_uncertainty > 2 else 0))
+                    self.recording_duration = int(rec_dur)
+                except Exception:
+                    # Fallback: keep existing recording_duration if present
+                    pass
 
             # Compute start/end/goto times (datetimes and ISO strings) and
             # prepare local-time display strings used by templates/UI.
@@ -721,9 +738,32 @@ class OccultationEvent:
         """Get exposure in seconds for template substitution"""
         return self.exposure_ms / 1000.0
     
+    def get_gain(self):
+        """Get gain value for template substitution"""
+        return self.gain_value
+    
     def has_custom_exposure(self):
         """Check if event has custom exposure setting"""
         return self.custom_exposure is not None
+    
+    def set_custom_gain(self, gain_value):
+        """Set a custom gain override for this event"""
+        self.custom_gain = int(gain_value)
+        self.gain_value = int(gain_value)
+    
+    def has_custom_gain(self):
+        """Check if this event has a custom gain override"""
+        return self.custom_gain is not None
+    
+    def set_custom_recording_duration(self, duration_seconds):
+        """Set a custom recording duration override for this event"""
+        self.custom_recording_duration = int(duration_seconds)
+        # Recalculate times based on new duration
+        self._calculate_derived_values()
+    
+    def has_custom_recording_duration(self):
+        """Check if this event has a custom recording duration override"""
+        return self.custom_recording_duration is not None
     
     def _parse_iso_datetime(self, iso_string):
         """Parse ISO format datetime string"""
@@ -857,12 +897,17 @@ class OccultationManager:
     def download_events_from_cloud(self):
         """Download events from OW Cloud"""
         try:
+            # This downloads, merges with existing, and saves to occultations.json
             events_data = self.event_processor.update_ow_cloud_events()
             if events_data:
-                self.all_events = [OccultationEvent(event, self.config) for event in events_data]
-                self.events = self.all_events[:]
-                self.sort_events()
-                return len(self.events)
+                # Load the merged file (occultations.json) instead of just the latest
+                # This ensures retention policy has been applied
+                merged_events = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
+                if merged_events:
+                    self.all_events = [OccultationEvent(event, self.config) for event in merged_events]
+                    self.events = self.all_events[:]
+                    self.sort_events()
+                    return len(self.events)
             return 0
         except Exception as e:
             print(f"Error downloading events: {e}")

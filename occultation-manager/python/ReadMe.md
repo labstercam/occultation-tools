@@ -214,6 +214,55 @@ Manages all configuration with JSON storage (`occultation_config.json`):
 - Active equipment selection
 - Report generation preferences (type, folder)
 - OWC credentials and API settings
+- Event retention period (days_to_retain_events: 1-400, default 14)
+- Default camera gain (default_gain: 0-600, default 450)
+
+**Configuration Settings**:
+- `get_days_to_retain_events()` / `set_days_to_retain_events(days)` - Event retention period
+- `get_default_gain()` / `set_default_gain(gain)` - Default camera gain for new events
+- `validate_config()` - Validates retention days (1-400 range) and other settings
+
+### Event Management
+
+**events.py** - OccultationEvent Class
+Core event data model with automatic calculations and customizable overrides:
+
+**Calculated Properties**:
+- `exposure_ms` - Calculated from magnitude drop (brighter = shorter exposure)
+- `gain_value` - Uses default_gain from configuration (default 450)
+- `recording_duration` - Calculated as (uncertainty × 8) + (max_duration × 2)
+- `start_time`, `end_time`, `goto_time` - Derived from recording duration
+
+**Custom Overrides**:
+- `custom_exposure` - Override calculated exposure (1-10000 ms)
+- `custom_gain` - Override default gain (0-600)
+- `custom_recording_duration` - Override calculated duration (10-3600 seconds)
+
+**Key Methods**:
+- `set_custom_exposure(value_ms)` - Sets custom exposure in milliseconds
+- `set_custom_gain(value)` - Sets custom gain value
+- `set_custom_recording_duration(value_seconds)` - Sets custom duration and recalculates times
+- `has_custom_exposure()`, `has_custom_gain()`, `has_custom_recording_duration()` - Check custom flags
+- `get_exposure()` - Returns exposure in seconds for template formatting
+- `get_gain()` - Returns gain value for template formatting
+- `_calculate_derived_values()` - Recalculates all timing when recording duration changes
+
+**Event Merging with Retention**:
+- `merge_occultation_lists(latest, existing, retention_days)` - Merges event lists
+- Uses cutoff date based on retention_days setting
+- Preserves custom settings (exposure, gain, recording duration) for existing events
+- Removes events older than cutoff date
+
+**GUI Components** (`gui_components.py`, `gui_dialogs.py`):
+- EventsDataGrid displays Exposure (ms), Gain, Recording Time (s) with * for custom values
+- Double-click on these columns opens Edit Settings dialog
+- ExposureEditDialog (Edit Settings) - Combined dialog for exposure/gain/duration customization
+- Configuration Dialog includes Days to Retain Events (File Paths) and Default Gain (User Settings)
+
+**Sequence Generation** (`utils.py`, `templates.py`):
+- Generates SharpCap sequences with {exposure}, {gain}, {recording_duration} variables
+- Templates use Python string.format() with event-specific values
+- Calculated or custom values automatically substituted
 
 ### Utility Modules
 

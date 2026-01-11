@@ -75,24 +75,26 @@ def _autosize_button(btn, sf, padding=None, min_width=None, height=None):
         btn.Size = Size(int(round(75 * sf)), int(round(25 * sf)))
 
 class ExposureEditDialog(Form):
-    """Dialog for editing event exposure - DPI-aware version"""
+    """Dialog for editing event exposure and gain - DPI-aware version"""
     
     def __init__(self, event, theme_manager):
         Form.__init__(self)
         self.event = event
         self.theme_manager = theme_manager
         self.new_exposure_ms = event.exposure_ms
+        self.new_gain = event.gain_value
+        self.new_recording_duration = event.recording_duration
         self._sf = _detect_scale_factor()
         self.setup_ui()
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
     
     def setup_ui(self):
-        """Setup exposure edit dialog UI with DPI scaling"""
+        """Setup settings edit dialog UI with DPI scaling"""
         sf = self._sf
         
-        self.Text = f"Edit Exposure - {self.event.event_name}"
-        self.Size = Size(int(450 * sf), int(330 * sf))
+        self.Text = f"Edit Settings - {self.event.event_name}"
+        self.Size = Size(int(450 * sf), int(550 * sf))
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -112,6 +114,7 @@ class ExposureEditDialog(Form):
         lbl_star.Size = Size(int(350 * sf), int(20 * sf))
         self.Controls.Add(lbl_star)
         
+        # Current exposure
         lbl_current = Label()
         current_text = f"Current Exposure: {self.event.exposure_ms} ms"
         if self.event.has_custom_exposure():
@@ -119,33 +122,83 @@ class ExposureEditDialog(Form):
         else:
             current_text += " (Calculated)"
         lbl_current.Text = current_text
-        lbl_current.Location = Point(int(20 * sf), int(80 * sf))
+        lbl_current.Location = Point(int(20 * sf), int(75 * sf))
         lbl_current.Size = Size(int(350 * sf), int(20 * sf))
         self.Controls.Add(lbl_current)
+        
+        # Current gain
+        lbl_current_gain = Label()
+        gain_text = f"Current Gain: {self.event.gain_value}"
+        if self.event.has_custom_gain():
+            gain_text += " (Custom)"
+        else:
+            gain_text += " (Default)"
+        lbl_current_gain.Text = gain_text
+        lbl_current_gain.Location = Point(int(20 * sf), int(95 * sf))
+        lbl_current_gain.Size = Size(int(350 * sf), int(20 * sf))
+        self.Controls.Add(lbl_current_gain)
+        
+        # Current recording duration
+        lbl_current_duration = Label()
+        duration_text = f"Current Recording Duration: {self.event.recording_duration} seconds"
+        if self.event.has_custom_recording_duration():
+            duration_text += " (Custom)"
+        else:
+            duration_text += " (Calculated)"
+        lbl_current_duration.Text = duration_text
+        lbl_current_duration.Location = Point(int(20 * sf), int(115 * sf))
+        lbl_current_duration.Size = Size(int(410 * sf), int(20 * sf))
+        self.Controls.Add(lbl_current_duration)
         
         # Exposure input
         lbl_new_exposure = Label()
         lbl_new_exposure.Text = "New Exposure (ms):"
-        lbl_new_exposure.Location = Point(int(20 * sf), int(105 * sf))
+        lbl_new_exposure.Location = Point(int(20 * sf), int(145 * sf))
         lbl_new_exposure.Size = Size(int(120 * sf), int(20 * sf))
         self.Controls.Add(lbl_new_exposure)
         
         self.txt_exposure = TextBox()
         self.txt_exposure.Text = str(self.event.exposure_ms)
-        self.txt_exposure.Location = Point(int(150 * sf), int(105 * sf))
+        self.txt_exposure.Location = Point(int(150 * sf), int(145 * sf))
         self.txt_exposure.Size = Size(int(100 * sf), int(20 * sf))
         self.Controls.Add(self.txt_exposure)
         
+        # Gain input
+        lbl_new_gain = Label()
+        lbl_new_gain.Text = "New Gain (0-600):"
+        lbl_new_gain.Location = Point(int(20 * sf), int(170 * sf))
+        lbl_new_gain.Size = Size(int(120 * sf), int(20 * sf))
+        self.Controls.Add(lbl_new_gain)
+        
+        self.txt_gain = TextBox()
+        self.txt_gain.Text = str(self.event.gain_value)
+        self.txt_gain.Location = Point(int(150 * sf), int(170 * sf))
+        self.txt_gain.Size = Size(int(100 * sf), int(20 * sf))
+        self.Controls.Add(self.txt_gain)
+        
+        # Recording duration input
+        lbl_new_duration = Label()
+        lbl_new_duration.Text = "Recording Duration (s):"
+        lbl_new_duration.Location = Point(int(20 * sf), int(195 * sf))
+        lbl_new_duration.Size = Size(int(130 * sf), int(20 * sf))
+        self.Controls.Add(lbl_new_duration)
+        
+        self.txt_duration = TextBox()
+        self.txt_duration.Text = str(self.event.recording_duration)
+        self.txt_duration.Location = Point(int(150 * sf), int(195 * sf))
+        self.txt_duration.Size = Size(int(100 * sf), int(20 * sf))
+        self.Controls.Add(self.txt_duration)
+        
         # Quick exposure buttons
         lbl_quick = Label()
-        lbl_quick.Text = "Quick Settings:"
-        lbl_quick.Location = Point(int(20 * sf), int(130 * sf))
+        lbl_quick.Text = "Quick Exposure:"
+        lbl_quick.Location = Point(int(20 * sf), int(225 * sf))
         lbl_quick.Size = Size(int(100 * sf), int(20 * sf))
         self.Controls.Add(lbl_quick)
         
         quick_exposures = [40, 60, 80, 120, 160, 240, 320, 480]
         x_pos = int(20 * sf)
-        y_pos = int(155 * sf)
+        y_pos = int(250 * sf)
         gap = int(6 * sf)
         
         for i, exp in enumerate(quick_exposures):
@@ -162,8 +215,33 @@ class ExposureEditDialog(Form):
                 x_pos = int(20 * sf)
                 y_pos += int(30 * sf)
         
+        # Quick gain buttons
+        lbl_quick_gain = Label()
+        lbl_quick_gain.Text = "Quick Gain:"
+        lbl_quick_gain.Location = Point(int(20 * sf), y_pos + int(10 * sf))
+        lbl_quick_gain.Size = Size(int(100 * sf), int(20 * sf))
+        self.Controls.Add(lbl_quick_gain)
+        
+        quick_gains = [200, 300, 400, 450, 500, 550]
+        x_pos = int(20 * sf)
+        y_pos = y_pos + int(35 * sf)
+        
+        for i, gain in enumerate(quick_gains):
+            btn = Button()
+            btn.Text = f"{gain}"
+            btn.Location = Point(x_pos, y_pos)
+            _autosize_button(btn, sf, padding=int(12 * sf), min_width=int(45 * sf))
+            btn.Tag = gain
+            btn.Click += self.quick_gain_click
+            self.Controls.Add(btn)
+            
+            x_pos += btn.Width + gap
+            if (i + 1) % 3 == 0:
+                x_pos = int(20 * sf)
+                y_pos += int(30 * sf)
+        
         # Calculate button row Y position dynamically
-        button_y = y_pos + int(15 * sf)
+        button_y = y_pos + int(20 * sf)
         
         # Buttons - position them relative to form width
         btn_reset = Button()
@@ -197,46 +275,105 @@ class ExposureEditDialog(Form):
         """Handle quick exposure button click"""
         self.txt_exposure.Text = str(sender.Tag)
     
+    def quick_gain_click(self, sender, e):
+        """Handle quick gain button click"""
+        self.txt_gain.Text = str(sender.Tag)
+    
     def reset_click(self, sender, e):
-        """Reset to calculated exposure"""
-        # Temporarily clear custom exposure to get calculated value
+        """Reset to calculated exposure, default gain, and calculated recording duration"""
+        from config import ConfigManager
+        config = ConfigManager()
+        
+        # Reset exposure: temporarily clear custom exposure to get calculated value
         original_custom = self.event.custom_exposure
         self.event.custom_exposure = None
         self.event._calculate_derived_values()
         calculated_exposure = self.event.exposure_ms
+        # Restore original (dialog hasn't been saved yet)
         self.event.custom_exposure = original_custom
         self.event._calculate_derived_values()
         
         self.txt_exposure.Text = str(calculated_exposure)
+        
+        # Reset gain to config default
+        default_gain = config.get_default_gain()
+        self.txt_gain.Text = str(default_gain)
+        
+        # Reset recording duration: temporarily clear custom to get calculated value
+        original_custom_duration = self.event.custom_recording_duration
+        self.event.custom_recording_duration = None
+        self.event._calculate_derived_values()
+        calculated_duration = self.event.recording_duration
+        # Restore original (dialog hasn't been saved yet)
+        self.event.custom_recording_duration = original_custom_duration
+        self.event._calculate_derived_values()
+        
+        self.txt_duration.Text = str(calculated_duration)
     
     def ok_click(self, sender, e):
-        """Handle OK button click - FIXED VERSION"""
+        """Handle OK button click - validate exposure, gain, and recording duration"""
         try:
+            # Validate exposure
             exposure_text = self.txt_exposure.Text.strip()
             if not exposure_text:
                 MessageBox.Show("Please enter an exposure value", "Invalid Input", 
                               MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 return
             
-            self.new_exposure_ms = int(exposure_text)
-            if self.new_exposure_ms < 1 or self.new_exposure_ms > 10000:
+            exp_value = int(exposure_text)
+            if exp_value < 1 or exp_value > 10000:
                 MessageBox.Show("Exposure must be between 1 and 10000 ms", "Invalid Exposure", 
                               MessageBoxButtons.OK, MessageBoxIcon.Warning)
-                # FIXED: Don't set DialogResult on invalid input - dialog stays open
                 return
             
-            # Only set OK result if validation passes
+            # Validate gain
+            gain_text = self.txt_gain.Text.strip()
+            if not gain_text:
+                MessageBox.Show("Please enter a gain value", "Invalid Input", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+            
+            gain_value = int(gain_text)
+            if gain_value < 0 or gain_value > 600:
+                MessageBox.Show("Gain must be between 0 and 600", "Invalid Gain", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+            
+            # Validate recording duration
+            duration_text = self.txt_duration.Text.strip()
+            if not duration_text:
+                MessageBox.Show("Please enter a recording duration value", "Invalid Input", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+            
+            duration_value = int(duration_text)
+            if duration_value < 10 or duration_value > 3600:
+                MessageBox.Show("Recording duration must be between 10 and 3600 seconds", "Invalid Duration", 
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+            
+            # All values are valid
+            self.new_exposure_ms = exp_value
+            self.new_gain = gain_value
+            self.new_recording_duration = duration_value
             self.DialogResult = DialogResult.OK
             
         except ValueError:
-            MessageBox.Show("Please enter a valid number", "Invalid Input", 
+            MessageBox.Show("Please enter valid numbers for all settings", "Invalid Input", 
                           MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            # FIXED: Don't set DialogResult on error - dialog stays open
             return
     
     def get_new_exposure(self):
         """Get the new exposure value"""
         return self.new_exposure_ms
+    
+    def get_new_gain(self):
+        """Get the new gain value"""
+        return self.new_gain
+    
+    def get_new_recording_duration(self):
+        """Get the new recording duration in seconds"""
+        return self.new_recording_duration
 
 class EventDetailsDialog(Form):
     """Dialog for displaying detailed event information with DPI scaling"""
@@ -638,7 +775,7 @@ class ConfigurationDialog(Form):
         self.txt_occ_file.Location = Point(int(130 * sf), int(100 * sf))
         self.txt_occ_file.Size = Size(int(300 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_occ_file)
-        self.tooltip.SetToolTip(self.txt_occ_file, "Filename for the main occultation events data file (merged with downloads, 14-day retention)")
+        self.tooltip.SetToolTip(self.txt_occ_file, "Filename for the main occultation events data file (merged with downloads, retention period set below)")
         
         lbl_latest_file = Label()
         lbl_latest_file.Text = "Latest File:"
@@ -652,10 +789,22 @@ class ConfigurationDialog(Form):
         tab.Controls.Add(self.txt_latest_file)
         self.tooltip.SetToolTip(self.txt_latest_file, "Filename for storing the latest downloaded occultation events (replaced on each download)")
         
+        lbl_retention_days = Label()
+        lbl_retention_days.Text = "Days to Retain:"
+        lbl_retention_days.Location = Point(int(20 * sf), int(180 * sf))
+        lbl_retention_days.Size = Size(int(100 * sf), int(20 * sf))
+        tab.Controls.Add(lbl_retention_days)
+        
+        self.txt_retention_days = TextBox()
+        self.txt_retention_days.Location = Point(int(130 * sf), int(180 * sf))
+        self.txt_retention_days.Size = Size(int(100 * sf), int(20 * sf))
+        tab.Controls.Add(self.txt_retention_days)
+        self.tooltip.SetToolTip(self.txt_retention_days, "Number of days to retain events in the occultations file (1-400 days)")
+        
         # Information Panel at bottom
         info_panel = GroupBox()
         info_panel.Text = "How Download from OWC Works"
-        info_panel.Location = Point(int(20 * sf), int(190 * sf))
+        info_panel.Location = Point(int(20 * sf), int(220 * sf))
         info_panel.Size = Size(int(500 * sf), int(140 * sf))
         tab.Controls.Add(info_panel)
         
@@ -664,7 +813,7 @@ class ConfigurationDialog(Form):
                          "1. Reads your 'Upcoming Events' from OWC (link below)\n"
                          "2. Saves the downloaded events to 'Latest File'\n"
                          "3. Merges with existing 'Occultations File'\n"
-                         "4. Retains only events no more than 14 days old")
+                         "4. Retains only events no more than the specified days old")
         info_text.Location = Point(int(10 * sf), int(20 * sf))
         info_text.Size = Size(int(480 * sf), int(80 * sf))
         info_text.AutoSize = False
@@ -728,9 +877,21 @@ class ConfigurationDialog(Form):
         tab.Controls.Add(self.txt_mag_exposure)
         self.tooltip.SetToolTip(self.txt_mag_exposure, "Reference star magnitude that requires 40 ms exposure. Used to calculate appropriate exposure times for stars of different magnitudes")
 
+        lbl_default_gain = Label()
+        lbl_default_gain.Text = "Default Gain (0-600):"
+        lbl_default_gain.Location = Point(int(20 * sf), int(110 * sf))
+        lbl_default_gain.Size = Size(int(120 * sf), int(20 * sf))
+        tab.Controls.Add(lbl_default_gain)
+        
+        self.txt_default_gain = TextBox()
+        self.txt_default_gain.Location = Point(int(150 * sf), int(110 * sf))
+        self.txt_default_gain.Size = Size(int(100 * sf), int(20 * sf))
+        tab.Controls.Add(self.txt_default_gain)
+        self.tooltip.SetToolTip(self.txt_default_gain, "Default camera gain value (0-600) used for all events unless overridden per-event")
+
         self.chk_sync_mount = CheckBox()
         self.chk_sync_mount.Text = "Sync Mount with GOTO"       
-        self.chk_sync_mount.Location = Point(int(20 * sf), int(110 * sf))
+        self.chk_sync_mount.Location = Point(int(20 * sf), int(140 * sf))
         self.chk_sync_mount.Size = Size(int(200 * sf), int(20 * sf))    
         tab.Controls.Add(self.chk_sync_mount)
         self.tooltip.SetToolTip(self.chk_sync_mount, "⚠ WARNING: Only enable if you usually SYNC your mount with every GOTO. Do NOT use with permanently aligned or precision aligned mounts!")
@@ -740,7 +901,7 @@ class ConfigurationDialog(Form):
 
         self.display_utc = CheckBox()
         self.display_utc.Text = "Display UTC in Grid"       
-        self.display_utc.Location = Point(int(20 * sf), int(140 * sf))
+        self.display_utc.Location = Point(int(20 * sf), int(170 * sf))
         self.display_utc.Size = Size(int(200 * sf), int(20 * sf))    
         tab.Controls.Add(self.display_utc)
         self.tooltip.SetToolTip(self.display_utc, "Display event times in UTC (Coordinated Universal Time) in the main grid. When unchecked, times are shown in local time")
@@ -751,7 +912,7 @@ class ConfigurationDialog(Form):
         # Information Panel at bottom
         info_panel = GroupBox()
         info_panel.Text = "Understanding These Settings"
-        info_panel.Location = Point(int(20 * sf), int(180 * sf))
+        info_panel.Location = Point(int(20 * sf), int(210 * sf))
         info_panel.Size = Size(int(500 * sf), int(400 * sf))
         tab.Controls.Add(info_panel)
         
@@ -969,9 +1130,11 @@ class ConfigurationDialog(Form):
         self.txt_sequence_path.Text = self.config.get_sequence_path()
         self.txt_occ_file.Text = self.config.get_occultations_file()
         self.txt_latest_file.Text = self.config.get_latest_occultations_file()
+        self.txt_retention_days.Text = str(self.config.get_days_to_retain_events())
         self.txt_base_duration.Text = str(self.config.get_base_duration())
         self.txt_goto_lead.Text = str(self.config.get_goto_lead_time())
         self.txt_mag_exposure.Text = str(self.config.get_mag_for_40ms_exposure())
+        self.txt_default_gain.Text = str(self.config.get_default_gain())
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
         self.display_utc.Checked = self.config.get_display_utc()
         self.txt_host.Text = self.config.get_host()
@@ -1011,9 +1174,19 @@ class ConfigurationDialog(Form):
             self.config.set_sequence_path(self.txt_sequence_path.Text)
             self.config.set_occultations_file(self.txt_occ_file.Text)
             self.config.set_latest_occultations_file(self.txt_latest_file.Text)
+            
+            # Validate and save retention days
+            retention_days = int(self.txt_retention_days.Text)
+            if retention_days < 1 or retention_days > 400:
+                MessageBox.Show("Days to retain events must be between 1 and 400", "Invalid Value",
+                              MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+            self.config.set_days_to_retain_events(retention_days)
+            
             self.config.set_base_duration(int(self.txt_base_duration.Text))
             self.config.set_goto_lead_time(int(self.txt_goto_lead.Text))
             self.config.set_mag_for_40ms_exposure(float(self.txt_mag_exposure.Text))
+            self.config.set_default_gain(int(self.txt_default_gain.Text))
             self.config.set_sync_mount(self.chk_sync_mount.Checked)
             self.config.set_display_utc(self.display_utc.Checked)
             self.config.set_host(self.txt_host.Text)

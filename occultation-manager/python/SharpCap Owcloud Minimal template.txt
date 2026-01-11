@@ -53,7 +53,7 @@ END IGNORE ERRORS
 # Names the Sharcap target as, say 20250102 (1) Ceres. The actual file name and folder are set by your Sharpcap settings
     RUN PYTHON CODE "SharpCap.TargetName = event_date_utc.strftime('%Y%m%d') + ' {asteroid_name}';"
 
-#    SET GAIN TO 450
+#    SET GAIN TO {gain}
     SET EXPOSURE TO {exposure}
 
     DELAY 2
