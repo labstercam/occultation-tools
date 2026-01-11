@@ -461,6 +461,8 @@ Tools → Configuration → User Settings tab:
 • Magnitude Reference: Star magnitude producing 40ms exposure (default: 12.0)
 • Default Gain: Camera gain for all events unless overridden (default: 450, range 0-600)
 
+Each setting has an 'Explain' button that shows detailed formulas, examples, and best practices.
+
 VERIFICATION
 ------------
 Click Download to test configuration. Events should load into grid."""
@@ -507,35 +509,34 @@ Fields:
 
 USER SETTINGS TAB
 -----------------
-Understanding These Settings:
-
-Recording Duration Formula:
-  Duration = Base Duration + Event Duration (if >5 s) + 6 × Uncertainty (if >2 s)
-    Example 1. Base Duration 60 s,  Event Duration 1.2 s, Uncertainty 1 s → 60s total
-    Example 2. Base Duration 60 s,  Event Duration 6 s, Uncertainty 3 s  → 60 + 6 + 18 = 84s
-In plain English: Start with the base duration, and add the event duration if it's more than 5 seconds, and add 6 times the uncertainty if it's more than 2 s to ensure full event coverage.
-
-Exposure Time Formula:
-  Exposure = 40 ms × 2^(CombMag + Extinction - MagRef)
-  Adjusted for atmospheric extinction based on star altitude
-In plain English: For every magnitude the star is dimmer than the reference magnitude, the exposure time doubles. 
-MagRef: The star magnitude where you would usually use 40 ms exposure
-    Example. MagRef 10.0, CombMag 12.0, Extinction 0.3 → 40 × 2^(12.0 + 0.3 - 10.0), rounded to 40 × 2^(2) = 160 ms
-40 ms is the minimum exposure that will be automatically set.
-Values set by doubling are 80 ms, 160 ms, 320 ms etc.
-You can manually set a custom exposure per event if desired.
-
-⚠ Sync Mount Warning:
-Only enable 'Sync Mount' if you usually Sync the mount with each GOTO.
-Do NOT sync if: Have a permanently aligned mount or use a refined pointing model.
-Syncing could adversely affect your carefully calibrated pointing model!
+Each setting has an 'Explain' button that displays detailed information about that specific setting.
 
 Fields:
 • Base Duration (s): Base recording duration in seconds. Additional time is added based on event duration and uncertainty
+  Click 'Explain' to see the recording duration formula with examples
+
 • GOTO Lead Time (s): How many seconds before the start of recording to begin the GOTO slew to the target position
+  Click 'Explain' to see timing calculation examples
+
 • Mag for 40ms exp: Reference star magnitude that requires 40ms exposure. Used to calculate appropriate exposure times for stars of different magnitudes
-• Sync Mount with GOTO: Enable to sync mount position after each GOTO. WARNING: Only enable if you typically sync your mount. Do NOT use with refined pointing models.
+  Click 'Explain' to see the exposure time formula and calculation examples
+
+• Default Gain (0-600): Camera gain value used for all events unless overridden per-event
+  Click 'Explain' to see recommended gain value ranges for different targets
+
+• Sync Mount with GOTO: Enable to sync mount position after each GOTO
+  Click 'Explain' to see important warnings about when to use this setting
+  ⚠ WARNING: Only enable if you typically sync your mount. Do NOT use with refined pointing models.
+
 • Display UTC in Grid: Display event times in UTC (Coordinated Universal Time) in the main grid. When unchecked, times are shown in local time
+  Click 'Explain' to understand UTC vs local time display options
+
+GETTING DETAILED HELP:
+Click the 'Explain' button next to any setting to see:
+• Formulas and calculations
+• Examples with specific values
+• Plain English explanations
+• Warnings and best practices
 
 All settings are validated before saving. Click Save to apply changes or Cancel to discard."""
 

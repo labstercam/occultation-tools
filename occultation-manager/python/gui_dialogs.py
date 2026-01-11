@@ -853,6 +853,13 @@ class ConfigurationDialog(Form):
         tab.Controls.Add(self.txt_base_duration)
         self.tooltip.SetToolTip(self.txt_base_duration, "Base recording duration in seconds. Additional time is added based on event duration and uncertainty")
         
+        btn_explain_base_duration = Button()
+        btn_explain_base_duration.Text = "Explain"
+        btn_explain_base_duration.Location = Point(int(260 * sf), int(18 * sf))
+        _autosize_button(btn_explain_base_duration, sf, height=int(22 * sf), min_width=int(70 * sf))
+        btn_explain_base_duration.Click += self.explain_base_duration_click
+        tab.Controls.Add(btn_explain_base_duration)
+        
         lbl_goto_lead = Label()
         lbl_goto_lead.Text = "GOTO Lead Time (s):"
         lbl_goto_lead.Location = Point(int(20 * sf), int(50 * sf))
@@ -864,6 +871,13 @@ class ConfigurationDialog(Form):
         self.txt_goto_lead.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_goto_lead)
         self.tooltip.SetToolTip(self.txt_goto_lead, "How many seconds before the start of recording to begin the GOTO slew to the target position")
+        
+        btn_explain_goto_lead = Button()
+        btn_explain_goto_lead.Text = "Explain"
+        btn_explain_goto_lead.Location = Point(int(260 * sf), int(48 * sf))
+        _autosize_button(btn_explain_goto_lead, sf, height=int(22 * sf), min_width=int(70 * sf))
+        btn_explain_goto_lead.Click += self.explain_goto_lead_click
+        tab.Controls.Add(btn_explain_goto_lead)
         
         lbl_mag_exposure = Label()
         lbl_mag_exposure.Text = "Mag for 40 ms exp:"
@@ -877,6 +891,13 @@ class ConfigurationDialog(Form):
         tab.Controls.Add(self.txt_mag_exposure)
         self.tooltip.SetToolTip(self.txt_mag_exposure, "Reference star magnitude that requires 40 ms exposure. Used to calculate appropriate exposure times for stars of different magnitudes")
 
+        btn_explain_mag_exposure = Button()
+        btn_explain_mag_exposure.Text = "Explain"
+        btn_explain_mag_exposure.Location = Point(int(260 * sf), int(78 * sf))
+        _autosize_button(btn_explain_mag_exposure, sf, height=int(22 * sf), min_width=int(70 * sf))
+        btn_explain_mag_exposure.Click += self.explain_mag_exposure_click
+        tab.Controls.Add(btn_explain_mag_exposure)
+
         lbl_default_gain = Label()
         lbl_default_gain.Text = "Default Gain (0-600):"
         lbl_default_gain.Location = Point(int(20 * sf), int(110 * sf))
@@ -889,6 +910,13 @@ class ConfigurationDialog(Form):
         tab.Controls.Add(self.txt_default_gain)
         self.tooltip.SetToolTip(self.txt_default_gain, "Default camera gain value (0-600) used for all events unless overridden per-event")
 
+        btn_explain_default_gain = Button()
+        btn_explain_default_gain.Text = "Explain"
+        btn_explain_default_gain.Location = Point(int(260 * sf), int(108 * sf))
+        _autosize_button(btn_explain_default_gain, sf, height=int(22 * sf), min_width=int(70 * sf))
+        btn_explain_default_gain.Click += self.explain_default_gain_click
+        tab.Controls.Add(btn_explain_default_gain)
+
         self.chk_sync_mount = CheckBox()
         self.chk_sync_mount.Text = "Sync Mount with GOTO"       
         self.chk_sync_mount.Location = Point(int(20 * sf), int(140 * sf))
@@ -898,6 +926,13 @@ class ConfigurationDialog(Form):
 
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
         self.chk_sync_mount.CheckedChanged += self.sync_mount_checked_changed
+
+        btn_explain_sync_mount = Button()
+        btn_explain_sync_mount.Text = "Explain"
+        btn_explain_sync_mount.Location = Point(int(230 * sf), int(138 * sf))
+        _autosize_button(btn_explain_sync_mount, sf, height=int(22 * sf), min_width=int(70 * sf))
+        btn_explain_sync_mount.Click += self.explain_sync_mount_click
+        tab.Controls.Add(btn_explain_sync_mount)
 
         self.display_utc = CheckBox()
         self.display_utc.Text = "Display UTC in Grid"       
@@ -909,39 +944,12 @@ class ConfigurationDialog(Form):
         self.display_utc.Checked = self.config.get_display_utc()
         self.display_utc.CheckedChanged += self.display_utc_checked_changed
         
-        # Information Panel at bottom
-        info_panel = GroupBox()
-        info_panel.Text = "Understanding These Settings"
-        info_panel.Location = Point(int(20 * sf), int(210 * sf))
-        info_panel.Size = Size(int(500 * sf), int(400 * sf))
-        tab.Controls.Add(info_panel)
-        
-        info_text = Label()
-        info_text.Text = ("Recording Duration Formula:\n"
-                         "  Duration = Base Duration + Event Duration (if >5 s) + 6 × Uncertainty (if >2 s)\n"
-                         "    Example 1. Base Duration 60 s,  Event Duration 1.2 s, Uncertainty 1 s → 60s total\n"
-                         "    Example 2. Base Duration 60 s,  Event Duration 6 s, Uncertainty 3 s  → 60 + 6 + 18 = 84s\n"
-                         "In plain English: Start with the base duration,\n"
-                         "and add the event duration if it's more than 5 seconds,\n"
-                         "and add 6 times the uncertainty if it's more than 2 s to ensure full event coverage.\n\n"
-                         "Exposure Time Formula:\n"
-                         "  Exposure = 40 ms × 2^(CombMag + Extinction - MagRef)\n"
-                         "  Adjusted for atmospheric extinction based on star altitude\n"
-                         " In plain English: For every magnitude the star is dimmer than the reference magnitude,\n"
-                         " the exposure time doubles. \n"
-                         " MagRef: The star magnitude where you would usually use 40 ms exposure\n"
-                         "    Example. MagRef 10.0, CombMag 12.0, Extinction 0.3 → 40 × 2^(12.0 + 0.3 - 10.0), rounded to 40 × 2^(2) = 160 ms\n"
-                         "40 ms is the minimum exposure that will be automatically set.\n"
-                         "Values set by doubling are 80 ms, 160 ms, 320 ms etc.\n"
-                         "You can manually set a custom exposure per event if desired.\n\n"
-                         "⚠ Sync Mount Warning:\n"
-                         "Only enable 'Sync Mount' if you usually Sync the mount with each GOTO.\n"
-                         "Do NOT sync if: Have a permanently aligned mount or use a refined pointing model.\n"
-                         "Syncing could adversely affect your carefully calibrated pointing model!")
-        info_text.Location = Point(int(10 * sf), int(20 * sf))
-        info_text.Size = Size(int(480 * sf), int(370 * sf))
-        info_text.AutoSize = False
-        info_panel.Controls.Add(info_text)
+        btn_explain_display_utc = Button()
+        btn_explain_display_utc.Text = "Explain"
+        btn_explain_display_utc.Location = Point(int(230 * sf), int(168 * sf))
+        _autosize_button(btn_explain_display_utc, sf, height=int(22 * sf), min_width=int(70 * sf))
+        btn_explain_display_utc.Click += self.explain_display_utc_click
+        tab.Controls.Add(btn_explain_display_utc)
     
     def sync_mount_checked_changed(self, sender, e):
         """Handle sync mount checkbox change"""
@@ -959,6 +967,92 @@ class ConfigurationDialog(Form):
         except Exception:
             # Defensive: do not raise from UI handler
             pass
+
+    def explain_base_duration_click(self, sender, e):
+        """Show explanation for Base Duration setting"""
+        explanation = ("Recording Duration Formula:\n\n"
+                      "Duration = Base Duration + Event Duration (if >5 s) + 6 × Uncertainty (if >2 s)\n\n"
+                      "Example 1:\n"
+                      "  Base Duration 60 s, Event Duration 1.2 s, Uncertainty 1 s → 60s total\n\n"
+                      "Example 2:\n"
+                      "  Base Duration 60 s, Event Duration 6 s, Uncertainty 3 s → 60 + 6 + 18 = 84s\n\n"
+                      "In plain English:\n"
+                      "Start with the base duration, and add the event duration if it's more than 5 seconds,\n"
+                      "and add 6 times the uncertainty if it's more than 2 s to ensure full event coverage.")
+        MessageBox.Show(explanation, "Base Duration Explanation", 
+                       MessageBoxButtons.OK, MessageBoxIcon.Information)
+
+    def explain_goto_lead_click(self, sender, e):
+        """Show explanation for GOTO Lead Time setting"""
+        explanation = ("GOTO Lead Time:\n\n"
+                      "This setting determines how many seconds before the start of recording to begin\n"
+                      "the GOTO slew to the target position.\n\n"
+                      "This ensures the mount has enough time to slew to the target and settle before\n"
+                      "recording needs to begin.\n\n"
+                      "Example:\n"
+                      "  If recording should start at 22:30:00 and GOTO Lead Time is 120 seconds,\n"
+                      "  the GOTO command will be issued at 22:28:00.")
+        MessageBox.Show(explanation, "GOTO Lead Time Explanation", 
+                       MessageBoxButtons.OK, MessageBoxIcon.Information)
+
+    def explain_mag_exposure_click(self, sender, e):
+        """Show explanation for Mag for 40ms Exposure setting"""
+        explanation = ("Exposure Time Formula:\n\n"
+                      "Exposure = 40 ms × 2^(CombMag + Extinction - MagRef)\n\n"
+                      "Adjusted for atmospheric extinction based on star altitude.\n\n"
+                      "In plain English:\n"
+                      "For every magnitude the star is dimmer than the reference magnitude,\n"
+                      "the exposure time doubles.\n\n"
+                      "MagRef: The star magnitude where you would usually use 40 ms exposure\n\n"
+                      "Example:\n"
+                      "  MagRef 10.0, CombMag 12.0, Extinction 0.3\n"
+                      "  → 40 × 2^(12.0 + 0.3 - 10.0)\n"
+                      "  → 40 × 2^(2) = 160 ms\n\n"
+                      "40 ms is the minimum exposure that will be automatically set.\n"
+                      "Values set by doubling are 80 ms, 160 ms, 320 ms etc.\n"
+                      "You can manually set a custom exposure per event if desired.")
+        MessageBox.Show(explanation, "Mag for 40ms Exposure Explanation", 
+                       MessageBoxButtons.OK, MessageBoxIcon.Information)
+
+    def explain_default_gain_click(self, sender, e):
+        """Show explanation for Default Gain setting"""
+        explanation = ("Default Gain:\n\n"
+                      "This is the default camera gain value (0-600) used for all events\n"
+                      "unless overridden per-event.\n\n"
+                      "Higher gain values have slightly less read noise so give slightly better SNR.\n\n"
+                      "Typical values:\n"
+                      "  • 0-200: Low gain, low noise (very bright targets)\n"
+                      "  • 350-450: Medium-high gain recommended for most occultations\n"
+                      "  • 450+: High gain. Not recommended - do test recordings and reductions first\n\n")
+        MessageBox.Show(explanation, "Default Gain Explanation", 
+                       MessageBoxButtons.OK, MessageBoxIcon.Information)
+
+    def explain_sync_mount_click(self, sender, e):
+        """Show explanation for Sync Mount with GOTO setting"""
+        explanation = ("⚠ Sync Mount Warning:\n\n"
+                      "Only enable 'Sync Mount' if you usually Sync the mount with each GOTO.\n\n"
+                      "Do NOT sync if you have:\n"
+                      "  • A permanently aligned mount\n"
+                      "  • A refined pointing model\n\n"
+                      "Syncing could adversely affect your carefully calibrated pointing model!\n\n"
+                      "When enabled, the mount will sync to the plate-solved position after each GOTO,\n"
+                      "which can help with mounts that have poor pointing accuracy.")
+        MessageBox.Show(explanation, "Sync Mount with GOTO Explanation", 
+                       MessageBoxButtons.OK, MessageBoxIcon.Warning)
+
+    def explain_display_utc_click(self, sender, e):
+        """Show explanation for Display UTC in Grid setting"""
+        explanation = ("Display UTC in Grid:\n\n"
+                      "When enabled, all event times in the main grid will be displayed in\n"
+                      "UTC (Coordinated Universal Time).\n\n"
+                      "When disabled, times are shown in your local time zone.\n\n"
+                      "UTC is the standard for astronomical observations and makes it easier to\n"
+                      "coordinate with other observers around the world.\n\n"
+                      "Note: Times in generated reports may still use UTC regardless of this setting,\n"
+                      "as UTC is the standard for official submissions.")
+        MessageBox.Show(explanation, "Display UTC in Grid Explanation", 
+                       MessageBoxButtons.OK, MessageBoxIcon.Information)
+
 
 
     def setup_api_tab(self, tab):
@@ -1116,7 +1210,7 @@ class ConfigurationDialog(Form):
         tab.Controls.Add(lbl_telescope_menu)
         
         lbl_report_note = Label()
-        lbl_report_note.Text = "This information will be used to auto-fill North American Occultation Report Forms"
+        lbl_report_note.Text = "This information will be used to auto-fill Report Forms"
         lbl_report_note.Location = Point(int(20 * sf), int(385 * sf))
         lbl_report_note.Size = Size(int(480 * sf), int(30 * sf))
         lbl_report_note.ForeColor = Color.Gray

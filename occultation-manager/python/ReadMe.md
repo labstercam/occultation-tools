@@ -258,6 +258,7 @@ Core event data model with automatic calculations and customizable overrides:
 - Double-click on these columns opens Edit Settings dialog
 - ExposureEditDialog (Edit Settings) - Combined dialog for exposure/gain/duration customization
 - Configuration Dialog includes Days to Retain Events (File Paths) and Default Gain (User Settings)
+- User Settings tab has individual 'Explain' buttons for each setting showing formulas and examples
 
 **Sequence Generation** (`utils.py`, `templates.py`):
 - Generates SharpCap sequences with {exposure}, {gain}, {recording_duration} variables

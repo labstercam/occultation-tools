@@ -2303,12 +2303,13 @@ class OccultationManagerGUI(Form):
                           f"Target position:\n"
                           f"  RA: {target_ra:.4f}h, Dec: {target_dec:.4f}°\n\n"
                           f"Distance from target: {distance_deg:.2f}° (tolerance: {tolerance:.2f}°)\n\n"
-                          f"Redo the GOTO and Plate Solve to get closer")
+                          f"Redo the GOTO and Plate Solve to get closer.\n"
+                          f"You might need to plate solve and sync manually")
                 
                 result = MessageBox.Show(message, "Position Check Failed", 
-                                       MessageBoxButtons.YesNo, MessageBoxIcon.Warning)
+                                       MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
                 
-                if result == DialogResult.Yes:
+                if result == DialogResult.OK:
                     self.update_status("User requested retry of GOTO sequence")
                     return "retry"
                 else:

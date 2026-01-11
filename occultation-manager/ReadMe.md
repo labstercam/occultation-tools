@@ -78,7 +78,7 @@ Setup your Occult Watcher Cloud configuration. Go to the **Tools | Configuration
 
 Under the **File Paths** tab you can set file paths and file names. Default values should be fine but you might want to use a different folder for your Sequences. You can also configure the event retention period (1-400 days, default 14) which determines how long past events remain in your list.
 
-Under **User Settings** set it up to suit your telescope following the instructions there. You can also set the default camera gain (0-600, default 450) which will be used for new events.
+Under **User Settings** set it up to suit your telescope. Each setting has an **Explain** button that provides detailed information, formulas, and examples. You can also set the default camera gain (0-600, default 450) which will be used for new events.
 
 Save the configuration.
 
