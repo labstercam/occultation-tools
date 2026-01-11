@@ -8,7 +8,7 @@ from datetime import timezone
 from System.Windows.Forms import (
     DataGridView, DataGridViewSelectionMode, DataGridViewCheckBoxColumn,
     DataGridViewLinkColumn, DataGridViewTextBoxColumn, MessageBox,
-    MessageBoxButtons, MessageBoxIcon
+    MessageBoxButtons, MessageBoxIcon, DataGridViewDataErrorContexts
 )
 from System.Windows.Forms import DataGridViewAutoSizeColumnMode
 
@@ -109,6 +109,9 @@ class EventsDataGrid(DataGridView):
         # Handle cell events
         self.CellDoubleClick += self.cell_double_click
         self.CellContentClick += self.cell_content_click
+        # Handle checkbox changes immediately
+        self.CurrentCellDirtyStateChanged += self.current_cell_dirty_state_changed
+        self.CellValueChanged += self.cell_value_changed
         
     
     def cell_double_click(self, sender, e):
@@ -133,6 +136,22 @@ class EventsDataGrid(DataGridView):
                     except Exception as ex:
                         MessageBox.Show(f"Cannot open URL: {event.owcloudurl}\nError: {ex}", "Error", 
                                       MessageBoxButtons.OK, MessageBoxIcon.Error)
+    
+    def current_cell_dirty_state_changed(self, sender, e):
+        """Handle checkbox state change immediately to update selection count"""
+        # When a checkbox is clicked, commit the edit immediately so the SelectionChanged event
+        # sees the updated value
+        if self.IsCurrentCellDirty:
+            self.CommitEdit(DataGridViewDataErrorContexts.Commit)
+    
+    def cell_value_changed(self, sender, e):
+        """Handle cell value changed - update summary when checkbox is toggled"""
+        if e.RowIndex >= 0 and e.ColumnIndex >= 0:
+            if self.Columns[e.ColumnIndex].Name == "Selected":
+                # Update the selection summary immediately when checkbox changes
+                parent_form = self.FindForm()
+                if parent_form and hasattr(parent_form, 'update_selection_summary'):
+                    parent_form.update_selection_summary()
     
     def update_events(self, events):
         """Update the grid with enhanced events data"""
