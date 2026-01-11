@@ -146,14 +146,14 @@ class OccultationManagerGUI(Form):
         except Exception:
             # Fallback to fixed size if calculation fails
             sf = getattr(self, '_scale_factor', 1.0)
-            self.Size = Size(int(1500 * sf), int(445 * sf))
+            self.Size = Size(int(1600 * sf), int(445 * sf))
     
     def setup_ui(self):
         """Setup the enhanced user interface"""
         self.Text = "Occultation Manager - SharpCap Integration"
         # Scale window size with DPI
         sf = getattr(self, '_scale_factor', 1.0)
-        self.Size = Size(int(1500 * sf), int(445 * sf))
+        self.Size = Size(int(1600 * sf), int(445 * sf))
         self.StartPosition = FormStartPosition.CenterScreen
         
         # Create menu bar
@@ -434,7 +434,7 @@ class OccultationManagerGUI(Form):
             pass
 
         btn_edit_exposure = Button()
-        btn_edit_exposure.Text = "Edit Exposure"
+        btn_edit_exposure.Text = "Edit Settings"
         btn_edit_exposure.Click += self.edit_exposure_click
         toolbar.Controls.Add(btn_edit_exposure)
         try:
@@ -512,7 +512,7 @@ class OccultationManagerGUI(Form):
         # Events menu
         menu_events = ToolStripMenuItem("Events")
         menu_events.DropDownItems.Add(ToolStripMenuItem("Event Details", None, self.show_event_details_click))
-        menu_events.DropDownItems.Add(ToolStripMenuItem("Edit Exposure", None, self.edit_exposure_click))
+        menu_events.DropDownItems.Add(ToolStripMenuItem("Edit Settings", None, self.edit_exposure_click))
         menu_events.DropDownItems.Add(ToolStripSeparator())
         menu_events.DropDownItems.Add(ToolStripMenuItem("Generate Report", None, self.generate_report_click))
         menu_events.DropDownItems.Add(ToolStripSeparator())
@@ -1022,17 +1022,17 @@ class OccultationManagerGUI(Form):
             details_dialog.ShowDialog()
     
     def edit_exposure_click(self, sender, e):
-        """Handle edit exposure button click"""
+        """Handle edit settings button click"""
         selected_rows = []
         for row in self.events_grid.SelectedRows:
             selected_rows.append(row)
         
         if len(selected_rows) == 0:
-            MessageBox.Show("Please select an event to edit exposure.", "No Event Selected", 
+            MessageBox.Show("Please select an event to edit settings.", "No Event Selected", 
                           MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
         elif len(selected_rows) > 1:
-            MessageBox.Show("Please select only one event to edit exposure.", "Multiple Events Selected", 
+            MessageBox.Show("Please select only one event to edit settings.", "Multiple Events Selected", 
                           MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
         
@@ -1041,18 +1041,55 @@ class OccultationManagerGUI(Form):
             self.edit_event_exposure(event)
     
     def edit_event_exposure(self, event):
-        """Edit exposure for a specific event"""
+        """Edit exposure, gain, and recording duration for a specific event"""
         exposure_dialog = ExposureEditDialog(event, self.theme_manager)
         if exposure_dialog.ShowDialog() == DialogResult.OK:
             new_exposure = exposure_dialog.get_new_exposure()
-            event.set_custom_exposure(new_exposure)
+            new_gain = exposure_dialog.get_new_gain()
+            new_duration = exposure_dialog.get_new_recording_duration()
             
-            # Refresh the grid to show updated exposure
+            # Check if values match calculated defaults to avoid unnecessary custom flags
+            # Calculate what the default values would be
+            original_custom_exp = event.custom_exposure
+            original_custom_dur = event.custom_recording_duration
+            
+            event.custom_exposure = None
+            event.custom_recording_duration = None
+            event._calculate_derived_values()
+            calculated_exposure = event.exposure_ms
+            calculated_duration = event.recording_duration
+            default_gain = self.config.get_default_gain()
+            
+            # Restore originals before setting new values
+            event.custom_exposure = original_custom_exp
+            event.custom_recording_duration = original_custom_dur
+            event._calculate_derived_values()
+            
+            # Only set custom if different from calculated/default
+            if new_exposure != calculated_exposure:
+                event.set_custom_exposure(new_exposure)
+            else:
+                event.custom_exposure = None
+                event._calculate_derived_values()
+            
+            if new_gain != default_gain:
+                event.set_custom_gain(new_gain)
+            else:
+                event.custom_gain = None
+                event._calculate_derived_values()
+            
+            if new_duration != calculated_duration:
+                event.set_custom_recording_duration(new_duration)
+            else:
+                event.custom_recording_duration = None
+                event._calculate_derived_values()
+            
+            # Refresh the grid to show updated values
             self.refresh_display()
             
             # Ask if user wants to regenerate sequence
             result = MessageBox.Show(
-                f"Exposure updated to {new_exposure}ms.\n\nWould you like to regenerate the sequence file for this event?",
+                f"Settings updated:\n- Exposure: {new_exposure}ms\n- Gain: {new_gain}\n- Recording Duration: {new_duration}s\n\nWould you like to regenerate the sequence file for this event?",
                 "Regenerate Sequence?",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question

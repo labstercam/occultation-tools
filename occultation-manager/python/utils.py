@@ -178,6 +178,7 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             'dec': occ.dec,
             'asteroid_name': occ.object_name,
             'exposure': occ.get_exposure_seconds(),  # Use current exposure (custom or calculated)
+            'gain': occ.gain_value,  # Use current gain (custom or default)
             'name': occ.name,
             'station_name': occ.station_name,
             # Add simple local time strings
@@ -221,6 +222,7 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             dec= format(occ_dict.get('dec', 0),'.6f'),
             asteroid_name=occ_dict.get('object_name', ''),
             exposure= format(occ_dict.get('exposure', 0),'.3f'),
+            gain=occ_dict.get('gain', 450),
             # Add local time template variables
             event_time_local=occ_dict.get('event_time_local', ''),
             start_time_local=occ_dict.get('start_time_local', ''),

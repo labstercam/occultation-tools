@@ -165,7 +165,7 @@ class HelpDialog(Form):
         event_mgmt.Tag = "event_management"
         self.add_node_with_tag(event_mgmt, "Downloading Events", "downloading_events")
         self.add_node_with_tag(event_mgmt, "Viewing Event Details", "event_details")
-        self.add_node_with_tag(event_mgmt, "Editing Exposures", "editing_exposures")
+        self.add_node_with_tag(event_mgmt, "Edit Settings", "editing_exposures")
         self.add_node_with_tag(event_mgmt, "Selecting Events", "selecting_events")
         self.tree_topics.Nodes.Add(event_mgmt)
         
@@ -317,6 +317,8 @@ TEMPLATE VARIABLES
 {start_time}: Recording start time
 {recording_duration}: Total recording seconds
 {exposure}: Camera exposure in seconds
+{gain}: Camera gain value (0-600)
+{recording_duration}: Total recording duration in seconds
 {ra}, {dec}: Target coordinates
 {star_mag}, {comb_mag}: Brightness values
 {event_time_local}, {goto_time_local}, {start_time_local}: Local times
@@ -447,15 +449,17 @@ FILE PATHS
 Tools → Configuration → File Paths tab:
 • File Folder: Event data and template storage location
 • Sequence Path: .scs file output directory
+• Days to Retain: Number of days to keep events (1-400, default 14)
 
 Folders are created automatically if they don't exist.
 
 RECORDING PARAMETERS
 --------------------
-Tools → Configuration → Recording tab:
+Tools → Configuration → User Settings tab:
 • Base Duration: Buffer time added to event duration (default: 60s)
 • GOTO Lead Time: Seconds before event to start positioning (default: 240s)
 • Magnitude Reference: Star magnitude producing 40ms exposure (default: 12.0)
+• Default Gain: Camera gain for all events unless overridden (default: 450, range 0-600)
 
 VERIFICATION
 ------------
@@ -493,12 +497,12 @@ When you click 'Download Events', the application:
 1. Reads your 'Upcoming Events' from OWC
 2. Saves the downloaded events to 'Latest File'
 3. Merges with existing 'Occultations File'
-4. Retains only events no more than 14 days old
+4. Retains only events no more than the configured number of days old
 
 Fields:
 • File Folder: Folder where downloaded occultation data files are stored
 • Sequence Path: Folder where generated SharpCap sequence files (.scs) are saved
-• Occultations File: Filename for the main occultation events data file (merged with downloads, 14-day retention)
+• Occultations File: Filename for the main occultation events data file (merged with downloads, retention period configurable)
 • Latest File: Filename for storing the latest downloaded occultation events (replaced on each download)
 
 USER SETTINGS TAB
@@ -655,7 +659,7 @@ BUTTONS (LEFT TO RIGHT)
 • Refresh: Reload from local files
 • Station Filter: Dropdown to filter by location
 • Event Details: Show detailed event information
-• Edit Exposure: Modify camera exposure time
+• Edit Settings: Modify exposure, gain, and recording duration
 • Create Sequences: Generate .scs files from template
 • Run Sequences: Execute sequences with automated timing
 • Night Mode: Toggle red theme for observing
@@ -664,7 +668,7 @@ BUTTON STATES
 -------------
 Some buttons require event selection to be enabled:
 • Event Details: Requires selected row
-• Edit Exposure: Requires selected row
+• Edit Settings: Requires selected row
 • Create Sequences: Requires checked events
 • Run Sequences: Requires checked events
 
@@ -686,19 +690,19 @@ COLUMNS
 • Comb Mag: Combined magnitude (star + asteroid)
 • Mag Drop: Brightness change during occultation
 • Exposure (ms): Camera exposure time (* = custom)
-• Recording Time (s): Total recording duration
+• Gain: Camera gain value 0-600 (* = custom)
+• Recording Time (s): Total recording duration (* = custom)
 • Max Duration (s): Maximum occultation length
-• Time Error (s): Timing uncertainty
 • Alt/Az: Target altitude and azimuth at event time
-• Coordinates: RA/Dec J2000
-• OWC: Link to OccultWatcher Cloud event page
 • Status: Event timing status
 
 INTERACTIONS
 ------------
 • Click row: Select event
 • Double-click row: Open Event Details dialog
-• Double-click Exposure cell: Edit exposure time
+• Double-click Exposure cell: Edit settings (exposure, gain, duration)
+• Double-click Gain cell: Edit settings (exposure, gain, duration)
+• Double-click Recording Time cell: Edit settings (exposure, gain, duration)
 • Check checkbox: Select for batch operations
 • Click column header: Sort by that column
 • Click OWC link: Open event in browser
@@ -706,6 +710,8 @@ INTERACTIONS
 VISUAL INDICATORS
 -----------------
 • * after exposure: Custom exposure (not calculated)
+• * after gain: Custom gain (not default 450)
+• * after recording time: Custom duration (not calculated)
 • Status values: future, past, starting soon
 • Theme colors adapt for Night Mode"""
 
@@ -836,51 +842,101 @@ FILE MANAGEMENT
 • occultations.json: Master database
 • occultations_latest.json: Most recent download
 • Custom exposures preserved during merge
-• Events older than 14 days automatically removed
+• Events older than the configured retention period automatically removed
 
 Download frequency: Daily or when new assignments appear in OWC."""
 
     def get_editing_exposures_content(self):
-        return """EDITING EXPOSURES
-=================
+        return """EDIT SETTINGS
+=============
 
-Modify camera exposure times for specific events.
+Modify camera exposure, gain, and recording duration for specific events.
 
 ACCESS
 ------
 • Double-click Exposure column in events grid, OR
-• Select event and click Edit Exposure button, OR
-• Events menu → Edit Exposure
+• Double-click Gain column in events grid, OR
+• Double-click Recording Time column in events grid, OR
+• Select event and click Edit Settings button, OR
+• Events menu → Edit Settings
 
-EXPOSURE EDITOR DIALOG
-----------------------
-• Shows current exposure (calculated or custom)
+EDIT SETTINGS DIALOG
+--------------------
+Shows current values for all three parameters:
+• Current Exposure (Calculated or Custom)
+• Current Gain (Default or Custom)
+• Current Recording Duration (Calculated or Custom)
+
+EXPOSURE SECTION
+----------------
 • Text input for manual entry in milliseconds
-• Quick-set buttons: 10ms, 20ms, 40ms, 100ms, 200ms, etc.
-• Reset button to restore calculated value
-• OK saves changes, Cancel discards
+• Quick-set buttons: 40ms, 60ms, 80ms, 120ms, 160ms, 240ms, 320ms, 480ms
+• Range: 1-10000 ms
+• Calculated from star magnitude using formula: 40ms * 2.5^(star_mag - ref_mag)
+
+GAIN SECTION
+------------
+• Text input for manual entry (0-600)
+• Quick-set buttons: 200, 300, 400, 450, 500, 550
+• Range: 0-600
+• Default: 450 (configurable in Tools → Configuration → User Settings)
+
+RECORDING DURATION SECTION
+--------------------------
+• Text input for manual entry in seconds
+• Range: 10-3600 seconds
+• Calculated from: Base Duration + Event Duration (if >5s) + 6 * Uncertainty (if >2s)
+• Affects GOTO time and recording start/end times
+
+RESET BUTTON
+------------
+Restores all values to calculated/default:
+• Exposure: Recalculates from star magnitude
+• Gain: Resets to default from configuration
+• Recording Duration: Recalculates from formula
 
 CALCULATED VS CUSTOM
 --------------------
-Calculated exposures:
-• Based on star magnitude and reference from Configuration
-• Formula: 40ms * 2.5^(star_mag - ref_mag)
+Calculated values:
 • Automatically determined on download
+• Based on formulas and configuration settings
 
-Custom exposures:
+Custom values:
 • Manually set by user
 • Marked with * in events grid
 • Preserved across event downloads
 • Override calculated values
 
+SMART DETECTION
+---------------
+If you set a value that matches the calculated/default value:
+• Custom flag is NOT set
+• No * indicator appears
+• Value treated as calculated/default
+
 WHEN TO CUSTOMIZE
 -----------------
+Exposure:
 • Known camera sensitivity differs from reference
 • Specific exposure needed for target star
 • Site-specific lighting conditions
-• Testing different exposure times
 
-Custom exposures are saved in occultations.json and persist."""
+Gain:
+• Low-light conditions requiring higher sensitivity
+• Bright stars needing reduced gain
+• Camera-specific optimal gain values
+
+Recording Duration:
+• Extended recording for uncertain events
+• Reduced duration for well-constrained predictions
+• Buffer adjustments for specific circumstances
+
+Custom settings are saved in occultations.json and persist across sessions.
+
+REGENERATE SEQUENCES
+--------------------
+After changing settings, dialog asks if you want to regenerate the sequence file.
+Regeneration ensures the .scs file matches your updated settings."""
 
     def get_selecting_events_content(self):
         return """SELECTING EVENTS
@@ -1323,7 +1379,7 @@ FILE MANAGEMENT
 • occultations.json: Master database
 • occultations_latest.json: Most recent download
 • Custom exposures preserved
-• Events older than 14 days removed automatically"""
+• Events older than the retention period (configurable) removed automatically"""
 
     def get_goto_centering_content(self):
         return """GOTO & CENTERING

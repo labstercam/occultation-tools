@@ -46,6 +46,7 @@ class EventsDataGrid(DataGridView):
             ("Comb", "CombMag", 45, False),
             ("Drop", "MagDrop", 45, False),
             ("Exp (ms)", "ExposureMs", 70, False),
+            ("Gain", "Gain", 50, False),
             ("Record (s)", "RecordingTime", 70, False),  # Changed name as requested
             ("Max Dur (s)", "MaxDuration", 70, False),      # Added as requested
 #            ("Error (s)", "TimeError", 60, False),           # Added as requested
@@ -111,9 +112,10 @@ class EventsDataGrid(DataGridView):
         
     
     def cell_double_click(self, sender, e):
-        """Handle cell double click for exposure editing"""
+        """Handle cell double click for settings editing (exposure, gain, recording duration)"""
         if e.RowIndex >= 0 and e.ColumnIndex >= 0:
-            if self.Columns[e.ColumnIndex].Name == "ExposureMs":
+            column_name = self.Columns[e.ColumnIndex].Name
+            if column_name in ("ExposureMs", "Gain", "RecordingTime"):
                 event = self.Rows[e.RowIndex].Tag
                 if event:
                     parent_form = self.FindForm()
@@ -190,7 +192,16 @@ class EventsDataGrid(DataGridView):
                 exposure_text += "*"
             row.Cells["ExposureMs"].Value = exposure_text
             
-            row.Cells["RecordingTime"].Value = str(event.recording_duration)
+            # Show gain with custom indicator
+            gain_text = str(event.gain_value)
+            if event.has_custom_gain():
+                gain_text += "*"
+            row.Cells["Gain"].Value = gain_text
+            
+            duration_text = str(event.recording_duration)
+            if event.has_custom_recording_duration():
+                duration_text += "*"
+            row.Cells["RecordingTime"].Value = duration_text
             row.Cells["MaxDuration"].Value = f"{event.max_duration_seconds:.1f}" if event.max_duration_seconds > 0 else "N/A"
 #            row.Cells["TimeError"].Value = f"{event.uncertainty_seconds:.1f}" if event.uncertainty_seconds > 0 else "N/A"
             row.Cells["Altitude"].Value = f"{event.star_alt:.0f}@{event.star_az:.0f}"
