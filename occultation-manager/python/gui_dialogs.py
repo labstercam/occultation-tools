@@ -1561,9 +1561,8 @@ class LocationConfirmDialog(Form):
         self.event = event
         self.theme_manager = theme_manager
         self.confirmed = False
-        
-        # Detect scale factor
-        sf = _detect_scale_factor()
+        self._sf = _detect_scale_factor()
+        sf = self._sf
         
         # Form properties
         self.Text = "Confirm Observation Location"
@@ -1588,7 +1587,7 @@ class LocationConfirmDialog(Form):
         lbl_title.Text = "Please confirm the observation location"
         lbl_title.Location = Point(int(10 * sf), y_pos)
         lbl_title.Size = Size(int(510 * sf), int(25 * sf))
-        lbl_title.Font = Font(lbl_title.Font.FontFamily, 11, FontStyle.Bold)
+        lbl_title.Font = Font(lbl_title.Font.FontFamily, 11 * sf, FontStyle.Bold)
         panel.Controls.Add(lbl_title)
         y_pos += int(35 * sf)
         
@@ -1617,7 +1616,7 @@ class LocationConfirmDialog(Form):
         lbl_station.Text = f"Station: {station_name}"
         lbl_station.Location = Point(int(15 * sf), int(25 * sf))
         lbl_station.Size = Size(int(480 * sf), int(20 * sf))
-        lbl_station.Font = Font(lbl_station.Font.FontFamily, 9, FontStyle.Bold)
+        lbl_station.Font = Font(lbl_station.Font.FontFamily, 9 * sf, FontStyle.Bold)
         station_group.Controls.Add(lbl_station)
         
         # Observing Location (City, State/Country)
