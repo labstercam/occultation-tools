@@ -1452,7 +1452,7 @@ class TemplateSelectionDialog(Form):
         self.txt_preview.ReadOnly = True
         self.txt_preview.ScrollBars = ScrollBars.Both  # Both horizontal and vertical scrollbars
         self.txt_preview.WordWrap = False  # FIXED: Disable word wrap for proper horizontal scrolling
-        self.txt_preview.Font = Font("Courier New", 8 * sf)  # Monospace font with scaling - consistent with dialog fonts
+        self.txt_preview.Font = Font("Courier New", 7 * sf)  # Smaller monospace font for better readability
         self.txt_preview.Location = Point(int(10 * sf), int(225 * sf))
         self.txt_preview.Size = Size(int(760 * sf), int(300 * sf))
         self.txt_preview.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
