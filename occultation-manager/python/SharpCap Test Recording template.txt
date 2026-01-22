@@ -1,0 +1,39 @@
+﻿# SharpCap Test Recording Template
+# Used to do a test recording
+# Immediately records for testing purposes
+# Set up the template for the recording parameters you want to use (binning, ROI, format etc)
+# Gain and exposure and target name will come from occultation-manager
+
+SEQUENCE
+    # Test recording for Asteroid {object_name} 
+    #Star Mag: {star_mag};	Combined Mag: {comb_mag}; Mag Drop: {mag_drop}
+
+
+    SHOW NOTIFICATION "Doing a test recording now..." COLOUR GREEN DURATION 30
+   
+# Setup for the event
+    TARGETNAME "{object_name}"
+# Your preferred output format     
+    SET OUTPUT FORMAT TO "ADV files (*.adv)"     
+
+# Change the exposure and gain to suit the event mag and duration. Change this to suit the reach of your camera and scope.
+    SET RESOLUTION TO 816x822
+    SET BINNING TO 2
+# Controlled by exposure parameter from the Occultation Manager tool
+    SET GAIN TO {gain}
+    SET EXPOSURE TO {exposure}
+    DELAY 2
+    DISPLAY STRETCH AUTO
+
+# Record
+    CAPTURE {recording_duration} SECONDS LIVE FRAMES
+
+# Reset the camera to how you want it
+# Can change gain, exposure etct
+    SET RESOLUTION TO 1936x1096
+    SET GAIN TO 100
+    SET EXPOSURE TO 0.5
+    DELAY 2
+    DISPLAY STRETCH AUTO
+
+END SEQUENCE

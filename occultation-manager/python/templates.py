@@ -40,12 +40,6 @@ class TemplateManager:
                 with open(template_path, 'r') as f:
                     return f.read()
             else:
-                # Try default template
-                if config:
-                    default_path = config.get_full_file_path('SharpCap Owcloud template.txt')
-                    if os.path.exists(default_path):
-                        with open(default_path, 'r') as f:
-                            return f.read()
                 return None
         except Exception as e:
             print(f"Error loading template: {e}")
