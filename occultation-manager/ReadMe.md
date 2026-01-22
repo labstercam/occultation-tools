@@ -1,6 +1,6 @@
 # Occultation Manager
 
-SharpCap Occultation Manager automates the complete occultation observation workflow, from event download through report submission. It integrates with Occult Watcher Cloud, generates SharpCap sequences for automated recording, and produces pre-filled Excel reports with integrated timing data.
+SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences. The sequences give you complete control over your recording setup, allowing you to automate as much or as little as you need.
 
 ## Key Features
 
@@ -8,7 +8,7 @@ SharpCap Occultation Manager automates the complete occultation observation work
 - Downloads personal observations from Occult Watcher Cloud
 - Manages event list with filtering by date, location, and probability
 - Configurable event retention period (1-400 days, default 14)
-- Automatic SharpCap sequence generation
+- Automatic SharpCap sequence generation with customizable templates
 - Customizable per-event settings (exposure, gain, recording duration)
 - **Observation Preparation Panel**: Integrated workflow for setting up events
   - Load event for preparation with summary display
@@ -17,27 +17,20 @@ SharpCap Occultation Manager automates the complete occultation observation work
   - Camera setup with exposure and coordinate configuration
   - Test recording with automatic settings preservation and restoration
 
-**Streamlined Report Generation**
-- Single comprehensive dialog workflow (replaces 5 separate dialogs)
-- Integrates AOTA timing data for D/R times
-- Imports Tangra CSV light curves for observation timing and camera delay
-- **Automatic video format extraction** from Tangra CSV files (ADVS, SER, AAV, PAL/CCIR, NTSC/EIA)
-- **Dynamic exposure/integration detection** based on timing consistency
-- Supports multiple output formats:
-  - North America (IOTA V5.6.12r) - Excel
-  - Trans-Tasman (RASNZ V4.1.2.G) - Excel
-  - Occult 4 XML Export (Version 2.15+) - OBS.XML format
-- All formats generated in same workflow using shared data
-- Auto-fills observer, telescope, and camera information
-- Remembers report type and folder location for faster workflow
+**SharpCap Sequence Generation**
+- Full control over recording workflow through customizable templates
+- Automated mount control, camera configuration, and recording
+- Flexible templates for any equipment setup or recording style
+- Support for unattended multi-event observation sessions
+- Built-in templates: Full automation, minimal setup, and test recording
+- Sequences use calculated or custom exposure, gain, and duration values
 
-**Timing Integration**
-- Extracts start/end times from Tangra CSV files (HH:MM:SS.SS format)
-- Populates exposure time in seconds with 3 decimal precision
-- **Video format sourced from Tangra CSV measurement parameters** (not camera configuration)
-- **Exposure/Integration type calculated** from timing variance (< 10% = Exposure, else Integration)
-- Camera acquisition delay correction from Tangra measurement parameters
-- Automatic placeholder population for all timing fields
+**Report Generation (Experimental)**
+- ⚠️ **Under Development**: Report generation has not been approved by NA or TT reporting coordinators
+- Single comprehensive dialog for workflow efficiency
+- Integrates AOTA timing data and Tangra CSV analysis
+- Supports North America (IOTA) and Trans-Tasman (RASNZ) formats
+- Use with caution and verify all generated data before submission
 
 **Equipment Management**
 - Multiple telescope and camera configurations
@@ -46,11 +39,12 @@ SharpCap Occultation Manager automates the complete occultation observation work
 
 ## Benefits
 
-1. **Full Automation**: Complete workflow from event download to report generation within SharpCap
-2. **Simplified Workflow**: No need for Occult Watcher Desktop or Occult 4 for predictions
-3. **Flexible Sequences**: Customizable SharpCap sequence templates for any recording setup
-4. **Accurate Timing**: Direct integration of Tangra timing analysis into reports
-5. **Multi-Equipment**: Manage multiple telescopes, cameras, and observing sites
+1. **Complete Control**: SharpCap sequences give you full flexibility over your recording workflow
+2. **Customizable Automation**: Automate as little or as much as needed for your setup
+3. **Equipment Flexibility**: Templates can be adapted to any telescope, mount, and camera combination
+4. **Simplified Event Management**: No need for Occult Watcher Desktop for predictions
+5. **Multi-Event Sessions**: Generate sequences for entire night's observations
+6. **Safe Testing**: Test recordings preserve your camera settings automatically
 
 ## Workflow
 
@@ -61,10 +55,11 @@ SharpCap Occultation Manager automates the complete occultation observation work
    - **Plate Solve**: Verify pointing and label the target star
    - **Setup**: Configure SharpCap camera settings (exposure, coordinates)
    - **Test Recording**: Make a short test recording to verify setup without disrupting your settings
-3. **Generate Sequences**: Create SharpCap sequences for automated recording
-4. **Record Event**: Run the sequence to capture the occultation
-5. **Analyze in Tangra**: Process video to generate light curve CSV and AOTA report
-6. **Generate Reports**: One-click generation of Excel reports (NA/TT) and/or Occult 4 XML with integrated AOTA and Tangra data
+3. **Customize Settings**: Override calculated exposure, gain, or recording duration if needed
+4. **Generate Sequences**: Create customized SharpCap sequences for automated recording
+5. **Record Event**: Run the sequence to capture the occultation with full control
+6. **Analyze in Tangra**: Process video to generate light curve CSV and timing data
+7. **(Optional) Generate Reports**: Experimental feature for Excel reports - verify all data before submission
 
 ## Installation
 ## Installation
@@ -94,6 +89,18 @@ Under **User Settings** set it up to suit your telescope. Each setting has an **
 
 Save the configuration.
 
+## SharpCap Sequences - Your Recording Workflow
+
+The Occultation Manager generates SharpCap Sequences that give you complete control over your recording workflow. By using sequences, you can customize the automation to match your equipment, observing style, and comfort level. **You have full flexibility to automate everything or just the essentials.**
+
+### Why Use Sequences?
+
+- **Complete Control**: You decide what gets automated and what stays manual
+- **Equipment Specific**: Adapt to your exact telescope, mount, camera, and accessories
+- **Safety First**: Control mount movements, pointing, and post-observation positioning
+- **Multi-Event Capable**: Generate a single sequence for an entire night's observations
+- **Reliable**: Test and refine your templates before relying on them
+
 ## Sequencer Templates
 The Occultation Manager is used to generate SharpCap Sequences, and these sequences are used to run the events. By using SharpCap Sequences the user can customise the event recording to their system and to what they need to do. So you can do anything that a SharpCap Sequence can do and automate as little or as much as you want. You can generate a single sequence that will run an entire nights observations.
 
@@ -105,15 +112,67 @@ Templates use Python string formatting with the following variables from each ev
 - Additional variables: start/end times, coordinates, event details
 
 ### Provided Templates
-The **Local Time template** is a fully working example for the Authors setup. It fully configures the mount and camera for each observation (binning, ROI, file format etc) and leaves the mount in a safe position after each observation. 
 
-The **Minimal template** is a minimalist example. It assumes that you have already set up your camera and recording settings for how you want to record and only adjusts the exposure.
+Five templates are included demonstrating different automation levels and timing approaches:
 
-The **Test Recording template** (SharpCap Test Recording Template.txt) is designed for short test recordings to verify your camera setup before the actual event. This template is used automatically by the **Test Recording** button in the Observation Preparation panel.
+**⭐ SharpCap Sequence UTC Template** (RECOMMENDED - Full Automation with UTC Timing):
+- **Best and safest template** with proper UTC-based countdown system
+- Handles times safely regardless of when started (late start, next day, after midnight)
+- User can safely stop and restart countdown without missing events
+- Fully configures mount and camera for each observation
+- Sets binning, ROI, file format, exposure, gain, and recording settings
+- Automated GOTO, plate solve, and safe finish positioning
+- Parks mount in safe position after each observation
+- Suitable for unattended multi-night operation
+- Uses Python code for accurate UTC countdown calculations
 
-You will need to test these templates and adapt them to your setup and to how you want to record. My advice is to use something like the Local Time Template which sets all the camera parameters as it is really easy to forget to set something manually and then mess up the observation.
+**SharpCap Sequence Local Time Template** (Full Automation with Local Time):
+- ⚠️ **Less safe**: Has problems with times after local midnight
+- ⚠️ **Cannot handle next day events**: Only works for current night observations
+- Fully configures mount and camera like UTC template
+- Requires manual "WAIT UNTIL" statements to prevent premature start
+- Risk of missing events if local time crosses midnight
+- Must add 86400 second delays for each day's wait, or use UTC template instead
 
-You will need to extensively test your own template(s) before trusting them or before they are safe to use for unattended observations. There is the risk of failure, and the risk of damaging gear by snagging cables or leaving it pointed to the sun after sunrise.
+**SharpCap Minimal Local Time Template** (Basic Automation):
+- ⚠️ **Same local time risks** as above (midnight issues, current night only)
+- Assumes you've manually configured most camera recording settings
+- Automated GOTO and plate solve
+- Only adjusts exposure and gain for each event
+- Minimal automation for those wanting more manual control
+
+**SharpCap Just Record Template** (Manual Setup):
+- Bare bones recording only - no GOTO, no plate solve, no camera setup
+- Uses local time for recording start (same midnight risks)
+- Assumes user has already pointed telescope and configured camera
+- Intended for ad-hoc interactive use
+- Only sets target name and triggers recording at event time
+
+**SharpCap Test Recording Template** (Verification):
+- Immediate short recording for pre-event testing (no waiting)
+- Used automatically by the **Test Recording** button
+- Verifies focus, framing, and camera settings
+- Automatically restores camera settings after test
+- Configures binning, ROI, format, exposure, and gain for test
+
+### Critical: Test and Customize
+
+⚠️ **You MUST test and adapt these templates to your specific setup before using them for observations.** The provided templates are examples only.
+
+**Before relying on any template:**
+- Test extensively during daytime with your actual equipment
+- Verify all mount movements are safe and correct
+- Check that camera settings match your requirements
+- Ensure file paths and formats work with your system
+- Test unattended operation thoroughly before trusting it
+- Consider cable management and equipment safety
+- Plan for post-sunrise mount positioning
+
+**Safety Considerations:**
+- Risk of equipment damage from cable snags or incorrect pointing
+- Risk of sun exposure if sequence runs past sunrise
+- Risk of failed observations due to untested settings
+- Unattended operation requires extensive testing and safety planning
 
 ## Event Customization
 
@@ -203,7 +262,9 @@ Makes a short test recording to verify your setup without disrupting your carefu
 **Template Required:**
 The test recording feature requires a template file named "SharpCap Test Recording Template.txt" in your configured templates folder. This template should define a brief recording sequence (typically 10-30 seconds) suitable for testing purposes.
 
-## Report Generation
+## Report Generation (Experimental)
+
+⚠️ **Important Warning**: Report generation is still under development and has not been approved by the North America or Trans-Tasman reporting coordinators. Use with caution and carefully verify all generated data before submission to any reporting organization.
 
 Reports are generated using a streamlined single-dialog workflow that combines:
 - Report format selection (North America / Trans-Tasman)

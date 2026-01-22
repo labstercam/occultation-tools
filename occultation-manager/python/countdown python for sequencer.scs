@@ -13,10 +13,10 @@ SEQUENCE
 #######################
 RUN PYTHON CODE "import datetime as dt; import tempfile; import os; import time;import clr;clr.AddReference('System.Windows.Forms');from System.Windows.Forms import MessageBoxButtons;"
 RUN PYTHON CODE "def seconds_to_wait_utc(target_dt): return int(max(0, (target_dt - dt.datetime.utcnow()).total_seconds()));"
-RUN PYTHON CODE "def do_countdown_utc(date_string, message): target_dt = dt.datetime.strptime(date_string,'%Y%m%d %H:%M:%S'); seconds_to_wait = seconds_to_wait_utc(target_dt); temp_file = os.path.join(tempfile.gettempdir(), 'temp_countdown.scs'); f = open(temp_file, 'w', encoding='utf-8'); f.write(f'COUNTDOWN FOR {seconds_to_wait} SHOWING \"{message} at {date_string} UTC\" '); f.close(); SharpCap.Sequencer.RunSequenceFile(temp_file) if seconds_to_wait >0 else None; seconds_to_wait = seconds_to_wait_utc(target_dt); result = (str(SharpCap.ShowMessageBox('Select Yes to restart Countdown. \nIf you do not restart this event will not be recorded at the correct time','Warning: User stopped the Countdown',MessageBoxButtons.YesNo)) if seconds_to_wait > 0 else 'pass'); do_countdown_utc(date_string, message) if result == 'Yes' else None;"
+RUN PYTHON CODE "def do_countdown_utc(date_string, message): target_dt = dt.datetime.strptime(date_string,'%Y-%m-%dT%H:%M:%S'); seconds_to_wait = seconds_to_wait_utc(target_dt); temp_file = os.path.join(tempfile.gettempdir(), 'temp_countdown.scs'); f = open(temp_file, 'w', encoding='utf-8'); f.write(f'COUNTDOWN FOR {{seconds_to_wait}} SHOWING \"{{message}} at {{date_string}} UTC\" '); f.close(); SharpCap.Sequencer.RunSequenceFile(temp_file) if seconds_to_wait >0 else None; seconds_to_wait = seconds_to_wait_utc(target_dt); result = (str(SharpCap.ShowMessageBox('Select Yes to restart Countdown. If you do not restart this event will not be recorded at the correct time','Warning: User stopped the Countdown',MessageBoxButtons.YesNo)) if seconds_to_wait > 0 else 'pass'); do_countdown_utc(date_string, message) if result == 'Yes' else None;"
 
 # Example use
-RUN PYTHON CODE "do_countdown_utc('20260117 10:58:00','Waiting for GOTO')"
-#RUN PYTHON CODE "do_countdown_utc('20260118 23:59:10','Waiting More')"
+RUN PYTHON CODE "do_countdown_utc('2026-01-17T10:58:00','Waiting for GOTO')"
+#RUN PYTHON CODE "do_countdown_utc('2026-01-18T23:59:10','Waiting More')"
 
 END SEQUENCE

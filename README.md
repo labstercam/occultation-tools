@@ -1,5 +1,11 @@
 # occultation-tools
+
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
+
 Tools for automating occultation observations and validating timing accuracy.
+
+📋 **[View CHANGELOG](CHANGELOG.md)** for release history and version details.
 
 ## Tools in this Repository
 

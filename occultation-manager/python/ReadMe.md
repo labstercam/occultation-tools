@@ -6,27 +6,11 @@
 
 The Occultation Manager includes comprehensive Excel report generation with integrated timing analysis.
 
-#### simple_xlsx.py - Pure Python Excel Library
-
-**Why simple_xlsx?**
-IronPython (used by SharpCap) cannot load C extensions. Popular libraries like `openpyxl` depend on lxml and numpy (C extensions), causing IronPython crashes. `simple_xlsx` provides Excel functionality using only Python standard library.
-
-**Implementation** (364 lines):
-- Uses only `zipfile` and `xml.etree.ElementTree`
-- No external dependencies or C extensions
-- Implements essential Excel operations for report generation
-
-**Core Classes**:
-- `SimpleWorkbook` - Manages .xlsx ZIP files
-- `SimpleWorksheet` - Handles individual worksheets
-- `SimpleCell` - Cell value wrapper
-
-**Supported Operations**:
-- ✅ Load .xlsx templates
-- ✅ Read/write cell values (strings, numbers, dates)
-- ✅ Save modified workbooks
-- ❌ Formulas (preserved but not calculated)
-- ❌ Formatting (preserved from template)
+**Excel Report Implementation**:
+- Uses Python standard library only: `zipfile` and `xml.etree.ElementTree`
+- No external dependencies or C extensions (IronPython compatible)
+- Direct manipulation of Excel .xlsx files (ZIP+XML format)
+- Preserves template formatting and formulas
 
 #### Report Generators
 
@@ -272,3 +256,15 @@ Core event data model with automatic calculations and customizable overrides:
 - `templates.py` - SharpCap sequence template management
 - `theme.py` - Dark/light mode theme support
 - `utils.py` - Common utility functions
+
+## Folder Structure
+
+**Production Files** (python/ folder root):
+- 23 Python modules (.py files)
+- 5 SharpCap sequence templates (.txt files)
+- 2 Excel report templates (.xlsx files)
+- 1 application icon (.ico file)
+
+**Development Files** (excluded from release):
+- `testing/` - Unit test scripts for development and debugging
+- `development documentation/` - Implementation notes, bug tracking, and technical specifications

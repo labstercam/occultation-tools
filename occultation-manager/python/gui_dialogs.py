@@ -735,7 +735,7 @@ class ConfigurationDialog(Form):
         self.txt_file_folder.Location = Point(int(130 * sf), int(20 * sf))
         self.txt_file_folder.Size = Size(int(250 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_file_folder)
-        self.tooltip.SetToolTip(self.txt_file_folder, "Folder where downloaded occultation data files are stored")
+        self.tooltip.SetToolTip(self.txt_file_folder, "Folder where event data is stored, templates are read from (*.txt files with 'template' in name), and Reports subfolder is created")
         
         btn_browse_folder = Button()
         btn_browse_folder.Text = "Browse"
@@ -755,7 +755,7 @@ class ConfigurationDialog(Form):
         self.txt_sequence_path.Location = Point(int(130 * sf), int(60 * sf))
         self.txt_sequence_path.Size = Size(int(250 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_sequence_path)
-        self.tooltip.SetToolTip(self.txt_sequence_path, "Folder where generated SharpCap sequence files (.scs) are saved")
+        self.tooltip.SetToolTip(self.txt_sequence_path, "Folder where generated .scs sequence files are saved. Leave empty to use File Folder. Can be different for organizational purposes.")
         
         btn_browse_sequence = Button()
         btn_browse_sequence.Text = "Browse"
