@@ -1512,9 +1512,6 @@ class TemplateSelectionDialog(Form):
         """Load available templates into the list"""
         template_files, template_folder = TemplateManager.find_template_files(self.config.get_file_folder())
         
-        # Add default option
-        self.lst_templates.Items.Add("Default Template")
-        
         # Add template files
         for template_file in template_files:
             template_path = os.path.join(template_folder, template_file)
@@ -1529,17 +1526,14 @@ class TemplateSelectionDialog(Form):
     def template_selected(self, sender, e):
         """Handle template selection change with proper preview"""
         if self.lst_templates.SelectedIndex >= 0:
-            if self.lst_templates.SelectedIndex == 0:
-                # Default template
-                self.selected_template_path = ""
-                template_content = TemplateManager.load_template("", self.config)
+            # Get the selected template file
+            template_files, template_folder = TemplateManager.find_template_files(self.config.get_file_folder())
+            if self.lst_templates.SelectedIndex < len(template_files):
+                template_file = template_files[self.lst_templates.SelectedIndex]
+                self.selected_template_path = os.path.join(template_folder, template_file)
+                template_content = TemplateManager.load_template(self.selected_template_path, self.config)
             else:
-                # Specific template file
-                template_files, template_folder = TemplateManager.find_template_files(self.config.get_file_folder())
-                if self.lst_templates.SelectedIndex - 1 < len(template_files):
-                    template_file = template_files[self.lst_templates.SelectedIndex - 1]
-                    self.selected_template_path = os.path.join(template_folder, template_file)
-                    template_content = TemplateManager.load_template(self.selected_template_path, self.config)
+                template_content = None
             
             # Show preview with proper line breaks - FIXED
             if template_content:

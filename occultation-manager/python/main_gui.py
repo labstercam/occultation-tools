@@ -695,28 +695,27 @@ class OccultationManagerGUI(Form):
         btn_setup_event.BackColor = Color.LightGreen
         obs_group.Controls.Add(btn_setup_event)
         
-        # Current event display - positioned after buttons
-        self.lbl_current_event = Label()
-        self.lbl_current_event.Text = "No event loaded for preparation"
-        self.lbl_current_event.Size = Size(400, int(22 * sf))
-        self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
-        obs_group.Controls.Add(self.lbl_current_event)
-
-        # Layout observation-prep row with buttons and label, using 4px gap
+        btn_test_recording = Button()
+        btn_test_recording.Text = "Test Recording"
+        btn_test_recording.Click += self.test_recording_click
+        btn_test_recording.BackColor = Color.LightSalmon
+        obs_group.Controls.Add(btn_test_recording)
+        
+        # Layout observation-prep row with buttons using 4px gap
         try:
             # Use the same Y offset as quick filters so rows align; apply scale
             sf = getattr(self, '_scale_factor', 1.0)
-            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, self.lbl_current_event], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
-        self.lbl_current_event.Size = Size(400, int(22 * sf))        
-        # Event details display
-        self.lbl_event_details = Label()
-        self.lbl_event_details.Text = ""
-        self.lbl_event_details.Location = Point(10, int(42 * sf))
-        self.lbl_event_details.Size = Size(640, int(18 * sf))
-        self.lbl_event_details.Font = Font("Microsoft Sans Serif", 8)
-        obs_group.Controls.Add(self.lbl_event_details)
+        
+        # Combined event display - positioned below buttons
+        self.lbl_current_event = Label()
+        self.lbl_current_event.Text = "No event loaded for preparation"
+        self.lbl_current_event.Location = Point(10, int(42 * sf))
+        self.lbl_current_event.Size = Size(640, int(18 * sf))
+        self.lbl_current_event.Font = Font("Microsoft Sans Serif", 8, FontStyle.Bold)
+        obs_group.Controls.Add(self.lbl_current_event)
         
         # Initialize preparation event to None
         self._preparation_event = None
@@ -1223,6 +1222,17 @@ class OccultationManagerGUI(Form):
         if not event.event_datetime or event.event_datetime >= datetime.utcnow():
             MessageBox.Show("Reports can only be generated for events that have already occurred.\n\nPlease select a past event.", 
                         "Event Not Yet Occurred", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            return
+        
+        # Show warning about report generation being under development
+        warning_result = MessageBox.Show(
+            "Report generation is still under development and has not been approved by the NA or TT reporting coordinators. Use with caution.\n\nDo you want to continue?",
+            "Report Generation Warning",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning)
+        
+        if warning_result != DialogResult.Yes:
+            self.update_status("Report generation cancelled")
             return
         
         # Generate report
@@ -2121,13 +2131,11 @@ class OccultationManagerGUI(Form):
 
         """Update the observation preparation display with current event info"""
         event = self._preparation_event
-        self.lbl_current_event.Text = f"{event.get_asteroid_display_name()} at {event.event_time} UTC"
-       
-        # Update details
-        details = (f"RA: {event.ra:.4f}h, Dec: {event.dec:.4f}° | "
-                f"Exposure: {event.exposure_ms}ms | Duration: {event.recording_duration}s | "
-                f"Star Mag: {event.star_mag:.1f}")
-        self.lbl_event_details.Text = details
+        # Combined display with all event info
+        self.lbl_current_event.Text = (f"{event.get_asteroid_display_name()} at {event.event_time} UTC | "
+                                       f"{event.star_alt:.0f}@{event.star_az:.0f} | "
+                                       f"Exp: {event.exposure_ms}ms | Max Dur: {event.event_duration:.1f}s | "
+                                       f"Star Mag: {event.star_mag:.1f}")
 
     def setup_for_event_click(self, sender, e):
         """Setup SharpCap interface for the loaded event"""
@@ -2159,6 +2167,185 @@ class OccultationManagerGUI(Form):
         except Exception as ex:
             self.update_status(f"Error during setup: {ex}")
             MessageBox.Show(f"Error setting up event: {ex}", "Setup Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+    def test_recording_click(self, sender, e):
+        """Test recording using a temporary sequence for the selected event"""
+        # Get selected events from grid
+        selected_events = self.get_displayed_selected_events()
+        
+        if len(selected_events) != 1:
+            MessageBox.Show("Please select exactly one event from the grid", "Invalid Selection", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        
+        event = selected_events[0]
+        
+        try:
+            # Check for template file
+            template_name = "SharpCap Test Recording Template.txt"
+            template_folder = self.config.get_file_folder()
+            template_path = os.path.join(template_folder, template_name)
+            
+            if not os.path.exists(template_path):
+                MessageBox.Show(f"Template file not found: {template_name}\n\nPlease ensure the template exists in:\n{template_folder}", 
+                            "Template Missing", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+            
+            # Create temporary sequence file
+            temp_sequence_name = "temp_test_record.scs"
+            sequence_path = self.config.get_sequence_path()
+            temp_sequence_path = os.path.join(sequence_path, temp_sequence_name)
+            
+            self.update_status(f"Creating test recording sequence for {event.event_name}...")
+            
+            # Load template and generate sequence content manually to control filename
+            from templates import TemplateManager
+            template_content = TemplateManager.load_template(template_path, self.config)
+            if not template_content:
+                MessageBox.Show("Failed to load template file", "Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+                return
+            
+            # Prepare event data for template substitution
+            try:
+                report_content = template_content.format(
+                    object_name=event.object_name,
+                    event_time=event.event_time,
+                    start_time=event.start_time_str,
+                    goto_time=event.goto_time_str,
+                    recording_duration=format(event.recording_duration, '.0f'),
+                    star_mag=format(event.star_mag, '.1f'),
+                    comb_mag=format(event.comb_mag, '.1f'),
+                    mag_drop=format(event.mag_drop, '.1f'),
+                    time_error=format(event.event_uncertainty, '.1f'),
+                    ra=format(event.ra, '.6f'),
+                    dec=format(event.dec, '.6f'),
+                    asteroid_name=event.object_name,
+                    exposure=format(event.get_exposure_seconds(), '.3f'),
+                    gain=event.gain_value,
+                    event_time_local=event.event_time_local,
+                    start_time_local=event.start_time_local,
+                    goto_time_local=event.goto_time_local,
+                    pre_goto_time_local=event.pre_goto_time_local
+                )
+                
+                # Ensure directory exists
+                if not os.path.exists(sequence_path):
+                    os.makedirs(sequence_path, exist_ok=True)
+                
+                # Write the temporary sequence file
+                with open(temp_sequence_path, 'w') as f:
+                    f.write(report_content)
+                    
+            except Exception as write_error:
+                MessageBox.Show(f"Failed to create test recording sequence:\n{write_error}", "Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+                return
+            
+            # Save current camera settings before test recording
+            saved_settings = {}
+            try:
+                if self.sharpcap.SelectedCamera:
+                    camera = self.sharpcap.SelectedCamera
+                    if hasattr(camera.Controls, 'Binning'):
+                        saved_settings['binning'] = camera.Controls.Binning.Value
+                        print(f"Saved Binning: {saved_settings['binning']}")
+                    if hasattr(camera.Controls, 'Exposure'):
+                        saved_settings['exposure'] = camera.Controls.Exposure.ExposureMs
+                        print(f"Saved Exposure (ms): {saved_settings['exposure']}")
+                    if hasattr(camera.Controls, 'Gain'):
+                        saved_settings['gain'] = camera.Controls.Gain.Value
+                        print(f"Saved Gain: {saved_settings['gain']}")
+                    if hasattr(camera.Controls, 'Resolution'):
+                        saved_settings['resolution'] = camera.Controls.Resolution.Value
+                        print(f"Saved Resolution: {saved_settings['resolution']}")
+                    if hasattr(camera.Controls, 'DisplayBlackLevel'):
+                        saved_settings['display_black'] = camera.Controls.DisplayBlackLevel.Value
+                        print(f"Saved DisplayBlackLevel: {saved_settings['display_black']}")
+                    if hasattr(camera.Controls, 'DisplayMidLevel'):
+                        saved_settings['display_mid'] = camera.Controls.DisplayMidLevel.Value
+                        print(f"Saved DisplayMidLevel: {saved_settings['display_mid']}")
+                    if hasattr(camera.Controls, 'DisplayWhiteLevel'):
+                        saved_settings['display_white'] = camera.Controls.DisplayWhiteLevel.Value
+                        print(f"Saved DisplayWhiteLevel: {saved_settings['display_white']}")
+                    self.update_status(f"Camera settings saved (Exp: {saved_settings.get('exposure', 'N/A')}ms, Gain: {saved_settings.get('gain', 'N/A')})")
+            except Exception as save_error:
+                print(f"Warning: Could not save camera settings: {save_error}")
+            
+            # Run the sequence immediately
+            self.update_status(f"Running test recording sequence...")
+            
+            try:
+                self.sharpcap.Sequencer.RunSequenceFile(temp_sequence_path)
+                self.update_status(f"Test recording completed for {event.event_name}")
+                
+                # Restore camera settings after test recording
+                try:
+                    if self.sharpcap.SelectedCamera and saved_settings:
+                        camera = self.sharpcap.SelectedCamera
+                        self.update_status("Restoring camera settings...")
+                        
+                        if 'binning' in saved_settings and hasattr(camera.Controls, 'Binning'):
+                            print(f"Restoring Binning to: {saved_settings['binning']}")
+                            camera.Controls.Binning.Value = saved_settings['binning']
+                            print(f"Binning after restore: {camera.Controls.Binning.Value}")
+                        
+                        if 'exposure' in saved_settings and hasattr(camera.Controls, 'Exposure'):
+                            print(f"Restoring Exposure to: {saved_settings['exposure']} ms")
+                            camera.Controls.Exposure.ExposureMs = saved_settings['exposure']
+                            print(f"Exposure after restore: {camera.Controls.Exposure.ExposureMs} ms")
+                            exposure_to_wait = saved_settings['exposure']
+                        else:
+                            exposure_to_wait = 100  # Default if exposure not saved
+                        
+                        if 'gain' in saved_settings and hasattr(camera.Controls, 'Gain'):
+                            print(f"Restoring Gain to: {saved_settings['gain']}")
+                            camera.Controls.Gain.Value = saved_settings['gain']
+                            print(f"Gain after restore: {camera.Controls.Gain.Value}")
+                        
+                        if 'resolution' in saved_settings and hasattr(camera.Controls, 'Resolution'):
+                            print(f"Restoring Resolution to: {saved_settings['resolution']}")
+                            camera.Controls.Resolution.Value = saved_settings['resolution']
+                            print(f"Resolution after restore: {camera.Controls.Resolution.Value}")
+                        
+                        # Wait 2x the restored exposure time
+                        import time
+                        wait_time = (exposure_to_wait * 2) / 1000.0  # Convert ms to seconds
+                        self.update_status(f"Waiting {wait_time:.1f}s for camera to stabilize...")
+                        time.sleep(wait_time)
+                        
+                        # Restore display levels
+                        try:
+                            if 'display_black' in saved_settings and hasattr(camera.Controls, 'DisplayBlackLevel'):
+                                print(f"Restoring DisplayBlackLevel to: {saved_settings['display_black']}")
+                                camera.Controls.DisplayBlackLevel.Value = saved_settings['display_black']
+                            if 'display_mid' in saved_settings and hasattr(camera.Controls, 'DisplayMidLevel'):
+                                print(f"Restoring DisplayMidLevel to: {saved_settings['display_mid']}")
+                                camera.Controls.DisplayMidLevel.Value = saved_settings['display_mid']
+                            if 'display_white' in saved_settings and hasattr(camera.Controls, 'DisplayWhiteLevel'):
+                                print(f"Restoring DisplayWhiteLevel to: {saved_settings['display_white']}")
+                                camera.Controls.DisplayWhiteLevel.Value = saved_settings['display_white']
+                            self.update_status("Display levels restored")
+                        except Exception as display_error:
+                            print(f"Warning: Could not restore display levels: {display_error}")
+                        
+                        self.update_status("Camera settings restored")
+                        
+                except Exception as restore_error:
+                    print(f"Warning: Could not restore camera settings: {restore_error}")
+                    self.update_status(f"Warning: Settings restoration incomplete")
+                
+                MessageBox.Show(f"Test recording sequence completed for:\n\n{event.get_asteroid_display_name()}\n\nCamera settings have been restored.", 
+                            "Test Recording Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            except Exception as seq_error:
+                MessageBox.Show(f"Failed to run test recording sequence:\n{seq_error}", "Sequence Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+                self.update_status(f"Failed to start test recording: {seq_error}")
+                
+        except Exception as ex:
+            self.update_status(f"Error during test recording: {ex}")
+            MessageBox.Show(f"Error creating test recording: {ex}", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
 
     def apply_event_parameters_to_sharpcap(self, event):

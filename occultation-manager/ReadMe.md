@@ -10,6 +10,12 @@ SharpCap Occultation Manager automates the complete occultation observation work
 - Configurable event retention period (1-400 days, default 14)
 - Automatic SharpCap sequence generation
 - Customizable per-event settings (exposure, gain, recording duration)
+- **Observation Preparation Panel**: Integrated workflow for setting up events
+  - Load event for preparation with summary display
+  - GOTO mount control with automatic slewing
+  - Plate solve verification and target labeling
+  - Camera setup with exposure and coordinate configuration
+  - Test recording with automatic settings preservation and restoration
 
 **Streamlined Report Generation**
 - Single comprehensive dialog workflow (replaces 5 separate dialogs)
@@ -49,10 +55,16 @@ SharpCap Occultation Manager automates the complete occultation observation work
 ## Workflow
 
 1. **Download Events**: Sync with Occult Watcher Cloud to get your announced stations
-2. **Generate Sequences**: Create SharpCap sequences for automated recording
-3. **Record Event**: Run the sequence to capture the occultation
-4. **Analyze in Tangra**: Process video to generate light curve CSV and AOTA report
-5. **Generate Reports**: One-click generation of Excel reports (NA/TT) and/or Occult 4 XML with integrated AOTA and Tangra data
+2. **Prepare for Observation**: Use the Observation Preparation panel to set up for your event
+   - **Load Event**: Select an event from the grid to prepare
+   - **GOTO**: Automatically slew your mount to the event coordinates
+   - **Plate Solve**: Verify pointing and label the target star
+   - **Setup**: Configure SharpCap camera settings (exposure, coordinates)
+   - **Test Recording**: Make a short test recording to verify setup without disrupting your settings
+3. **Generate Sequences**: Create SharpCap sequences for automated recording
+4. **Record Event**: Run the sequence to capture the occultation
+5. **Analyze in Tangra**: Process video to generate light curve CSV and AOTA report
+6. **Generate Reports**: One-click generation of Excel reports (NA/TT) and/or Occult 4 XML with integrated AOTA and Tangra data
 
 ## Installation
 ## Installation
@@ -93,9 +105,11 @@ Templates use Python string formatting with the following variables from each ev
 - Additional variables: start/end times, coordinates, event details
 
 ### Provided Templates
-The Local Time template is a fully working example for the Authors setup. It fully configures the mount and camera for each observation (binning, ROI, file format etc) and leaves the mount in a safe position after each observation. 
+The **Local Time template** is a fully working example for the Authors setup. It fully configures the mount and camera for each observation (binning, ROI, file format etc) and leaves the mount in a safe position after each observation. 
 
-The Minimal template is a minimalist example. It assumes that you have already set up your camera and recording settings for how you want to record and only adjusts the exposure.
+The **Minimal template** is a minimalist example. It assumes that you have already set up your camera and recording settings for how you want to record and only adjusts the exposure.
+
+The **Test Recording template** (SharpCap Test Recording Template.txt) is designed for short test recordings to verify your camera setup before the actual event. This template is used automatically by the **Test Recording** button in the Observation Preparation panel.
 
 You will need to test these templates and adapt them to your setup and to how you want to record. My advice is to use something like the Local Time Template which sets all the camera parameters as it is really easy to forget to set something manually and then mess up the observation.
 
@@ -132,6 +146,62 @@ The event grid displays an asterisk (*) next to values that have been customized
 
 ### Reset to Defaults
 Use the Reset button in the Edit Settings dialog to restore calculated values. The system intelligently detects when custom values match calculated defaults and removes the custom flag automatically.
+
+## Observation Preparation
+
+The Observation Preparation panel provides an integrated workflow for setting up and testing your observation before the actual event. Select exactly one event from the grid to use these features:
+
+### Load Event
+Loads the selected event into the preparation panel, displaying key information:
+- Asteroid name and event time (UTC)
+- Altitude and azimuth coordinates
+- Exposure time (calculated or custom)
+- Maximum event duration
+- Star magnitude
+
+### GOTO
+Automatically slews your telescope mount to the event coordinates. Requires SharpCap integration with your mount software (ASCOM, etc.).
+
+### Plate Solve
+Performs plate solving to:
+- Verify mount pointing accuracy
+- Calculate offset from target coordinates
+- Label the target star in the field of view
+
+Use this after GOTO to confirm your telescope is correctly positioned.
+
+### Setup
+Configures SharpCap camera settings for the event:
+- Sets the exposure time to the calculated/custom value
+- Copies event coordinates (RA/Dec) to clipboard for manual entry if needed
+- Prepares camera for the observation
+
+### Test Recording
+Makes a short test recording to verify your setup without disrupting your carefully configured camera settings. The test recording:
+
+**What it does:**
+1. Saves your current camera settings (binning, exposure, gain, resolution, display levels)
+2. Runs a short recording sequence using the "SharpCap Test Recording Template.txt"
+3. Automatically restores all camera settings after recording completes
+4. Waits for camera stabilization (2× exposure time)
+5. Restores display stretch levels to match your pre-test view
+
+**Why use it:**
+- Verify focus and framing before the event
+- Test your camera setup without manual adjustment afterwards
+- Ensure recording settings work correctly
+- Check field of view and target visibility
+- Confirm no issues with the sequence template
+
+**Settings Preserved:**
+- Camera binning
+- Exposure time
+- Gain value
+- Resolution/ROI
+- Display black/mid/white levels (stretch)
+
+**Template Required:**
+The test recording feature requires a template file named "SharpCap Test Recording Template.txt" in your configured templates folder. This template should define a brief recording sequence (typically 10-30 seconds) suitable for testing purposes.
 
 ## Report Generation
 
