@@ -1,86 +1,43 @@
 ================================================================================
 RAW OWC DOWNLOAD DATA - COMPLETE DUMP
 ================================================================================
-Number of events: 2
+Number of events: 1
 
 
 --------------------------------------------------------------------------------
-Event: (7340) 1991 UA2
+Event: (247389) 2001 YX124
 Station: Camilleri M Home
 
 All station keys: ['ChordOffsetKm', 'CloudCover', 'CombMag', 'CountryCode', 'ErrorInTimeSec', 'EventTimeUtc', 'HighCloud', 'IsOwnStation', 'IsPrimaryStation', 'Latitude', 'Longitude', 'MoonAlt', 'MoonAz', 'MoonDist', 'MoonPhase', 'OccultDistanceKm', 'Report', 'ReportComment', 'ReportedDuration', 'StarAlt', 'StarAz', 'StarColour', 'StateCode', 'StationId', 'StationName', 'StationPos', 'SunAlt', 'TempDegC', 'WeatherInfoAvailable', 'Wind']
 
 All station data:
-  ChordOffsetKm = -1.0
-  CloudCover = 1
-  CombMag = 13.18
+  ChordOffsetKm = 10.300000000000001
+  CloudCover = 0
+  CombMag = 13.789999999999999
   CountryCode = None
-  ErrorInTimeSec = 0.29999999999999999
-  EventTimeUtc = 2026-01-05T08:52:18.129
+  ErrorInTimeSec = 5.4000000000000004
+  EventTimeUtc = 2026-01-22T08:53:28.699
   HighCloud = False
   IsOwnStation = True
   IsPrimaryStation = True
   Latitude = -36.835560000000001
   Longitude = 174.65780000000001
-  MoonAlt = -6.0999999999999996
-  MoonAz = 69.900000000000006
-  MoonDist = 33.0
-  MoonPhase = 11.0
-  OccultDistanceKm = -1.7
+  MoonAlt = 8.5
+  MoonAz = 269.10000000000002
+  MoonDist = 101.0
+  MoonPhase = 1.0
+  OccultDistanceKm = 10.6
   Report = 0
   ReportComment = None
   ReportedDuration = None
-  StarAlt = 14.800000000000001
-  StarAz = 44.0
+  StarAlt = 24.0
+  StarAz = 15.4
   StarColour = 3
   StateCode = None
   StationId = 1
   StationName = Camilleri M Home
-  StationPos = 0
-  SunAlt = -11.6
-  TempDegC = 14
-  WeatherInfoAvailable = True
-  Wind = 2
-
-ELEVATION FIELD CHECK:
-  'Elevation' field NOT FOUND
-  'Altitude' field NOT FOUND
-  'Height' field NOT FOUND
-
---------------------------------------------------------------------------------
-Event: (158789) 2003 SB128
-Station: Camilleri M Home
-
-All station keys: ['ChordOffsetKm', 'CloudCover', 'CombMag', 'CountryCode', 'ErrorInTimeSec', 'EventTimeUtc', 'HighCloud', 'IsOwnStation', 'IsPrimaryStation', 'Latitude', 'Longitude', 'MoonAlt', 'MoonAz', 'MoonDist', 'MoonPhase', 'OccultDistanceKm', 'Report', 'ReportComment', 'ReportedDuration', 'StarAlt', 'StarAz', 'StarColour', 'StateCode', 'StationId', 'StationName', 'StationPos', 'SunAlt', 'TempDegC', 'WeatherInfoAvailable', 'Wind']
-
-All station data:
-  ChordOffsetKm = -47.399999999999999
-  CloudCover = 0
-  CombMag = 13.5
-  CountryCode = None
-  ErrorInTimeSec = 0.5
-  EventTimeUtc = 2026-01-07T09:56:47.064
-  HighCloud = False
-  IsOwnStation = True
-  IsPrimaryStation = True
-  Latitude = -36.835560000000001
-  Longitude = 174.65780000000001
-  MoonAlt = -5.7000000000000002
-  MoonAz = 84.099999999999994
-  MoonDist = 63.0
-  MoonPhase = 12.0
-  OccultDistanceKm = -75.799999999999997
-  Report = 0
-  ReportComment = None
-  ReportedDuration = None
-  StarAlt = 32.399999999999999
-  StarAz = 31.100000000000001
-  StarColour = 0
-  StateCode = None
-  StationId = 1
-  StationName = Camilleri M Home
-  StationPos = 3
-  SunAlt = -20.600000000000001
+  StationPos = 1
+  SunAlt = -13.0
   TempDegC = 0
   WeatherInfoAvailable = False
   Wind = 0
