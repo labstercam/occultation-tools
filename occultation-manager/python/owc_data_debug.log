@@ -198,3 +198,323 @@ All data items:
 Checking for elevation fields:
   FOUND 'elevation': 23.0
 ================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1', 'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,', 'ID': '20260122_019941,61001.31', 'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001', 'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189'}}}
+  occelmnt_data = {'error_basis_description': 'Star+JplPeakEphemUncert', 'motion_d2x': '-1.0489627', 'object_rings': '0', 'error_path_width_unc': '7.385', 'orbit_peri': '22', 'earth_vx': '-19.64', 'motion_d2y': '-1.8832903', 'object_mag_r': '-5.00', 'star_identifier': 'UCAC4 588-019941', 'error_ellipse_major': '0.0260', 'star_dec_apparent': '27.4926281', 'object_unknown_14': '', 'star_mag_v': '13.81', 'error_ellipse_pa': '93', 'error_position_1sigma': '0.5417', 'earth_y': '27.4926', 'star_ra_apparent': '5.65469566', 'earth_z': '55.61', 'orbit_node': '1', 'star_ra_j2000': '5.62694739', 'object_moons': '0', 'object_taxonomic_class': 'Asteroid', 'event_hours': '8.4849548', 'event_duration_sec': '0.76', 'earth_x': '-164.1635', 'object_name': '2001 YX124', 'star_dec_j2000': '27.4761664', 'star_mag_b': '14.24', 'star_mag_drops_adjusted': '5.68', 'elements_unknown_13': '0.0000001', 'motion_d3y': '-0.0001955', 'quality_no_pm': '0', 'object_diameter_km': '2.900', 'error_ellipse_minor': '0.0006', 'event_month': '1', 'quality_ucac4_pm': '0', 'object_number': '247389', 'object_ddec': '-15.15', 'star_total_nearby_count': '0', 'earth_vy': 'False', 'star_double_flag': '4', 'object_mag_v': '-5.00', 'star_diameter_mas': '0.0', 'star_k2_flag': '', 'quality_ruwe': '1.00', 'motion_d3x': '0.0033144', 'orbit_a': '0', 'orbit_i': '2026', 'event_day': '22', 'quality_duplicate_source': '0', 'orbit_e': '42.0500', 'motion_dy': '-0.1217764', 'motion_dx': '0.2186825', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'object_distance_au': '1.0925', 'object_moon_shadow_flag': '0', 'object_magnitude': '19.48', 'star_bright_nearby_count': '5.84', 'object_diameter_uncertainty': '1.2', 'event_year': '2026', 'star_unknown_14': '-1', 'elements_unknown_12': '0.0000011', 'object_dra': '-0.633', 'star_unknown_15': '-1', 'star_mag_r': '13.20', 'orbit_m': '96.6856'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'ID': '20260122_019941,61001.31', 'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0', 'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189', 'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,'}}}
+  occelmnt_data = {'star_ra_apparent': '5.65469566', 'earth_vx': '-19.64', 'error_path_width_unc': '7.385', 'star_mag_v': '13.81', 'object_ddec': '-15.15', 'quality_no_pm': '0', 'star_bright_nearby_count': '5.84', 'star_k2_flag': '', 'earth_z': '55.61', 'quality_ruwe': '1.00', 'star_dec_apparent': '27.4926281', 'event_year': '2026', 'error_basis_description': 'Star+JplPeakEphemUncert', 'quality_duplicate_source': '0', 'object_distance_au': '1.0925', 'object_mag_r': '-5.00', 'error_ellipse_pa': '93', 'star_unknown_15': '-1', 'object_moon_shadow_flag': '0', 'earth_vy': 'False', 'object_unknown_14': '', 'star_diameter_mas': '0.0', 'error_position_1sigma': '0.5417', 'event_month': '1', 'quality_ucac4_pm': '0', 'orbit_m': '96.6856', 'object_magnitude': '19.48', 'motion_d2y': '-1.8832903', 'motion_d3y': '-0.0001955', 'orbit_e': '42.0500', 'event_day': '22', 'object_number': '247389', 'star_mag_b': '14.24', 'error_ellipse_minor': '0.0006', 'star_mag_drops_adjusted': '5.68', 'elements_unknown_12': '0.0000011', 'object_moons': '0', 'motion_d3x': '0.0033144', 'orbit_a': '0', 'earth_x': '-164.1635', 'star_mag_r': '13.20', 'motion_d2x': '-1.0489627', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'star_identifier': 'UCAC4 588-019941', 'star_double_flag': '4', 'orbit_peri': '22', 'orbit_i': '2026', 'elements_unknown_13': '0.0000001', 'error_ellipse_major': '0.0260', 'star_unknown_14': '-1', 'star_ra_j2000': '5.62694739', 'object_dra': '-0.633', 'event_hours': '8.4849548', 'star_dec_j2000': '27.4761664', 'event_duration_sec': '0.76', 'motion_dy': '-0.1217764', 'earth_y': '27.4926', 'object_name': '2001 YX124', 'object_taxonomic_class': 'Asteroid', 'orbit_node': '1', 'motion_dx': '0.2186825', 'object_diameter_km': '2.900', 'star_total_nearby_count': '0', 'object_diameter_uncertainty': '1.2', 'object_mag_v': '-5.00', 'object_rings': '0'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189', 'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'ID': '20260122_019941,61001.31', 'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1', 'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001'}}}
+  occelmnt_data = {'orbit_m': '96.6856', 'motion_d3x': '0.0033144', 'object_mag_v': '-5.00', 'object_diameter_uncertainty': '1.2', 'star_mag_v': '13.81', 'object_moons': '0', 'quality_ruwe': '1.00', 'star_identifier': 'UCAC4 588-019941', 'star_unknown_14': '-1', 'star_ra_j2000': '5.62694739', 'object_ddec': '-15.15', 'error_ellipse_major': '0.0260', 'orbit_a': '0', 'motion_dx': '0.2186825', 'motion_d2x': '-1.0489627', 'event_month': '1', 'error_basis_description': 'Star+JplPeakEphemUncert', 'event_year': '2026', 'star_dec_apparent': '27.4926281', 'quality_ucac4_pm': '0', 'object_rings': '0', 'error_ellipse_pa': '93', 'object_dra': '-0.633', 'quality_duplicate_source': '0', 'object_unknown_14': '', 'motion_d3y': '-0.0001955', 'error_path_width_unc': '7.385', 'object_distance_au': '1.0925', 'object_taxonomic_class': 'Asteroid', 'star_diameter_mas': '0.0', 'error_position_1sigma': '0.5417', 'event_duration_sec': '0.76', 'star_double_flag': '4', 'earth_z': '55.61', 'object_diameter_km': '2.900', 'object_magnitude': '19.48', 'orbit_e': '42.0500', 'star_dec_j2000': '27.4761664', 'motion_dy': '-0.1217764', 'star_k2_flag': '', 'motion_d2y': '-1.8832903', 'star_unknown_15': '-1', 'object_mag_r': '-5.00', 'star_mag_drops_adjusted': '5.68', 'earth_x': '-164.1635', 'orbit_node': '1', 'object_number': '247389', 'star_ra_apparent': '5.65469566', 'error_ellipse_minor': '0.0006', 'event_hours': '8.4849548', 'quality_no_pm': '0', 'earth_vy': 'False', 'event_day': '22', 'orbit_peri': '22', 'star_bright_nearby_count': '5.84', 'star_total_nearby_count': '0', 'star_mag_b': '14.24', 'object_name': '2001 YX124', 'earth_y': '27.4926', 'elements_unknown_13': '0.0000001', 'earth_vx': '-19.64', 'elements_unknown_12': '0.0000011', 'object_moon_shadow_flag': '0', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'star_mag_r': '13.20', 'orbit_i': '2026'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1', 'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,', 'ID': '20260122_019941,61001.31', 'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0', 'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189'}}}
+  occelmnt_data = {'earth_vx': '-19.64', 'object_unknown_14': '', 'motion_d3x': '0.0033144', 'error_path_width_unc': '7.385', 'orbit_e': '42.0500', 'object_name': '2001 YX124', 'motion_d2x': '-1.0489627', 'error_ellipse_major': '0.0260', 'event_day': '22', 'error_ellipse_pa': '93', 'earth_y': '27.4926', 'orbit_peri': '22', 'orbit_node': '1', 'event_hours': '8.4849548', 'orbit_i': '2026', 'object_distance_au': '1.0925', 'error_ellipse_minor': '0.0006', 'motion_d2y': '-1.8832903', 'star_double_flag': '4', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'star_diameter_mas': '0.0', 'object_moon_shadow_flag': '0', 'earth_vy': 'False', 'star_mag_v': '13.81', 'object_number': '247389', 'quality_ucac4_pm': '0', 'star_unknown_14': '-1', 'star_bright_nearby_count': '5.84', 'elements_unknown_12': '0.0000011', 'object_taxonomic_class': 'Asteroid', 'quality_duplicate_source': '0', 'motion_d3y': '-0.0001955', 'quality_ruwe': '1.00', 'object_mag_v': '-5.00', 'quality_no_pm': '0', 'star_total_nearby_count': '0', 'star_ra_j2000': '5.62694739', 'elements_unknown_13': '0.0000001', 'object_diameter_km': '2.900', 'object_ddec': '-15.15', 'motion_dy': '-0.1217764', 'object_diameter_uncertainty': '1.2', 'event_duration_sec': '0.76', 'motion_dx': '0.2186825', 'star_dec_apparent': '27.4926281', 'star_identifier': 'UCAC4 588-019941', 'star_dec_j2000': '27.4761664', 'event_year': '2026', 'object_magnitude': '19.48', 'star_mag_b': '14.24', 'object_rings': '0', 'orbit_m': '96.6856', 'orbit_a': '0', 'earth_z': '55.61', 'object_moons': '0', 'error_position_1sigma': '0.5417', 'star_mag_r': '13.20', 'error_basis_description': 'Star+JplPeakEphemUncert', 'earth_x': '-164.1635', 'object_mag_r': '-5.00', 'star_unknown_15': '-1', 'event_month': '1', 'star_k2_flag': '', 'star_ra_apparent': '5.65469566', 'object_dra': '-0.633', 'star_mag_drops_adjusted': '5.68'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1', 'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,', 'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'ID': '20260122_019941,61001.31', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189', 'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0'}}}
+  occelmnt_data = {'object_distance_au': '1.0925', 'star_bright_nearby_count': '5.84', 'star_dec_j2000': '27.4761664', 'error_path_width_unc': '7.385', 'orbit_a': '0', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'object_taxonomic_class': 'Asteroid', 'earth_vx': '-19.64', 'object_moon_shadow_flag': '0', 'motion_d2x': '-1.0489627', 'elements_unknown_13': '0.0000001', 'error_position_1sigma': '0.5417', 'elements_unknown_12': '0.0000011', 'object_number': '247389', 'earth_y': '27.4926', 'star_unknown_14': '-1', 'quality_ucac4_pm': '0', 'star_diameter_mas': '0.0', 'motion_d3y': '-0.0001955', 'error_ellipse_minor': '0.0006', 'event_duration_sec': '0.76', 'motion_dy': '-0.1217764', 'orbit_node': '1', 'object_unknown_14': '', 'object_rings': '0', 'object_magnitude': '19.48', 'star_ra_j2000': '5.62694739', 'star_mag_drops_adjusted': '5.68', 'star_total_nearby_count': '0', 'star_k2_flag': '', 'event_month': '1', 'quality_ruwe': '1.00', 'object_mag_r': '-5.00', 'orbit_e': '42.0500', 'orbit_m': '96.6856', 'event_day': '22', 'star_mag_r': '13.20', 'star_mag_v': '13.81', 'star_double_flag': '4', 'object_moons': '0', 'star_identifier': 'UCAC4 588-019941', 'error_ellipse_major': '0.0260', 'object_name': '2001 YX124', 'motion_d2y': '-1.8832903', 'star_ra_apparent': '5.65469566', 'orbit_i': '2026', 'object_diameter_km': '2.900', 'object_dra': '-0.633', 'quality_no_pm': '0', 'object_diameter_uncertainty': '1.2', 'orbit_peri': '22', 'error_ellipse_pa': '93', 'object_ddec': '-15.15', 'event_hours': '8.4849548', 'motion_d3x': '0.0033144', 'star_unknown_15': '-1', 'quality_duplicate_source': '0', 'star_mag_b': '14.24', 'star_dec_apparent': '27.4926281', 'object_mag_v': '-5.00', 'earth_z': '55.61', 'earth_x': '-164.1635', 'error_basis_description': 'Star+JplPeakEphemUncert', 'motion_dx': '0.2186825', 'earth_vy': 'False', 'event_year': '2026'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0', 'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001', 'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'ID': '20260122_019941,61001.31', 'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,', 'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1'}}}
+  occelmnt_data = {'object_distance_au': '1.0925', 'star_mag_b': '14.24', 'earth_x': '-164.1635', 'motion_dx': '0.2186825', 'object_mag_r': '-5.00', 'object_mag_v': '-5.00', 'event_day': '22', 'error_position_1sigma': '0.5417', 'object_unknown_14': '', 'error_ellipse_major': '0.0260', 'star_ra_j2000': '5.62694739', 'object_ddec': '-15.15', 'quality_ruwe': '1.00', 'orbit_m': '96.6856', 'error_path_width_unc': '7.385', 'error_ellipse_pa': '93', 'star_mag_r': '13.20', 'earth_y': '27.4926', 'event_duration_sec': '0.76', 'error_ellipse_minor': '0.0006', 'object_dra': '-0.633', 'object_name': '2001 YX124', 'star_mag_drops_adjusted': '5.68', 'orbit_node': '1', 'star_total_nearby_count': '0', 'motion_d3x': '0.0033144', 'object_moon_shadow_flag': '0', 'quality_no_pm': '0', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'event_year': '2026', 'star_bright_nearby_count': '5.84', 'star_double_flag': '4', 'error_basis_description': 'Star+JplPeakEphemUncert', 'star_mag_v': '13.81', 'star_dec_apparent': '27.4926281', 'star_identifier': 'UCAC4 588-019941', 'quality_ucac4_pm': '0', 'orbit_a': '0', 'object_rings': '0', 'motion_d2x': '-1.0489627', 'event_hours': '8.4849548', 'star_dec_j2000': '27.4761664', 'star_diameter_mas': '0.0', 'orbit_e': '42.0500', 'elements_unknown_13': '0.0000001', 'motion_dy': '-0.1217764', 'motion_d2y': '-1.8832903', 'motion_d3y': '-0.0001955', 'earth_vx': '-19.64', 'object_magnitude': '19.48', 'object_moons': '0', 'star_unknown_14': '-1', 'star_k2_flag': '', 'earth_z': '55.61', 'object_diameter_km': '2.900', 'orbit_peri': '22', 'object_number': '247389', 'object_diameter_uncertainty': '1.2', 'object_taxonomic_class': 'Asteroid', 'quality_duplicate_source': '0', 'star_unknown_15': '-1', 'orbit_i': '2026', 'earth_vy': 'False', 'star_ra_apparent': '5.65469566', 'event_month': '1', 'elements_unknown_12': '0.0000011'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,', 'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1', 'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189', 'ID': '20260122_019941,61001.31'}}}
+  occelmnt_data = {'object_diameter_km': '2.900', 'object_number': '247389', 'star_identifier': 'UCAC4 588-019941', 'star_mag_r': '13.20', 'elements_unknown_13': '0.0000001', 'object_taxonomic_class': 'Asteroid', 'star_ra_apparent': '5.65469566', 'star_bright_nearby_count': '5.84', 'motion_d2x': '-1.0489627', 'elements_unknown_12': '0.0000011', 'star_mag_b': '14.24', 'star_mag_drops_adjusted': '5.68', 'earth_x': '-164.1635', 'earth_vy': 'False', 'event_duration_sec': '0.76', 'earth_y': '27.4926', 'event_day': '22', 'motion_d3y': '-0.0001955', 'star_dec_apparent': '27.4926281', 'object_mag_r': '-5.00', 'star_unknown_15': '-1', 'quality_ruwe': '1.00', 'star_double_flag': '4', 'object_dra': '-0.633', 'object_ddec': '-15.15', 'orbit_peri': '22', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'motion_dx': '0.2186825', 'star_dec_j2000': '27.4761664', 'error_ellipse_minor': '0.0006', 'star_unknown_14': '-1', 'object_name': '2001 YX124', 'object_rings': '0', 'object_distance_au': '1.0925', 'orbit_e': '42.0500', 'error_path_width_unc': '7.385', 'object_diameter_uncertainty': '1.2', 'event_year': '2026', 'object_unknown_14': '', 'earth_z': '55.61', 'orbit_a': '0', 'orbit_m': '96.6856', 'star_k2_flag': '', 'earth_vx': '-19.64', 'star_ra_j2000': '5.62694739', 'object_moons': '0', 'object_moon_shadow_flag': '0', 'orbit_node': '1', 'star_total_nearby_count': '0', 'object_mag_v': '-5.00', 'error_position_1sigma': '0.5417', 'motion_d2y': '-1.8832903', 'motion_d3x': '0.0033144', 'star_diameter_mas': '0.0', 'orbit_i': '2026', 'error_ellipse_major': '0.0260', 'motion_dy': '-0.1217764', 'event_month': '1', 'quality_no_pm': '0', 'error_basis_description': 'Star+JplPeakEphemUncert', 'error_ellipse_pa': '93', 'quality_ucac4_pm': '0', 'object_magnitude': '19.48', 'event_hours': '8.4849548', 'quality_duplicate_source': '0', 'star_mag_v': '13.81'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time', 'event_duration', 'event_time', 'event_uncertainty', 'exposure', 'goto_time', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'obs_location', 'occelmnt', 'occelmnt_data', 'ow_eventid', 'owcloudurl', 'ra', 'recording_duration', 'source', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time', 'station_name']
+
+All data items:
+  comb_mag = 13.789999999999999
+  dec = 27.47617
+  elevation = 23.0
+  end_time = 2026-01-22T08:54:14
+  event_duration = 0.76000000000000001
+  event_time = 2026-01-22T08:53:28
+  event_uncertainty = 5.4000000000000004
+  exposure = 0.32000000000000001
+  goto_time = 2026-01-22T08:48:42
+  id = (247389) 2001 YX124 : UCAC4 588-019941 : Camilleri M Home
+  latitude = -36.835560000000001
+  longitude = 174.65780000000001
+  mag_drop = 5.71
+  name = (247389) 2001 YX124 - Camilleri M Home
+  object_name = (247389) 2001 YX124
+  object_no = 247389
+  obs_location = Auckland, NZ
+  occelmnt = {'Occultations': {'Event': {'Elements': 'JPL +INTG:04-Nov-2025,0.76,2026,1,22,8.4849548,0.2186825,-0.1217764,-1.0489627,-1.8832903,0.0033144,-0.0001955,0.0000011,0.0000001', 'Errors': '7.385,0.0260,0.0006,93,0.5417,Star+JplPeakEphemUncert,1.00,0,0,0', 'ID': '20260122_019941,61001.31', 'OWC': '/event/1847-247389-79941-649727-U019941/3297189', 'Earth': '-164.1635,27.4926,55.61,-19.64,False', 'Object': '247389,2001 YX124,19.48,2.900,1.0925,0,0,-0.633,-15.15,Asteroid,1.2,0,-5.00,-5.00,', 'Orbit': '0,42.0500,2026,1,22,96.6856,303.2755,6.4400,0.21613,2.27194,1.78090,16.90,5.0,0.15', 'Star': 'UCAC4 588-019941,5.62694739,27.4761664,14.24,13.81,13.20,0.0,4,,5.65469566,27.4926281,5.68,5.84,0,-1,-1'}}}
+  occelmnt_data = {'orbit_node': '1', 'object_distance_au': '1.0925', 'star_mag_drops_adjusted': '5.68', 'object_magnitude': '19.48', 'star_dec_apparent': '27.4926281', 'star_mag_r': '13.20', 'event_duration_sec': '0.76', 'error_path_width_unc': '7.385', 'event_year': '2026', 'earth_y': '27.4926', 'earth_z': '55.61', 'star_identifier': 'UCAC4 588-019941', 'earth_vy': 'False', 'error_ellipse_major': '0.0260', 'motion_dy': '-0.1217764', 'error_position_1sigma': '0.5417', 'event_day': '22', 'orbit_e': '42.0500', 'object_diameter_uncertainty': '1.2', 'star_double_flag': '4', 'object_name': '2001 YX124', 'object_moons': '0', 'star_total_nearby_count': '0', 'elements_unknown_13': '0.0000001', 'earth_x': '-164.1635', 'star_ra_j2000': '5.62694739', 'event_ephemeris_source': 'JPL +INTG:04-Nov-2025', 'event_month': '1', 'error_basis_description': 'Star+JplPeakEphemUncert', 'motion_d3x': '0.0033144', 'orbit_m': '96.6856', 'object_taxonomic_class': 'Asteroid', 'motion_d2y': '-1.8832903', 'object_mag_v': '-5.00', 'orbit_a': '0', 'star_bright_nearby_count': '5.84', 'object_number': '247389', 'motion_d3y': '-0.0001955', 'earth_vx': '-19.64', 'object_dra': '-0.633', 'error_ellipse_minor': '0.0006', 'star_unknown_15': '-1', 'star_mag_b': '14.24', 'object_diameter_km': '2.900', 'star_k2_flag': '', 'star_mag_v': '13.81', 'object_ddec': '-15.15', 'motion_d2x': '-1.0489627', 'elements_unknown_12': '0.0000011', 'quality_duplicate_source': '0', 'orbit_peri': '22', 'orbit_i': '2026', 'star_ra_apparent': '5.65469566', 'object_mag_r': '-5.00', 'event_hours': '8.4849548', 'quality_ucac4_pm': '0', 'error_ellipse_pa': '93', 'star_unknown_14': '-1', 'quality_no_pm': '0', 'object_unknown_14': '', 'star_diameter_mas': '0.0', 'star_dec_j2000': '27.4761664', 'motion_dx': '0.2186825', 'quality_ruwe': '1.00', 'object_moon_shadow_flag': '0', 'object_rings': '0'}
+  ow_eventid = 7d6c286e-9395-47b5-affb-0d23564c8d7f
+  owcloudurl = https://cloud.occultwatcher.net/event/1847-247389-79941-649727-U019941/3297189
+  ra = 5.6269470000000004
+  recording_duration = 92
+  source = OWCloud
+  star_alt = 24.0
+  star_az = 15.4
+  star_id = UCAC4 588-019941
+  star_mag = 13.800000000000001
+  start_time = 2026-01-22T08:52:42
+  station_name = Camilleri M Home
+
+Checking for elevation fields:
+  FOUND 'elevation': 23.0
+================================================================================
