@@ -94,6 +94,15 @@ class OccultationManagerGUI(Form):
         self.sequence_runner = SequenceRunner(config,sharpcap_instance)
         #self.template_manager = TemplateManager(config)
         self.report_generator = None  # Lazy load when needed to avoid import issues
+        
+        # Async sequence execution state
+        self._sequence_running = False
+        self._sequence_monitoring_thread = None
+        self._sequence_saved_settings = {}
+        self._current_sequence_path = None
+        self._sequence_stopped_by_user = False  # Flag to prevent monitor from processing after manual stop
+        self._sequence_context = None  # Track context: 'test_recording' or 'run_sequences'
+        
         self.setup_ui()
         self.load_initial_data()
         self.apply_current_theme() # Apply normal or night mode theme
@@ -454,7 +463,7 @@ class OccultationManagerGUI(Form):
 
         btn_run_sequences = Button()
         btn_run_sequences.Text = "Run Sequences"
-        btn_run_sequences.Click += self.run_sequences_click
+        btn_run_sequences.Click += self.run_sequences_click_async
         toolbar.Controls.Add(btn_run_sequences)
         try:
             self._autosize_button(btn_run_sequences, height=btn_h + extra_h)
@@ -525,8 +534,8 @@ class OccultationManagerGUI(Form):
         menu_sequences.DropDownItems.Add(ToolStripMenuItem("Create Sequences", None, self.create_sequences_click))
         menu_sequences.DropDownItems.Add(ToolStripMenuItem("Generate Combined Script", None, self.generate_combined_script_click))
         menu_sequences.DropDownItems.Add(ToolStripSeparator())
-        menu_sequences.DropDownItems.Add(ToolStripMenuItem("Run Selected Sequences", None, self.run_sequences_click))
-        #menu_bar.Items.Add(menu_sequences)
+        menu_sequences.DropDownItems.Add(ToolStripMenuItem("Run Selected Sequences", None, self.run_sequences_click_async))
+        menu_bar.Items.Add(menu_sequences)
         
         # Tools menu
         menu_tools = ToolStripMenuItem("Tools")
@@ -697,15 +706,24 @@ class OccultationManagerGUI(Form):
         
         btn_test_recording = Button()
         btn_test_recording.Text = "Test Recording"
-        btn_test_recording.Click += self.test_recording_click
+        btn_test_recording.Click += self.test_recording_click_async
         btn_test_recording.BackColor = Color.LightSalmon
         obs_group.Controls.Add(btn_test_recording)
+        
+        # Stop button for stopping test recording
+        self.btn_stop_sequence = Button()
+        self.btn_stop_sequence.Text = "Stop"
+        self.btn_stop_sequence.Click += self.stop_sequence_click
+        self.btn_stop_sequence.BackColor = Color.OrangeRed
+        self.btn_stop_sequence.ForeColor = Color.White
+        self.btn_stop_sequence.Enabled = False  # Initially disabled
+        obs_group.Controls.Add(self.btn_stop_sequence)
         
         # Layout observation-prep row with buttons using 4px gap
         try:
             # Use the same Y offset as quick filters so rows align; apply scale
             sf = getattr(self, '_scale_factor', 1.0)
-            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording, self.btn_stop_sequence], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
         
@@ -1176,8 +1194,8 @@ class OccultationManagerGUI(Form):
             return False
 
 
-    def run_sequences_click(self, sender, e):
-        """Run sequences for selected events - non-blocking version"""
+    def run_sequences_click_old(self, sender, e):
+        """Run sequences for selected events - OLD blocking version (preserved)"""
         selected_events = self.get_displayed_selected_events()
         if not selected_events:
             MessageBox.Show("Please select events to run sequences for.", "No Events Selected", 
@@ -1201,6 +1219,197 @@ class OccultationManagerGUI(Form):
             thread = threading.Thread(target=run_in_background)
             thread.IsBackground = True
             thread.start()
+    
+    def run_sequences_click_async(self, sender, e):
+        """Run sequences for selected events using async (non-blocking) execution"""
+        # Check if sequence already running
+        if self._sequence_running:
+            MessageBox.Show("A sequence is already running.\n\nPlease wait for it to complete or use the Stop button.",
+                        "Sequence Running", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        
+        selected_events = self.get_displayed_selected_events()
+        if not selected_events:
+            MessageBox.Show("Please select events to run sequences for.", "No Events Selected", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information)
+            return
+        
+        # Filter for future events only and sort by GOTO time
+        now = datetime.utcnow()
+        future_events = [e for e in selected_events if e.event_datetime and e.event_datetime > now]
+        if not future_events:
+            MessageBox.Show("No future events selected. Only future events can be run.", "No Future Events", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information)
+            return
+        
+        # Sort by GOTO time
+        future_events.sort(key=lambda x: x.goto_time if hasattr(x, 'goto_time') and x.goto_time else x.event_datetime)
+        
+        if MessageBox.Show(f"This will run {len(future_events)} sequence(s) in order.\n\nContinue?", 
+                        "Confirm Run Sequences", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes:
+            return
+        
+        try:
+            # Save current camera settings
+            self._save_camera_settings()
+            
+            # Set context for completion message
+            self._sequence_context = 'run_sequences'
+            
+            # Build list of sequence file paths
+            sequence_paths = []
+            for event in future_events:
+                start_time = datetime.strptime(event.start_time_str, '%Y-%m-%dT%H:%M:%S')
+                clean_name = "".join(c for c in event.name if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
+                seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
+                sequence_file_path = os.path.join(self.config.get_sequence_path(), seq_name)
+                
+                if not os.path.exists(sequence_file_path):
+                    MessageBox.Show(f"Sequence file not found:\n\n{sequence_file_path}\n\nPlease create sequences first.",
+                                "Sequence Missing", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    self._sequence_saved_settings = {}
+                    self._sequence_context = None
+                    return
+                
+                sequence_paths.append((sequence_file_path, event.event_name))
+            
+            # Start running sequences asynchronously
+            success = self._start_sequences_async(sequence_paths)
+            
+            if success:
+                MessageBox.Show(f"Started running {len(sequence_paths)} sequence(s).\n\nThe sequences are running independently.\nUse the Stop button to cancel if needed.",
+                            "Sequences Started", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                # Bring main window to front after message box closes
+                self.Activate()
+            else:
+                # Clean up saved settings if sequences didn't start
+                self._sequence_saved_settings = {}
+                self._sequence_context = None
+                self.update_status("Failed to start sequences")
+                
+        except Exception as ex:
+            # Clean up saved settings on any exception
+            self._sequence_saved_settings = {}
+            self._sequence_running = False
+            self._sequence_stopped_by_user = False
+            self._sequence_context = None
+            if hasattr(self, 'btn_stop_sequence'):
+                self.btn_stop_sequence.Enabled = False
+            self.update_status(f"Error starting sequences: {ex}")
+            MessageBox.Show(f"Error starting sequences: {ex}", "Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error)
+    
+    def _start_sequences_async(self, sequence_paths):
+        """Start multiple sequences asynchronously with monitoring"""
+        try:
+            # Clear stopped-by-user flag
+            self._sequence_stopped_by_user = False
+            
+            # Store sequence info (for multi-sequence, store as list)
+            self._current_sequence_path = sequence_paths
+            self._sequence_running = True
+            
+            # Enable stop button
+            self.btn_stop_sequence.Enabled = True
+            
+            # Start sequences asynchronously in a thread
+            def run_all_sequences():
+                try:
+                    for i, (seq_path, event_name) in enumerate(sequence_paths):
+                        # Check if stopped by user
+                        if self._sequence_stopped_by_user:
+                            print(f"Sequences stopped by user after {i} of {len(sequence_paths)}")
+                            break
+                        
+                        try:
+                            # Update status on UI thread (capture variables in local scope)
+                            idx = i + 1
+                            total = len(sequence_paths)
+                            name = event_name
+                            self.Invoke(lambda: self.update_status(f"Starting sequence {idx}/{total}: {name}"))
+                            
+                            # Load and run this sequence
+                            self.sharpcap.Sequencer.LoadScriptFile(seq_path)
+                            
+                            if not self.sharpcap.Sequencer.AnySteps():
+                                print(f"Sequence {i+1} is empty: {seq_path}")
+                                continue
+                            
+                            # Start sequence asynchronously - MUST call on UI thread (STA) for display operations
+                            self.Invoke(lambda: self.sharpcap.Sequencer.RunAsync())
+                            
+                            # Wait for this sequence to complete
+                            time.sleep(0.5)  # Give it time to start
+                            
+                            while self.sharpcap.Sequencer.IsRunning:
+                                if self._sequence_stopped_by_user:
+                                    print(f"Stop requested during sequence {i+1}")
+                                    self.sharpcap.Sequencer.StopAsync()
+                                    break
+                                time.sleep(1)
+                            
+                            # Check if it failed
+                            status = self.sharpcap.Sequencer.Status
+                            if str(status) == "Failed":
+                                failing_step = self.sharpcap.Sequencer.FailingStep
+                                failure_reason = self.sharpcap.Sequencer.FailureReason
+                                print(f"Sequence {i+1} failed: {failing_step} - {failure_reason}")
+                                step_captured = str(failing_step)
+                                self.Invoke(lambda: self.update_status(f"Sequence failed at: {step_captured}"))
+                                # Continue to next sequence or stop based on user preference
+                                # For now, we'll continue
+                            else:
+                                print(f"Sequence {i+1} completed successfully")
+                            
+                            # Brief pause between sequences
+                            if i < len(sequence_paths) - 1:  # Not the last one
+                                time.sleep(2)
+                                
+                        except Exception as seq_error:
+                            print(f"Error running sequence {i+1}: {seq_error}")
+                            # Continue to next sequence
+                    
+                    # All sequences complete (or stopped)
+                    if not self._sequence_stopped_by_user:
+                        final_status = "Completed"
+                        self.Invoke(lambda: self._on_sequence_completed(final_status))
+                    else:
+                        # Stopped by user - clean up manually (don't call _on_sequence_completed)
+                        print("Run Sequences stopped by user, cleaning up")
+                        try:
+                            self.Invoke(lambda: self._cleanup_after_sequences_stopped())
+                        except:
+                            pass
+                    
+                except Exception as ex:
+                    print(f"Error in run_all_sequences: {ex}")
+                    import traceback
+                    traceback.print_exc()
+                    try:
+                        self.Invoke(lambda: self._on_sequence_completed("Error"))
+                    except:
+                        pass
+            
+            # Start the thread
+            sequences_thread = threading.Thread(target=run_all_sequences)
+            sequences_thread.daemon = True
+            sequences_thread.start()
+            
+            self.update_status(f"Running {len(sequence_paths)} sequences...")
+            return True
+            
+        except Exception as ex:
+            # Clean up state on error
+            self._sequence_running = False
+            self._sequence_stopped_by_user = False
+            self.btn_stop_sequence.Enabled = False
+            self._sequence_saved_settings = {}
+            self._current_sequence_path = None
+            self._sequence_context = None
+            print(f"Error starting sequences: {ex}")
+            MessageBox.Show(f"Failed to start sequences:\n\n{str(ex)}", "Start Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error)
+            return False
     
     def generate_report_click(self, sender, e):
         """Generate North American Occultation Report Forms for selected past events"""
@@ -2169,8 +2378,18 @@ class OccultationManagerGUI(Form):
             MessageBox.Show(f"Error setting up event: {ex}", "Setup Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
 
-    def test_recording_click(self, sender, e):
-        """Test recording using a temporary sequence for the selected event"""
+    # ============================================================================
+    # ASYNC SEQUENCE EXECUTION METHODS
+    # ============================================================================
+    
+    def test_recording_click_async(self, sender, e):
+        """Test recording using async (non-blocking) sequence execution"""
+        # Check if sequence already running
+        if self._sequence_running:
+            MessageBox.Show("A sequence is already running.\n\nPlease wait for it to complete or use the Stop button.",
+                        "Sequence Running", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        
         # Get selected events from grid
         selected_events = self.get_displayed_selected_events()
         
@@ -2199,7 +2418,7 @@ class OccultationManagerGUI(Form):
             
             self.update_status(f"Creating test recording sequence for {event.event_name}...")
             
-            # Load template and generate sequence content manually to control filename
+            # Load template and generate sequence content
             from templates import TemplateManager
             template_content = TemplateManager.load_template(template_path, self.config)
             if not template_content:
@@ -2207,7 +2426,7 @@ class OccultationManagerGUI(Form):
                             MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
             
-            # Prepare event data for template substitution
+            # Format template with event data
             try:
                 report_content = template_content.format(
                     object_name=event.object_name,
@@ -2244,109 +2463,411 @@ class OccultationManagerGUI(Form):
                 return
             
             # Save current camera settings before test recording
-            saved_settings = {}
-            try:
-                if self.sharpcap.SelectedCamera:
-                    camera = self.sharpcap.SelectedCamera
-                    if hasattr(camera.Controls, 'Binning'):
-                        saved_settings['binning'] = camera.Controls.Binning.Value
-                        print(f"Saved Binning: {saved_settings['binning']}")
-                    if hasattr(camera.Controls, 'Exposure'):
-                        saved_settings['exposure'] = camera.Controls.Exposure.ExposureMs
-                        print(f"Saved Exposure (ms): {saved_settings['exposure']}")
-                    if hasattr(camera.Controls, 'Gain'):
-                        saved_settings['gain'] = camera.Controls.Gain.Value
-                        print(f"Saved Gain: {saved_settings['gain']}")
-                    if hasattr(camera.Controls, 'Resolution'):
-                        saved_settings['resolution'] = camera.Controls.Resolution.Value
-                        print(f"Saved Resolution: {saved_settings['resolution']}")
-                    if hasattr(camera.Controls, 'DisplayBlackLevel'):
-                        saved_settings['display_black'] = camera.Controls.DisplayBlackLevel.Value
-                        print(f"Saved DisplayBlackLevel: {saved_settings['display_black']}")
-                    if hasattr(camera.Controls, 'DisplayMidLevel'):
-                        saved_settings['display_mid'] = camera.Controls.DisplayMidLevel.Value
-                        print(f"Saved DisplayMidLevel: {saved_settings['display_mid']}")
-                    if hasattr(camera.Controls, 'DisplayWhiteLevel'):
-                        saved_settings['display_white'] = camera.Controls.DisplayWhiteLevel.Value
-                        print(f"Saved DisplayWhiteLevel: {saved_settings['display_white']}")
-                    self.update_status(f"Camera settings saved (Exp: {saved_settings.get('exposure', 'N/A')}ms, Gain: {saved_settings.get('gain', 'N/A')})")
-            except Exception as save_error:
-                print(f"Warning: Could not save camera settings: {save_error}")
+            self._save_camera_settings()
             
-            # Run the sequence immediately
-            self.update_status(f"Running test recording sequence...")
+            # Set context for completion message
+            self._sequence_context = 'test_recording'
             
-            try:
-                self.sharpcap.Sequencer.RunSequenceFile(temp_sequence_path)
-                self.update_status(f"Test recording completed for {event.event_name}")
-                
-                # Restore camera settings after test recording
-                try:
-                    if self.sharpcap.SelectedCamera and saved_settings:
-                        camera = self.sharpcap.SelectedCamera
-                        self.update_status("Restoring camera settings...")
-                        
-                        if 'binning' in saved_settings and hasattr(camera.Controls, 'Binning'):
-                            print(f"Restoring Binning to: {saved_settings['binning']}")
-                            camera.Controls.Binning.Value = saved_settings['binning']
-                            print(f"Binning after restore: {camera.Controls.Binning.Value}")
-                        
-                        if 'exposure' in saved_settings and hasattr(camera.Controls, 'Exposure'):
-                            print(f"Restoring Exposure to: {saved_settings['exposure']} ms")
-                            camera.Controls.Exposure.ExposureMs = saved_settings['exposure']
-                            print(f"Exposure after restore: {camera.Controls.Exposure.ExposureMs} ms")
-                            exposure_to_wait = saved_settings['exposure']
-                        else:
-                            exposure_to_wait = 100  # Default if exposure not saved
-                        
-                        if 'gain' in saved_settings and hasattr(camera.Controls, 'Gain'):
-                            print(f"Restoring Gain to: {saved_settings['gain']}")
-                            camera.Controls.Gain.Value = saved_settings['gain']
-                            print(f"Gain after restore: {camera.Controls.Gain.Value}")
-                        
-                        if 'resolution' in saved_settings and hasattr(camera.Controls, 'Resolution'):
-                            print(f"Restoring Resolution to: {saved_settings['resolution']}")
-                            camera.Controls.Resolution.Value = saved_settings['resolution']
-                            print(f"Resolution after restore: {camera.Controls.Resolution.Value}")
-                        
-                        # Wait 2x the restored exposure time
-                        import time
-                        wait_time = (exposure_to_wait * 2) / 1000.0  # Convert ms to seconds
-                        self.update_status(f"Waiting {wait_time:.1f}s for camera to stabilize...")
-                        time.sleep(wait_time)
-                        
-                        # Restore display levels
-                        try:
-                            if 'display_black' in saved_settings and hasattr(camera.Controls, 'DisplayBlackLevel'):
-                                print(f"Restoring DisplayBlackLevel to: {saved_settings['display_black']}")
-                                camera.Controls.DisplayBlackLevel.Value = saved_settings['display_black']
-                            if 'display_mid' in saved_settings and hasattr(camera.Controls, 'DisplayMidLevel'):
-                                print(f"Restoring DisplayMidLevel to: {saved_settings['display_mid']}")
-                                camera.Controls.DisplayMidLevel.Value = saved_settings['display_mid']
-                            if 'display_white' in saved_settings and hasattr(camera.Controls, 'DisplayWhiteLevel'):
-                                print(f"Restoring DisplayWhiteLevel to: {saved_settings['display_white']}")
-                                camera.Controls.DisplayWhiteLevel.Value = saved_settings['display_white']
-                            self.update_status("Display levels restored")
-                        except Exception as display_error:
-                            print(f"Warning: Could not restore display levels: {display_error}")
-                        
-                        self.update_status("Camera settings restored")
-                        
-                except Exception as restore_error:
-                    print(f"Warning: Could not restore camera settings: {restore_error}")
-                    self.update_status(f"Warning: Settings restoration incomplete")
-                
-                MessageBox.Show(f"Test recording sequence completed for:\n\n{event.get_asteroid_display_name()}\n\nCamera settings have been restored.", 
-                            "Test Recording Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
-            except Exception as seq_error:
-                MessageBox.Show(f"Failed to run test recording sequence:\n{seq_error}", "Sequence Error", 
-                            MessageBoxButtons.OK, MessageBoxIcon.Error)
-                self.update_status(f"Failed to start test recording: {seq_error}")
+            # Start sequence asynchronously
+            success = self._start_sequence_async(temp_sequence_path, event.event_name)
+            
+            if success:
+                MessageBox.Show(f"Test recording sequence started for:\n\n{event.get_asteroid_display_name()}\n\nThe sequence is running independently.\nUse the Stop button to cancel if needed.", 
+                            "Sequence Started", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                # Bring main window to front after message box closes
+                self.Activate()
+            else:
+                # Clean up saved settings if sequence didn't start
+                self._sequence_saved_settings = {}
+                self._sequence_context = None
+                self.update_status("Failed to start test recording sequence")
                 
         except Exception as ex:
+            # Clean up saved settings on any exception
+            self._sequence_saved_settings = {}
+            self._sequence_running = False
+            self._sequence_stopped_by_user = False
+            self._sequence_context = None
+            if hasattr(self, 'btn_stop_sequence'):
+                self.btn_stop_sequence.Enabled = False
             self.update_status(f"Error during test recording: {ex}")
             MessageBox.Show(f"Error creating test recording: {ex}", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
+    
+    def _save_camera_settings(self):
+        """Save current camera settings for later restoration"""
+        # Only save if no settings already saved (prevents overwrite during running sequence)
+        if self._sequence_saved_settings:
+            print("Camera settings already saved, not overwriting")
+            return
+        
+        self._sequence_saved_settings = {}
+        try:
+            if not self.sharpcap.SelectedCamera:
+                print("Warning: No camera selected, cannot save settings")
+                return
+            
+            camera = self.sharpcap.SelectedCamera
+            if hasattr(camera.Controls, 'Binning'):
+                self._sequence_saved_settings['binning'] = camera.Controls.Binning.Value
+            if hasattr(camera.Controls, 'Exposure'):
+                self._sequence_saved_settings['exposure'] = camera.Controls.Exposure.ExposureMs
+            if hasattr(camera.Controls, 'Gain'):
+                self._sequence_saved_settings['gain'] = camera.Controls.Gain.Value
+            if hasattr(camera.Controls, 'Resolution'):
+                self._sequence_saved_settings['resolution'] = camera.Controls.Resolution.Value
+            if hasattr(camera.Controls, 'DisplayBlackLevel'):
+                self._sequence_saved_settings['display_black'] = camera.Controls.DisplayBlackLevel.Value
+            if hasattr(camera.Controls, 'DisplayMidLevel'):
+                self._sequence_saved_settings['display_mid'] = camera.Controls.DisplayMidLevel.Value
+            if hasattr(camera.Controls, 'DisplayWhiteLevel'):
+                self._sequence_saved_settings['display_white'] = camera.Controls.DisplayWhiteLevel.Value
+            
+            exposure = self._sequence_saved_settings.get('exposure', 'N/A')
+            gain = self._sequence_saved_settings.get('gain', 'N/A')
+            self.update_status(f"Camera settings saved (Exp: {exposure}ms, Gain: {gain})")
+        except Exception as ex:
+            # Clear any partial settings on error
+            self._sequence_saved_settings = {}
+            print(f"Warning: Could not save camera settings: {ex}")
+    
+    def _restore_camera_settings(self):
+        """Restore previously saved camera settings"""
+        if not self._sequence_saved_settings:
+            print("No saved settings to restore")
+            return
+        
+        try:
+            if not self.sharpcap.SelectedCamera:
+                print("Warning: No camera selected, cannot restore settings")
+                return
+            
+            camera = self.sharpcap.SelectedCamera
+            self.update_status("Restoring camera settings...")
+            
+            if 'binning' in self._sequence_saved_settings and hasattr(camera.Controls, 'Binning'):
+                camera.Controls.Binning.Value = self._sequence_saved_settings['binning']
+            
+            if 'exposure' in self._sequence_saved_settings and hasattr(camera.Controls, 'Exposure'):
+                camera.Controls.Exposure.ExposureMs = self._sequence_saved_settings['exposure']
+                exposure_to_wait = self._sequence_saved_settings['exposure']
+            else:
+                exposure_to_wait = 100
+            
+            if 'gain' in self._sequence_saved_settings and hasattr(camera.Controls, 'Gain'):
+                camera.Controls.Gain.Value = self._sequence_saved_settings['gain']
+            
+            if 'resolution' in self._sequence_saved_settings and hasattr(camera.Controls, 'Resolution'):
+                camera.Controls.Resolution.Value = self._sequence_saved_settings['resolution']
+            
+            # Restore display levels
+            if 'display_black' in self._sequence_saved_settings and hasattr(camera.Controls, 'DisplayBlackLevel'):
+                camera.Controls.DisplayBlackLevel.Value = self._sequence_saved_settings['display_black']
+            if 'display_mid' in self._sequence_saved_settings and hasattr(camera.Controls, 'DisplayMidLevel'):
+                camera.Controls.DisplayMidLevel.Value = self._sequence_saved_settings['display_mid']
+            if 'display_white' in self._sequence_saved_settings and hasattr(camera.Controls, 'DisplayWhiteLevel'):
+                camera.Controls.DisplayWhiteLevel.Value = self._sequence_saved_settings['display_white']
+            
+            # Start background thread for stabilization wait (don't block UI)
+            def wait_for_stabilization():
+                try:
+                    wait_time = (exposure_to_wait * 2) / 1000.0
+                    time.sleep(wait_time)
+                    try:
+                        self.Invoke(lambda: self.update_status("Camera settings restored"))
+                    except:
+                        # UI may be closing, ignore Invoke errors
+                        pass
+                    print("Camera settings restoration complete")
+                except Exception as ex:
+                    print(f"Error in stabilization wait: {ex}")
+            
+            stabilization_thread = threading.Thread(target=wait_for_stabilization)
+            stabilization_thread.daemon = True
+            stabilization_thread.start()
+            
+            # Update status immediately (before wait completes)
+            wait_time = (exposure_to_wait * 2) / 1000.0
+            self.update_status(f"Camera settings restored (stabilizing {wait_time:.1f}s)...")
+            
+        except Exception as ex:
+            print(f"Warning: Could not restore camera settings: {ex}")
+            self.update_status("Warning: Settings restoration incomplete")
+    
+    def _start_sequence_async(self, sequence_path, event_name):
+        """Start a sequence asynchronously with monitoring"""
+        try:
+            # Clear stopped-by-user flag
+            self._sequence_stopped_by_user = False
+            
+            # Load sequence
+            self.sharpcap.Sequencer.LoadScriptFile(sequence_path)
+            
+            if not self.sharpcap.Sequencer.AnySteps():
+                MessageBox.Show("Sequence file is empty or invalid", "Empty Sequence",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                # Clean up state on error
+                self._sequence_running = False
+                self._sequence_saved_settings = {}
+                return False
+            
+            # Store sequence info
+            self._current_sequence_path = sequence_path
+            self._sequence_running = True
+            
+            # Enable stop button
+            self.btn_stop_sequence.Enabled = True
+            
+            # Start sequence asynchronously
+            self.update_status(f"Starting sequence: {event_name}...")
+            task = self.sharpcap.Sequencer.RunAsync()
+            
+            # Give it a moment to start
+            time.sleep(0.5)
+            
+            # Start monitoring thread
+            self._start_sequence_monitor()
+            
+            self.update_status(f"Sequence running: {event_name}")
+            return True
+            
+        except Exception as ex:
+            # Clean up state on error
+            self._sequence_running = False
+            self._sequence_stopped_by_user = False
+            self.btn_stop_sequence.Enabled = False
+            self._sequence_saved_settings = {}
+            self._current_sequence_path = None
+            self._sequence_context = None
+            print(f"Error starting sequence: {ex}")
+            MessageBox.Show(f"Failed to start sequence:\n\n{str(ex)}", "Start Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error)
+            return False
+    
+    def _start_sequence_monitor(self):
+        """Start a background thread to monitor sequence execution"""
+        # Clean up old thread if it exists but is dead
+        if self._sequence_monitoring_thread and not self._sequence_monitoring_thread.is_alive():
+            self._sequence_monitoring_thread = None
+        
+        # Don't start a new monitor if one is already running
+        if self._sequence_monitoring_thread and self._sequence_monitoring_thread.is_alive():
+            print("Warning: Monitor thread already running")
+            return
+        
+        self._sequence_monitoring_thread = threading.Thread(target=self._monitor_sequence_execution)
+        self._sequence_monitoring_thread.daemon = True
+        self._sequence_monitoring_thread.start()
+        print("Sequence monitor thread started")
+    
+    def _monitor_sequence_execution(self):
+        """Monitor sequence execution in background thread"""
+        try:
+            check_count = 0
+            print("Monitor thread: Starting to monitor sequence execution")
+            
+            while self._sequence_running:
+                try:
+                    # Check if sequencer is still running
+                    is_running = self.sharpcap.Sequencer.IsRunning
+                    if not is_running:
+                        print("Monitor thread: Sequencer no longer running")
+                        break
+                    
+                    check_count += 1
+                    status = self.sharpcap.Sequencer.Status
+                    
+                    # Update status every 10 checks (every ~10 seconds)
+                    if check_count % 10 == 0:
+                        try:
+                            # Capture status in local scope to avoid closure issues
+                            current_status = str(status)
+                            self.Invoke(lambda s=current_status: self.update_status(f"Sequence running... Status: {s}"))
+                        except:
+                            # UI may be closing, exit gracefully
+                            print("Monitor thread: Cannot invoke on UI thread, exiting")
+                            break
+                    
+                    time.sleep(1)
+                    
+                except Exception as check_error:
+                    print(f"Monitor thread: Error checking sequence status: {check_error}")
+                    break
+            
+            print("Monitor thread: Exited monitoring loop")
+            
+            # Check if stopped by user - if so, don't process completion (already handled)
+            if self._sequence_stopped_by_user:
+                print("Monitor thread: Sequence stopped by user, skipping completion processing")
+                return
+            
+            # Sequence finished - get final status
+            try:
+                final_status = str(self.sharpcap.Sequencer.Status)
+                print(f"Monitor thread: Final status = {final_status}")
+            except:
+                final_status = "Unknown"
+                print("Monitor thread: Could not get final status")
+            
+            # Invoke on UI thread for completion handling
+            try:
+                self.Invoke(lambda: self._on_sequence_completed(final_status))
+            except Exception as invoke_error:
+                print(f"Monitor thread: Could not invoke completion handler: {invoke_error}")
+            
+        except SystemExit:
+            # Thread being aborted (e.g., Stop button pressed)
+            print("Monitor thread: SystemExit caught, thread stopping")
+        except Exception as ex:
+            print(f"Monitor thread: Unhandled error: {ex}")
+            import traceback
+            traceback.print_exc()
+            try:
+                self.Invoke(lambda: self._on_sequence_completed("Error"))
+            except:
+                print("Monitor thread: Could not invoke error handler")
+    
+    def _on_sequence_completed(self, final_status):
+        """Called when sequence completes (runs on UI thread)"""
+        # Safety check: if already marked as not running, don't process again
+        if not self._sequence_running:
+            print("Completion handler called but sequence already marked as not running")
+            return
+        
+        self._sequence_running = False
+        self._sequence_stopped_by_user = False  # Reset flag
+        self.btn_stop_sequence.Enabled = False
+        
+        print(f"Sequence completed. Final status: {final_status}")
+        
+        if final_status == "Failed":
+            failing_step = self.sharpcap.Sequencer.FailingStep
+            failure_reason = self.sharpcap.Sequencer.FailureReason
+            
+            self.update_status(f"Sequence FAILED at: {failing_step}")
+            print(f"Failure: {failing_step} - {failure_reason}")
+            
+            MessageBox.Show(f"Sequence failed!\n\nStep: {failing_step}\n\nReason: {failure_reason}",
+                        "Sequence Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        else:
+            self.update_status("Sequence completed successfully")
+        
+        # Restore camera settings
+        self._restore_camera_settings()
+        
+        # Clear saved settings after restoration
+        self._sequence_saved_settings = {}
+        
+        # Final completion message based on context
+        if final_status != "Failed":
+            context = self._sequence_context if hasattr(self, '_sequence_context') else None
+            if context == 'run_sequences':
+                MessageBox.Show("All sequences completed successfully!\n\nCamera settings have been restored.",
+                            "Sequences Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            else:  # test_recording or None
+                MessageBox.Show("Test recording sequence completed successfully!\n\nCamera settings have been restored.",
+                            "Test Recording Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            # Bring main window to front
+            self.Activate()
+        
+        # Clear context
+        self._sequence_context = None
+    
+    def _cleanup_after_sequences_stopped(self):
+        """Clean up state after sequences stopped by user (no completion message)"""
+        self._sequence_running = False
+        self.btn_stop_sequence.Enabled = False
+        
+        # Restore camera settings
+        self._restore_camera_settings()
+        
+        # Clear saved settings
+        self._sequence_saved_settings = {}
+        
+        # Clear context
+        self._sequence_context = None
+        
+        print("Cleanup after stop completed")
+    
+    def stop_sequence_click(self, sender, e):
+        """Handle stop button click with confirmation"""
+        if not self._sequence_running:
+            return
+        
+        # Show confirmation dialog with warnings
+        result = MessageBox.Show(
+            "Are you sure you want to STOP the sequence?\n\n" +
+            "⚠️ WARNING:\n" +
+            "• The sequence may not stop immediately\n" +
+            "• It may not be possible to stop until current recording completes\n" +
+            "• Stopping may cause problems restarting the sequence\n" +
+            "• Camera settings will be restored after stopping\n\n" +
+            "Click Yes to stop the sequence.\n" +
+            "Click No to let the sequence keep running.",
+            "Confirm Stop Sequence",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning
+        )
+        
+        if result == DialogResult.Yes:
+            # Check again after dialog closes - sequence may have completed naturally
+            if not self._sequence_running:
+                print("Stop requested but sequence already completed")
+                MessageBox.Show("The sequence has already completed.",
+                            "Already Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                return
+            
+            self._stop_sequence_async()
+    
+    def _stop_sequence_async(self):
+        """Stop the currently running sequence"""
+        try:
+            self.update_status("Stopping sequence...")
+            
+            # Set flag to prevent monitor thread from processing completion
+            self._sequence_stopped_by_user = True
+            
+            # Request stop
+            self.sharpcap.Sequencer.StopAsync()
+            
+            # Wait a moment for stop to take effect
+            time.sleep(0.5)
+            
+            # Update state
+            self._sequence_running = False
+            self.btn_stop_sequence.Enabled = False
+            
+            # Give monitor thread a moment to exit cleanly
+            if self._sequence_monitoring_thread and self._sequence_monitoring_thread.is_alive():
+                # Don't join (would block UI), just give it a moment
+                time.sleep(0.3)
+            
+            self.update_status("Sequence stopped by user")
+            
+            # Restore camera settings
+            self._restore_camera_settings()
+            
+            # Clear saved settings
+            self._sequence_saved_settings = {}
+            
+            # Clear sequence path and context
+            self._current_sequence_path = None
+            self._sequence_context = None
+            
+            MessageBox.Show("Sequence stopped.\n\nCamera settings have been restored.",
+                        "Sequence Stopped", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            # Bring main window to front
+            self.Activate()
+            
+        except Exception as ex:
+            print(f"Error stopping sequence: {ex}")
+            self.update_status(f"Error stopping sequence: {ex}")
+            MessageBox.Show(f"Error stopping sequence:\n\n{str(ex)}",
+                        "Stop Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+    # ============================================================================
+    # END NEW ASYNC SEQUENCE EXECUTION METHODS
+    # ============================================================================
 
     def apply_event_parameters_to_sharpcap(self, event):
         """Apply event parameters to SharpCap interface"""

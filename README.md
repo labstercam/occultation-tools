@@ -26,6 +26,17 @@ SharpCap Occultation Manager automates the complete occultation observation work
 - Downloads personal observations from Occult Watcher Cloud
 - Manages event list with filtering and sorting
 - Automatic sequence generation for SharpCap
+- **Direct sequence execution** with non-blocking Run Sequences feature
+- **Safe stop capability** with automatic camera settings restoration
+
+**Sequence Execution**
+- **Non-blocking async execution** - SharpCap remains responsive during sequences
+- **Run Sequences** button for direct multi-sequence execution
+- **Stop button** with safe cancellation and automatic cleanup
+- **Test Recording** with automatic camera settings preservation and restoration
+- All sequence operations supported (display stretch, notifications, camera controls)
+- Background monitoring with UI thread marshaling for .NET STA requirements
+- Comprehensive error handling and state management
 
 **Report Generation**
 - Streamlined single-dialog workflow combining all settings

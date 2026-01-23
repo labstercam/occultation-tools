@@ -372,6 +372,36 @@ If you prefer complete manual control:
 Or use Test Recording for quick tests:
 • Verifies your setup without disrupting settings
 • Good for testing before manual recording
+• Non-blocking: SharpCap remains responsive during recording
+• Stop button available to cancel if needed
+
+STEP 6C: RUN SEQUENCES DIRECTLY (NEW ASYNC METHOD)
+---------------------------------------------------
+Run multiple sequences directly from Occultation Manager:
+
+• Select multiple events and check their checkboxes
+• Click Run Sequences button (or Sequences → Run Selected Sequences)
+• Sequences execute automatically in time order
+• Each sequence runs to completion before starting the next
+• SharpCap remains responsive throughout execution
+• Stop button enables safe cancellation at any time
+• Camera settings automatically saved and restored
+
+Run Sequences benefits:
+• Non-blocking operation - SharpCap UI remains responsive
+• Can stop execution safely with confirmation dialog
+• Automatic camera settings preservation and restoration
+• Status updates show progress through sequence list
+• Suitable for multi-event sessions without manual sequence loading
+• All sequence steps work correctly (display stretch, notifications, etc.)
+
+Stop Button:
+• Appears in Observation Preparation panel
+• Only enabled when sequence is running
+• Click to safely stop current sequence
+• Confirmation dialog prevents accidental stops
+• Automatically restores all camera settings after stop
+• Can be used with both Test Recording and Run Sequences
 
 STEP 7: ANALYZE RESULTS
 ------------------------

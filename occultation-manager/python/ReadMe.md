@@ -12,6 +12,49 @@ The Occultation Manager includes comprehensive Excel report generation with inte
 - Direct manipulation of Excel .xlsx files (ZIP+XML format)
 - Preserves template formatting and formulas
 
+### Sequence Execution (Async Implementation)
+
+The Occultation Manager implements non-blocking sequence execution using SharpCap's `RunAsync()` API.
+
+**Key Files:**
+- `main_gui.py` - Lines 2383-3046: Async sequence execution implementation
+- `development documentation/RunAsync_Implementation.md` - Comprehensive technical documentation
+
+**Architecture:**
+- **Test Recording**: UI thread calls `RunAsync()`, separate monitor thread polls status
+- **Run Sequences**: Background thread manages loop, marshals `RunAsync()` to UI thread
+- **Stop Button**: Safe cancellation with confirmation and automatic cleanup
+- **Camera Settings**: Automatic save/restore with non-blocking stabilization
+
+**Critical Threading Requirement:**
+All `RunAsync()` calls must be marshaled to the UI thread (STA apartment state) even when called from background threads. SharpCap sequence steps that manipulate UI components (display stretch, notifications, camera controls) require STA threading.
+
+**Implementation Pattern:**
+```python
+# WRONG - Fails with STA error from background thread:
+task = self.sharpcap.Sequencer.RunAsync()
+
+# CORRECT - Marshal to UI thread:
+self.Invoke(lambda: self.sharpcap.Sequencer.RunAsync())
+```
+
+**State Management:**
+- `_sequence_running`: Master execution flag
+- `_sequence_monitoring_thread`: Background monitor thread reference
+- `_sequence_saved_settings`: Camera settings backup dictionary
+- `_current_sequence_path`: Active sequence file path(s)
+- `_sequence_stopped_by_user`: Stop request flag
+- `_sequence_context`: Context tracking for appropriate messaging
+
+**Benefits:**
+- SharpCap remains fully responsive during sequence execution
+- Safe stop capability with automatic cleanup
+- Camera settings preservation and restoration
+- All sequence operations work (display, notifications, controls)
+- Robust error handling with comprehensive state cleanup
+
+See [RunAsync_Implementation.md](development documentation/RunAsync_Implementation.md) for complete technical details.
+
 #### Report Generators
 
 **na_report.py** - North America (IOTA V5.6.12r)
