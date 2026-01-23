@@ -518,3 +518,433 @@ All data items:
 Checking for elevation fields:
   FOUND 'elevation': 23.0
 ================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 11.0
+  dec = -25.5
+  elevation = 50
+  end_time_str = 2026-01-23T23:32:00
+  event_duration = 15.5
+  event_time = 2026-01-23T23:30:00
+  event_time_local = 2026-01-23 23:30:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-23 23:27:00
+  goto_time_str = 2026-01-23T23:27:00
+  id = TEST-1000
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260123 (12345) Test1 - Test Station
+  object_name = (12345) Test1
+  object_no = 12345
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1000
+  pre_goto_time_local = 2026-01-23 23:26:00
+  ra = 15.5
+  recording_duration = 240
+  star_alt = 45.0
+  star_az = 180.0
+  star_id = UCAC4-400-200000
+  star_mag = 10.5
+  start_time_local = 2026-01-23 23:28:00
+  start_time_str = 2026-01-23T23:28:00
+  station_name = Test Station
+  unique_id = test_1000
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 11.5
+  dec = -23.5
+  elevation = 50
+  end_time_str = 2026-01-23T23:47:00
+  event_duration = 15.5
+  event_time = 2026-01-23T23:45:00
+  event_time_local = 2026-01-23 23:45:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-23 23:42:00
+  goto_time_str = 2026-01-23T23:42:00
+  id = TEST-1001
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260123 (12346) Test2 - Test Station
+  object_name = (12346) Test2
+  object_no = 12346
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1001
+  pre_goto_time_local = 2026-01-23 23:41:00
+  ra = 16.0
+  recording_duration = 240
+  star_alt = 50.0
+  star_az = 190.0
+  star_id = UCAC4-401-200001
+  star_mag = 11.0
+  start_time_local = 2026-01-23 23:43:00
+  start_time_str = 2026-01-23T23:43:00
+  station_name = Test Station
+  unique_id = test_1001
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 12.0
+  dec = -21.5
+  elevation = 50
+  end_time_str = 2026-01-24T00:02:00
+  event_duration = 15.5
+  event_time = 2026-01-24T00:00:00
+  event_time_local = 2026-01-24 00:00:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-23 23:57:00
+  goto_time_str = 2026-01-23T23:57:00
+  id = TEST-1002
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260124 (12347) Test3 - Test Station
+  object_name = (12347) Test3
+  object_no = 12347
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1002
+  pre_goto_time_local = 2026-01-23 23:56:00
+  ra = 16.5
+  recording_duration = 240
+  star_alt = 55.0
+  star_az = 200.0
+  star_id = UCAC4-402-200002
+  star_mag = 11.5
+  start_time_local = 2026-01-23 23:58:00
+  start_time_str = 2026-01-23T23:58:00
+  station_name = Test Station
+  unique_id = test_1002
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 12.5
+  dec = -19.5
+  elevation = 50
+  end_time_str = 2026-01-24T00:17:00
+  event_duration = 15.5
+  event_time = 2026-01-24T00:15:00
+  event_time_local = 2026-01-24 00:15:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-24 00:12:00
+  goto_time_str = 2026-01-24T00:12:00
+  id = TEST-1003
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260124 (12348) Test4 - Test Station
+  object_name = (12348) Test4
+  object_no = 12348
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1003
+  pre_goto_time_local = 2026-01-24 00:11:00
+  ra = 17.0
+  recording_duration = 240
+  star_alt = 60.0
+  star_az = 210.0
+  star_id = UCAC4-403-200003
+  star_mag = 12.0
+  start_time_local = 2026-01-24 00:13:00
+  start_time_str = 2026-01-24T00:13:00
+  station_name = Test Station
+  unique_id = test_1003
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 13.0
+  dec = -17.5
+  elevation = 50
+  end_time_str = 2026-01-24T00:32:00
+  event_duration = 15.5
+  event_time = 2026-01-24T00:30:00
+  event_time_local = 2026-01-24 00:30:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-24 00:27:00
+  goto_time_str = 2026-01-24T00:27:00
+  id = TEST-1004
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260124 (12349) Test5 - Test Station
+  object_name = (12349) Test5
+  object_no = 12349
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1004
+  pre_goto_time_local = 2026-01-24 00:26:00
+  ra = 17.5
+  recording_duration = 240
+  star_alt = 65.0
+  star_az = 220.0
+  star_id = UCAC4-404-200004
+  star_mag = 12.5
+  start_time_local = 2026-01-24 00:28:00
+  start_time_str = 2026-01-24T00:28:00
+  station_name = Test Station
+  unique_id = test_1004
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 11.0
+  dec = -25.5
+  elevation = 50
+  end_time_str = 2026-01-23T23:32:00
+  event_duration = 15.5
+  event_time = 2026-01-23T23:30:00
+  event_time_local = 2026-01-23 23:30:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-23 23:27:00
+  goto_time_str = 2026-01-23T23:27:00
+  id = TEST-1000
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260123 (12345) Test1 - Test Station
+  object_name = (12345) Test1
+  object_no = 12345
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1000
+  pre_goto_time_local = 2026-01-23 23:26:00
+  ra = 15.5
+  recording_duration = 240
+  star_alt = 45.0
+  star_az = 180.0
+  star_id = UCAC4-400-200000
+  star_mag = 10.5
+  start_time_local = 2026-01-23 23:28:00
+  start_time_str = 2026-01-23T23:28:00
+  station_name = Test Station
+  unique_id = test_1000
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 11.5
+  dec = -23.5
+  elevation = 50
+  end_time_str = 2026-01-23T23:47:00
+  event_duration = 15.5
+  event_time = 2026-01-23T23:45:00
+  event_time_local = 2026-01-23 23:45:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-23 23:42:00
+  goto_time_str = 2026-01-23T23:42:00
+  id = TEST-1001
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260123 (12346) Test2 - Test Station
+  object_name = (12346) Test2
+  object_no = 12346
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1001
+  pre_goto_time_local = 2026-01-23 23:41:00
+  ra = 16.0
+  recording_duration = 240
+  star_alt = 50.0
+  star_az = 190.0
+  star_id = UCAC4-401-200001
+  star_mag = 11.0
+  start_time_local = 2026-01-23 23:43:00
+  start_time_str = 2026-01-23T23:43:00
+  station_name = Test Station
+  unique_id = test_1001
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 12.0
+  dec = -21.5
+  elevation = 50
+  end_time_str = 2026-01-24T00:02:00
+  event_duration = 15.5
+  event_time = 2026-01-24T00:00:00
+  event_time_local = 2026-01-24 00:00:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-23 23:57:00
+  goto_time_str = 2026-01-23T23:57:00
+  id = TEST-1002
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260124 (12347) Test3 - Test Station
+  object_name = (12347) Test3
+  object_no = 12347
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1002
+  pre_goto_time_local = 2026-01-23 23:56:00
+  ra = 16.5
+  recording_duration = 240
+  star_alt = 55.0
+  star_az = 200.0
+  star_id = UCAC4-402-200002
+  star_mag = 11.5
+  start_time_local = 2026-01-23 23:58:00
+  start_time_str = 2026-01-23T23:58:00
+  station_name = Test Station
+  unique_id = test_1002
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 12.5
+  dec = -19.5
+  elevation = 50
+  end_time_str = 2026-01-24T00:17:00
+  event_duration = 15.5
+  event_time = 2026-01-24T00:15:00
+  event_time_local = 2026-01-24 00:15:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-24 00:12:00
+  goto_time_str = 2026-01-24T00:12:00
+  id = TEST-1003
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260124 (12348) Test4 - Test Station
+  object_name = (12348) Test4
+  object_no = 12348
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1003
+  pre_goto_time_local = 2026-01-24 00:11:00
+  ra = 17.0
+  recording_duration = 240
+  star_alt = 60.0
+  star_az = 210.0
+  star_id = UCAC4-403-200003
+  star_mag = 12.0
+  start_time_local = 2026-01-24 00:13:00
+  start_time_str = 2026-01-24T00:13:00
+  station_name = Test Station
+  unique_id = test_1003
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
+
+================================================================================
+OWC Event Data Debug
+Available keys: ['comb_mag', 'dec', 'elevation', 'end_time_str', 'event_duration', 'event_time', 'event_time_local', 'event_uncertainty', 'exposure', 'exposure_ms', 'gain_value', 'goto_time_local', 'goto_time_str', 'id', 'latitude', 'longitude', 'mag_drop', 'name', 'object_name', 'object_no', 'occelmnt_data', 'owcloudurl', 'pre_goto_time_local', 'ra', 'recording_duration', 'star_alt', 'star_az', 'star_id', 'star_mag', 'start_time_local', 'start_time_str', 'station_name', 'unique_id']
+
+All data items:
+  comb_mag = 13.0
+  dec = -17.5
+  elevation = 50
+  end_time_str = 2026-01-24T00:32:00
+  event_duration = 15.5
+  event_time = 2026-01-24T00:30:00
+  event_time_local = 2026-01-24 00:30:00
+  event_uncertainty = 2.0
+  exposure = 0.080000000000000002
+  exposure_ms = 80
+  gain_value = 150
+  goto_time_local = 2026-01-24 00:27:00
+  goto_time_str = 2026-01-24T00:27:00
+  id = TEST-1004
+  latitude = -37.813600000000001
+  longitude = 144.9631
+  mag_drop = 3.5
+  name = 20260124 (12349) Test5 - Test Station
+  object_name = (12349) Test5
+  object_no = 12349
+  occelmnt_data = {}
+  owcloudurl = https://cloud.occultwatcher.net/event/TEST-1004
+  pre_goto_time_local = 2026-01-24 00:26:00
+  ra = 17.5
+  recording_duration = 240
+  star_alt = 65.0
+  star_az = 220.0
+  star_id = UCAC4-404-200004
+  star_mag = 12.5
+  start_time_local = 2026-01-24 00:28:00
+  start_time_str = 2026-01-24T00:28:00
+  station_name = Test Station
+  unique_id = test_1004
+
+Checking for elevation fields:
+  FOUND 'elevation': 50
+================================================================================
