@@ -241,12 +241,15 @@ Makes a short test recording to verify your setup without disrupting your carefu
 **What it does:**
 1. Saves your current camera settings (binning, exposure, gain, resolution, display levels)
 2. Runs a short recording sequence using the "SharpCap Test Recording Template.txt"
-3. Automatically restores all camera settings after recording completes
-4. Waits for camera stabilization (2× exposure time)
-5. Restores display stretch levels to match your pre-test view
+3. **Non-blocking execution** - SharpCap remains fully responsive
+4. **Stop button available** - Cancel recording safely if needed
+5. Automatically restores all camera settings after recording completes
+6. Waits for camera stabilization (2× exposure time)
+7. Restores display stretch levels to match your pre-test view
 
 **Why use it:**
 - Verify focus and framing before the event
+- SharpCap UI remains responsive during test (can adjust settings if needed)
 - Test your camera setup without manual adjustment afterwards
 - Ensure recording settings work correctly
 - Check field of view and target visibility
@@ -261,6 +264,45 @@ Makes a short test recording to verify your setup without disrupting your carefu
 
 **Template Required:**
 The test recording feature requires a template file named "SharpCap Test Recording Template.txt" in your configured templates folder. This template should define a brief recording sequence (typically 10-30 seconds) suitable for testing purposes.
+
+### Run Sequences (Direct Execution)
+
+Execute multiple sequences directly from Occultation Manager without manually loading them in SharpCap Sequencer:
+
+**What it does:**
+1. Select multiple events and check their checkboxes
+2. Click **Run Sequences** button (toolbar) or **Sequences → Run Selected Sequences** (menu)
+3. Saves current camera settings automatically
+4. Executes each sequence in time order (earliest first)
+5. **Non-blocking execution** - SharpCap remains fully responsive
+6. **Stop button available** - Cancel safely with confirmation dialog
+7. Automatically restores all camera settings after completion
+8. Shows progress status ("Running sequence 1/3: Event Name")
+
+**Benefits:**
+- No need to manually load .scs files in SharpCap Sequencer
+- Automatic multi-sequence sessions for entire night's observations
+- SharpCap UI remains responsive (can monitor, adjust, or cancel)
+- Safe cancellation at any time with automatic cleanup
+- All sequence operations work correctly (display stretch, notifications, camera controls)
+- Camera settings preserved and restored automatically
+
+**Stop Button:**
+- Located in Observation Preparation panel
+- Only enabled when sequences are running
+- Click to request stop with confirmation dialog
+- Sequences complete current step before stopping
+- Camera settings automatically restored after stop
+- Works for both Test Recording and Run Sequences
+
+**Technical Details:**
+- Uses SharpCap's `RunAsync()` API for non-blocking execution
+- All UI operations marshaled to correct thread (STA requirement)
+- Background monitoring thread tracks sequence status
+- Proper thread synchronization prevents race conditions
+- Comprehensive error handling with automatic cleanup
+
+This provides the best of both worlds: automated multi-sequence execution with full UI control and safe cancellation.
 
 ## Report Generation (Experimental)
 

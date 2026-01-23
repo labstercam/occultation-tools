@@ -1,4 +1,4 @@
-# Create release ZIP for Occultation Manager v0.1.0
+# Create release ZIP for Occultation Manager v0.2.0
 
 $files = @(
     # Python files
@@ -38,10 +38,11 @@ $files = @(
     "python\moon_icon_178489.ico",
     # Documentation
     "python\ReadMe.md",
-    "ReadMe.md"
+    "ReadMe.md",
+    "RELEASE_NOTES.md"
 )
 
-$version = "0.1.0"
+$version = "0.2.0"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
