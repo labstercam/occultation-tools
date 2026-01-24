@@ -190,15 +190,46 @@ Installation and first-time setup for Occultation Manager.
 
 INSTALLATION
 ------------
-1. Download occultation-manager.zip from GitHub
+1. Download occultation-manager-v0.2.0-beta.1.zip from GitHub
 2. Extract to a folder with read/write access
-   Recommended: Documents\\SharpCap\\occultation-manager
+   ⚠️ AVOID Program Files - Windows may restrict write access
+   ✅ RECOMMENDED: Documents\\SharpCap\\occultation-manager
 3. Start SharpCap
 4. Go to File → SharpCap Settings → Startup Scripts
-5. Browse to the extracted folder and select the 'main' script
+5. Browse to the extracted folder and select the 'main.py' script
 6. Click OK and restart SharpCap
 
 A new "Occultations" button appears in SharpCap's main toolbar.
+
+FIRST STARTUP - AUTOMATIC SETUP
+--------------------------------
+When you first launch Occultation Manager, it automatically:
+
+• Detects your installation directory
+• Creates folder structure:
+  - files/ - Configuration, event data, template copies
+  - files/Reports/ - Generated Excel reports
+  - sequences/ - SharpCap sequence files (.scs)
+• Sets default paths to installation directory
+• Copies template files to files/ folder for easy customization
+• Saves configuration to files/occultation_config.json
+
+You can use these default paths or change them in Configuration.
+
+FOLDER STRUCTURE
+----------------
+After extraction and first run:
+
+occultation-manager/
+├── main.py                          # SharpCap startup script
+├── files/                           # Data folder (auto-created)
+│   ├── occultation_config.json     # Your settings
+│   ├── occultations.json           # Downloaded events
+│   ├── SharpCap *template.txt      # Working template copies
+│   └── Reports/                    # Generated reports
+├── sequences/                       # Generated sequences (auto-created)
+├── SharpCap *template.txt          # Original templates (reference)
+└── [application files...]
 
 INITIAL CONFIGURATION
 ---------------------
@@ -206,22 +237,22 @@ Click the Occultations button to open Occultation Manager.
 
 Go to Tools → Configuration and set up:
 
-CREDENTIALS TAB:
+CREDENTIALS TAB (Required):
 • OWC Email: Your Occult Watcher Cloud login
 • OWC Password: Your OWC password
-• API Key: Get from OWC User Profile → Permissions & Settings
+• API Key: Get from https://cloud.occultwatcher.net/user-profile
+  Go to User Profile → Permissions & Settings
 
-FILE PATHS TAB:
-• File Folder: Where events are stored, templates are read from, and 
-  Reports are saved
-  - Templates: Any .txt file with "template" in the filename
-  - Reports: Saved to [File Folder]/Reports/ subfolder (auto-created)
+FILE PATHS TAB (Optional - Already Configured):
+• File Folder: Already set to {install_dir}/files
+  - Configuration saved here (occultation_config.json)
+  - Templates: Any .txt file with "template" in filename
+  - Reports: Saved to Reports/ subfolder (auto-created)
   - Event data: occultations.json and occultations_latest.json
-
-• Sequence Path: Where .scs sequence files are saved (defaults to File 
-  Folder if left empty)
-  - Can be set to different location for organizational purposes
-  - Sequence files: YYYYMMDD [Event Name].scs format
+  
+• Sequence Path: Already set to {install_dir}/sequences
+  - Sequence files saved here: YYYYMMDD [Event Name].scs
+  - Change only if you want a different location
 
 • Days to Retain Events: How long to keep old events (default: 14)
 

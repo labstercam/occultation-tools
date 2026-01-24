@@ -1,6 +1,81 @@
 # Occultation Manager
 
-SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences. The sequences give you complete control over your recording setup, allowing you to automate as much or as little as you need.
+**Version 0.2.0-beta.1** - SharpCap add-in for automated occultation observations
+
+SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences.
+
+## 📦 Installation
+
+### Quick Start
+
+1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.1.zip`
+2. **Extract**: Unzip to a location with read/write access (e.g., `Documents\SharpCap\occultation-manager`)
+   - ⚠️ **Avoid Program Files** - Windows may restrict write access
+   - ✅ **Recommended**: User Documents or Desktop folders
+3. **Load in SharpCap**:
+   - Open SharpCap
+   - Go to **File → SharpCap Settings → Startup Scripts**
+   - Browse to the extracted folder
+   - Select the `main.py` script
+   - Click OK and restart SharpCap
+
+<img width="666" height="155" alt="SharpCap Settings" src="https://github.com/user-attachments/assets/42a9d9c9-4273-4a88-8d0a-428cca649afe" />
+
+4. **Launch**: Click the new **Occultations** button in the SharpCap toolbar
+
+<img width="117" height="28" alt="Occultations Button" src="https://github.com/user-attachments/assets/6dbdf7af-aea5-4637-a39a-ff8a435dce55" />
+
+### First Startup - Automatic Setup
+
+On first launch, the Occultation Manager automatically:
+- **Detects installation location** and configures file paths
+- **Creates folder structure**:
+  - `files/` - Configuration, event data, template copies
+  - `files/Reports/` - Generated Excel reports
+  - `sequences/` - SharpCap sequence files (.scs)
+- **Saves configuration** to `files/occultation_config.json`
+
+**Template files** are copied to both:
+- Main folder - Original reference copies
+- `files/` folder - Working copies for customization
+
+### Configuration
+
+After installation, configure the application:
+
+1. **Credentials** (Required):
+   - Go to **Tools → Configuration → Credentials**
+   - Enter your Occult Watcher Cloud email and API key
+   - Get your API key at: https://cloud.occultwatcher.net/user-profile
+
+2. **File Paths** (Optional - auto-configured on first run):
+   - **My file folder**: Already set to `{install_dir}/files`
+   - **Sequence path**: Already set to `{install_dir}/sequences`
+   - **Event retention**: Default 14 days (1-400 days)
+   - Paths only need changing if you want different locations
+
+3. **Observer Settings**:
+   - **User Settings**: Observer name, location, telescope details
+   - **Equipment**: Add telescopes and cameras with specifications
+   - **Report Info**: Contact information for report generation
+
+4. **Save Configuration**: Click Save to store all settings
+
+### Folder Structure
+
+After extraction and first run:
+```
+occultation-manager/
+├── main.py                          # SharpCap startup script
+├── files/                           # Data folder
+│   ├── occultation_config.json     # Your settings (auto-created)
+│   ├── occultations.json           # Downloaded events
+│   ├── SharpCap *template.txt      # Working template copies
+│   └── Reports/                    # Generated reports
+├── sequences/                       # Generated sequences
+├── SharpCap *template.txt          # Original templates
+└── [application files...]
+```
 
 ## Key Features
 
@@ -64,48 +139,17 @@ SharpCap Occultation Manager streamlines your occultation observation workflow b
 6. **Analyze in Tangra**: Process video to generate light curve CSV and timing data
 7. **(Optional) Generate Reports**: Experimental feature for Excel reports - verify all data before submission
 
-## Installation
-## Installation
-
-1. Download the Python code from **occultation-manager.zip** above by right clicking and selecting 'Save As'
-2. Unzip to a file location where you have read/write access. Suggest a new subfolder \Documents\SharpCap\occultation-manager
-3. Alternative: clone this GitHub repository if you are a GitHub user
-4. Start SharpCap
-5. In "File" → "SharpCap Settings" → "Startup Scripts" → find that folder and add the 'main' script
-
-<img width="666" height="155" alt="image" src="https://github.com/user-attachments/assets/42a9d9c9-4273-4a88-8d0a-428cca649afe" />
-
-6. Close SharpCap (the script will be loaded at the next start)
-
-A new button should appear in the SharpCap main toolbar. Press it to start the Occultation Manager.
-<img width="117" height="28" alt="image" src="https://github.com/user-attachments/assets/6dbdf7af-aea5-4637-a39a-ff8a435dce55" />
-
-## Configuration Setup
-
-Press the  Occultations button in SharpCap to start the Occultation Manager.
-
-Setup your Occult Watcher Cloud configuration. Go to the **Tools | Configuration** menu, **Credentials** Tab and follow the instructions there. You will need an OWC account and API key.
-
-Under the **File Paths** tab you can set file paths and file names. Default values should be fine but you might want to use a different folder for your Sequences. You can also configure the event retention period (1-400 days, default 14) which determines how long past events remain in your list.
-
-Under **User Settings** set it up to suit your telescope. Each setting has an **Explain** button that provides detailed information, formulas, and examples. You can also set the default camera gain (0-600, default 450) which will be used for new events.
-
-Save the configuration.
-
 ## SharpCap Sequences - Your Recording Workflow
 
-The Occultation Manager generates SharpCap Sequences that give you complete control over your recording workflow. By using sequences, you can customize the automation to match your equipment, observing style, and comfort level. **You have full flexibility to automate everything or just the essentials.**
+The Occultation Manager generates SharpCap Sequences that give you complete control over your recording workflow. By using sequences, you can customize the automation to match your equipment, observing style, and comfort level.
 
-### Why Use Sequences?
-
+**Why Use Sequences?**
+**Why Use Sequences?**
 - **Complete Control**: You decide what gets automated and what stays manual
 - **Equipment Specific**: Adapt to your exact telescope, mount, camera, and accessories
 - **Safety First**: Control mount movements, pointing, and post-observation positioning
-- **Multi-Event Capable**: Generate a single sequence for an entire night's observations
+- **Multi-Event Capable**: Generate sequences for entire night's observations
 - **Reliable**: Test and refine your templates before relying on them
-
-## Sequencer Templates
-The Occultation Manager is used to generate SharpCap Sequences, and these sequences are used to run the events. By using SharpCap Sequences the user can customise the event recording to their system and to what they need to do. So you can do anything that a SharpCap Sequence can do and automate as little or as much as you want. You can generate a single sequence that will run an entire nights observations.
 
 ### Template Variables
 Templates use Python string formatting with the following variables from each event:

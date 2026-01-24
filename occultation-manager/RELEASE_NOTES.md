@@ -2,13 +2,34 @@
 
 ## Version 0.2.0-beta.1 (January 2026)
 
-### Major Features: Async Sequence Execution
+**First Public Beta Release**
 
-#### Non-Blocking Sequence Execution
+This is the first public beta release of Occultation Manager. Below is a summary of key features and capabilities.
+
+### Installation & Configuration
+
+#### Automatic Setup
+- Release ZIP includes pre-created folder structure: `files/`, `sequences/`, and `files/Reports/` with README guides
+- First startup automatically detects installation directory and creates folder structure
+- Smart path detection uses Python `__file__`, `sys.argv[0]`, or current directory as fallbacks
+- Template files distributed to both main folder (originals) and `files/` folder (working copies)
+- Configuration stored in `{install_dir}/files/occultation_config.json`
+- Custom paths from previous installations are preserved
+
+#### Simple Installation
+- Extract and run - no manual folder creation needed
+- Default paths automatically set to installation directory
+- Configuration file automatically placed in data folder
+- Clear README files in each folder explaining purpose
+- Template files ready to customize in files folder
+
+### Core Features
+
+#### Sequence Execution
 - **Run Sequences** button for direct multi-sequence execution from Occultation Manager
 - **Test Recording** with automatic camera settings preservation and restoration
 - SharpCap remains fully responsive during all sequence operations
-- No more UI freezing or complete application lock-ups
+- Asynchronous execution using SharpCap's `RunAsync()` API
 
 #### Safe Stop Capability
 - **Stop button** in Observation Preparation panel
@@ -17,19 +38,6 @@
 - Works with both Test Recording and Run Sequences
 - Comprehensive cleanup on stop or error
 
-#### Technical Improvements
-- Implemented using SharpCap's `RunAsync()` API for asynchronous operation
-- Proper thread marshaling to UI thread (STA requirement) for all sequence operations
-- Background monitoring threads track sequence execution status
-- All sequence steps now work correctly:
-  - Display stretch and auto-stretch operations
-  - Show notification commands
-  - Camera control UI updates
-  - All other UI-touching sequence operations
-- Fixed critical STA (Single Threaded Apartment) threading issue
-- Comprehensive state management with race condition prevention
-- Robust error handling with automatic cleanup in all code paths
-
 #### Camera Settings Management
 - Automatic save before sequence execution
 - Non-blocking restoration with stabilization period
@@ -37,43 +45,22 @@
 - Background thread for camera stabilization (2× exposure time)
 - Safe for all camera types and configurations
 
-### Workflow Enhancements
+### Workflow Features
 
-#### Run Sequences (New Feature)
+#### Run Sequences
 - Select multiple events with checkboxes
 - Click Run Sequences button for automated execution
 - Sequences run in chronological order automatically
 - Real-time progress updates ("Running sequence 2/5: Event Name")
 - Eliminates manual .scs file loading in SharpCap Sequencer
-- Perfect for multi-event observation sessions
+- Suitable for multi-event observation sessions
 
-#### Test Recording (Enhanced)
-- Now fully non-blocking - SharpCap remains responsive
+#### Test Recording
+- Fully non-blocking - SharpCap remains responsive
 - Stop button available during test
 - All camera settings automatically saved and restored
 - Display levels preserved (stretch settings)
 - Safe testing without disrupting your configuration
-
-### Bug Fixes
-- **Fixed**: Test Recording menu item referenced non-existent method
-- **Fixed**: STA threading error when sequences use display operations
-- **Fixed**: Duplicate context clearing in completion handler
-- **Fixed**: Missing context cleanup in error paths
-- **Fixed**: Race conditions in stop button handling
-- **Fixed**: Lambda closure captures in background threads
-- **Fixed**: Sequences menu was commented out (inaccessible)
-- **Removed**: Dangerous blocking `RunSequenceFile()` dead code
-
-### Documentation
-- New comprehensive [RunAsync Implementation](python/development documentation/RunAsync_Implementation.md) document
-- Updated Help → User Guide with async execution workflow
-- Updated all README files with Run Sequences and Stop button information
-- Added technical details about threading requirements
-- Documented camera settings preservation workflow
-- **NEW**: Added countdown and notification options documentation
-- **NEW**: Created `countdown python for sequencer.scs` reference file with ready-to-use code snippets
-- **NEW**: Documented WAIT UNTIL LOCALTIME risks and limitations
-- **NEW**: Explained sequence execution methods (SharpCap vs Occultation Manager)
 
 ### Countdown and Timing Features
 
@@ -136,31 +123,85 @@ observations. These handle midnight, next-day events, and DST correctly.
 - **Not recommended for unattended operation**
 - Additional complexity may reduce reliability
 
-**Files:**
+**Reference Files:**
 - `countdown python for sequencer.scs` - Ready-to-copy countdown code snippets
 - Complete implementation notes and examples included
 
-### API Changes
-- All sequence execution now uses `RunAsync()` instead of blocking `RunSequenceFile()`
-- Proper thread marshaling via `Invoke()` for all UI operations
-- Background monitoring using Python `threading.Thread` (not .NET threads)
+### Technical Implementation
 
-### Migration Notes
-- **No user action required** - all changes are internal improvements
-- Existing sequence files (.scs) work without modification
-- Templates continue to work as before
-- All sequence operations now more reliable and safe
+#### Threading Architecture
+- UI Thread (STA): All `RunAsync()` calls, UI updates, SharpCap API calls
+- Monitor Thread (MTA): Background status polling, doesn't touch UI directly
+- Proper thread marshaling via `Invoke()` for all UI operations
+- Background monitoring using Python `threading.Thread`
+
+#### API Usage
+- Asynchronous execution using SharpCap's `RunAsync()` API
+- Proper thread marshaling to UI thread (STA requirement) for all sequence operations
+- Background monitoring threads track sequence execution status
+- Comprehensive state management with race condition prevention
+- Robust error handling with automatic cleanup in all code paths
 
 ### Known Limitations
 - Cannot pause sequences (stop and restart only)
 - No step-level stop granularity (completes current step before stopping)
 - Single sequence execution at a time (no parallel sequences)
 
-### Technical Details
+### Report Generation (Under Development - Not Approved)
 
-**Threading Architecture:**
-- UI Thread (STA): All `RunAsync()` calls, UI updates, SharpCap API calls
-- Monitor Thread (MTA): Background status polling, doesn't touch UI directly
+⚠️ **CRITICAL WARNING**: Report generation is still under development and has **NOT** been approved by North America (IOTA) or Trans-Tasman (RASNZ) reporting coordinators. Use with extreme caution and verify all generated data before submission.
+
+#### Current Report Capabilities
+- Single comprehensive dialog for workflow efficiency
+- Integrates AOTA timing data (D/R times)
+- Imports Tangra CSV light curve analysis
+- Automatic video format extraction from Tangra CSV files
+- Dynamic exposure/integration detection based on timing consistency
+- Supports North America (IOTA) and Trans-Tasman (RASNZ) formats
+- Auto-fills observer, telescope, and camera information
+- Remembers previous settings for faster workflow
+
+#### Timing Integration Status
+- ✅ **Tangra CSV Light Curve Analysis**: Fully integrated
+  - Extracts start/end times from Tangra CSV files
+  - Populates exposure time and camera acquisition delay
+  - Video format sourced from Tangra measurement parameters
+  - Automatic HH:MM:SS.SS time formatting
+  
+- ⚠️ **GPS Flash Timing Analysis**: Not yet integrated into Occultation Manager
+  - Functions available in gps-timing-analysis toolkit
+  - Available as standalone tool for experts with custom Python code
+  - Future integration planned
+
+**Always verify all report data independently before submission to regional coordinators.**
+
+### Documentation
+
+Documentation includes:
+- Comprehensive user guide accessible via Help menu
+- Installation and configuration instructions
+- Workflow guides for all major features
+- Countdown and notification options with examples
+- WAIT UNTIL LOCALTIME risks and limitations explained
+- Sequence execution methods comparison
+- `countdown python for sequencer.scs` reference file with ready-to-use code snippets
+
+---
+
+## Support and Feedback
+
+This is a beta release. Please report issues, bugs, and feedback through GitHub Issues.
+
+### Known Issues
+- None reported yet
+
+### Reporting Issues
+When reporting issues, please include:
+- SharpCap version
+- Camera type and connection method
+- Steps to reproduce the issue
+- Any error messages displayed
+- Sequence file if relevant (sanitize personal info)
 - All cross-thread calls marshaled via `Invoke()` to UI thread
 
 **State Management:**
@@ -176,47 +217,11 @@ observations. These handle midnight, next-day events, and DST correctly.
 - 2-second delay between sequences in multi-sequence execution
 
 ---
-
-## Version 0.1.0 (December 2025)
-
-### Initial Release
-
-#### Core Features
-- Event download from Occult Watcher Cloud
-- Event list management with filtering and sorting
-- Configurable event retention period (1-400 days)
-- SharpCap sequence generation with customizable templates
-- Equipment management (telescopes and cameras)
-- Observation preparation panel with manual GOTO, plate solve, setup
-
-#### Templates Provided
-- SharpCap Sequence UTC Template (recommended)
-- SharpCap Sequence Local Time Template
-- SharpCap Minimal Local Time Template
-- SharpCap Just Record Template
-- SharpCap Test Recording Template
-
-#### Report Generation (Under Development - Not Approved)
-⚠️ **CRITICAL**: Report generation is still under development and has NOT been approved by North America or Trans-Tasman reporting coordinators. All generated reports must be carefully verified before submission.
-
-- North America (IOTA) report format
-- Trans-Tasman (RASNZ) report format
-- AOTA timing data integration
-- Tangra CSV light curve analysis (integrated)
-- GPS flash timing analysis (not yet integrated - available as standalone tool for experts)
-- Automatic video format detection
-- Dynamic exposure/integration detection
-
-#### Configuration
-- OWC credentials management
-- File path configuration
-- User settings (exposure calculation, gain defaults)
-- Station filtering
-- Theme support (normal and night mode)
-
 ---
 
-## Upgrade Path
+## Version History
+
+This is the first public beta release. Previous versions were internal development builds not released publicly.
 
 ### From 0.1.0 to 0.2.0
 1. Replace Python files with updated versions

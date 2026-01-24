@@ -1,6 +1,6 @@
 # occultation-tools
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.2.0--beta.1-blue)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
 
 Tools for automating occultation observations and validating timing accuracy.
@@ -9,106 +9,41 @@ Tools for automating occultation observations and validating timing accuracy.
 
 ## Tools in this Repository
 
-### 1. Occultation Manager (SharpCap Add-in)
-Location: `occultation-manager/`
+### 1. Occultation Manager
+**SharpCap add-in for automated occultation workflow**
 
-### 2. GPS Timing Analysis (Python Toolkit)
-Location: `gps-timing-analysis/`
+Automates the complete occultation observation workflow: downloads personal observations from Occult Watcher Cloud, generates customizable SharpCap sequences, and produces pre-filled Excel reports with integrated timing data from Tangra analysis.
 
----
+📖 **[Read Full Documentation](occultation-manager/ReadMe.md)**  
+📦 **[Download Latest Release](occultation-manager/)**  
+🚀 **[Installation Instructions](occultation-manager/ReadMe.md#installation)**
 
-## Occultation Manager - SharpCap Add-in for Occult Watcher Cloud
-SharpCap Occultation Manager automates the complete occultation observation workflow. It downloads personal observations from Occult Watcher Cloud, generates SharpCap sequences, and produces pre-filled Excel reports with integrated timing data from Tangra light curve analysis.
+**Quick Overview:**
+- Downloads events from Occult Watcher Cloud
+- Generates customizable SharpCap sequences for automated recording
+- Observation preparation panel with GOTO, plate solve, and test recording
+- Report generation with Tangra CSV integration (experimental)
+- Multiple telescope and camera configuration support
 
-### Key Features
+### 2. GPS Timing Analysis
+**Python toolkit for camera timestamp validation**
 
-**Event Management**
-- Downloads personal observations from Occult Watcher Cloud
-- Manages event list with filtering and sorting
-- Automatic sequence generation for SharpCap
-- **Direct sequence execution** with non-blocking Run Sequences feature
-- **Safe stop capability** with automatic camera settings restoration
+Validates camera timestamp accuracy using GPS flash timing analysis. Essential for ensuring sub-millisecond timing precision in occultation observations.
 
-**Sequence Execution**
-- **Non-blocking async execution** - SharpCap remains responsive during sequences
-- **Run Sequences** button for direct multi-sequence execution
-- **Stop button** with safe cancellation and automatic cleanup
-- **Test Recording** with automatic camera settings preservation and restoration
-- All sequence operations supported (display stretch, notifications, camera controls)
-- Background monitoring with UI thread marshaling for .NET STA requirements
-- Comprehensive error handling and state management
+📖 **[Read Full Documentation](gps-timing-analysis/ReadMe.md)**  
+🔬 **[View Examples](gps-timing-analysis/examples/)**
 
-**Report Generation**
-- Streamlined single-dialog workflow combining all settings
-- Integrates AOTA timing data (D/R times)
-- Imports Tangra CSV light curves for observation timing and camera delay
-- **Automatic video format extraction** from Tangra CSV files (ADVS, SER, AAV, PAL/CCIR, NTSC/EIA)
-- **Dynamic exposure/integration detection** based on timing consistency
-- Supports North America (IOTA) and Trans-Tasman (RASNZ) report formats
-- Auto-fills observer, telescope, and camera information
-- Remembers previous settings for faster workflow
+**Quick Overview:**
+- Tangra CSV light curve analysis
+- GPS flash detection and timing offset calculation
+- Rolling shutter characterization
+- Camera calibration and quality assurance
 
-**Timing Integration**
-- Extracts start/end times from Tangra CSV files
-- Populates exposure time and camera acquisition delay
-- **Video format sourced from Tangra CSV measurement parameters** (not camera configuration)
-- Automatic HH:MM:SS.SS time formatting
-- Camera delay correction from Tangra measurement parameters
+### Integration
 
-**See the [occultation-manager README](occultation-manager/ReadMe.md) for full documentation.**
-
----
-
-## GPS Timing Analysis - Camera Timestamp Validation
-
-Python toolkit for analyzing GPS flash timing to validate camera timestamp accuracy. Critical for ensuring sub-millisecond timing precision in occultation observations.
-
-**Location:** `gps-timing-analysis/`
-
-### Key Features
-
-- **TANGRA Light Curve Analysis**: Import and analyze TANGRA CSV files for timestamp quality
-- **GPS Flash Detection**: Automated detection and analysis of GPS 1PPS (one pulse per second) flashes
-- **Timestamp Offset Calculation**: Measure timing differences between recorded and actual GPS time
-- **Rolling Shutter Characterization**: Calculate inter-line timing delays for rolling shutter cameras
-- **ADV Video Processing**: Direct processing of ADV format astronomical videos
-- **Quality Validation**: Detect dropped frames, timing anomalies, and system issues
-
-### Use Cases
-
-1. **Camera Calibration**: Determine timestamp offsets for new cameras and recording systems
-2. **System Validation**: Verify GPS receiver and timestamp accuracy before critical observations
-3. **Rolling Shutter Analysis**: Characterize line-by-line timing for accurate Y-position corrections
-4. **Quality Assurance**: Detect timing issues in recorded occultation videos
-
-### Quick Start
-
-```bash
-# Install dependencies
-cd gps-timing-analysis
-pip install -r requirements.txt
-
-# Import and use
-from light_curves import read_tangra_csv, analyse_timestamps, analyse_gps_flash
-
-# Analyze Tangra light curve
-tangra_data = read_tangra_csv('lightcurve.csv')
-stats = analyse_timestamps(tangra_data)
-print(f"Median frame time: {stats['tdelta_median']:.3f} ms")
-
-# Calculate GPS offsets (if GPS flash present)
-lcv = analyse_gps_flash(tangra_data, exposure_ms=50)
-```
-
-**See the [GPS Timing Analysis README](gps-timing-analysis/ReadMe.md) for complete documentation.**
-
-### Integration with Occultation Manager
-
-The tools work together seamlessly:
-- **GPS Timing Analysis**: Validates camera timestamp accuracy and characterizes system timing
-- **Occultation Manager**: Uses Tangra CSV files (which include timing data) to auto-populate reports
-
-The Occultation Manager now includes `light_curves_iron.py`, an IronPython-compatible version of the timing analysis functions, allowing direct integration of Tangra light curve data into the report generation workflow.
+The tools work together:
+- **GPS Timing Analysis**: Validates camera timestamp accuracy
+- **Occultation Manager**: Uses Tangra CSV files to auto-populate reports with timing data
 
 ---
 
@@ -117,29 +52,23 @@ The Occultation Manager now includes `light_curves_iron.py`, an IronPython-compa
 ```
 occultation-tools/
 ├── occultation-manager/      # SharpCap add-in
-│   ├── python/              # Python/IronPython code
-│   └── ReadMe.md           # Manager documentation
+│   ├── python/               # Application code
+│   ├── ReadMe.md            # Full documentation
+│   └── RELEASE_NOTES.md     # Version history
 │
-├── gps-timing-analysis/     # Timing validation toolkit
-│   ├── python/
-│   │   └── light_curves.py # Core analysis functions
-│   ├── requirements.txt    # Python dependencies
-│   ├── ReadMe.md          # Timing tool documentation
-│   └── examples/          # Example notebooks
+├── gps-timing-analysis/      # Timing validation toolkit
+│   ├── python/              # Analysis functions
+│   ├── examples/            # Jupyter notebooks
+│   ├── requirements.txt     # Dependencies
+│   └── ReadMe.md           # Full documentation
 │
-└── README.md              # This file
+├── CHANGELOG.md             # Release history
+└── README.md               # This file
 ```
-
-## Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
 
 ## License
 
-See individual tool directories for license information.
+BSD 3-Clause License. See individual tool directories for details.
 
 ## Author
 
@@ -147,6 +76,6 @@ Michael Camilleri
 
 ## Support
 
-For issues and questions:
-- Open an issue on GitHub
-- Check the individual tool README files for detailed documentation
+- 📖 Read the documentation in each tool's ReadMe.md
+- 🐛 [Open an issue](https://github.com/labstercam/occultation-tools/issues) on GitHub
+- 💬 Check existing issues for solutions
