@@ -11,32 +11,258 @@ Occultation Manager is a Windows desktop application that automates the workflow
 - OccultWatcher Cloud (OWCloud) REST API for event data
 - Excel/XML for report generation
 
-**Total Code Size:** ~15,800 lines of Python across 23 modules
+**Total Code Size:** ~14,950 lines of Python across 23 modules
 
 ---
 
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Interface                          │
-│                      (Windows Forms GUI)                        │
-│                         main_gui.py                             │
-└────────────────┬────────────────────────────────────────────────┘
-                 │
-    ┌────────────┼────────────┬──────────────┬──────────────┐
-    │            │            │              │              │
-    ▼            ▼            ▼              ▼              ▼
-┌─────────┐ ┌─────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐
-│ Events  │ │ Config  │ │Sequences │ │  Reports   │ │SharpCap  │
-│ Manager │ │ Manager │ │  Runner  │ │ Generators │ │Integration│
-└─────────┘ └─────────┘ └──────────┘ └────────────┘ └──────────┘
-    │            │            │              │              │
-    ▼            ▼            ▼              ▼              ▼
-┌─────────┐ ┌─────────┐ ┌──────────┐ ┌────────────┐ ┌──────────┐
-│OWCloud  │ │  JSON   │ │.scs Files│ │.xlsx Files │ │ COM API  │
-│REST API │ │ Config  │ │Templates │ │ (Reports)  │ │ Calls    │
-└─────────┘ └─────────┘ └──────────┘ └────────────┘ └──────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         MAIN APPLICATION WINDOW                                 │
+│                      OccultationManagerGUI (Form)                               │
+│                          main_gui.py (3,286 lines)                              │
+│                                                                                 │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │ MenuStrip: File | View | Tools | Help                                     │  │
+│  ├───────────────────────────────────────────────────────────────────────────┤  │
+│  │ Toolbar: [Download] [Generate] [Run] [Test] [Stop]                        │  │
+│  ├───────────────────────────────────────────────────────────────────────────┤  │
+│  │ EventsDataGrid (gui_components.py)                                        │  │
+│  │   Columns: [ ] Event | Station | Date/Time | Mag | Exp | Gain | Status    │  │
+│  ├───────────────────────────────────────────────────────────────────────────┤  │
+│  │ Quick Actions | Observation Prep | Status Bar                             │  │
+│  └───────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────┬───────────────────────────────────────────────────┘
+                              │
+      ┌───────────────────────┼───────────────────────┬───────────────────────┐
+      │                       │                       │                       │
+      ▼                       ▼                       ▼                       ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ EVENT MGMT      │  │ SEQUENCE FLOW   │  │ REPORT FLOW     │  │ CONFIGURATION   │
+└─────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+EVENT MANAGEMENT DIALOGS (gui_dialogs.py - 1,856 lines)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Download Events
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LocationConfirmDialog                                              │
+│  - Latitude/longitude input                                         │
+│  - Elevation & location name                                        │
+│  - Radius & date range                                              │
+│                                                                     │
+│  Purpose: Confirm/edit observer location before downloading events  │
+└─────────────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   [Download from OWCloud API] → Events displayed in grid
+
+
+Edit Event Settings
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ExposureEditDialog                                                 │
+│  - Custom exposure (ms)                                             │
+│  - Custom gain                                                      │
+│  - Custom recording duration                                        │
+│  - Reset to calculated defaults                                     │
+│                                                                     │
+│  Purpose: Edit camera settings for event (double-click columns)     │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+View Event Details
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  EventDetailsDialog                                                 │
+│  - Object & star information                                        │
+│  - Coordinates & timing                                             │
+│  - Observation parameters                                           │
+│  - OWCloud link                                                     │
+│                                                                     │
+│  Purpose: Display complete event info (double-click event name)     │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+SEQUENCE GENERATION WORKFLOW
+═══════════════════════════════════════════════════════════════════════════════════
+
+Generate Sequences (for selected events)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  TemplateSelectionDialog (gui_dialogs.py)                           │
+│  - Simple notification                                              │
+│  - UTC with countdown                                               │
+│  - Local time with countdown                                        │
+│  - Browse custom templates                                          │
+│                                                                     │
+│  Purpose: Choose sequence template type and countdown format        │
+└─────────────────────────────────────────────────────────────────────┘
+      │
+      ▼
+[Generate .scs files] → Sequences saved to sequences/ folder
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+REPORT GENERATION WORKFLOW
+═══════════════════════════════════════════════════════════════════════════════════
+
+Generate Report (for single event)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  LocationConfirmDialog (gui_dialogs.py)                             │
+│  - Latitude/longitude input                                         │
+│  - Elevation & location name                                        │
+│  - Same as download dialog                                          │
+│                                                                     │
+│  Purpose: Confirm/edit observation location for report              │
+└─────────────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  ComprehensiveReportDialog (comprehensive_report_dialog.py - 686 lines)         │
+│  ┌───────────────────────────────────────────────────────────────────────────┐  │
+│  │ 1. Report Format Selection                                                │  │
+│  │    ○ IOTA North America (V5.6.12r)                                        │  │
+│  │    ○ Trans-Tasman / RASNZ (V4.1.2.G)                                      │  │
+│  ├───────────────────────────────────────────────────────────────────────────┤  │
+│  │ 2. Equipment Selection                                                    │  │
+│  │    Telescope: [dropdown] [Manage...] ─────────┐                           │  │
+│  │    Camera:    [dropdown] [Manage...] ─────────┤                           │  │
+│  ├───────────────────────────────────────────────┼───────────────────────────┤  │
+│  │ 3. Observation Type                           │                           │  │
+│  │    ○ Positive   ○ Negative   ○ Unsure         │                           │  │
+│  ├───────────────────────────────────────────────┼───────────────────────────┤  │
+│  │ 4. Data Import (Optional)                     │                           │  │
+│  │    Folder: [Browse...]                        │                           │  │
+│  │    ┌──────────────────────────────────────┐   │                           │  │
+│  │    │ AOTA XML Files        [0 files]      │   │                           │  │
+│  │    │ [listbox]                            │   │                           │  │
+│  │    ├──────────────────────────────────────┤   │                           │  │
+│  │    │ Tangra CSV Files      [0 files]      │   │                           │  │
+│  │    │ [listbox]                            │   │                           │  │
+│  │    ├──────────────────────────────────────┤   │                           │  │
+│  │    │ AOTA Report Files     [0 files]      │   │                           │  │
+│  │    │ [listbox]                            │   │                           │  │
+│  │    └──────────────────────────────────────┘   │                           │  │
+│  └───────────────────────────────────────────────┘                           │  │
+│                                                                                │  │
+│                     If AOTA XML selected & multiple eve──────────┐            │  │
+│              │  AOTAEventSelectionDialog (aota_dialogs.py)       │            │  │
+│              │  - List of events from AOTA file                  │            │  │
+│              │  - Select which event to use                      │            │  │
+│              └───────────────────────────────────────────────────┘            │  │
+│                                                                                │  │
+│         [Manage Telescope...] ───────────────────┐                            │  │
+│                                                  │                            │  │
+│                                                  ▼                            │  │
+│              ┌───────────────────────────────────────────────────┐            │  │
+│              │  TelescopeManagerDialog (equipment_dialogs.py)    │            │  │
+│              │  - Add/Edit/Delete telescopes                     │            │  │
+│              │  - Name, Aperture, Focal Ratio, Type              │            │  │
+│              └───────────────────────────────────────────────────┘            │  │
+│                                                                                │  │
+│         [Manage Camera...] ──────────────────────┐                            │  │
+│                                                  │                            │  │
+│                                                  ▼                            │  │
+│              ┌───────────────────────────────────────────────────┐            │  │
+│              │  CameraManagerDialog (equipment_dialogs.py)       │            │  │
+│              │  - Add/Edit/Delete cameras                        │            │  │
+│              │  - Detector, Timing, Report Type, Occult4 codes   │            │  │
+│              └───────────────────────────────────────────────────┘            │  │
+│                                                                                │  │
+│  [Generate Report]                                                             │  │
+└────────────────────────────────────────────────────────────────────────────────┘
+      │
+      ▼
+[Report saved & opened in Excel]
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+CONFIGURATION DIALOGS
+═══════════════════════════════════════════════════════════════════════════════════
+
+Tools Menu → Settings
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ConfigurationDialog (gui_dialogs.py)                               │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ Tabs: Paths | Recording | Observer | API                     │  │
+│  │                                                               │  │
+│  │ Paths Tab:                                                    │  │
+│  │   - Data folder, sequences folder                            │  │
+│  │   - Events files, report templates                           │  │
+│  │                                                               │  │
+│  │ Recording Tab:                                                │  │
+│  │   - Base duration, GOTO lead time                            │  │
+│  │   - Magnitude/exposure reference                             │  │
+│  │   - Default gain, sync mount                                 │  │
+│  │   - Display UTC/Local preference                             │  │
+│  │                                                               │  │
+│  │ Observer Tab:                                                 │  │
+│  │   - Name, email, address, phone, fax                         │  │
+│  │   - For populating report forms                              │  │
+│  │                                                               │  │
+│  │ API Tab:                                                      │  │
+│  │   - OWCloud email & password                                 │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+Equipment Menu → Manage Equipment
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  EquipmentSelectionDialog (equipment_dialogs.py)                    │
+│  - Active telescope dropdown                                        │
+│  - Active camera dropdown                                           │
+│  - [Manage Telescopes...] → TelescopeManagerDialog                 │
+│  - [Manage Cameras...] → CameraManagerDialog                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+Help Menu → Help Topics
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  HelpDialog (help.py - 911 lines)                                   │
+│  - Quick Start Guide                                                │
+│  - Troubleshooting                                                  │
+│  - FAQ                                                               │
+│  - Rich text formatting with links                                  │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+BACKEND ARCHITECTURE
+═══════════════════════════════════════════════════════════════════════════════════
+
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│   Events     │  │   Config     │  │  Sequences   │  │   Reports    │
+│   Manager    │  │   Manager    │  │   Runner     │  │  Generators  │
+│ (events.py)  │  │ (config.py)  │  │(sequence_    │  │ (na_report   │
+│  968 lines   │  │  611 lines   │  │ runner.py)   │  │  tt_report   │
+│              │  │              │  │  119 lines   │  │  occult4)    │
+└──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+       │                 │                 │                 │
+       │                 │                 │                 │
+       ▼                 ▼                 ▼                 ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  OWCloud     │  │    JSON      │  │  .scs Files  │  │ .xlsx Report │
+│  REST API    │  │   Config     │  │  Templates   │  │  XML Export  │
+│   (HTTP)     │  │   Storage    │  │  (SharpCap)  │  │  (Occult4)   │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
 ---
@@ -59,7 +285,7 @@ Occultation Manager is a Windows desktop application that automates the workflow
 
 ### 2. GUI Layer
 
-#### Main GUI (`main_gui.py` - 3,173 lines)
+#### Main GUI (`main_gui.py` - 3,286 lines)
 **Responsibilities:**
 - Primary application window with event grid, controls, and menus
 - Event selection and display
@@ -101,7 +327,7 @@ Bottom Panel
 - Async execution using Python threading module
 - Invoke() pattern for cross-thread UI updates
 
-#### Dialog Windows (`gui_dialogs.py` - 1,819 lines)
+#### Dialog Windows (`gui_dialogs.py` - 1,856 lines)
 **Key Dialogs:**
 - `ExposureEditDialog` - Edit exposure/duration settings for events
 - `EventDetailsDialog` - View full event details
@@ -109,13 +335,13 @@ Bottom Panel
 - `TemplateSelectionDialog` - Choose sequence countdown template
 - `LocationConfirmDialog` - Confirm observation location on download
 
-#### Equipment Dialogs (`equipment_dialogs.py` - 1,157 lines)
+#### Equipment Dialogs (`equipment_dialogs.py` - 1,164 lines)
 **Key Dialogs:**
 - `TelescopeManagerDialog` - Add/edit telescope configurations
 - `CameraManagerDialog` - Add/edit camera configurations  
 - `EquipmentSelectionDialog` - Select active telescope and camera
 
-#### GUI Components (`gui_components.py` - 274 lines)
+#### GUI Components (`gui_components.py` - 280 lines)
 **Key Components:**
 - `EventsDataGrid(DataGridView)` - Custom data grid for events with checkbox column
 
@@ -123,13 +349,12 @@ Bottom Panel
 
 ### 3. Event Management
 
-#### Events Module (`events.py` - 924 lines)
+#### Events Module (`events.py` - 968 lines)
 **Responsibilities:**
 - OWCloud API integration for downloading event predictions
 - Event data processing and caching
-- Coordinate calculations (altitude, azimuth, sun/moon angles)
 - Event merging and deduplication
-- Geocoding for location names and elevations
+- Event selection and filtering management
 
 **Key Classes:**
 
@@ -141,17 +366,18 @@ Bottom Panel
 - `update_ow_cloud_events()` - Fetch user's announced events
 
 **`OccultationEvent`** - Data model for a single occultation event
-- Properties: object_name, event_time, star_name, altitude, magnitude, duration, etc.
-- `calculate_airmass()` - Calculate atmospheric extinction
-- `calculate_sun_angle()` - Sun position relative to event
-- `calculate_moon_angle()` - Moon position relative to event
-- `calculate_sky_brightness()` - Combined sun/moon brightness estimate
+- Stores all event data from OWCloud (coordinates, timing, magnitudes)
+- Computes local time strings and datetime objects from UTC times
+- Manages custom exposure/gain/duration overrides
+- Methods: `get_asteroid_display_name()`, `get_coordinates_string()`, `get_status_info()`, `set_custom_exposure()`, `has_custom_exposure()`, etc.
 
 **`OccultationManager`** - High-level event management interface
-- `download_events()` - Download from OWCloud with location parameters
-- `filter_events()` - Apply search/filter criteria
-- `get_selected_events()` - Get events marked for observation
-- `calculate_exposure()` - Determine optimal exposure time based on magnitude
+- `download_events_from_cloud()` - Download from OWCloud and merge with cache
+- `load_events_from_files()` - Load events from JSON cache
+- `get_filtered_events()` - Get events filtered by station name
+- `set_station_filter()` - Apply station name filter
+- `select_all_events()` / `select_no_events()` - Event selection management
+- `sort_events()` - Sort events by event time
 
 **OWCloud API Integration:**
 ```python
@@ -245,7 +471,7 @@ OWCloud API → download_events() → OccultationEvent objects →
 
 ### 5. Sequence Generation
 
-#### Sequence Runner (`sequence_runner.py` - 116 lines)
+#### Sequence Runner (`sequence_runner.py` - 119 lines)
 **Responsibilities:**
 - Generate SharpCap sequence (.scs) files from events and templates
 - Execute sequences via SharpCap COM API
@@ -277,15 +503,15 @@ OWCloud API → download_events() → OccultationEvent objects →
 
 **Template System:**
 ```
-Template files contain data tags in format {tag_name}
+Template files contain data tags in format {{tag_name}}
 Available tags:
-  {goto_time}       - UTC time to start GOTO
-  {goto_time_local} - Local time for GOTO
-  {start_time}      - UTC recording start time
-  {start_time_local}- Local recording start time
-  {duration}        - Recording duration (seconds)
-  {object_name}     - Asteroid/object name
-  {star_name}       - Target star identifier
+  {{goto_time}}       - UTC time to start GOTO
+  {{goto_time_local}} - Local time for GOTO
+  {{start_time}}      - UTC recording start time
+  {{start_time_local}}- Local recording start time
+  {{duration}}        - Recording duration (seconds)
+  {{object_name}}     - Asteroid/object name
+  {{star_name}}       - Target star identifier
 ```
 
 **Template Types:**
@@ -307,23 +533,23 @@ Example: 20251223 (165690) 2001 PA3.scs
 #### Report Generators
 Three specialized report generators create Excel-based observation reports by filling standardized templates.
 
-**Base Class (`report_generator_base.py` - 91 lines):**
+**Base Class (`report_generator_base.py` - 94 lines):**
 - `ReportGeneratorBase` - Common functionality for all report types
 - XML placeholder replacement in Excel workbooks
 - Star catalog parsing and mapping
 - Filename generation
 
-**North America Reports (`na_report.py` - 642 lines):**
+**North America Reports (`na_report.py` - 647 lines):**
 - `NAReportGenerator` - IOTA North American report format
 - Template: `NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx`
 - Fields: Observation type, event details, equipment, timing, SNR
 
-**Trans-Tasman Reports (`tt_report.py` - 673 lines):**
+**Trans-Tasman Reports (`tt_report.py` - 679 lines):**
 - `TTReportGenerator` - RASNZ (Royal Astronomical Society NZ) format  
 - Template: `RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx`
 - Fields: Similar to NA with regional differences
 
-**Occult 4 XML Export (`occult4_export.py` - 944 lines):**
+**Occult 4 XML Export (`occult4_export.py` - 949 lines):**
 - `Occult4Exporter` - Occult 4 XML format (Version 2.15)
 - Output: XML file for Occult 4 software analysis
 - Fields: Event details, observer info, timing, equipment
@@ -353,14 +579,14 @@ Three specialized report generators create Excel-based observation reports by fi
 - Timing/SNR: From AOTA Report Parser (optional)
 - Light curve: From Tangra files (optional)
 
-#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - 682 lines)
+#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - 686 lines)
 - Unified dialog for all report types
 - Equipment selection dropdowns
 - Observation type radio buttons
 - File import for analysis data
 - Validation and report generation coordination
 
-#### AOTA Integration (`aota_dialogs.py` - 466 lines, `aota_parser.py` - 297 lines)
+#### AOTA Integration (`aota_dialogs.py` - 475 lines, `aota_parser.py` - 312 lines)
 - Parse AOTA (Asteroidal Occultation Timing Analysis) XML files
 - Extract timing, SNR, and light curve data
 - Map AOTA events to OWCloud events
@@ -421,18 +647,18 @@ thread.start()
 
 ### 8. Supporting Modules
 
-#### Theme Management (`theme.py` - 178 lines)
+#### Theme Management (`theme.py` - 208 lines)
 - `ThemeManager` - Light/night mode themes
 - Color schemes for panels, grids, buttons
 - `apply_theme_to_control()` - Recursive theme application
 
-#### Utilities (`utils.py` - 234 lines)
+#### Utilities (`utils.py` - 241 lines)
 - File operations
 - Geocoding (elevation, location names)
 - Coordinate conversions
 - Date/time formatting
 
-#### Help System (`help.py` - 781 lines)
+#### Help System (`help.py` - 911 lines)
 - `HelpManager` - Rich text help documents
 - Quick Start Guide, troubleshooting, FAQ
 - Displayed in dialog with styled text
@@ -458,7 +684,7 @@ User → Selects events (checkboxes) → Generate Sequences Button
     → gui_dialogs.TemplateSelectionDialog [choose countdown type]
     → For each selected event:
         - templates.TemplateManager.load_template()
-        - Replace data tags: {goto_time}, {start_time}, {duration}
+        - Replace data tags: {{goto_time}}, {{start_time}}, {{duration}}
         - Save .scs file to sequences/ folder
     → Update status bar with count
 ```

@@ -130,44 +130,111 @@ merged = EventProcessor.merge_occultation_lists(
 
 ### OccultationEvent
 
-Data model for a single occultation event.
+Represents an occultation event with all associated data from OWCloud and computed values.
 
+**Parsed Attributes (from JSON data):**
 ```python
-from events import OccultationEvent
+{
+    # Identification
+    'name': str,                    # Event name
+    'station_name': str,            # Station name
+    'ow_eventid': str,              # OWCloud event ID
+    'event_id': str,                # Alternative event ID
+    
+    # Object Information
+    'object_name': str,             # Asteroid/object name
+    'object_no': str,               # Object catalog number
+    
+    # Star Information
+    'star_id': str,                 # Star catalog ID
+    'star_mag': float,              # Star magnitude
+    'mag_drop': float,              # Magnitude drop during occultation
+    'comb_mag': float,              # Combined magnitude
+    
+    # Coordinates
+    'ra': float,                    # Right ascension (degrees)
+    'dec': float,                   # Declination (degrees)
+    'star_alt': float,              # Star altitude (degrees)
+    'star_az': float,               # Star azimuth (degrees)
+    'latitude': float,              # Observer latitude
+    'longitude': float,             # Observer longitude
+    'elevation': float,             # Observer elevation (meters)
+    'obs_location': str,            # Observer location name
+    
+    # Timing (strings from OWCloud)
+    'event_time': str,              # Event time string
+    'start_time_str': str,          # Recording start time string
+    'end_time_str': str,            # Recording end time string
+    'goto_time_str': str,           # Telescope goto time string
+    
+    # Duration and Uncertainty
+    'event_duration': float,        # Expected event duration (seconds)
+    'event_uncertainty': float,     # Time uncertainty (seconds)
+    'recording_duration': int,      # Recording duration (seconds)
+    
+    # Camera Settings
+    'precalc_exposure': float,      # Pre-calculated exposure from OWCloud
+    
+    # Source Information
+    'source': str,                  # Data source
+    'owcloudurl': str,              # OWCloud event URL
+}
+```
 
-# Create event object
-event = OccultationEvent(event_data_dict, config)
+**Computed Attributes (calculated locally):**
+```python
+{
+    # Parsed Datetimes
+    'event_datetime': datetime,         # Event time as datetime object
+    'start_time': datetime,             # Recording start as datetime
+    'end_time': datetime,               # Recording end as datetime
+    'goto_time': datetime,              # Goto time as datetime
+    
+    # Local Time Strings (for display)
+    'start_time_local': str,            # Start time in local timezone
+    'goto_time_local': str,             # Goto time in local timezone
+    'event_time_local': str,            # Event time in local timezone
+    'pre_goto_time_local': str,         # Pre-goto time in local timezone
+    'event_date': str,                  # Event date (YYYY-MM-DD)
+    'event_time_utc': str,              # Event time UTC (HH:MM:SS)
+    
+    # Camera Settings (calculated)
+    'exposure_ms': int,                 # Calculated exposure (milliseconds)
+    'gain_value': int,                  # Calculated gain value
+    
+    # Duration Values
+    'duration_seconds': float,          # Event duration in seconds
+    'max_duration_seconds': float,      # Maximum expected duration
+    'uncertainty_seconds': float,       # Uncertainty in seconds
+    
+    # UI State
+    'selected': bool,                   # Selection state for UI
+}
+```
 
-# Access properties
-print(event.object_name)       # "(778) Theobalda"
-print(event.object_no)         # 778
-print(event.star_name)         # "UCAC4 123-456789"
-print(event.event_time)        # datetime object (UTC)
-print(event.event_datetime)    # Same as event_time
-print(event.altitude)          # Altitude at event time (degrees)
-print(event.azimuth)           # Azimuth at event time (degrees)
-print(event.star_mag)          # Star magnitude
-print(event.star_ra_deg)       # Right ascension (degrees)
-print(event.star_dec_deg)      # Declination (degrees)
-print(event.duration)          # Event duration (seconds)
-print(event.probability)       # Probability of occultation (0-1)
+**Custom Override Attributes:**
+```python
+{
+    'custom_exposure': int or None,     # User-specified exposure override
+    'custom_gain': int or None,         # User-specified gain override
+    'custom_recording_duration': int or None,  # User-specified recording duration override
+}
+```
 
-# Calculated properties
-airmass = event.calculate_airmass()  # Atmospheric extinction factor
-sun_angle = event.calculate_sun_angle()  # Degrees from sun
-moon_angle = event.calculate_moon_angle()  # Degrees from moon
-sky_brightness = event.calculate_sky_brightness()  # Combined sun/moon effect
-
-# Sequence timing properties
-print(event.goto_time)         # datetime when to start GOTO (UTC)
-print(event.start_time)        # datetime when to start recording (UTC)
-print(event.end_time)          # datetime when recording ends (UTC)
-print(event.recording_duration)  # Recording duration (seconds)
-
-# Display formatting
-print(event.display_goto_time)   # Formatted for UI display
-print(event.display_start_time)  # Formatted for UI display
-print(event.display_altitude)    # "45°" format
+**Key Methods:**
+- `get_asteroid_display_name()` - Returns formatted asteroid name
+- `get_coordinates_string()` - Returns RA/Dec as formatted string
+- `get_status_info()` - Returns event status information
+- `set_custom_exposure(value)` - Set custom exposure override
+- `set_custom_gain(value)` - Set custom gain override
+- `set_custom_recording_duration(value)` - Set custom recording duration override
+- `has_custom_exposure()` - Check if custom exposure is set
+- `has_custom_gain()` - Check if custom gain is set
+- `has_custom_recording_duration()` - Check if custom recording duration is set
+- `set_elevation(elevation)` - Set observer elevation
+- `get_elevation()` - Get observer elevation
+- `set_obs_location(location)` - Set observer location name
+- `get_obs_location()` - Get observer location name
 ```
 
 **Constructor:**
@@ -251,20 +318,66 @@ telescopes = config.get_telescopes()  # List of telescope dicts
 cameras = config.get_cameras()  # List of camera dicts
 
 # Add new telescope
-telescope_id = config.add_telescope({
-    'name': 'My SCT',
-    'aperture': 200,  # mm
-    'focal_length': 2000,  # mm
-    'type': 'SCT',
-    'mount_type': 'EQ'
-})
+telescope_id = config.add_telescope(
+    name='Celestron C8',
+    aperture=200,  # mm
+    focal_ratio=10,  # f-ratio (not focal length!)
+    tel_type='SCT including Cass and Mak'
+)
+
+# Update telescope
+config.update_telescope(
+    telescope_id=telescope_id,
+    name='Updated Name',
+    aperture=250,
+    focal_ratio=12,
+    tel_type='SCT'
+)
 
 # Get telescope by ID
-telescope = config.get_telescope(telescope_id)
+telescope = config.get_telescope_by_id(telescope_id)
+
+# Set active telescope
+config.set_active_telescope(telescope_id)
+active_telescope = config.get_active_telescope()
+
+# Delete telescope
+config.delete_telescope(telescope_id)
+
+# Add new camera
+camera_id = config.add_camera(
+    name='ZWO ASI290MM',
+    detector='QHY 174 GPS',
+    report_type='NA',  # 'NA' or 'TT'
+    timing='GPS - time inserted',
+    timing_device='GPS',
+    occult4_method='b',  # Optional, default='b'
+    occult4_time='a',    # Optional, default='a'
+    other_info='Additional notes'  # Optional
+)
+
+# Update camera
+config.update_camera(
+    camera_id=camera_id,
+    name='Updated Name',
+    detector='Updated Detector',
+    report_type='TT',
+    timing='GPS - other linking',
+    timing_device='KIWI-OSD',
+    occult4_method='c',
+    occult4_time='b',
+    other_info='Updated info'
+)
+
+# Get camera by ID
+camera = config.get_camera_by_id(camera_id)
 
 # Set active equipment
-config.set_active_telescope_id(telescope_id)
-active = config.get_active_telescope_id()
+config.set_active_camera(camera_id)
+active_camera = config.get_active_camera()
+
+# Delete camera
+config.delete_camera(camera_id)
 
 # Save configuration (persists to JSON)
 config.save_config()
@@ -280,29 +393,30 @@ config.load_config()
 telescope = {
     'id': 'unique_id_string',
     'name': 'Celestron C8',
-    'aperture': 200,  # mm
-    'focal_length': 2000,  # mm
-    'type': 'SCT including Cass and Mak',
-    'mount_type': 'EQ',
-    'notes': 'Optional notes'
+    'aperture': 200.0,  # Aperture in mm (float)
+    'focal_ratio': 10.0,  # F-ratio, not focal length! (float)
+    'type': 'SCT including Cass and Mak'  # Telescope type
 }
 
 # Camera dictionary
 camera = {
     'id': 'unique_id_string',
     'name': 'ZWO ASI290MM',
-    'make': 'ZWO',
-    'model': 'ASI290MM',
-    'chip_width': 2.9,  # mm
-    'chip_height': 2.9,  # mm
-    'pixel_width': 2.9,  # microns
-    'pixel_height': 2.9,  # microns
-    'binning': 1,
-    'qe': 0.85,  # Quantum efficiency
-    'read_noise': 1.5,  # e-
-    'gain': 450,
-    'notes': 'Optional notes'
+    'detector': 'QHY 174 GPS',  # Detector type for reports
+    'report_type': 'NA',  # 'NA' or 'TT' (determines available options)
+    'timing': 'GPS - time inserted',  # Timing method
+    'timing_device': 'GPS',  # Timing device type
+    'occult4_method': 'b',  # Occult4 method code (a-d)
+    'occult4_time': 'a',  # Occult4 time code (a-c)
+    'other_info': 'Additional camera notes'  # Optional
 }
+```
+
+**Important Notes:**
+- **Telescope:** Stores `focal_ratio` (f-number), NOT focal length
+- **Camera:** Designed for report generation, NOT sensor specifications
+- Camera fields (detector, timing, etc.) populate IOTA/RASNZ report forms
+- Report type ('NA' or 'TT') determines available dropdown options in GUI
 ```
 
 **Configuration Storage:**
@@ -595,71 +709,22 @@ MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
 {
     'id': str,              # Unique identifier (UUID)
     'name': str,            # Display name
-    'aperture': int,        # Aperture in mm
-    'focal_length': int,    # Focal length in mm
-    'type': str,            # Type (SCT, Refractor, etc.)
-    'mount_type': str,      # Mount type (EQ, Alt-Az, etc.)
-    'notes': str            # Optional notes
+    'aperture': float,      # Aperture in mm
+    'focal_ratio': float,   # Focal ratio (f/number)
+    'type': str             # Type (SCT, Refractor, Newtonian, etc.)
 }
 
-# Camera configuration
+# Camera configuration (for report generation)
 {
     'id': str,              # Unique identifier (UUID)
     'name': str,            # Display name
-    'make': str,            # Manufacturer
-    'model': str,           # Model name
-    'chip_width': float,    # Sensor width (mm)
-    'chip_height': float,   # Sensor height (mm)
-    'pixel_width': float,   # Pixel size (microns)
-    'pixel_height': float,  # Pixel size (microns)
-    'binning': int,         # Binning mode (1, 2, 4)
-    'qe': float,            # Quantum efficiency (0-1)
-    'read_noise': float,    # Read noise (e-)
-    'gain': int,            # Camera gain
-    'notes': str            # Optional notes
-}
-```
-
-### Event Data Model
-
-```python
-# OccultationEvent properties
-{
-    'unique_id': str,           # Unique event identifier
-    'object_no': int,           # Asteroid number
-    'object_name': str,         # Asteroid name with number
-    'name': str,                # Clean asteroid name (no number)
-    'star_name': str,           # Star catalog ID
-    'star_id': str,             # Alternative star ID
-    'star_mag': float,          # Star magnitude
-    'star_ra_deg': float,       # RA in degrees
-    'star_dec_deg': float,      # Dec in degrees
-    'event_time': datetime,     # Event time (UTC)
-    'event_datetime': datetime, # Same as event_time
-    'altitude': float,          # Altitude at event (degrees)
-    'azimuth': float,           # Azimuth at event (degrees)
-    'duration': float,          # Duration (seconds)
-    'probability': float,       # Probability (0-1)
-    'mag_drop': float,          # Magnitude drop
-    'sun_alt': float,           # Sun altitude (degrees)
-    'moon_alt': float,          # Moon altitude (degrees)
-    'moon_phase': float,        # Moon phase (0-1)
-    'obs_latitude': float,      # Observer latitude
-    'obs_longitude': float,     # Observer longitude
-    'obs_elevation': float,     # Observer elevation (m)
-    'obs_location': str,        # Location name
-    
-    # Calculated properties
-    'goto_time': datetime,      # When to start GOTO
-    'start_time': datetime,     # When to start recording
-    'end_time': datetime,       # When recording ends
-    'recording_duration': int,  # Recording duration (s)
-    
-    # Display properties
-    'display_goto_time': str,   # Formatted GOTO time
-    'display_start_time': str,  # Formatted start time
-    'display_altitude': str,    # Formatted altitude
-    'display_duration': str     # Formatted duration
+    'detector': str,        # Detector type
+    'report_type': str,     # Report type for generation
+    'timing': str,          # Timing source description
+    'timing_device': str,   # Timing device used
+    'occult4_method': str,  # Occult4 method code
+    'occult4_time': str,    # Occult4 time code
+    'other_info': str       # Additional information
 }
 ```
 
@@ -780,18 +845,15 @@ from events import OccultationManager
 config = ConfigManager()
 manager = OccultationManager(config)
 
-# Download events
-events = manager.download_events(
-    latitude=-37.8136,
-    longitude=144.9631,
-    radius_km=200,
-    days_ahead=30,
-    min_altitude=20,
-    max_sun_altitude=-6
-)
+# Download events from OWCloud
+num_events = manager.download_events_from_cloud()
+print(f"Downloaded {num_events} events")
 
-# Display event details
-for event in events:
+# Or load from cache
+manager.load_events_from_files()
+
+# Access all events
+for event in manager.all_events:
     print(f"{event.display_goto_time}: {event.object_name}")
     print(f"  Star: {event.star_name} (mag {event.star_mag:.1f})")
     print(f"  Duration: {event.duration:.1f}s")
@@ -806,6 +868,7 @@ for event in events:
 from config import ConfigManager
 from events import OccultationManager
 from templates import TemplateManager
+import os
 
 # Setup
 config = ConfigManager()
@@ -813,27 +876,27 @@ manager = OccultationManager(config)
 templates = TemplateManager(config)
 
 # Load events
-events = manager.filter_events(min_magnitude=10, max_magnitude=13)
+manager.load_events_from_files()
 
-# Generate sequences
-for event in events:
+# Load template
+template_path = os.path.join(config.get_file_folder(), 'UTC_Notification_Countdown.txt')
+template_content = TemplateManager.load_template(template_path, config)
+
+# Generate sequences for each event
+for event in manager.all_events[:5]:  # First 5 events
     # Build replacement dictionary
-    replacements = {
-        '{goto_time}': event.goto_time.strftime('%Y-%m-%dT%H:%M:%S'),
-        '{start_time}': event.start_time.strftime('%Y-%m-%dT%H:%M:%S'),
-        '{duration}': str(event.recording_duration),
-        '{object_name}': event.name
-    }
-    
-    # Load and replace
-    content = templates.load_template(
-        'UTC_Notification_Countdown.txt',
-        replacements
-    )
+    content = template_content
+    content = content.replace('{goto_time}', event.goto_time.strftime('%Y-%m-%dT%H:%M:%S'))
+    content = content.replace('{start_time}', event.start_time.strftime('%Y-%m-%dT%H:%M:%S'))
+    content = content.replace('{duration}', str(event.recording_duration))
+    content = content.replace('{object_name}', event.name)
     
     # Save
     filename = f"{event.event_datetime.strftime('%Y%m%d')} {event.name}.scs"
-    templates.save_sequence(content, filename, config.get_sequence_path())
+    output_path = os.path.join(config.get_sequence_path(), filename)
+    with open(output_path, 'w') as f:
+        f.write(content)
+    
     print(f"Generated: {filename}")
 ```
 
@@ -849,9 +912,11 @@ config = ConfigManager()
 manager = OccultationManager(config)
 generator = NAReportGenerator(config)
 
-# Load event
-events = manager.filter_events(search_text="778")
-event = events[0]
+# Load events
+manager.load_events_from_files()
+
+# Get first event
+event = manager.all_events[0]
 
 # Optional: Add analysis data
 tangra_data = {
@@ -864,8 +929,8 @@ tangra_data = {
 # Generate
 report_path = generator.generate_report(
     event=event,
-    telescope_id=config.get_active_telescope_id(),
-    camera_id=config.get_active_camera_id(),
+    telescope_id=config.get_active_telescope()['id'],
+    camera_id=config.get_active_camera()['id'],
     observation_type='Positive',
     tangra_data=tangra_data
 )
@@ -879,15 +944,16 @@ print(f"Report: {report_path}")
 from events import OccultationManager
 from datetime import datetime, timedelta
 
+config = ConfigManager()
 manager = OccultationManager(config)
-all_events = manager.download_events(...)
+manager.load_events_from_files()
 
 # Filter for high-probability, bright events tonight
 tonight_start = datetime.utcnow().replace(hour=20, minute=0, second=0)
 tonight_end = tonight_start + timedelta(hours=8)
 
 filtered = [
-    e for e in all_events
+    e for e in manager.all_events
     if e.probability > 0.5
     and e.star_mag < 12.0
     and tonight_start < e.event_datetime < tonight_end
