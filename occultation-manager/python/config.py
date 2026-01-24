@@ -7,6 +7,9 @@ class ConfigManager:
     CONFIG_FILENAME = 'occultation_config.json'
     
     def __init__(self, config_folder=None):
+        # Detect installation directory
+        self.script_dir = self._detect_script_directory()
+        
         # Default configuration values
         self.default_config = {
             # User credentials
@@ -14,10 +17,10 @@ class ConfigManager:
             'owc_user_password': 'your_owc_password',
             
             # File paths
-            'my_file_folder': os.path.normpath(os.path.dirname(__file__)),
+            'my_file_folder': os.path.join(self.script_dir, 'files'),
             'my_occultations_file': 'occultations.json',
             'my_latest_occultations_file': 'occultations_latest.json',
-            'sequence_path': '',  # Will be set to my_file_folder if empty
+            'sequence_path': os.path.join(self.script_dir, 'sequences'),
             'days_to_retain_events': 14,  # Number of days to retain events (1-400)
             
             # Recording parameters
@@ -67,7 +70,7 @@ class ConfigManager:
         if config_folder:
             self.config_folder = os.path.normpath(config_folder)
         else:
-            # Use default folder or current directory if not accessible
+            # Use files folder for config storage
             try:
                 self.config_folder = os.path.normpath(self.default_config['my_file_folder'])
                 if not os.path.exists(self.config_folder):
@@ -77,12 +80,16 @@ class ConfigManager:
         
         # Initialize configuration
         self.config = self.default_config.copy()
+        
+        # Check if this is first startup (no config file exists)
+        config_exists = os.path.exists(self.get_config_path())
+        
         self.load_config()
         
-        # Set sequence_path to my_file_folder if empty
-        if not self.config['sequence_path']:
-            self.config['sequence_path'] = self.config['my_file_folder']
-            
+        # On first startup, create folder structure
+        if not config_exists:
+            self._create_folder_structure()
+        
         # Ensure all paths use proper separators
         self._normalize_paths()
         
@@ -91,6 +98,42 @@ class ConfigManager:
             os.chdir(self.get_file_folder())
         except:
             print(f"Warning: Could not change to directory {self.get_file_folder()}")
+    
+    def _detect_script_directory(self):
+        """Detect the directory where the script is located"""
+        try:
+            # Try __file__ first (works in most Python environments)
+            script_path = os.path.abspath(__file__)
+            return os.path.normpath(os.path.dirname(script_path))
+        except:
+            pass
+        
+        try:
+            # Try sys.argv[0] as fallback
+            import sys
+            if sys.argv and sys.argv[0]:
+                return os.path.normpath(os.path.dirname(os.path.abspath(sys.argv[0])))
+        except:
+            pass
+        
+        # Last resort: use current working directory
+        return os.path.normpath(os.getcwd())
+    
+    def _create_folder_structure(self):
+        """Create default folder structure on first startup"""
+        try:
+            folders_to_create = [
+                self.config['my_file_folder'],
+                self.config['sequence_path'],
+                os.path.join(self.config['my_file_folder'], 'Reports')
+            ]
+            
+            for folder in folders_to_create:
+                if folder and not os.path.exists(folder):
+                    os.makedirs(folder, exist_ok=True)
+                    print(f"Created folder: {folder}")
+        except Exception as e:
+            print(f"Warning: Could not create folder structure: {e}")
     
     def _normalize_paths(self):
         """Normalize all path configurations"""

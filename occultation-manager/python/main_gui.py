@@ -1313,6 +1313,9 @@ class OccultationManagerGUI(Form):
             self._current_sequence_path = sequence_paths
             self._sequence_running = True
             
+            # Initialize sequence results tracking
+            self._sequence_results = []
+            
             # Enable stop button
             self.btn_stop_sequence.Enabled = True
             
@@ -1323,6 +1326,14 @@ class OccultationManagerGUI(Form):
                         # Check if stopped by user
                         if self._sequence_stopped_by_user:
                             print(f"Sequences stopped by user after {i} of {len(sequence_paths)}")
+                            # Record remaining sequences as skipped
+                            for j in range(i, len(sequence_paths)):
+                                self._sequence_results.append({
+                                    'index': j + 1,
+                                    'name': sequence_paths[j][1],
+                                    'status': 'skipped',
+                                    'reason': 'Stopped by user'
+                                })
                             break
                         
                         try:
@@ -1336,7 +1347,16 @@ class OccultationManagerGUI(Form):
                             self.sharpcap.Sequencer.LoadScriptFile(seq_path)
                             
                             if not self.sharpcap.Sequencer.AnySteps():
+                                error_msg = "Sequence file is empty or contains no steps"
                                 print(f"Sequence {i+1} is empty: {seq_path}")
+                                self._sequence_results.append({
+                                    'index': idx,
+                                    'name': name,
+                                    'status': 'failed',
+                                    'reason': error_msg
+                                })
+                                msg_captured = f"Sequence {idx}/{total}: ⚠️ FAILED - {error_msg}"
+                                self.Invoke(lambda: self.update_status(msg_captured))
                                 continue
                             
                             # Start sequence asynchronously - MUST call on UI thread (STA) for display operations
@@ -1352,18 +1372,52 @@ class OccultationManagerGUI(Form):
                                     break
                                 time.sleep(1)
                             
-                            # Check if it failed
+                            # Check completion status
                             status = self.sharpcap.Sequencer.Status
-                            if str(status) == "Failed":
+                            status_str = str(status)
+                            
+                            if status_str == "Failed":
                                 failing_step = self.sharpcap.Sequencer.FailingStep
                                 failure_reason = self.sharpcap.Sequencer.FailureReason
                                 print(f"Sequence {i+1} failed: {failing_step} - {failure_reason}")
+                                
+                                # Record failure
+                                self._sequence_results.append({
+                                    'index': idx,
+                                    'name': name,
+                                    'status': 'failed',
+                                    'reason': f"{failing_step}: {failure_reason}"
+                                })
+                                
+                                # Update status with clear failure indicator
                                 step_captured = str(failing_step)
-                                self.Invoke(lambda: self.update_status(f"Sequence failed at: {step_captured}"))
-                                # Continue to next sequence or stop based on user preference
-                                # For now, we'll continue
-                            else:
+                                reason_captured = str(failure_reason)
+                                msg = f"Sequence {idx}/{total}: ⚠️ FAILED - {step_captured}: {reason_captured}"
+                                self.Invoke(lambda: self.update_status(msg))
+                                
+                            elif status_str == "Completed":
                                 print(f"Sequence {i+1} completed successfully")
+                                # Record success
+                                self._sequence_results.append({
+                                    'index': idx,
+                                    'name': name,
+                                    'status': 'success',
+                                    'reason': ''
+                                })
+                                success_msg = f"Sequence {idx}/{total}: ✓ Completed successfully"
+                                self.Invoke(lambda: self.update_status(success_msg))
+                                
+                            else:
+                                # Unexpected status (Stopped, Cancelled, etc.)
+                                print(f"Sequence {i+1} ended with status: {status_str}")
+                                self._sequence_results.append({
+                                    'index': idx,
+                                    'name': name,
+                                    'status': 'error',
+                                    'reason': f"Unexpected status: {status_str}"
+                                })
+                                status_msg = f"Sequence {idx}/{total}: ⚠️ Ended with status: {status_str}"
+                                self.Invoke(lambda: self.update_status(status_msg))
                             
                             # Brief pause between sequences
                             if i < len(sequence_paths) - 1:  # Not the last one
@@ -1371,12 +1425,22 @@ class OccultationManagerGUI(Form):
                                 
                         except Exception as seq_error:
                             print(f"Error running sequence {i+1}: {seq_error}")
+                            # Record error
+                            self._sequence_results.append({
+                                'index': idx,
+                                'name': name,
+                                'status': 'error',
+                                'reason': str(seq_error)
+                            })
+                            error_captured = str(seq_error)
+                            error_msg = f"Sequence {idx}/{total}: ⚠️ ERROR - {error_captured}"
+                            self.Invoke(lambda: self.update_status(error_msg))
                             # Continue to next sequence
                     
                     # All sequences complete (or stopped)
                     if not self._sequence_stopped_by_user:
                         final_status = "Completed"
-                        self.Invoke(lambda: self._on_sequence_completed(final_status))
+                        self.Invoke(lambda: self._on_sequence_completed_with_summary(final_status))
                     else:
                         # Stopped by user - clean up manually (don't call _on_sequence_completed)
                         print("Run Sequences stopped by user, cleaning up")
@@ -2776,6 +2840,104 @@ class OccultationManagerGUI(Form):
                             "Test Recording Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
             # Bring main window to front
             self.Activate()
+        
+        # Clear context
+        self._sequence_context = None
+    
+    def _on_sequence_completed_with_summary(self, final_status):
+        """Called when multi-sequence run completes with summary of results (runs on UI thread)"""
+        # Safety check: if already marked as not running, don't process again
+        if not self._sequence_running:
+            print("Completion handler called but sequence already marked as not running")
+            return
+        
+        self._sequence_running = False
+        self._sequence_stopped_by_user = False  # Reset flag
+        self.btn_stop_sequence.Enabled = False
+        
+        print(f"Sequences completed. Final status: {final_status}")
+        
+        # Restore camera settings
+        self._restore_camera_settings()
+        
+        # Clear saved settings after restoration
+        self._sequence_saved_settings = {}
+        
+        # Build summary message from sequence results
+        if hasattr(self, '_sequence_results') and self._sequence_results:
+            results = self._sequence_results
+            total = len(results)
+            successful = sum(1 for r in results if r['status'] == 'success')
+            failed = sum(1 for r in results if r['status'] == 'failed')
+            errors = sum(1 for r in results if r['status'] == 'error')
+            skipped = sum(1 for r in results if r['status'] == 'skipped')
+            
+            # Build summary message
+            summary_lines = [f"Sequence Execution Summary ({total} total):"]
+            summary_lines.append(f"  ✓ Successful: {successful}")
+            if failed > 0:
+                summary_lines.append(f"  ⚠️ Failed: {failed}")
+            if errors > 0:
+                summary_lines.append(f"  ⚠️ Errors: {errors}")
+            if skipped > 0:
+                summary_lines.append(f"  ⏭ Skipped: {skipped}")
+            summary_lines.append("")
+            
+            # List failures and errors with details
+            if failed > 0 or errors > 0:
+                summary_lines.append("Failed/Error Details:")
+                for r in results:
+                    if r['status'] in ['failed', 'error']:
+                        status_icon = "⚠️" if r['status'] == 'failed' else "❌"
+                        summary_lines.append(f"{status_icon} #{r['index']} {r['name']}")
+                        summary_lines.append(f"    {r['reason']}")
+                summary_lines.append("")
+            
+            summary_lines.append("Camera settings have been restored.")
+            
+            summary_message = "\n".join(summary_lines)
+            
+            # Show appropriate icon based on results
+            if failed == 0 and errors == 0:
+                icon = MessageBoxIcon.Information
+                title = "All Sequences Completed Successfully"
+            elif successful > 0:
+                icon = MessageBoxIcon.Warning
+                title = "Sequences Completed with Failures"
+            else:
+                icon = MessageBoxIcon.Error
+                title = "Sequences Completed with Errors"
+            
+            self.update_status(f"Sequences completed: {successful} succeeded, {failed + errors} failed")
+            MessageBox.Show(summary_message, title, MessageBoxButtons.OK, icon)
+            
+            # Log results to file for troubleshooting
+            try:
+                log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+                with open(log_path, 'a') as log_file:
+                    from datetime import datetime
+                    log_file.write(f"\n{'='*70}\n")
+                    log_file.write(f"Sequence Run: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n")
+                    log_file.write(f"{'='*70}\n")
+                    for r in results:
+                        log_file.write(f"{r['status'].upper()}: #{r['index']} {r['name']}\n")
+                        if r['reason']:
+                            log_file.write(f"  Reason: {r['reason']}\n")
+                    log_file.write(f"\nSummary: {successful} succeeded, {failed} failed, {errors} errors, {skipped} skipped\n")
+                print(f"Sequence results logged to: {log_path}")
+            except Exception as log_error:
+                print(f"Could not write log file: {log_error}")
+            
+            # Clear results
+            self._sequence_results = []
+        else:
+            # No results tracked (shouldn't happen, but handle gracefully)
+            self.update_status("Sequences completed")
+            MessageBox.Show("All sequences completed!\n\nCamera settings have been restored.",
+                        "Sequences Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        
+        # Bring main window to front
+        self.Activate()
         
         # Clear context
         self._sequence_context = None

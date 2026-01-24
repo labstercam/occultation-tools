@@ -1,10 +1,26 @@
-# Release Package Instructions - v0.1.0
+# Release Package Instructions - v0.2.0-beta.1
 
 ## Creating a GitHub Release for Occultation Manager
 
-### Files to Include in Release ZIP
+### Using the Automated Release Script
 
-Package the following files from `occultation-manager/python/`:
+The easiest way to create the release ZIP is to use the PowerShell script:
+
+```powershell
+cd occultation-manager
+.\create_release_zip.ps1
+```
+
+This script automatically:
+- Creates the correct folder structure with `files/`, `sequences/`, and `files/Reports/`
+- Copies all necessary files
+- Distributes README files to appropriate folders
+- Copies template files to both main folder and `files/` folder
+- Generates `occultation-manager-v0.2.0-beta.1.zip`
+
+### Manual File List (if needed)
+
+If you need to create the package manually, include these files from `occultation-manager/`:
 
 **Python Files (all .py files from python/ folder):**
 - aota_dialogs.py
@@ -31,63 +47,63 @@ Package the following files from `occultation-manager/python/`:
 - tt_report.py
 - utils.py
 
-**SharpCap Sequence Templates (all .txt files):**
-- Minimal Local Time template.txt
-- SharpCap Just Record template.txt
-- SharpCap Sequence Local Time template.txt
-- SharpCap Sequence UTC template.txt
-- SharpCap Test Recording template.txt
+**SharpCap Sequence Templates:**
+- python\SharpCap Minimal Local Time template.txt
+- python\SharpCap Just Record template.txt
+- python\SharpCap Sequence Local Time template.txt
+- python\SharpCap Sequence UTC template.txt
+- python\SharpCap Test Recording template.txt
+
+**Countdown Reference File:**
+- python\countdown python for sequencer.scs
 
 **Report Templates (Excel files):**
-- NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
-- RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx
+- python\NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
+- python\RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx
 
 **Documentation:**
-- ReadMe.md (from python/ folder)
-- README.md (copy from parent directory)
+- python\ReadMe.md
+- ReadMe.md (from occultation-manager/)
+- RELEASE_NOTES.md
+
+**Folder README Files:**
+- README_files_folder.txt
+- README_sequences_folder.txt
+- README_reports_folder.txt
 
 **Assets:**
-- moon_icon_178489.ico
-
-**Note:** The testing/ and development documentation/ subfolders are not included in the release.
+- python\moon_icon_178489.ico
 
 ### ZIP Structure
 
+The release ZIP should have this structure:
+
 ```
 occultation-manager/
-├── ReadMe.md                                      <-- Read this first!
-├── README.md
-├── aota_dialogs.py
-├── aota_parser.py
-├── aota_report_parser.py
-├── comprehensive_report_dialog.py
-├── config.py
-├── equipment_dialogs.py
-├── events.py
-├── file_selection_dialog.py
-├── gui_components.py
-├── gui_dialogs.py
-├── help.py
-├── light_curves_iron.py
-├── main.py
-├── main_gui.py
-├── na_report.py
-├── occult4_export.py
-├── report_generator_base.py
-├── sequence_runner.py
-├── tangra_dialogs.py
-├── templates.py
-├── theme.py
-├── tt_report.py
-├── utils.py
-├── Minimal Local Time template.txt
+├── main.py                                        <-- SharpCap startup script
+├── files/                                         <-- Data folder (pre-created)
+│   ├── README.txt                                <-- Explains folder purpose
+│   ├── SharpCap Minimal Local Time template.txt  <-- Working copies
+│   ├── SharpCap Just Record template.txt
+│   ├── SharpCap Sequence Local Time template.txt
+│   ├── SharpCap Sequence UTC template.txt
+│   ├── SharpCap Test Recording template.txt
+│   └── Reports/                                  <-- Report output folder
+│       └── README.txt
+├── sequences/                                     <-- Sequence output folder (pre-created)
+│   └── README.txt
+├── SharpCap Minimal Local Time template.txt      <-- Original reference copies
 ├── SharpCap Just Record template.txt
 ├── SharpCap Sequence Local Time template.txt
 ├── SharpCap Sequence UTC template.txt
 ├── SharpCap Test Recording template.txt
+├── countdown python for sequencer.scs
 ├── NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
 ├── RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx
-└── moon_icon_178489.ico
+├── moon_icon_178489.ico
+├── ReadMe.md                                      <-- User documentation
+├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.1 features
+└── [all .py files from python/ folder]
 ```
 
 ### Creating the Release on GitHub
@@ -100,170 +116,172 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.1.0` (choose appropriate version)
+   - Tag: `v0.2.0-beta.1`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.1.0 - Initial Release`
+   - Release title: `Occultation Manager v0.2.0-beta.1 - First Public Beta`
 
 4. **Write release notes:**
+   
+   Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
+
    ```markdown
-   # Occultation Manager v0.1.0 - Initial Release
+   # Occultation Manager v0.2.0-beta.1 - First Public Beta
+   
+   **First public beta release** of Occultation Manager for SharpCap.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
    
-   ## 🎯 Major Features in v0.1.0
+   ## 📦 Installation
    
-   ### Event Management
-   - ✅ **Occult Watcher Cloud integration** - Downloads personal observations from your OWC announced stations
-   - ✅ **Event filtering** - Filter by date, location, and probability
-   - ✅ **Configurable retention** - Events retained for 1-400 days (default 14)
-   - ✅ **Custom event settings** - Override exposure, gain, and recording duration per event
-   - ✅ **Event grid display** - Sortable columns with custom value indicators (asterisks)
-   
-   ### Observation Preparation
-   - ✅ **Load Event workflow** - Select and prepare single events with summary display
-   - ✅ **GOTO integration** - Automatic telescope slewing to event coordinates
-   - ✅ **Plate Solve** - Verify pointing and label target star
-   - ✅ **Camera Setup** - Configure SharpCap exposure and coordinates
-   - ✅ **Test Recording** - Make test recordings with automatic settings preservation and restoration
-     - Saves/restores: binning, exposure, gain, resolution, display levels
-     - Uses dedicated "SharpCap Test Recording Template.txt"
-   
-   ### Sequence Generation
-   - ✅ **Automated sequences** - Generate SharpCap .scs files for event recording
-   - ✅ **Template system** - Customizable templates with event data substitution
-   - ✅ **Combined sequences** - Single file for multiple events in time order
-   - ✅ **Template variables** - Exposure, gain, recording duration, coordinates, timing
-   - ✅ **Provided templates** - Local Time, UTC, and Test Recording templates included
-   
-   ### Report Generation
-   - ✅ **Comprehensive workflow** - Single dialog for all report types and data sources
-   - ✅ **North America (IOTA V5.6.12r)** - Excel format for IOTA submissions
-   - ✅ **Trans-Tasman (RASNZ V4.1.2.G)** - Excel format for Australia/New Zealand
-   - ✅ **Occult 4 XML Export** - OBS.XML format (Version 2.15+)
-   - ✅ **AOTA timing integration** - Imports D/R times from .aota.xml or AOTA_Report.txt
-   - ✅ **Tangra CSV integration** - Extracts observation times, exposure, camera delay
-   - ✅ **Auto-fill equipment** - Telescope and camera details from configuration
-   - ✅ **Settings persistence** - Remembers report type and folder location
-   
-   ### Equipment Management
-   - ✅ **Multiple configurations** - Manage multiple telescopes and cameras
-   - ✅ **Active equipment selection** - Choose active telescope/camera for reports
-   - ✅ **Comprehensive details** - Aperture, focal length, mount type, camera specs
-   
-   ### User Interface
-   - ✅ **Dark theme support** - Theme manager with light/dark modes
-   - ✅ **DPI scaling** - Proper display on high-DPI monitors
-   - ✅ **Interactive help** - Built-in help system with detailed guidance
-   - ✅ **Status updates** - Real-time status bar feedback
-   - ✅ **Event selection summary** - Shows count of selected/displayed events
-   
-   ## 📋 Installation
-   
-   **Download:** [occultation-manager-v0.1.0.zip](link-will-be-auto-generated)
+   **Download:** [occultation-manager-v0.2.0-beta.1.zip](link-will-be-auto-generated)
    
    ### Quick Start:
-   1. Download and extract the ZIP file to a location where you have read/write access
-      - Suggested: `Documents\SharpCap\occultation-manager`
+   1. Download and extract the ZIP file to a location with read/write access
+      - ⚠️ **Avoid Program Files** - Windows may restrict write access
+      - ✅ **Recommended**: `Documents\SharpCap\occultation-manager`
    2. Start SharpCap
    3. Go to **File → SharpCap Settings → Startup Scripts**
-   4. Browse to the extracted folder and add `main.py`
-   5. Close and restart SharpCap
+   4. Browse to the extracted folder and select `main.py`
+   5. Restart SharpCap
    6. Click the "Occultations" button in SharpCap toolbar
-   7. Configure OWC credentials in **Tools → Configuration → Credentials**
+   
+   **First Startup - Automatic Configuration:**
+   - Automatically detects installation directory
+   - Creates folder structure: `files/`, `sequences/`, `files/Reports/`
+   - Sets default paths to installation directory
+   - Copies template files for customization
+   
+   **Initial Configuration:**
+   - Configure OWC credentials in **Tools → Configuration → Credentials**
+   - Get API key from https://cloud.occultwatcher.net/user-profile
+   - All other settings are pre-configured and optional
    
    See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
    
+   ## 🎯 Key Features
+   
+   ### Event Management
+   - Downloads personal observations from Occult Watcher Cloud
+   - Event list with filtering by date, location, and probability
+   - Configurable event retention (1-400 days, default 14)
+   - Custom per-event settings (exposure, gain, recording duration)
+   
+   ### Sequence Execution
+   - **Run Sequences** button for direct multi-sequence execution
+   - **Test Recording** with automatic camera settings preservation
+   - SharpCap remains responsive during all operations
+   - **Stop button** with confirmation and automatic cleanup
+   - Asynchronous execution using SharpCap's RunAsync() API
+   
+   ### Observation Preparation
+   - Load event workflow with summary display
+   - GOTO integration for automatic telescope slewing
+   - Plate solve verification and target labeling
+   - Camera setup with exposure and coordinate configuration
+   - Test recording without disrupting settings
+   
+   ### Sequence Generation
+   - Automated SharpCap .scs file generation
+   - Customizable templates with event data substitution
+   - Combined sequences for multiple events
+   - Five provided templates (UTC, Local Time, Minimal, Test Recording)
+   - **UTC countdown functions** for reliable timing (24+ hour safe)
+   
+   ### Report Generation (Under Development - Not Approved)
+   ⚠️ **CRITICAL WARNING**: Report generation has **NOT** been approved by North America (IOTA) or Trans-Tasman (RASNZ) reporting coordinators. Verify all data before submission.
+   
+   - North America (IOTA) and Trans-Tasman (RASNZ) Excel formats
+   - AOTA timing data integration (D/R times)
+   - Tangra CSV light curve analysis (fully integrated)
+   - Automatic video format and exposure detection
+   - GPS flash timing analysis (not yet integrated - available as standalone tool)
+   
+   ### Equipment Management
+   - Multiple telescope and camera configurations
+   - Active equipment selection
+   - Comprehensive equipment details for reports
+   
    ## ⚙️ Requirements
    
-   **For SharpCap Integration:**
    - SharpCap Pro 4.0+
    - Windows 10/11
    - Internet connection for OWC event downloads
    - (Optional) ASCOM-compatible mount for GOTO functionality
    
-   ## 📝 Configuration
+   ## 📝 Known Limitations
    
-   ### Initial Setup
-   1. **Occult Watcher Cloud** (Tools → Configuration → Credentials)
-      - Enter OWC email and password
-      - Get API key from https://cloud.occultwatcher.net/user-profile
+   - Cannot pause sequences (stop and restart only)
+   - Single sequence execution at a time
+   - Report generation not approved - use with caution
    
-   2. **File Paths** (Tools → Configuration → File Paths)
-      - Events data folder (default: Documents\OccultationManager\Events)
-      - Sequence output folder (default: Documents\OccultationManager\Sequences)
-      - Report output folder (default: Documents\OccultationManager\Reports)
-      - Event retention period (1-400 days, default 14)
+   ## 📖 Documentation
    
-   3. **User Settings** (Tools → Configuration → User Settings)
-      - Observer location (latitude/longitude for altitude calculations)
-      - Minimum event probability threshold
-      - GOTO lead time (minutes before event)
-      - Base recording duration
-      - Default camera gain (0-600, default 450)
+   - [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) - Complete user guide
+   - [RELEASE_NOTES.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/RELEASE_NOTES.md) - Detailed feature list
+   - Built-in Help menu with comprehensive guides
+   - `countdown python for sequencer.scs` - Reference code for countdown functions
    
-   4. **Equipment** (Tools menu)
-      - Add telescopes (aperture, focal length, mount type)
-      - Add cameras (model, pixel size, sensor dimensions)
-      - Select active equipment
+   ## 🐛 Reporting Issues
    
-   ### Sequence Templates
+   This is a beta release. Please report issues through [GitHub Issues](https://github.com/labstercam/occultation-tools/issues).
    
-   Customize templates for your equipment and workflow:
-   - **Local Time template** - Full automation including mount/camera setup
-   - **UTC template** - Basic recording with UTC timing
-   - **Test Recording template** - Short test recordings
-   
-   Templates use Python string formatting with variables:
-   - `{exposure}` - Exposure time in seconds
-   - `{gain}` - Camera gain value
-   - `{recording_duration}` - Total recording duration
-   - `{object_name}`, `{event_time}`, `{ra}`, `{dec}` - Event details
-   
-   ## ⚠️ Important Notes
-   
-   ### Report Generation Status
-   **Report generation is under development and has not been approved by NA or TT reporting coordinators. Use with caution.**
-   
-   Users should:
-   - Carefully review generated reports before submission
-   - Verify all timing data matches AOTA/Tangra analysis
-   - Check equipment details are correct
-   - Confirm observation type selection (Positive/Negative/Unsure)
-   
-   ### Camera Settings Restoration
-   The Test Recording feature saves and restores:
-   - Binning (as string value)
-   - Exposure time (in milliseconds)
-   - Gain value
-   - Resolution/ROI
-   - Display levels (black/mid/white points)
-   
-   After test recording, camera waits 2× exposure time for stabilization.
-   
-   ## 🐛 Known Limitations
-   
-   - Report generation not yet approved by reporting coordinators
-   - SODIS Europe report format not yet implemented
-   - Tangra CSV video format detection relies on measurement parameters table
-   - Camera delay extraction depends on Tangra CSV structure
-   
-   ## 📚 Documentation
-   - [Main README](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md)
-   - [Python README](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/python/ReadMe.md)
+   Include:
+   - SharpCap version
+   - Camera type and connection method
+   - Steps to reproduce
+   - Error messages
+   - Sequence file (if relevant)
    ```
 
 5. **Upload ZIP file:**
-   - Create `occultation-manager-v0.1.0.zip` with structure above
-   - Drag and drop to "Attach binaries" section
+   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.1.zip`
+   - Drag and drop ZIP to "Attach binaries" section in GitHub release
 
-6. **Set as latest release:**
-   - Check "Set as the latest release"
-   - Check "Set as a pre-release" if this is a beta/testing version
+6. **Set release options:**
+   - ✅ Check "Set as a pre-release" (this is a beta version)
+   - ✅ Check "Set as the latest release"
    - Click "Publish release"
 
 ### After Publishing
 
 The release will be available at:
+- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.1`
+- Latest release: `https://github.com/labstercam/occultation-tools/releases/latest`
+
+## Version Control Best Practices
+
+### Before Creating Release
+
+1. **Update version numbers** in all files:
+   - `RELEASE_NOTES.md` - Version header
+   - `create_release_zip.ps1` - `$version` variable
+   - This file (`RELEASE_INSTRUCTIONS.md`)
+
+2. **Test the release ZIP**:
+   - Run `create_release_zip.ps1`
+   - Extract to test location
+   - Install in SharpCap
+   - Verify automatic folder creation
+   - Test basic functionality
+
+3. **Commit all changes**:
+   ```bash
+   git add .
+   git commit -m "Release v0.2.0-beta.1"
+   git push
+   ```
+
+4. **Create and push tag**:
+   ```bash
+   git tag v0.2.0-beta.1
+   git push origin v0.2.0-beta.1
+   ```
+
+### After Release
+
+1. **Verify download link** works in release notes
+2. **Test installation** from GitHub release ZIP
+3. **Update documentation** if any installation issues found
 - Direct link: `https://github.com/labstercam/occultation-tools/releases/latest`
 - Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.1.0/occultation-manager-v0.1.0.zip`
 
@@ -323,13 +341,11 @@ Before creating the release, verify:
 
 ### Report Generation
 - [ ] Warning dialog appears before report generation
-- [ ] Location confirmation works
-- [ ] Telescope/camera selection populates
 - [ ] AOTA file loading (.xml and .txt) works
 - [ ] Tangra CSV parsing extracts correct data
 - [ ] North America Excel report generates
 - [ ] Trans-Tasman Excel report generates
-- [ ] Occult 4 XML export creates valid OBS.XML
+- [ ] Equipment details populate correctly
 - [ ] Settings persistence (report type, folder) works
 
 ### Equipment Management
@@ -338,11 +354,26 @@ Before creating the release, verify:
 - [ ] Active equipment selection persists
 - [ ] Equipment appears in reports correctly
 
+### Configuration & Installation
+- [ ] First startup creates folder structure automatically
+- [ ] Default paths set to installation directory
+- [ ] Configuration saved to files/occultation_config.json
+- [ ] Custom paths persist across restarts
+- [ ] README files present in files/, sequences/, Reports/ folders
+- [ ] Template files copied to both locations
+
+### Sequence Execution (New in v0.2.0-beta.1)
+- [ ] Run Sequences button executes multiple selected sequences
+- [ ] Sequences run in chronological order
+- [ ] Progress updates show current sequence
+- [ ] Stop button works during sequence execution
+- [ ] SharpCap remains responsive during execution
+- [ ] Camera settings restored after stop
+
 ### Theme and UI
 - [ ] Light theme displays correctly
 - [ ] Dark theme displays correctly
 - [ ] Theme switching works without restart
-- [ ] DPI scaling proper on high-DPI displays
 - [ ] All buttons accessible and labeled clearly
 - [ ] Status bar updates appropriately
 
@@ -352,13 +383,13 @@ Before creating the release, verify:
 - [ ] About dialog shows correct information
 
 ### Documentation
-- [ ] README.md up to date with v0.1.0 features
-- [ ] python/ReadMe.md reflects current functionality
+- [ ] README.md up to date with v0.2.0-beta.1 features
+- [ ] RELEASE_NOTES.md reflects current functionality
 - [ ] Installation instructions clear and accurate
 - [ ] Configuration steps documented
-- [ ] Template customization explained
+- [ ] Automatic folder setup documented
 
 ### Known Issues Documented
 - [ ] Report generation warning included in docs
 - [ ] Known limitations listed
-- [ ] Workarounds provided where applicable
+- [ ] WAIT UNTIL LOCALTIME risks explained
