@@ -410,10 +410,11 @@ After recording:
 • Generate light curve CSV
 • Use AOTA for timing analysis (optional)
 
-STEP 8: GENERATE REPORT (OPTIONAL - EXPERIMENTAL)
---------------------------------------------------
-⚠ WARNING: Report generation is experimental and not approved by 
-reporting coordinators. Verify all data before submission.
+STEP 8: GENERATE REPORT (UNDER DEVELOPMENT - NOT APPROVED)
+----------------------------------------------------------
+⚠ CRITICAL WARNING: Report generation is still under development and 
+has NOT been approved by reporting coordinators. All generated reports 
+must be carefully verified before submission.
 
 Tools → Generate Report:
 • Select report format (North America / Trans-Tasman)
@@ -438,7 +439,8 @@ KEY POINTS
 • UTC Template recommended for safety and reliability
 • Test Recording button for safe testing
 • Observation Preparation for manual control
-• Report generation is experimental - verify before submission
+• Report generation is under development and NOT APPROVED - verify all data carefully
+• Tangra light curve analysis is integrated; GPS flash timing analysis not yet integrated
 • Templates can be customized to match your equipment
 • Automate as much or as little as you need"""
 
@@ -549,6 +551,133 @@ MAGNITUDE INFORMATION:
 
 EVENT PARAMETERS:
 {time_error} | Event timing uncertainty in seconds (1 decimal) | "3.5"
+
+COUNTDOWN AND NOTIFICATION OPTIONS:
+------------------------------------
+⚠ CRITICAL TIMING SAFETY INFORMATION
+
+WAIT UNTIL LOCALTIME PROBLEMS:
+SharpCap's built-in WAIT UNTIL LOCALTIME and WAIT UNTIL AFTER LOCALTIME 
+commands have serious limitations that can cause you to MISS EVENTS:
+
+1. NO DATE AWARENESS: SharpCap only knows the TIME, not the DATE
+   - If started after midnight, it may wait 24 hours until "tomorrow"
+   - Events after local midnight will be missed or start immediately
+
+2. NEXT-DAY EVENT FAILURE:
+   - Event at 01:00:00 (after midnight) started at 23:00:00 (before midnight)
+   - Sequencer sees 01:00:00 < 23:00:00 and waits until NEXT day's 01:00:00
+   - You MISS the event entirely!
+
+3. DAYLIGHT SAVING TIME:
+   - Clock changes can cause unexpected behavior
+   - 1-hour timing errors during DST transitions
+
+RECOMMENDED APPROACH - USE UTC WITH PYTHON COUNTDOWN:
+For reliable, safe timing use UTC-based countdown functions (see below).
+These handle all edge cases correctly including:
+• Events after midnight ✓
+• Late starts ✓
+• Next-day events ✓
+• Daylight saving time ✓
+
+SAFEST OPERATION METHOD:
+The SAFEST way to run sequences is directly through SharpCap's Sequencer:
+• Load your .scs file in SharpCap Sequencer
+• Click Play to start the sequence
+• SharpCap manages all timing and execution
+• Simplest and most reliable method
+• Recommended for unattended/remote operation
+
+ALTERNATIVE - OCCULTATION-MANAGER EXECUTION:
+You can also run sequences from Occultation Manager (Run Sequences button):
+• More complex process with additional monitoring
+• Provides Stop button control during execution
+• Useful for attended sessions with multiple events
+• Less suitable for unattended operation
+• Additional layer of complexity may reduce reliability
+
+THREE COUNTDOWN OPTIONS:
+------------------------
+
+OPTION 1: NOTIFICATION WITHOUT COUNTDOWN (Simplest, Most Risky)
+Uses only SharpCap native commands - no Python code:
+
+    SHOW NOTIFICATION "Waiting until {goto_time}_local" COLOUR Green DURATION 10000
+    WAIT UNTIL LOCALTIME "{goto_time_local}"
+    CLEAR NOTIFICATION
+
+✓ Advantages: Simple, no Python code
+✗ Disadvantages: Subject to ALL local time problems above
+✗ Can miss events if started late or after midnight
+⚠ NOT RECOMMENDED for critical observations
+
+OPTION 2: UTC NOTIFICATION COUNTDOWN (Recommended, Most Reliable)
+Displays auto-updating notification with formatted countdown:
+
+First, define the functions (at start of sequence):
+    RUN PYTHON CODE "import datetime as dt; import time; import clr; clr.AddReference('System'); from System import Action"
+    RUN PYTHON CODE "def format_time(seconds): days = seconds // 86400; hours = (seconds % 86400) // 3600; mins = (seconds % 3600) // 60; secs = seconds % 60; return (str(days) + ' Days ' if days > 0 else '') + str(hours).zfill(2) + ':' + str(mins).zfill(2) + ':' + str(secs).zfill(2)"
+    RUN PYTHON CODE "def countdown_utc(date_string, message, target_dt=None, is_first=True): target_dt = dt.datetime.strptime(date_string,'%Y-%m-%dT%H:%M:%S') if is_first else target_dt; remaining = int((target_dt - dt.datetime.utcnow()).total_seconds()); status = 0; formatted = format_time(remaining); alert = ' ⚠️ LESS THAN 5 MIN!' if remaining < 300 and remaining >= 60 else (' 🔴 LESS THAN 1 MIN!' if remaining < 60 else ''); (SharpCap.ShowNotification(message + ': ' + formatted + ' remaining' + alert, status, False, 2, None, None, None) if remaining > 0 else None); (time.sleep(1) if remaining > 0 and SharpCap.Sequencer.IsRunning else None); (countdown_utc(date_string, message, target_dt, False) if remaining > 1 and SharpCap.Sequencer.IsRunning else None)"
+
+Then use in your sequence (use UTC time tags like {goto_time}):
+    RUN PYTHON CODE "countdown_utc('{goto_time}', 'Waiting for GOTO')"
+
+✓ Advantages:
+  • UTC-based: No timezone or midnight issues
+  • Accurate countdown display in Days HH:MM:SS format
+  • Adaptive update rate: 1-minute intervals when >5 min remaining, 1-second when ≤5 min
+  • Safe for 24+ hour countdowns (no recursion limit issues)
+  • Color-coded warnings (<5 min, <1 min)
+  • Can be stopped with SharpCap's Stop button
+  • Safe if started late (continues immediately if time passed)
+  • Handles events across midnight correctly
+✓ RECOMMENDED for reliable timing
+
+NOTE: SharpCap Stop button may take up to 60 seconds to respond when more
+than 5 minutes from event time (due to update interval).
+
+OPTION 3: UTC DIALOG COUNTDOWN (Most Complex, Potentially Less Reliable)
+Shows Windows dialog with countdown and stop button:
+
+First, define the functions (at start of sequence):
+    RUN PYTHON CODE "import datetime as dt; import time; import clr; clr.AddReference('System.Windows.Forms'); clr.AddReference('System.Drawing'); from System.Windows.Forms import Form, Label, Button, FormStartPosition, DockStyle, FormBorderStyle, Application; from System.Drawing import Size, Font, FontStyle, ContentAlignment"
+    RUN PYTHON CODE "def format_time(seconds): days = seconds // 86400; hours = (seconds % 86400) // 3600; mins = (seconds % 3600) // 60; secs = seconds % 60; return (str(days) + ' Days ' if days > 0 else '') + str(hours).zfill(2) + ':' + str(mins).zfill(2) + ':' + str(secs).zfill(2)"
+    RUN PYTHON CODE "def update_countdown(form, label, target_dt, message, stopped): remaining = int((target_dt - dt.datetime.utcnow()).total_seconds()); (label.__setattr__('Text', message + '\\n\\n' + format_time(remaining) + '\\nremaining') if remaining > 0 else None); Application.DoEvents(); (time.sleep(0.1) if remaining > 0 and not stopped[0] and SharpCap.Sequencer.IsRunning else None); (update_countdown(form, label, target_dt, message, stopped) if remaining > 0 and not stopped[0] and SharpCap.Sequencer.IsRunning else form.Close())"
+    RUN PYTHON CODE "def countdown_dialog(date_string, message): target_dt = dt.datetime.strptime(date_string,'%Y-%m-%dT%H:%M:%S'); form = Form(); form.Text = message; form.Size = Size(400, 150); form.FormBorderStyle = FormBorderStyle.FixedDialog; form.StartPosition = FormStartPosition.CenterScreen; form.MaximizeBox = False; form.MinimizeBox = False; form.TopMost = True; label = Label(); label.Font = Font('Arial', 16, FontStyle.Bold); label.Dock = DockStyle.Fill; label.TextAlign = ContentAlignment.MiddleCenter; button = Button(); button.Text = 'Stop Countdown'; button.Dock = DockStyle.Bottom; button.Height = 40; stopped = [False]; button.Click += lambda s, e: (stopped.__setitem__(0, True), form.Close()); form.Controls.Add(label); form.Controls.Add(button); form.Show(); update_countdown(form, label, target_dt, message, stopped)"
+
+Then use in your sequence (use UTC time tags like {goto_time}):
+    RUN PYTHON CODE "countdown_dialog('{goto_time}', 'Waiting for GOTO')"
+
+✓ Advantages:
+  • Large, easy-to-read countdown display
+  • Dedicated Stop button in dialog
+  • Adaptive update rate: 1-minute intervals when >5 min remaining, 1-second when ≤5 min
+  • Safe for 24+ hour countdowns (no recursion limit issues)
+  • UTC-based timing
+  • Very visible countdown
+✗ Disadvantages:
+  • Most complex implementation
+  • Additional Windows form may cause issues
+  • More failure points than notification method
+  • Stop button may take up to 60 seconds to respond when >5 min remaining
+⚠ Use only if you need the large visible countdown
+  • Most complex implementation
+  • Additional Windows form may cause issues
+  • More failure points than notification method
+⚠ Use only if you need the large visible countdown
+
+COUNTDOWN CODE REFERENCE:
+See "countdown python for sequencer.scs" in the python folder for
+ready-to-copy countdown code snippets and detailed implementation notes.
+
+TESTING COUNTDOWN FUNCTIONS:
+CRITICAL: Always test countdown functions before using for real events!
+1. Create test sequence with countdown set to 2 minutes in future
+2. Run sequence and verify countdown displays correctly
+3. Test stop functionality
+4. Verify sequence continues after countdown completes
+5. Test starting sequence late (after countdown time has passed)
 
 TEMPLATE EXAMPLE
 ----------------

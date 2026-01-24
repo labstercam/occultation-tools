@@ -1,6 +1,6 @@
 # Occultation Manager - Release Notes
 
-## Version 0.2.0 (January 2026)
+## Version 0.2.0-beta.1 (January 2026)
 
 ### Major Features: Async Sequence Execution
 
@@ -70,6 +70,75 @@
 - Updated all README files with Run Sequences and Stop button information
 - Added technical details about threading requirements
 - Documented camera settings preservation workflow
+- **NEW**: Added countdown and notification options documentation
+- **NEW**: Created `countdown python for sequencer.scs` reference file with ready-to-use code snippets
+- **NEW**: Documented WAIT UNTIL LOCALTIME risks and limitations
+- **NEW**: Explained sequence execution methods (SharpCap vs Occultation Manager)
+
+### Countdown and Timing Features
+
+#### UTC-Based Countdown Functions
+Three countdown options for reliable timing in sequences:
+
+**Option 1: Simple Notification** (not recommended - timing risks)
+- Basic SharpCap notification with WAIT UNTIL LOCALTIME
+- Subject to midnight and next-day event failures
+
+**Option 2: UTC Notification Countdown** (RECOMMENDED)
+- Auto-updating notification with formatted countdown
+- Displays Days HH:MM:SS format
+- Adaptive update rate: 1-minute intervals when >5 min remaining, 1-second when ≤5 min
+- Safe for 24+ hour countdowns (no recursion limit issues)
+- Color-coded warnings (<5 min amber, <1 min red)
+- UTC-based: no timezone or midnight issues
+- Safe for late starts and next-day events
+- Stoppable via SharpCap Stop button (may take up to 60s when >5 min remaining)
+
+**Option 3: UTC Dialog Countdown**
+- Windows dialog with large countdown display
+- Adaptive update rate: 1-minute intervals when >5 min remaining, 1-second when ≤5 min
+- Safe for 24+ hour countdowns (no recursion limit issues)
+- Dedicated Stop button in dialog (may take up to 60s to respond when >5 min remaining)
+- Most complex implementation
+- Use only if large visible countdown needed
+
+#### WAIT UNTIL LOCALTIME Risks (CRITICAL)
+**SharpCap's WAIT UNTIL LOCALTIME commands can cause you to MISS EVENTS:**
+
+1. **No Date Awareness**: SharpCap only knows TIME, not DATE
+   - Events after midnight may wait 24 hours
+   - Late starts can miss events entirely
+
+2. **Next-Day Event Failure**: 
+   - Event at 01:00:00 started at 23:00:00 fails completely
+   - Sequencer waits until next day's 01:00:00
+   - **Event is missed!**
+
+3. **Daylight Saving Time**: Clock changes cause timing errors
+
+**Recommendation**: Use UTC-based countdown functions (Option 2) for all critical 
+observations. These handle midnight, next-day events, and DST correctly.
+
+#### Sequence Execution Methods
+
+**Method 1: SharpCap Sequencer (RECOMMENDED - Safest)**
+- Load .scs file directly in SharpCap's Sequencer
+- Simplest and most reliable approach
+- **Recommended for unattended operation**
+- **Recommended for remote operation**
+- Fewest points of failure
+
+**Method 2: Occultation Manager Run Sequences (Alternative)**
+- Run from Occultation Manager's Run Sequences button
+- More complex with additional monitoring layer
+- Provides Stop button control
+- **Suitable for attended multi-event sessions**
+- **Not recommended for unattended operation**
+- Additional complexity may reduce reliability
+
+**Files:**
+- `countdown python for sequencer.scs` - Ready-to-copy countdown code snippets
+- Complete implementation notes and examples included
 
 ### API Changes
 - All sequence execution now uses `RunAsync()` instead of blocking `RunSequenceFile()`
@@ -127,11 +196,14 @@
 - SharpCap Just Record Template
 - SharpCap Test Recording Template
 
-#### Report Generation (Experimental)
+#### Report Generation (Under Development - Not Approved)
+⚠️ **CRITICAL**: Report generation is still under development and has NOT been approved by North America or Trans-Tasman reporting coordinators. All generated reports must be carefully verified before submission.
+
 - North America (IOTA) report format
 - Trans-Tasman (RASNZ) report format
 - AOTA timing data integration
-- Tangra CSV light curve analysis
+- Tangra CSV light curve analysis (integrated)
+- GPS flash timing analysis (not yet integrated - available as standalone tool for experts)
 - Automatic video format detection
 - Dynamic exposure/integration detection
 

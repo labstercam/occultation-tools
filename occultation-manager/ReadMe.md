@@ -25,10 +25,13 @@ SharpCap Occultation Manager streamlines your occultation observation workflow b
 - Built-in templates: Full automation, minimal setup, and test recording
 - Sequences use calculated or custom exposure, gain, and duration values
 
-**Report Generation (Experimental)**
-- ⚠️ **Under Development**: Report generation has not been approved by NA or TT reporting coordinators
+**Report Generation (Under Development)**
+- ⚠️ **Not Approved**: Report generation is still under development and has not been approved by North America or Trans-Tasman reporting coordinators
 - Single comprehensive dialog for workflow efficiency
-- Integrates AOTA timing data and Tangra CSV analysis
+- Integrates AOTA timing data and Tangra CSV light curve analysis
+- ⚠️ **Tangra Light Curve Analysis Only**: GPS flash timing analysis functions exist in the toolkit but are not yet integrated into Occultation Manager
+- GPS flash timing analysis available as standalone tool for experts with custom Python code
+- Excel template population with automatic field mapping
 - Supports North America (IOTA) and Trans-Tasman (RASNZ) formats
 - Use with caution and verify all generated data before submission
 
@@ -298,15 +301,144 @@ Execute multiple sequences directly from Occultation Manager without manually lo
 **Technical Details:**
 - Uses SharpCap's `RunAsync()` API for non-blocking execution
 - All UI operations marshaled to correct thread (STA requirement)
+
+### Sequence Execution Methods - Which To Use?
+
+There are two ways to execute your generated sequences:
+
+**METHOD 1: SharpCap Sequencer (RECOMMENDED - Safest)**
+- Load your .scs file directly in SharpCap's Sequencer
+- Click Play to start the sequence
+- SharpCap manages all timing and execution
+- **Simplest and most reliable method**
+- **Recommended for unattended operation**
+- **Recommended for remote operation**
+- Fewest points of failure
+
+**METHOD 2: Occultation Manager Run Sequences (Alternative)**
+- Select events and click Run Sequences button
+- Manager executes sequences via RunAsync API
+- Provides Stop button control during execution
+- More complex with additional monitoring layer
+- **Suitable for attended multi-event sessions**
+- **Not recommended for unattended operation**
+- Additional complexity may reduce reliability
+
+**Recommendation:** For the most reliable operation, especially for unattended or 
+remote recording, load your sequences directly in SharpCap Sequencer and use 
+Method 1. Method 2 is useful for attended sessions where you want Stop button 
+control, but adds complexity that may not be desirable for critical observations.
+
+### Countdown and Notification Options
+
+⚠️ **CRITICAL TIMING SAFETY INFORMATION**
+
+**WAIT UNTIL LOCALTIME PROBLEMS:**
+
+SharpCap's built-in `WAIT UNTIL LOCALTIME` and `WAIT UNTIL AFTER LOCALTIME` 
+commands have serious limitations that can cause you to **MISS EVENTS**:
+
+1. **NO DATE AWARENESS**: SharpCap only knows the TIME, not the DATE
+   - If started after midnight, it may wait 24 hours until "tomorrow"
+   - Events after local midnight will be missed or start immediately
+
+2. **NEXT-DAY EVENT FAILURE:**
+   - Event at 01:00:00 (after midnight) started at 23:00:00 (before midnight)
+   - Sequencer sees 01:00:00 < 23:00:00 and waits until NEXT day's 01:00:00
+   - **You MISS the event entirely!**
+
+3. **DAYLIGHT SAVING TIME:**
+   - Clock changes can cause unexpected behavior
+   - 1-hour timing errors during DST transitions
+
+**RECOMMENDED APPROACH - USE UTC WITH PYTHON COUNTDOWN:**
+
+For reliable, safe timing use UTC-based countdown functions. These handle all edge 
+cases correctly including events after midnight, late starts, next-day events, and 
+daylight saving time.
+
+**THREE COUNTDOWN OPTIONS:**
+
+**Option 1: Notification Without Countdown (Simplest, Most Risky)**
+
+Uses only SharpCap native commands:
+```
+SHOW NOTIFICATION "Waiting until {goto_time}_local" COLOUR Green DURATION 10000
+WAIT UNTIL LOCALTIME "{goto_time_local}"
+CLEAR NOTIFICATION
+```
+
+✓ Simple, no Python code  
+✗ Subject to ALL local time problems  
+✗ Can miss events  
+⚠️ **NOT RECOMMENDED** for critical observations
+
+**Option 2: UTC Notification Countdown (RECOMMENDED)**
+
+Auto-updating notification with formatted countdown in Days HH:MM:SS format.
+
+**Setup** - Add these at the start of your sequence:
+```
+RUN PYTHON CODE "import datetime as dt; import time; import clr; clr.AddReference('System'); from System import Action"
+RUN PYTHON CODE "def format_time(seconds): days = seconds // 86400; hours = (seconds % 86400) // 3600; mins = (seconds % 3600) // 60; secs = seconds % 60; return (str(days) + ' Days ' if days > 0 else '') + str(hours).zfill(2) + ':' + str(mins).zfill(2) + ':' + str(secs).zfill(2)"
+RUN PYTHON CODE "def countdown_utc(date_string, message, target_dt=None, is_first=True): target_dt = dt.datetime.strptime(date_string,'%Y-%m-%dT%H:%M:%S') if is_first else target_dt; remaining = int((target_dt - dt.datetime.utcnow()).total_seconds()); status = 0; formatted = format_time(remaining); alert = ' ⚠️ LESS THAN 5 MIN!' if remaining < 300 and remaining >= 60 else (' 🔴 LESS THAN 1 MIN!' if remaining < 60 else ''); (SharpCap.ShowNotification(message + ': ' + formatted + ' remaining' + alert, status, False, 2, None, None, None) if remaining > 0 else None); (time.sleep(1) if remaining > 0 and SharpCap.Sequencer.IsRunning else None); (countdown_utc(date_string, message, target_dt, False) if remaining > 1 and SharpCap.Sequencer.IsRunning else None)"
+```
+
+**Usage** - Then use in your sequence with UTC time tags:
+```
+RUN PYTHON CODE "countdown_utc('{goto_time}', 'Waiting for GOTO')"
+```
+
+**Advantages:**
+✓ UTC-based - no timezone/midnight issues  
+✓ Accurate countdown display  
+✓ Adaptive update rate: 1-minute when >5 min, 1-second when ≤5 min  
+✓ Safe for 24+ hour countdowns  
+✓ Color-coded warnings (<5 min, <1 min)  
+✓ Stoppable (may take up to 60s to respond when >5 min remaining)  
+✓ **RECOMMENDED**
+
+**Option 3: UTC Dialog Countdown (Most Complex)**
+
+Windows dialog with large countdown display and stop button.
+
+**Setup** - Add these at the start of your sequence:
+```
+RUN PYTHON CODE "import datetime as dt; import time; import clr; clr.AddReference('System.Windows.Forms'); clr.AddReference('System.Drawing'); from System.Windows.Forms import Form, Label, Button, FormStartPosition, DockStyle, FormBorderStyle, Application; from System.Drawing import Size, Font, FontStyle, ContentAlignment"
+RUN PYTHON CODE "def format_time(seconds): days = seconds // 86400; hours = (seconds % 86400) // 3600; mins = (seconds % 3600) // 60; secs = seconds % 60; return (str(days) + ' Days ' if days > 0 else '') + str(hours).zfill(2) + ':' + str(mins).zfill(2) + ':' + str(secs).zfill(2)"
+RUN PYTHON CODE "def update_countdown(form, label, target_dt, message, stopped): remaining = int((target_dt - dt.datetime.utcnow()).total_seconds()); (label.__setattr__('Text', message + '\\n\\n' + format_time(remaining) + '\\nremaining') if remaining > 0 else None); Application.DoEvents(); (time.sleep(0.1) if remaining > 0 and not stopped[0] and SharpCap.Sequencer.IsRunning else None); (update_countdown(form, label, target_dt, message, stopped) if remaining > 0 and not stopped[0] and SharpCap.Sequencer.IsRunning else form.Close())"
+RUN PYTHON CODE "def countdown_dialog(date_string, message): target_dt = dt.datetime.strptime(date_string,'%Y-%m-%dT%H:%M:%S'); form = Form(); form.Text = message; form.Size = Size(400, 150); form.FormBorderStyle = FormBorderStyle.FixedDialog; form.StartPosition = FormStartPosition.CenterScreen; form.MaximizeBox = False; form.MinimizeBox = False; form.TopMost = True; label = Label(); label.Font = Font('Arial', 16, FontStyle.Bold); label.Dock = DockStyle.Fill; label.TextAlign = ContentAlignment.MiddleCenter; button = Button(); button.Text = 'Stop Countdown'; button.Dock = DockStyle.Bottom; button.Height = 40; stopped = [False]; button.Click += lambda s, e: (stopped.__setitem__(0, True), form.Close()); form.Controls.Add(label); form.Controls.Add(button); form.Show(); update_countdown(form, label, target_dt, message, stopped)"
+```
+
+**Usage** - Then use in your sequence with UTC time tags:
+```
+RUN PYTHON CODE "countdown_dialog('{goto_time}', 'Waiting for GOTO')"
+```
+
+**Advantages:**
+✓ Large visible countdown  
+✓ Dedicated stop button  
+
+**Disadvantages:**
+✗ Most complex implementation  
+✗ Additional failure points (Windows forms)  
+✗ Stop button may take up to 60 seconds to respond when >5 min remaining  
+⚠️ Use only if you need large visible countdown
+
+**Ready-to-Use Code:**
+See `countdown python for sequencer.scs` in the application folder for complete 
+code snippets you can copy directly into your sequences.
+
+**ALWAYS TEST countdown functions before using for real observations!**
 - Background monitoring thread tracks sequence status
 - Proper thread synchronization prevents race conditions
 - Comprehensive error handling with automatic cleanup
 
 This provides the best of both worlds: automated multi-sequence execution with full UI control and safe cancellation.
 
-## Report Generation (Experimental)
+## Report Generation (Under Development - Not Approved)
 
-⚠️ **Important Warning**: Report generation is still under development and has not been approved by the North America or Trans-Tasman reporting coordinators. Use with caution and carefully verify all generated data before submission to any reporting organization.
+⚠️ **CRITICAL WARNING**: Report generation is still under development and **has NOT been approved** by the North America or Trans-Tasman reporting coordinators. All generated reports must be carefully verified before submission to any reporting organization. Use with extreme caution.
 
 Reports are generated using a streamlined single-dialog workflow that combines:
 - Report format selection (North America / Trans-Tasman)
@@ -335,6 +467,9 @@ Reports are generated using a streamlined single-dialog workflow that combines:
 - Observation end time (HH:MM:SS.SS)
 - Exposure time in seconds (3 decimal places)
 - Camera acquisition delay in seconds (from measurement parameters table)
+
+**GPS Flash Timing Analysis Status**:
+⚠️ **Not Yet Integrated**: GPS flash timing analysis functions are available in the `gps-timing-analysis` toolkit but are not yet integrated into Occultation Manager. These advanced functions (GPS 1PPS flash detection, timestamp offset calculation, rolling shutter characterization) are currently available as standalone tools for expert users who can write custom Python code. Plans exist to integrate these capabilities into the report generation workflow in a future release.
 
 ### Workflow Improvements
 - **Settings Persistence**: Remembers last report type and folder location

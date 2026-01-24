@@ -54,8 +54,34 @@ default_icon = Occultation_script_path + "\moon_icon_178489.ico"
 
 ############################
 
+# Global variable to track if form is already open
+_app_instance = None
+
 def main():
     """Main entry point"""
+    global _app_instance
+    
+    # Single instance check - prevent multiple windows
+    if _app_instance is not None:
+        try:
+            # Try to bring existing window to front
+            if not _app_instance.IsDisposed:
+                _app_instance.Activate()
+                _app_instance.BringToFront()
+                MessageBox.Show(
+                    "Occultation Manager is already running.\n\nThe existing window has been brought to the front.",
+                    "Already Running",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                )
+                return
+            else:
+                # Form was disposed, allow creating new one
+                _app_instance = None
+        except:
+            # Form no longer valid, allow creating new one
+            _app_instance = None
+    
     # Create global instances
     config = ConfigManager()
     theme_manager = ThemeManager()
@@ -80,6 +106,7 @@ def main():
     try:
         print("Starting Enhanced GUI mode...")
         app = OccultationManagerGUI(config, theme_manager,SharpCap,PlateSolvePurpose,CoordinateParser)
+        _app_instance = app  # Store the instance globally
         Application.EnableVisualStyles()
         app.Show()  # Use Show() instead of ShowDialog() to keep SharpCap interface responsive
     except Exception as ex:
