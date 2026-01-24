@@ -1224,12 +1224,14 @@ class OccultationManagerGUI(Form):
         """Run sequences for selected events using async (non-blocking) execution"""
         # Check if sequence already running
         if self._sequence_running:
+            self.Activate()
             MessageBox.Show("A sequence is already running.\n\nPlease wait for it to complete or use the Stop button.",
                         "Sequence Running", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
         
         selected_events = self.get_displayed_selected_events()
         if not selected_events:
+            self.Activate()
             MessageBox.Show("Please select events to run sequences for.", "No Events Selected", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
@@ -1238,6 +1240,7 @@ class OccultationManagerGUI(Form):
         now = datetime.utcnow()
         future_events = [e for e in selected_events if e.event_datetime and e.event_datetime > now]
         if not future_events:
+            self.Activate()
             MessageBox.Show("No future events selected. Only future events can be run.", "No Future Events", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
@@ -1245,6 +1248,7 @@ class OccultationManagerGUI(Form):
         # Sort by GOTO time
         future_events.sort(key=lambda x: x.goto_time if hasattr(x, 'goto_time') and x.goto_time else x.event_datetime)
         
+        self.Activate()
         if MessageBox.Show(f"This will run {len(future_events)} sequence(s) in order.\n\nContinue?", 
                         "Confirm Run Sequences", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes:
             return
@@ -1265,6 +1269,7 @@ class OccultationManagerGUI(Form):
                 sequence_file_path = os.path.join(self.config.get_sequence_path(), seq_name)
                 
                 if not os.path.exists(sequence_file_path):
+                    self.Activate()
                     MessageBox.Show(f"Sequence file not found:\n\n{sequence_file_path}\n\nPlease create sequences first.",
                                 "Sequence Missing", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                     self._sequence_saved_settings = {}
@@ -1277,9 +1282,7 @@ class OccultationManagerGUI(Form):
             success = self._start_sequences_async(sequence_paths)
             
             if success:
-                MessageBox.Show(f"Started running {len(sequence_paths)} sequence(s).\n\nThe sequences are running independently.\nUse the Stop button to cancel if needed.",
-                            "Sequences Started", MessageBoxButtons.OK, MessageBoxIcon.Information)
-                # Bring main window to front after message box closes
+                # Bring main window to front
                 self.Activate()
             else:
                 # Clean up saved settings if sequences didn't start
@@ -1296,6 +1299,7 @@ class OccultationManagerGUI(Form):
             if hasattr(self, 'btn_stop_sequence'):
                 self.btn_stop_sequence.Enabled = False
             self.update_status(f"Error starting sequences: {ex}")
+            self.Activate()
             MessageBox.Show(f"Error starting sequences: {ex}", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
     
@@ -2386,6 +2390,7 @@ class OccultationManagerGUI(Form):
         """Test recording using async (non-blocking) sequence execution"""
         # Check if sequence already running
         if self._sequence_running:
+            self.Activate()
             MessageBox.Show("A sequence is already running.\n\nPlease wait for it to complete or use the Stop button.",
                         "Sequence Running", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
@@ -2394,6 +2399,7 @@ class OccultationManagerGUI(Form):
         selected_events = self.get_displayed_selected_events()
         
         if len(selected_events) != 1:
+            self.Activate()
             MessageBox.Show("Please select exactly one event from the grid", "Invalid Selection", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
@@ -2407,6 +2413,7 @@ class OccultationManagerGUI(Form):
             template_path = os.path.join(template_folder, template_name)
             
             if not os.path.exists(template_path):
+                self.Activate()
                 MessageBox.Show(f"Template file not found: {template_name}\n\nPlease ensure the template exists in:\n{template_folder}", 
                             "Template Missing", MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 return
@@ -2458,6 +2465,7 @@ class OccultationManagerGUI(Form):
                     f.write(report_content)
                     
             except Exception as write_error:
+                self.Activate()
                 MessageBox.Show(f"Failed to create test recording sequence:\n{write_error}", "Error", 
                             MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
@@ -2472,9 +2480,7 @@ class OccultationManagerGUI(Form):
             success = self._start_sequence_async(temp_sequence_path, event.event_name)
             
             if success:
-                MessageBox.Show(f"Test recording sequence started for:\n\n{event.get_asteroid_display_name()}\n\nThe sequence is running independently.\nUse the Stop button to cancel if needed.", 
-                            "Sequence Started", MessageBoxButtons.OK, MessageBoxIcon.Information)
-                # Bring main window to front after message box closes
+                # Bring main window to front
                 self.Activate()
             else:
                 # Clean up saved settings if sequence didn't start
@@ -2491,6 +2497,7 @@ class OccultationManagerGUI(Form):
             if hasattr(self, 'btn_stop_sequence'):
                 self.btn_stop_sequence.Enabled = False
             self.update_status(f"Error during test recording: {ex}")
+            self.Activate()
             MessageBox.Show(f"Error creating test recording: {ex}", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
     

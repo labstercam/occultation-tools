@@ -4,7 +4,14 @@
 
 ### Report Generation System
 
-The Occultation Manager includes comprehensive Excel report generation with integrated timing analysis.
+⚠️ **Status**: Report generation is still under development and has NOT been approved by North America or Trans-Tasman reporting coordinators.
+
+The Occultation Manager includes comprehensive Excel report generation with integrated Tangra light curve analysis.
+
+**Current Integration Status**:
+- ✅ **Tangra CSV light curve analysis**: Fully integrated for video format detection, exposure/integration mode, and frame timing
+- ⚠️ **GPS flash timing analysis**: NOT YET INTEGRATED - Available in `gps-timing-analysis` toolkit as standalone tools for expert users with custom Python code
+- 📅 **Future Plans**: Integration of GPS flash timing analysis (1PPS detection, timestamp offset, rolling shutter characterization) into report workflow
 
 **Excel Report Implementation**:
 - Uses Python standard library only: `zipfile` and `xml.etree.ElementTree`
@@ -54,6 +61,94 @@ self.Invoke(lambda: self.sharpcap.Sequencer.RunAsync())
 - Robust error handling with comprehensive state cleanup
 
 See [RunAsync_Implementation.md](development documentation/RunAsync_Implementation.md) for complete technical details.
+
+### Countdown and Timing Functions
+
+**countdown python for sequencer.scs** - Ready-to-use countdown code snippets
+
+Provides three options for reliable countdown timing in SharpCap sequences.
+
+**CRITICAL: WAIT UNTIL LOCALTIME Risks**
+
+SharpCap's built-in `WAIT UNTIL LOCALTIME` and `WAIT UNTIL AFTER LOCALTIME` commands 
+have serious limitations that can cause missed events:
+
+1. **No Date Awareness**: Only knows TIME, not DATE
+   - Late starts after midnight may wait 24 hours
+   - Next-day events will fail completely
+
+2. **Next-Day Event Failure**:
+   - Event at 01:00:00 after midnight, started at 23:00:00 before midnight
+   - Sequencer sees 01:00:00 < 23:00:00, waits until next day
+   - **Event is missed entirely**
+
+3. **Daylight Saving Time**: Clock changes cause 1-hour timing errors
+
+**Three Countdown Options:**
+
+**Option 1: Simple Notification (NOT RECOMMENDED)**
+- Uses SharpCap's SHOW NOTIFICATION + WAIT UNTIL LOCALTIME
+- Subject to all local time problems above
+- Can miss events if started late or after midnight
+
+**Option 2: UTC Notification Countdown (RECOMMENDED)**
+- Auto-updating notification with formatted countdown (Days HH:MM:SS)
+- Adaptive update rate: 1-minute intervals when >5 min remaining, 1-second when ≤5 min
+- Safe for 24+ hour countdowns (no recursion limit issues)
+- Color-coded warnings: ⚠️ <5 min, 🔴 <1 min
+- UTC-based: handles midnight, next-day events, DST correctly
+- Stoppable via SharpCap Stop button (may take up to 60s when >5 min remaining)
+- Safe for late starts (continues immediately if time passed)
+- Most reliable option for critical observations
+
+**Option 3: UTC Dialog Countdown**
+- Windows dialog with large countdown display
+- Adaptive update rate: 1-minute intervals when >5 min remaining, 1-second when ≤5 min
+- Safe for 24+ hour countdowns (no recursion limit issues)
+- Dedicated Stop button in dialog (may take up to 60s to respond when >5 min remaining)
+- Most complex implementation
+- Additional failure points (Windows forms)
+- Use only if large visible countdown needed
+
+**Implementation Pattern:**
+```python
+# Define functions at start of sequence (one-line Python code):
+RUN PYTHON CODE "import datetime as dt; import time; import clr; clr.AddReference('System'); from System import Action"
+RUN PYTHON CODE "def format_time(seconds): ..."
+RUN PYTHON CODE "def countdown_utc(date_string, message, ...): ..."
+
+# Use in sequence with UTC time tags:
+RUN PYTHON CODE "countdown_utc('{goto_time}', 'Waiting for GOTO')"
+```
+
+**Sequence Execution Methods:**
+
+**Method 1: SharpCap Sequencer (RECOMMENDED - Safest)**
+- Load .scs file directly in SharpCap's Sequencer
+- Click Play to start
+- Simplest and most reliable approach
+- **Recommended for unattended operation**
+- **Recommended for remote operation**
+- Fewest points of failure
+
+**Method 2: Occultation Manager Run Sequences (Alternative)**
+- Run from Occultation Manager's Run Sequences button
+- More complex with additional monitoring layer
+- Provides Stop button control during execution
+- **Suitable for attended multi-event sessions**
+- **Not recommended for unattended operation**
+- Additional complexity may reduce reliability
+
+**Testing:**
+ALWAYS test countdown functions before critical observations:
+1. Create test sequence with 2-minute countdown
+2. Verify countdown displays and updates correctly
+3. Test stop functionality
+4. Test late start (start after countdown time passed)
+5. Verify sequence continues after countdown
+
+**File Reference:**
+Complete code snippets and implementation notes in `countdown python for sequencer.scs`
 
 #### Report Generators
 

@@ -1,4 +1,4 @@
-# Create release ZIP for Occultation Manager v0.2.0
+# Create release ZIP for Occultation Manager v0.2.0-beta.1
 
 $files = @(
     # Python files
@@ -31,6 +31,8 @@ $files = @(
     "python\SharpCap Sequence Local Time template.txt",
     "python\SharpCap Sequence UTC template.txt",
     "python\SharpCap Test Recording template.txt",
+    # Countdown reference file
+    "python\countdown python for sequencer.scs",
     # Excel report templates
     "python\NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx",
     "python\RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx",
@@ -42,7 +44,7 @@ $files = @(
     "RELEASE_NOTES.md"
 )
 
-$version = "0.2.0"
+$version = "0.2.0-beta.1"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
@@ -90,3 +92,6 @@ if (Test-Path $zipPath) {
 } else {
     Write-Host "`nERROR: Failed to create zip file" -ForegroundColor Red
 }
+
+Write-Host "`n"
+Read-Host "Press Enter to exit"

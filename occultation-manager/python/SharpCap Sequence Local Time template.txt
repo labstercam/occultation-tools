@@ -44,22 +44,16 @@ SEQUENCE
     DISPLAY STRETCH AUTO
 
 # Wait until the Sunset or a specified event (AstronomicalDarkness - see the SharpCap sequencer) or specify a time
-# MUST have one these st
-eps otherwise if the event local time is after midnight it will start goto and recording IMMEDIATELY!
-    WAIT UNTIL LATER THAN LOCALTIME "06:00:00 PM"
-#    WAIT UNTIL EVENT Sunset
-# Display a notification until the GOTO time
-    LOOP UNTIL LATER THAN LOCALTIME "{pre_goto_time_local}"
-        SHOW NOTIFICATION "Waiting for GOTO {object_name} at {goto_time_local} " COLOUR Green DURATION 58
-        DELAY 59
-    END LOOP
-    SHOW NOTIFICATION "Waiting for GOTO {object_name} at {goto_time_local} " COLOUR Green DURATION 25
+# MUST have one these steps otherwise if the event local time is after midnight it will start goto and recording IMMEDIATELY!
+#    WAIT UNTIL LATER THAN LOCALTIME "06:00:00 PM"
+    SHOW NOTIFICATION "Waiting until sunset" COLOUR Green DURATION 10000
+    WAIT UNTIL EVENT Sunset
+    CLEAR NOTIFICATION
 
-# Wait until the GOTO time, which is 4 mins before event time plus 3 times the time error
-# Optionally can skip if it is too late. This will only GOTO if it is before the event start time
-IF EARLIER THAN LOCALTIME "{start_time_local}"
-    # If you start late this will run anyway
-    WAIT UNTIL LATER THAN LOCALTIME "{goto_time_local}"
+# Display a notification until the GOTO time
+    SHOW NOTIFICATION "Waiting for GOTO {object_name} at {goto_time_local} " COLOUR Green DURATION 10000
+    WAIT UNTIL LLOCALTIME "{goto_time_local}"
+    CLEAR NOTIFICATION
 
     # GOTO and PLATESOLVE. If an error it should run SUB safe_finish to move the mount to its defined safe position
     IGNORE ERRORS FROM ONERROR RUN safe_finish
@@ -90,17 +84,12 @@ END IF
 # Record
 # Wait until the recording start time
 # If you start late it will record anyway
-    SHOW NOTIFICATION "Waiting for recording start at {start_time_local} " COLOUR Green DURATION 58
-    WAIT UNTIL LATER THAN LOCALTIME "{start_time_local}"
+    SHOW NOTIFICATION "Waiting for recording start at {start_time_local} " COLOUR Green DURATION 1000
+    WAIT UNTIL LOCALTIME "{start_time_local}"
     CAPTURE {recording_duration} SECONDS LIVE FRAMES
+    CLEAR NOTIFICATION
     SHOW NOTIFICATION "Recording Complete. Reseting camera and parking mount in safe position if required." COLOUR GREEN DURATION 30
 
-## Optionally can skip if it is too late. This will only record if it is before the event mid time
-#    IF EARLIER THAN LOCALTIME "{event_time_local}"
-#        WAIT UNTIL LATER THAN LOCALTIME "{start_time_local}"
-#        CAPTURE {recording_duration} SECONDS LIVE FRAMES
-#        SHOW NOTIFICATION "Recording Complete. Reseting camera and parking mount in safe position if required." COLOUR GREEN DURATION 30
-#    END IF
 
 # run safe_finish to end    
     BEFORE SEQUENCE FINISH DO

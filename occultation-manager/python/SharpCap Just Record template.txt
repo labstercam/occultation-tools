@@ -19,7 +19,7 @@ SEQUENCE
 # Wait until the recording start time
 # If you start late it will record anyway
     SHOW NOTIFICATION "Waiting for recording start at {start_time_local} " COLOUR Green DURATION 58
-    WAIT UNTIL LATER THAN LOCALTIME "{start_time_local}"
+    WAIT UNTIL "{start_time_local}"
     CAPTURE {recording_duration} SECONDS LIVE FRAMES
     SHOW NOTIFICATION "Recording Complete. Reseting camera and parking mount in safe position if required." COLOUR GREEN DURATION 30
 
