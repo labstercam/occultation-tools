@@ -164,11 +164,20 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
         clean_name = "".join(c for c in occ.name if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
         seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
         
+        # Calculate pre_goto in special format (YYYYMMDD HH:MM:SS) for countdown functions
+        pre_goto_formatted = ""
+        if occ.goto_time:
+            pre_goto_dt = occ.goto_time - timedelta(seconds=90)
+            pre_goto_formatted = pre_goto_dt.strftime("%Y%m%d %H:%M:%S")
+        
         occ_dict = {
             'object_name': occ.object_name,
+            'name': occ.name,
+            'station_name': occ.station_name,
             'event_time': occ.event_time,
             'start_time': occ.start_time_str,
             'goto_time': occ.goto_time_str,
+            'pre_goto': pre_goto_formatted,
             'recording_duration': occ.recording_duration,
             'star_mag': occ.star_mag,
             'comb_mag': occ.comb_mag,
@@ -179,8 +188,6 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             'asteroid_name': occ.object_name,
             'exposure': occ.get_exposure_seconds(),  # Use current exposure (custom or calculated)
             'gain': occ.gain_value,  # Use current gain (custom or default)
-            'name': occ.name,
-            'station_name': occ.station_name,
             # Add simple local time strings
             'event_time_local': occ.event_time_local,
             'start_time_local': occ.start_time_local,
@@ -192,13 +199,15 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
         clean_name = "".join(c for c in occ['name'] if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
         seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
         occ_dict = occ
-        # Add empty local time fields if not present
+        # Add empty fields if not present (for legacy format)
         if 'event_time_local' not in occ_dict:
             occ_dict.update({
                 'event_time_local': '',
                 'start_time_local': '',
                 'goto_time_local': '',
-                'pre_goto_time_local': ''
+                'pre_goto_time_local': '',
+                'pre_goto': '',
+                'station_name': occ_dict.get('station_name', '')
             })        
     
     try:
@@ -210,9 +219,12 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
         
         report = template_content.format(
             object_name=occ_dict.get('object_name', ''),
+            name=occ_dict.get('name', ''),
+            station_name=occ_dict.get('station_name', ''),
             event_time=occ_dict.get('event_time', ''),
             start_time=occ_dict.get('start_time', ''),
             goto_time=occ_dict.get('goto_time', ''),
+            pre_goto=occ_dict.get('pre_goto', ''),
             recording_duration=format(occ_dict.get('recording_duration', 0),'.0f'),
             star_mag= format(occ_dict.get('star_mag', 0),'.1f'),
             comb_mag= format(occ_dict.get('comb_mag', 0),'.1f'),

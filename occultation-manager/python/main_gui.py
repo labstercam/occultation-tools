@@ -2258,11 +2258,21 @@ class OccultationManagerGUI(Form):
     def format_template(self, template_content, event):
         """Format template with event data"""
         try:
+            # Calculate pre_goto in special format (YYYYMMDD HH:MM:SS) for countdown functions
+            pre_goto_formatted = ""
+            if event.goto_time:
+                from datetime import timedelta
+                pre_goto_dt = event.goto_time - timedelta(seconds=90)
+                pre_goto_formatted = pre_goto_dt.strftime("%Y%m%d %H:%M:%S")
+            
             return template_content.format(
                 object_name=event.object_name,
+                name=event.name,
+                station_name=event.station_name,
                 event_time=event.event_time,
                 start_time=event.start_time_str,
                 goto_time=event.goto_time_str,
+                pre_goto=pre_goto_formatted,
                 recording_duration=event.recording_duration,
                 star_mag=event.star_mag,
                 comb_mag=event.comb_mag,
@@ -2272,11 +2282,12 @@ class OccultationManagerGUI(Form):
                 dec=event.dec,
                 asteroid_name=event.object_name,
                 exposure=event.get_exposure_seconds(),
+                gain=event.gain_value,
                 # Add simple local time variables
                 event_time_local=event.event_time_local,
                 start_time_local=event.start_time_local,
                 goto_time_local=event.goto_time_local,
-                pre_goto_time_local =   event.pre_goto_time_local
+                pre_goto_time_local=event.pre_goto_time_local
             )
         except Exception as e:
             return f"# Error formatting template: {e}"
