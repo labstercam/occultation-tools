@@ -106,7 +106,10 @@ occultation-manager/
 - Integrates AOTA timing data and Tangra CSV light curve analysis
 - ⚠️ **Tangra Light Curve Analysis Only**: GPS flash timing analysis functions exist in the toolkit but are not yet integrated into Occultation Manager
 - GPS flash timing analysis available as standalone tool for experts with custom Python code
-- Excel template population with automatic field mapping
+- Uses Openize SDK for direct Excel cell manipulation
+- Preserves Excel data validation and formulas
+- Automatic Occult 4 XML export with matching filename
+- Observing conditions capture (clouds, stability, other notes)
 - Supports North America (IOTA) and Trans-Tasman (RASNZ) formats
 - Use with caution and verify all generated data before submission
 
@@ -488,8 +491,15 @@ Reports are generated using a streamlined single-dialog workflow that combines:
 - Report format selection (North America / Trans-Tasman)
 - Telescope and camera selection
 - Observation type (Positive / Negative / Unsure)
+- Observing conditions (clouds, stability, other notes)
 - AOTA file selection (.aota.xml OR .txt for D/R times and SNR)
 - Tangra CSV file selection (light curve with timing data)
+
+**Technical Implementation**:
+- Uses Openize.OpenXML-SDK for direct Excel cell access via IronPython
+- Preserves Excel data validation, formulas, and formatting
+- Automatic Occult 4 XML export with conditions mapped to standard codes
+- Templates stored directly in python/ folder (no placeholder files needed)
 
 ### Supported Report Formats
 - **North America (IOTA V5.6.12r)**: IOTA standard report form

@@ -1550,6 +1550,9 @@ class OccultationManagerGUI(Form):
             aota_file_path = comprehensive_dialog.get_selected_aota_path()
             tangra_csv_path = comprehensive_dialog.get_selected_tangra_path()
             aota_report_path = comprehensive_dialog.get_selected_aota_report_path()
+            clouds = comprehensive_dialog.get_clouds()
+            stability = comprehensive_dialog.get_stability()
+            other_conditions = comprehensive_dialog.get_other_conditions()
             
             print(f"Report type: {report_type}")
             print(f"Telescope ID: {telescope_id}")
@@ -1558,17 +1561,23 @@ class OccultationManagerGUI(Form):
             print(f"AOTA file: {aota_file_path if aota_file_path else 'None'}")
             print(f"Tangra CSV: {tangra_csv_path if tangra_csv_path else 'None'}")
             print(f"AOTA Report: {aota_report_path if aota_report_path else 'None'}")
+            print(f"Clouds: {clouds if clouds else 'None'}")
+            print(f"Stability: {stability if stability else 'None'}")
+            print(f"Other conditions: {other_conditions if other_conditions else 'None'}")
             
             # Create appropriate report generator
             if report_type == 'north_america':
-                from na_report import NAReportGenerator
-                report_generator = NAReportGenerator(self.config)
+                import sys
+                if 'na_report_openize' in sys.modules:
+                    del sys.modules['na_report_openize']
+                from na_report_openize import NAReportGeneratorOpenize
+                report_generator = NAReportGeneratorOpenize(self.config)
             elif report_type == 'trans_tasman':
                 import sys
-                if 'tt_report' in sys.modules:
-                    del sys.modules['tt_report']
-                from tt_report import TTReportGenerator
-                report_generator = TTReportGenerator(self.config)
+                if 'tt_report_openize' in sys.modules:
+                    del sys.modules['tt_report_openize']
+                from tt_report_openize import TTReportGeneratorOpenize
+                report_generator = TTReportGeneratorOpenize(self.config)
             else:
                 MessageBox.Show(f"Report type '{report_type}' is not yet implemented.", 
                               "Not Implemented", MessageBoxButtons.OK, MessageBoxIcon.Information)
@@ -1782,7 +1791,9 @@ class OccultationManagerGUI(Form):
             aota_xml_used = bool(aota_event and not aota_report_data)
             
             self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
-            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, tangra_data, aota_report_data, aota_xml_used)
+            output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, 
+                                                          tangra_data, aota_report_data, aota_xml_used,
+                                                          clouds, stability, other_conditions)
             
             # If AOTA.xml data exists but AOTA Report wasn't used, add AOTA.xml data to the report
             # (AOTA Report data is already included in generate_report if it was provided)
@@ -1818,10 +1829,13 @@ class OccultationManagerGUI(Form):
                     xml_filename = report_basename + '.xml'
                     xml_path = os.path.join(report_dir, xml_filename)
                     
+                    # Build observer_data with conditions
+                    observer_data = self._build_observer_data_for_xml(clouds, stability, other_conditions)
+                    
                     # Export observation data using the proper public API
                     xml_output_path = occult4_exporter.export_observation_to_path(
                         xml_path, event, telescope_id, camera_id, 
-                        observation_type, tangra_data, aota_report_data, None
+                        observation_type, tangra_data, aota_report_data, observer_data
                     )
                 except Exception as ex:
                     import traceback
@@ -1862,6 +1876,55 @@ class OccultationManagerGUI(Form):
             self.update_status("Report generation failed")
             MessageBox.Show(f"Error generating report:\n\n{error_msg}", 
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+    
+    def _build_observer_data_for_xml(self, clouds, stability, other_conditions):
+        """Build observer_data dictionary for Occult XML export with conditions mapping
+        
+        Args:
+            clouds: Cloud conditions from dialog (e.g., "Clear", "Fog", etc.)
+            stability: Atmospheric stability from dialog (e.g., "Steady", etc.)
+            other_conditions: Free text other conditions (not used in XML)
+        
+        Returns:
+            Dictionary with mapped values for Occult XML format
+        """
+        observer_data = {}
+        
+        # Map Clouds to Transparency numeric codes
+        # (From obs.md Transparency field documentation)
+        transparency_map = {
+            "Clear": "1",
+            "Fog": "2",
+            "Thin cloud < 2": "3",
+            "Thick cloud > 2": "4",
+            "Broken cloud": "5",
+            "Star faint": "6",
+            "Averted vision": "7"
+        }
+        
+        if clouds and clouds in transparency_map:
+            observer_data['transparency'] = transparency_map[clouds]
+        else:
+            observer_data['transparency'] = '_'  # unstated
+        
+        # Map Stability to numeric codes
+        # (From obs.md Stability field documentation)
+        stability_map = {
+            "Steady": "1",
+            "Slight flickering": "2",
+            "Strong flickering": "3"
+        }
+        
+        if stability and stability in stability_map:
+            observer_data['stability'] = stability_map[stability]
+        else:
+            observer_data['stability'] = '_'  # unstated
+        
+        # Note: other_conditions is not used in Occult XML format
+        # The XML format has a 'comment' field in Conditions, but it's typically
+        # used for technical timing adjustments, not general observing notes
+        
+        return observer_data
     
     def _compare_aota_sources(self, aota_event, aota_report_data):
         """Compare D/R times from AOTA.xml and AOTA Report and warn if different

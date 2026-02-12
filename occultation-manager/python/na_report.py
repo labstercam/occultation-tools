@@ -31,7 +31,7 @@ class NAReportGenerator(ReportGeneratorBase):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         return os.path.join(script_dir, self.TEMPLATE_FILENAME)
     
-    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None, aota_report_data=None, aota_xml_used=False):
+    def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None, aota_report_data=None, aota_xml_used=False, clouds=None, stability=None, other_conditions=None):
         """Generate a North American report using placeholder replacement
         
         Args:

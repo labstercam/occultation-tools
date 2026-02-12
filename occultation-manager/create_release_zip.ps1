@@ -1,4 +1,4 @@
-# Create release ZIP for Occultation Manager v0.2.0-beta.1
+# Create release ZIP for Occultation Manager v0.2.0-beta.2
 
 $files = @(
     # Python files
@@ -17,6 +17,7 @@ $files = @(
     "python\main.py",
     "python\main_gui.py",
     "python\na_report.py",
+    "python\na_report_openize.py",
     "python\occult4_export.py",
     "python\report_generator_base.py",
     "python\sequence_runner.py",
@@ -24,6 +25,7 @@ $files = @(
     "python\templates.py",
     "python\theme.py",
     "python\tt_report.py",
+    "python\tt_report_openize.py",
     "python\utils.py",
     # SharpCap sequence templates
     "python\SharpCap Minimal Local Time template.txt",
@@ -33,9 +35,14 @@ $files = @(
     "python\SharpCap Test Recording template.txt",
     # Countdown reference file
     "python\countdown python for sequencer.scs",
-    # Excel report templates
-    "python\NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx",
-    "python\RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx",
+    # Excel report templates (Openize-compatible)
+    "python\NorthAmerica_AstReportForm_V5.6.12r.xlsx",
+    "python\RASNZ_AstReporttForm_V4.1.2.G.xlsx",
+    # Openize SDK DLLs
+    "python\lib\Openize.OpenXMLSDK.dll",
+    "python\lib\DocumentFormat.OpenXml.dll",
+    "python\lib\DocumentFormat.OpenXml.Framework.dll",
+    "python\lib\README.md",
     # Icon
     "python\moon_icon_178489.ico",
     # Documentation
@@ -48,7 +55,7 @@ $files = @(
     "README_reports_folder.txt"
 )
 
-$version = "0.2.0-beta.1"
+$version = "0.2.0-beta.2"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
@@ -72,14 +79,17 @@ Write-Host "Creating folder structure..." -ForegroundColor Cyan
 $filesDir = "$targetDir\files"
 $sequencesDir = "$targetDir\sequences"
 $reportsDir = "$filesDir\Reports"
+$libDir = "$targetDir\lib"
 
 New-Item -ItemType Directory -Path $filesDir -Force | Out-Null
 New-Item -ItemType Directory -Path $sequencesDir -Force | Out-Null
 New-Item -ItemType Directory -Path $reportsDir -Force | Out-Null
+New-Item -ItemType Directory -Path $libDir -Force | Out-Null
 
 Write-Host "  Created: files/" -ForegroundColor Gray
 Write-Host "  Created: files/Reports/" -ForegroundColor Gray
 Write-Host "  Created: sequences/" -ForegroundColor Gray
+Write-Host "  Created: lib/" -ForegroundColor Gray
 
 # Copy README files to appropriate folders
 if (Test-Path "README_files_folder.txt") {
@@ -99,9 +109,23 @@ if (Test-Path "README_reports_folder.txt") {
 Write-Host "`nCopying application files..." -ForegroundColor Cyan
 foreach ($file in $files) {
     if (Test-Path $file) {
-        $destination = Join-Path $targetDir (Split-Path $file -Leaf)
-        Copy-Item $file $destination -Force
-        Write-Host "  Copied: $file" -ForegroundColor Gray
+        # Check if file is in lib subfolder
+        if ($file -like "python\lib\*") {
+            # Preserve lib directory structure
+            $relativePath = $file -replace "^python\\", ""
+            $destination = Join-Path $targetDir $relativePath
+            $destDir = Split-Path $destination -Parent
+            if (-not (Test-Path $destDir)) {
+                New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+            }
+            Copy-Item $file $destination -Force
+            Write-Host "  Copied: $file -> $relativePath" -ForegroundColor Gray
+        } else {
+            # Regular file - copy to root
+            $destination = Join-Path $targetDir (Split-Path $file -Leaf)
+            Copy-Item $file $destination -Force
+            Write-Host "  Copied: $file" -ForegroundColor Gray
+        }
     } else {
         Write-Host "  WARNING: File not found: $file" -ForegroundColor Yellow
     }

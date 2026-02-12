@@ -25,6 +25,11 @@ class TTReportGenerator(ReportGeneratorBase):
     def __init__(self, config):
         """Initialize with configuration manager"""
         super(TTReportGenerator, self).__init__(config)
+        
+        print("\n" + "="*70)
+        print("*** OLD XML VERSION LOADED - Using tt_report.py ***")
+        print("Template: RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx")
+        print("="*70 + "\n")
     
     def get_template_path(self):
         """Get path to local template file bundled with the project"""
@@ -50,6 +55,11 @@ class TTReportGenerator(ReportGeneratorBase):
         self._tangra_data = tangra_data
         self._aota_report_data = aota_report_data
         self._aota_xml_used = aota_xml_used
+        
+        print("\n" + "="*60)
+        print("USING OLD XML VERSION - TT Report Generator")
+        print("Template: RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx")
+        print("="*60 + "\n")
         
         try:
             # Get report folder
