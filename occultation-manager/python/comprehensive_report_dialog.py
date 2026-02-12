@@ -10,6 +10,7 @@ clr.AddReference("System")
 
 import os
 import System
+from System import Array
 from System.Drawing import Point, Size, Color, Font, FontStyle
 from System.Windows.Forms import (
     Form, Button, Label, ListBox, Panel, TextBox, GroupBox, RadioButton, ComboBox,
@@ -44,6 +45,9 @@ class ComprehensiveReportDialog(Form):
         self.selected_aota_path = None
         self.selected_tangra_path = None
         self.selected_aota_report_path = None
+        self.clouds = None
+        self.stability = None
+        self.other_conditions = None
         
         # File lists
         self.aota_files = []
@@ -66,7 +70,7 @@ class ComprehensiveReportDialog(Form):
     def setup_ui(self):
         """Setup user interface"""
         self.Text = "Generate Report"
-        self.Size = Size(1000, 720)  # Increased from 680 to 720 to prevent button clipping
+        self.Size = Size(1000, 820)  # Increased from 720 to 820 for Conditions section
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -75,7 +79,7 @@ class ComprehensiveReportDialog(Form):
         # Main scroll panel
         main_panel = Panel()
         main_panel.Location = Point(10, 10)
-        main_panel.Size = Size(970, 625)  # Increased from 595 to 625 (form increased 680->720)
+        main_panel.Size = Size(970, 725)  # Increased from 625 to 725 for Conditions section
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
         
@@ -286,17 +290,68 @@ class ComprehensiveReportDialog(Form):
         self.report_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.report_listbox)
         
+        y_pos += 200
+        
+        # ===== SECTION 5: CONDITIONS =====
+        grp_conditions = GroupBox()
+        grp_conditions.Text = "5. Conditions"
+        grp_conditions.Location = Point(10, y_pos)
+        grp_conditions.Size = Size(940, 80)
+        main_panel.Controls.Add(grp_conditions)
+        
+        # Clouds
+        lbl_clouds = Label()
+        lbl_clouds.Text = "Clouds:"
+        lbl_clouds.Location = Point(20, 30)
+        lbl_clouds.Size = Size(80, 20)
+        grp_conditions.Controls.Add(lbl_clouds)
+        
+        self.combo_clouds = ComboBox()
+        self.combo_clouds.Location = Point(110, 28)
+        self.combo_clouds.Size = Size(180, 25)
+        self.combo_clouds.DropDownStyle = ComboBoxStyle.DropDownList
+        self.combo_clouds.Items.AddRange(Array[object](["Clear", "Fog", "Thin cloud < 2", "Thick cloud > 2", "Broken cloud", "Star faint", "Averted vision"]))
+        self.combo_clouds.SelectedIndex = 0
+        grp_conditions.Controls.Add(self.combo_clouds)
+        
+        # Stability
+        lbl_stability = Label()
+        lbl_stability.Text = "Stability:"
+        lbl_stability.Location = Point(310, 30)
+        lbl_stability.Size = Size(80, 20)
+        grp_conditions.Controls.Add(lbl_stability)
+        
+        self.combo_stability = ComboBox()
+        self.combo_stability.Location = Point(400, 28)
+        self.combo_stability.Size = Size(180, 25)
+        self.combo_stability.DropDownStyle = ComboBoxStyle.DropDownList
+        self.combo_stability.Items.AddRange(Array[object](["Steady", "Slight flickering", "Strong flickering"]))
+        self.combo_stability.SelectedIndex = 0
+        grp_conditions.Controls.Add(self.combo_stability)
+        
+        # Other Conditions
+        lbl_other = Label()
+        lbl_other.Text = "Other Conditions:"
+        lbl_other.Location = Point(600, 30)
+        lbl_other.Size = Size(130, 20)
+        grp_conditions.Controls.Add(lbl_other)
+        
+        self.txt_other_conditions = TextBox()
+        self.txt_other_conditions.Location = Point(730, 28)
+        self.txt_other_conditions.Size = Size(190, 25)
+        grp_conditions.Controls.Add(self.txt_other_conditions)
+        
         # ===== BOTTOM BUTTONS =====
         self.status_label = Label()
         self.status_label.Text = "Please complete all sections above"
-        self.status_label.Location = Point(20, 655)  # Moved down from 625
+        self.status_label.Location = Point(20, 755)  # Moved down to 755
         self.status_label.Size = Size(700, 20)
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
         
         self.btn_generate = Button()
         self.btn_generate.Text = "Generate Report"
-        self.btn_generate.Location = Point(750, 650)  # Moved down from 620
+        self.btn_generate.Location = Point(750, 750)  # Moved down to 750
         self.btn_generate.Size = Size(140, 35)
         self.btn_generate.Enabled = False
         self.btn_generate.Click += self.generate_click
@@ -305,7 +360,7 @@ class ComprehensiveReportDialog(Form):
         
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
-        btn_cancel.Location = Point(900, 650)  # Moved down from 620 to match generate button
+        btn_cancel.Location = Point(900, 750)  # Moved down to 750
         btn_cancel.Size = Size(80, 35)
         btn_cancel.Click += self.cancel_click
         self.Controls.Add(btn_cancel)
@@ -655,6 +710,13 @@ class ComprehensiveReportDialog(Form):
                 )
                 return
         
+        # Conditions
+        if self.combo_clouds.SelectedIndex >= 0 and self.combo_clouds.SelectedItem:
+            self.clouds = str(self.combo_clouds.SelectedItem)
+        if self.combo_stability.SelectedIndex >= 0 and self.combo_stability.SelectedItem:
+            self.stability = str(self.combo_stability.SelectedItem)
+        self.other_conditions = self.txt_other_conditions.Text.strip() if self.txt_other_conditions.Text else None
+        
         self.DialogResult = DialogResult.OK
         self.Close()
     
@@ -684,3 +746,12 @@ class ComprehensiveReportDialog(Form):
     
     def get_selected_aota_report_path(self):
         return self.selected_aota_report_path
+    
+    def get_clouds(self):
+        return self.clouds
+    
+    def get_stability(self):
+        return self.stability
+    
+    def get_other_conditions(self):
+        return self.other_conditions

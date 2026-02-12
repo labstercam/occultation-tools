@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.1
+# Release Package Instructions - v0.2.0-beta.2
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -12,11 +12,11 @@ cd occultation-manager
 ```
 
 This script automatically:
-- Creates the correct folder structure with `files/`, `sequences/`, and `files/Reports/`
-- Copies all necessary files
+- Creates the correct folder structure with `files/`, `sequences/`, `files/Reports/`, and `lib/`
+- Copies all necessary files including Openize SDK DLLs
 - Distributes README files to appropriate folders
 - Copies template files to both main folder and `files/` folder
-- Generates `occultation-manager-v0.2.0-beta.1.zip`
+- Generates `occultation-manager-v0.2.0-beta.2.zip`
 
 ### Manual File List (if needed)
 
@@ -38,6 +38,7 @@ If you need to create the package manually, include these files from `occultatio
 - main.py
 - main_gui.py
 - na_report.py
+- na_report_openize.py
 - occult4_export.py
 - report_generator_base.py
 - sequence_runner.py
@@ -45,6 +46,7 @@ If you need to create the package manually, include these files from `occultatio
 - templates.py
 - theme.py
 - tt_report.py
+- tt_report_openize.py
 - utils.py
 
 **SharpCap Sequence Templates:**
@@ -57,9 +59,15 @@ If you need to create the package manually, include these files from `occultatio
 **Countdown Reference File:**
 - python\countdown python for sequencer.scs
 
-**Report Templates (Excel files):**
-- python\NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
-- python\RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx
+**Report Templates (Excel files - Openize-compatible):**
+- python\NorthAmerica_AstReportForm_V5.6.12r.xlsx
+- python\RASNZ_AstReporttForm_V4.1.2.G.xlsx
+
+**Openize SDK DLLs:**
+- python\lib\Openize.OpenXMLSDK.dll
+- python\lib\DocumentFormat.OpenXml.dll
+- python\lib\DocumentFormat.OpenXml.Framework.dll
+- python\lib\README.md
 
 **Documentation:**
 - python\ReadMe.md
@@ -92,17 +100,22 @@ occultation-manager/
 │       └── README.txt
 ├── sequences/                                     <-- Sequence output folder (pre-created)
 │   └── README.txt
+├── lib/                                          <-- Openize SDK DLLs (pre-created)
+│   ├── Openize.OpenXMLSDK.dll
+│   ├── DocumentFormat.OpenXml.dll
+│   ├── DocumentFormat.OpenXml.Framework.dll
+│   └── README.md                                 <-- DLL installation guide
 ├── SharpCap Minimal Local Time template.txt      <-- Original reference copies
 ├── SharpCap Just Record template.txt
 ├── SharpCap Sequence Local Time template.txt
 ├── SharpCap Sequence UTC template.txt
 ├── SharpCap Test Recording template.txt
 ├── countdown python for sequencer.scs
-├── NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
-├── RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx
+├── NorthAmerica_AstReportForm_V5.6.12r.xlsx      <-- Openize-compatible templates
+├── RASNZ_AstReporttForm_V4.1.2.G.xlsx
 ├── moon_icon_178489.ico
 ├── ReadMe.md                                      <-- User documentation
-├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.1 features
+├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.2 features
 └── [all .py files from python/ folder]
 ```
 
@@ -116,24 +129,24 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.2.0-beta.1`
+   - Tag: `v0.2.0-beta.2`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.1 - First Public Beta`
+   - Release title: `Occultation Manager v0.2.0-beta.2 - Excel Report Improvements`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.1 - First Public Beta
+   # Occultation Manager v0.2.0-beta.2 - Excel Report Improvements
    
-   **First public beta release** of Occultation Manager for SharpCap.
+   **Improved Excel report generation** with Openize SDK for SharpCap.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
    
    ## 📦 Installation
    
-   **Download:** [occultation-manager-v0.2.0-beta.1.zip](link-will-be-auto-generated)
+   **Download:** [occultation-manager-v0.2.0-beta.2.zip](link-will-be-auto-generated)
    
    ### Quick Start:
    1. Download and extract the ZIP file to a location with read/write access
@@ -157,6 +170,28 @@ occultation-manager/
    - All other settings are pre-configured and optional
    
    See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
+   
+   ## ✨ What's New in Beta.2
+   
+   ### Openize SDK Implementation
+   - **Direct Excel Cell Manipulation**: Uses Openize.OpenXML-SDK for reliable Excel report generation
+   - **No More XML Placeholders**: Eliminates manual XML string replacement approach
+   - **Preserves Excel Features**: Maintains data validation, formulas, and formatting
+   - **IronPython Compatible**: Fully tested with IronPython 3.4.2 on .NET 8.0
+   - **Bundled DLLs**: Required .NET assemblies included in `lib/` folder - no additional downloads needed
+   
+   ### Enhanced Report Features
+   - **Conditions Section**: Added clouds and stability fields to comprehensive report dialog
+   - **Occult XML Integration**: Conditions automatically mapped to Occult XML transparency/stability codes
+   - **Improved Reliability**: More robust Excel manipulation without file corruption risks
+   - New report generators: `tt_report_openize.py` and `na_report_openize.py`
+   
+   ### Installation Requirements
+   - **Openize SDK DLLs** (included in release, no downloads required):
+     - Openize.OpenXMLSDK.dll
+     - DocumentFormat.OpenXml.dll
+     - DocumentFormat.OpenXml.Framework.dll
+   - DLLs located in `lib/` folder with installation guide
    
    ## 🎯 Key Features
    
@@ -234,7 +269,7 @@ occultation-manager/
    ```
 
 5. **Upload ZIP file:**
-   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.1.zip`
+   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.2.zip`
    - Drag and drop ZIP to "Attach binaries" section in GitHub release
 
 6. **Set release options:**
@@ -245,7 +280,7 @@ occultation-manager/
 ### After Publishing
 
 The release will be available at:
-- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.1`
+- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.2`
 - Latest release: `https://github.com/labstercam/occultation-tools/releases/latest`
 
 ## Version Control Best Practices
@@ -267,14 +302,14 @@ The release will be available at:
 3. **Commit all changes**:
    ```bash
    git add .
-   git commit -m "Release v0.2.0-beta.1"
+   git commit -m "Release v0.2.0-beta.2"
    git push
    ```
 
 4. **Create and push tag**:
    ```bash
-   git tag v0.2.0-beta.1
-   git push origin v0.2.0-beta.1
+   git tag v0.2.0-beta.2
+   git push origin v0.2.0-beta.2
    ```
 
 ### After Release

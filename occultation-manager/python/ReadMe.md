@@ -14,10 +14,10 @@ The Occultation Manager includes comprehensive Excel report generation with inte
 - 📅 **Future Plans**: Integration of GPS flash timing analysis (1PPS detection, timestamp offset, rolling shutter characterization) into report workflow
 
 **Excel Report Implementation**:
-- Uses Python standard library only: `zipfile` and `xml.etree.ElementTree`
-- No external dependencies or C extensions (IronPython compatible)
-- Direct manipulation of Excel .xlsx files (ZIP+XML format)
-- Preserves template formatting and formulas
+- Uses Openize.OpenXML-SDK for direct Excel manipulation via .NET
+- IronPython compatible through CLR interop
+- Direct cell access preserves Excel data validation and formulas
+- No external Python dependencies required
 
 ### Sequence Execution (Async Implementation)
 

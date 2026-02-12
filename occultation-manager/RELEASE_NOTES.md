@@ -1,5 +1,64 @@
 # Occultation Manager - Release Notes
 
+## Version 0.2.0-beta.2 (February 2026)
+
+**Excel Report Generation Improvements**
+
+This release improves Excel report generation with the Openize SDK for more reliable, maintainable report creation with enhanced IronPython compatibility.
+
+### What's New in Beta.2
+
+#### Openize SDK Implementation
+- **Direct Excel Cell Manipulation**: Uses Openize.OpenXML-SDK for direct cell access via IronPython
+- **No More XML Placeholders**: Eliminates manual XML string replacement approach
+- **Preserves Excel Features**: Maintains data validation, formulas, and formatting
+- **IronPython Compatible**: Fully tested with IronPython 3.4.2 on .NET 8.0
+- **Bundled DLLs**: Required .NET assemblies included in release package
+
+#### Enhanced Report Features
+- **Conditions Section**: Added clouds and stability fields to comprehensive report dialog
+- **Occult XML Integration**: Conditions automatically mapped to Occult XML transparency/stability codes
+- **Improved Reliability**: More robust Excel manipulation without file corruption risks
+- **Better Debugging**: Enhanced logging for troubleshooting report generation
+
+#### Technical Improvements
+- New report generators: `tt_report_openize.py` and `na_report_openize.py`
+- Template files relocated from development documentation to python folder
+- Simplified template management (no more _Template.xlsx placeholders)
+- Comprehensive conditions mapping for Occult 4 XML export
+
+#### Installation Requirements
+- **Openize SDK DLLs** (included in release):
+  - Openize.OpenXMLSDK.dll (~500-800 KB)
+  - DocumentFormat.OpenXml.dll (~5-8 MB)
+  - DocumentFormat.OpenXml.Framework.dll (~100-200 KB)
+- DLLs located in `lib/` folder with installation guide
+- No additional downloads required - all dependencies included
+
+#### Breaking Changes
+- Excel templates updated to non-placeholder versions
+- Old XML-based report generators retained for fallback
+
+### Technical Details
+
+**Report Generator Architecture:**
+- Uses Openize.Cells.Workbook for Excel file access
+- Direct cell writing via row/column coordinates
+- Cell references: H27 (clouds), P27 (stability), X27 (other conditions)
+- SNR extraction from cell W40 for Occult XML export
+
+**Conditions Mapping:**
+- Clouds → Transparency codes: Clear=1, Some Clouds=2, Intermittent Clouds=3, Cloudy=4, Very Cloudy=5, Overcast=6, Other Conditions=7
+- Stability: Excellent=1, Good=2, Poor=3
+- Automatic mapping for Occult 4 XML <Conditions> line
+
+**Documentation Updates:**
+- Architecture documentation reflects Openize implementation
+- Removed legacy XML placeholder references
+- Updated report generator file names and line counts
+
+---
+
 ## Version 0.2.0-beta.1 (January 2026)
 
 **First Public Beta Release**

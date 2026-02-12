@@ -535,19 +535,21 @@ Three specialized report generators create Excel-based observation reports by fi
 
 **Base Class (`report_generator_base.py` - 94 lines):**
 - `ReportGeneratorBase` - Common functionality for all report types
-- XML placeholder replacement in Excel workbooks
 - Star catalog parsing and mapping
+- Template path resolution
 - Filename generation
 
-**North America Reports (`na_report.py` - 647 lines):**
-- `NAReportGenerator` - IOTA North American report format
-- Template: `NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx`
-- Fields: Observation type, event details, equipment, timing, SNR
+**North America Reports (`na_report_openize.py` - 514 lines):**
+- `NAReportGeneratorOpenize` - IOTA North American report format
+- Template: `NorthAmerica_AstReportForm_V5.6.12r.xlsx`
+- Fields: Observation type, event details, equipment, timing, SNR, conditions
+- Uses Openize SDK for direct cell manipulation
 
-**Trans-Tasman Reports (`tt_report.py` - 679 lines):**
-- `TTReportGenerator` - RASNZ (Royal Astronomical Society NZ) format  
-- Template: `RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx`
+**Trans-Tasman Reports (`tt_report_openize.py` - 612 lines):**
+- `TTReportGeneratorOpenize` - RASNZ (Royal Astronomical Society NZ) format  
+- Template: `RASNZ_AstReporttForm_V4.1.2.G.xlsx`
 - Fields: Similar to NA with regional differences
+- Uses Openize SDK for direct cell manipulation
 
 **Occult 4 XML Export (`occult4_export.py` - 949 lines):**
 - `Occult4Exporter` - Occult 4 XML format (Version 2.15)
@@ -563,26 +565,39 @@ Three specialized report generators create Excel-based observation reports by fi
    a. Select report type (NA or TT)
    b. Select equipment (telescope + camera)
    c. Choose observation type (Positive/Negative/Unsure)
-   d. Optional: Import Tangra light curve data
-   e. Optional: Import AOTA timing/SNR data
-4. Generator builds placeholder replacements
-5. Unzips Excel template (.xlsx is a ZIP file)
-6. Replaces placeholders in sheet1.xml
-7. Rezips and saves to Reports/ folder
-8. Opens report in Excel
+   d. Set observing conditions (clouds, stability, other)
+   e. Optional: Import Tangra light curve data
+   f. Optional: Import AOTA timing/SNR data
+4. Generator uses Openize SDK to:
+   a. Load Excel template workbook
+   b. Access Data worksheet directly
+   c. Set cell values via PutValue() API
+   d. Save populated workbook
+5. Saves to Reports/ folder
+6. Generates matching Occult 4 XML file
+7. Opens report in Excel
 ```
 
 **Data Sources:**
 - Event data: From OccultationEvent object
 - Equipment: From ConfigManager telescope/camera configs
 - Observer info: From ConfigManager observer fields
+- Conditions: User-selected clouds, stability, other conditions
 - Timing/SNR: From AOTA Report Parser (optional)
-- Light curve: From Tangra files (optional)
+- Light curve: From Tangra CSV files (optional)
 
-#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - 686 lines)
+**Technical Implementation:**
+- Uses Openize.OpenXML-SDK .NET library via IronPython CLR
+- Direct cell access: `worksheet.Cells["A2"].PutValue(value)`
+- Preserves Excel data validation, formulas, and formatting
+- Templates stored in python/ folder (no placeholders needed)
+- Automatic Occult 4 XML export with matching filename
+
+#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - 758 lines)
 - Unified dialog for all report types
 - Equipment selection dropdowns
 - Observation type radio buttons
+- Observing conditions section (clouds, stability, other)
 - File import for analysis data
 - Validation and report generation coordination
 
