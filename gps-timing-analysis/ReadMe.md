@@ -4,6 +4,7 @@ Python toolkit for analyzing GPS flash timing to validate camera timestamp accur
 
 ### Key Features
 
+- **LED Line Delay Calibration**: Measure rolling shutter line delays using GPS timing LED (SharpCap add-in)
 - **Tangra Light Curve Analysis**: Import and analyze Tangra CSV files for timestamp quality
 - **Video Format Extraction**: Automatic extraction of video format from Tangra measurement parameters
 - **GPS Flash Detection**: Automated detection and analysis of GPS 1PPS (one pulse per second) flashes
@@ -12,6 +13,41 @@ Python toolkit for analyzing GPS flash timing to validate camera timestamp accur
 - **Camera Acquisition Delay**: Extract timing corrections from Tangra measurement parameters
 - **Exposure/Integration Detection**: Determine recording mode from timing consistency
 - **Quality Validation**: Detect dropped frames, timing anomalies, and system issues
+
+### Tools
+
+#### **LED Line Delay Calibration** (SharpCap Add-in)
+Real-time camera calibration tool for measuring rolling shutter line delays.
+
+**Location:** `python/led_line_delay_calibration.py`
+
+**Features:**
+- Live camera capture with GPS LED flash analysis
+- ADV file replay mode for offline analysis
+- Multiple aperture measurements across frame height
+- Linear regression for line delay calculation
+- Interactive GUI with visualization
+- TANGRA CSV export
+
+**Quick Start:**
+```python
+# In SharpCap IronPython Console:
+execfile(r"C:\path\to\gps-timing-analysis\python\led_line_delay_calibration.py")
+```
+
+See `LED_LINE_DELAY_QUICKSTART.md` for detailed usage instructions.
+
+**Requirements:**
+- SharpCap Pro 4.0+
+- GPS timing LED or GPS-equipped camera (QHY174GPS, etc.)
+- ADV DLLs in `lib/` directory (⚠️ must be unblocked - see `lib/README.md`)
+
+**Note:** Windows blocks DLLs downloaded from the web. Run `lib\unblock_dlls.ps1` before first use.
+
+#### **GPS Timing Analysis** (Offline Analysis)
+Python tools for analyzing Tangra CSV light curves.
+
+**Location:** `python/light_curves.py`, `python/ntp_analysis.py`
 
 ### Use Cases
 

@@ -69,7 +69,8 @@ def read_tangra_csv_iron(file_path):
         # Note: video_format will be extracted later from measurement parameters section
         details['video_format'] = video_format
     
-    # Extract video format from measurement parameters (lines 7-8, 0-indexed 6-7)
+    # Read acquisition delay and video format from measurement parameters table (rows 7-8, 0-indexed 6-7)
+    acquisition_delay = None
     try:
         if len(lines) > 7:
             # Read header row (line 7, 0-indexed 6)
@@ -82,9 +83,14 @@ def read_tangra_csv_iron(file_path):
             # Strip all column names for consistent matching
             params_header_stripped = [col.strip() for col in params_header]
             
-            # Find Video File Format column
+            # Find Acquisition Delay and Video File Format columns
             for i, col_name in enumerate(params_header_stripped):
-                if col_name == 'Video File Format':
+                if col_name == 'Acquisition Delay (ms)':
+                    if i < len(params_data):
+                        delay_str = params_data[i].strip()
+                        if delay_str:
+                            acquisition_delay = float(delay_str)
+                elif col_name == 'Video File Format':
                     if i < len(params_data):
                         format_value = params_data[i].strip().upper()
                         if format_value:
@@ -109,9 +115,8 @@ def read_tangra_csv_iron(file_path):
                             else:
                                 video_format = format_value  # Use as-is if not recognized
                             details['video_format'] = video_format
-                    break
-    except (ValueError, IndexError):
-        # If parsing fails, video_format stays empty string
+    except (ValueError, IndexError) as ex:
+        # If parsing fails, just continue without acquisition delay or video format
         pass
     
     # Find where the light curve data starts by looking for 'FrameNo' or 'BinNo'
@@ -226,6 +231,7 @@ def read_tangra_csv_iron(file_path):
         'apertures': apertures,
         'light_curve': light_curve,
         'column_names': column_names,
+        'acquisition_delay': acquisition_delay,
         'video_format': video_format
     }
 
@@ -405,6 +411,10 @@ def analyse_timestamps_iron(tangra_object, percentiles=None):
         'video_format': video_format,
         'exposure_integration': exposure_integration
     }
+    
+    # Include acquisition delay if available
+    if 'acquisition_delay' in tangra_object and tangra_object['acquisition_delay'] is not None:
+        result['acquisition_delay'] = tangra_object['acquisition_delay']
     
     # Calculate percentiles if requested
     if percentiles is not None:
