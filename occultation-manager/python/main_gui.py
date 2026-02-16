@@ -904,11 +904,22 @@ class OccultationManagerGUI(Form):
         if create_combined:
             if apply_all:
                 # Create combined for all events using selected template
-                combined_path = self.create_combined_sequence_file(events, template_path)
+                combined_path, past_events = self.create_combined_sequence_file(events, template_path)
                 if combined_path:
-                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    msg = f"Combined sequence file created: {os.path.basename(combined_path)}"
+                    if past_events:
+                        msg += f"\n\nNote: {len(past_events)} past event(s) excluded:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                    MessageBox.Show(msg, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 else:
-                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    if past_events:
+                        msg = f"Cannot create combined sequence file.\n\nAll {len(past_events)} selected event(s) are in the past:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                        MessageBox.Show(msg, "No Future Events", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    else:
+                        MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
             else:
                 # Per-event templates for combined file: collect a map of per-event templates
@@ -928,18 +939,29 @@ class OccultationManagerGUI(Form):
                 if not templates_map:
                     return
 
-                combined_path = self.create_combined_sequence_file(events, templates_map)
+                combined_path, past_events = self.create_combined_sequence_file(events, templates_map)
                 if combined_path:
-                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    msg = f"Combined sequence file created: {os.path.basename(combined_path)}"
+                    if past_events:
+                        msg += f"\n\nNote: {len(past_events)} past event(s) excluded:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                    MessageBox.Show(msg, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 else:
-                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    if past_events:
+                        msg = f"Cannot create combined sequence file.\n\nAll {len(past_events)} selected event(s) are in the past:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                        MessageBox.Show(msg, "No Future Events", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    else:
+                        MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
 
         # Not creating combined: fall back to existing create-per-event/create-all logic
         if apply_all:
             # Create sequences for all events using the selected template
             self.manager.selected_events = set(events)
-            success_count, error_count, message = self.generate_sequences_for_events(template_path)
+            success_count, error_count, past_events, message = self.generate_sequences_for_events(template_path)
 
             if success_count > 0:
                 self.update_status("Sequences created, starting execution...")
@@ -991,19 +1013,27 @@ class OccultationManagerGUI(Form):
         """Generate sequence files for selected events - internal method"""
         selected_events = list(self.manager.selected_events)
         if not selected_events:
-            return 0, 0, "No events selected"
+            return 0, 0, [], "No events selected"
         
         template_content = TemplateManager.load_template(template_path, self.config)
         if not template_content:
-            return 0, 0, "Template not found or empty"
+            return 0, 0, [], "Template not found or empty"
         
         success_count = 0
         error_count = 0
+        past_events = []
         sequence_path = self.config.get_sequence_path()
+        now = datetime.utcnow()
         
         for i, event in enumerate(selected_events):
             try:
                 self.update_status(f"Processing {i + 1}/{len(selected_events)}: {event.event_name}")
+                
+                # Check if event is in the past
+                if event.end_time and event.end_time < now:
+                    past_events.append(event.event_name)
+                    print(f"Skipping past event: {event.event_name} (ended {event.end_time})")
+                    continue
                 
                 if save_occultation_sequence(event, template_path or "", sequence_path, self.config):
                     success_count += 1
@@ -1013,7 +1043,8 @@ class OccultationManagerGUI(Form):
                 error_count += 1
                 print(f"Error creating sequence for {event.event_name}: {e}")
         
-        return success_count, error_count, f"Created {success_count} of {len(selected_events)} sequences"
+        total_attempted = success_count + error_count
+        return success_count, error_count, past_events, f"Created {success_count} of {total_attempted} sequences"
     
     def update_status_safe(self, message):
         """Thread-safe status update"""
@@ -1117,6 +1148,13 @@ class OccultationManagerGUI(Form):
     
     def regenerate_single_sequence(self, event):
         """Regenerate sequence for a single event"""
+        # Check if event is in the past
+        now = datetime.utcnow()
+        if event.end_time and event.end_time < now:
+            MessageBox.Show(f"Cannot regenerate sequence for past event: {event.event_name}\n\nEvent ended: {event.end_time_str} UTC",
+                          "Past Event", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        
         template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
         if template_dialog.ShowDialog() == DialogResult.OK:
             template_path = template_dialog.get_selected_template_path()
@@ -2107,11 +2145,22 @@ class OccultationManagerGUI(Form):
         if create_combined:
             if apply_all:
                 # Create combined for all selected events using the chosen template
-                combined_path = self.create_combined_sequence_file(selected_events, template_path)
+                combined_path, past_events = self.create_combined_sequence_file(selected_events, template_path)
                 if combined_path:
-                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    msg = f"Combined sequence file created: {os.path.basename(combined_path)}"
+                    if past_events:
+                        msg += f"\n\nNote: {len(past_events)} past event(s) excluded:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                    MessageBox.Show(msg, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 else:
-                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    if past_events:
+                        msg = f"Cannot create combined sequence file.\n\nAll {len(past_events)} selected event(s) are in the past:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                        MessageBox.Show(msg, "No Future Events", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    else:
+                        MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
             else:
                 # Per-event templates for combined file: collect a map of per-event templates
@@ -2131,11 +2180,22 @@ class OccultationManagerGUI(Form):
                 if not templates_map:
                     return
 
-                combined_path = self.create_combined_sequence_file(selected_events, templates_map)
+                combined_path, past_events = self.create_combined_sequence_file(selected_events, templates_map)
                 if combined_path:
-                    MessageBox.Show(f"Combined sequence file created: {os.path.basename(combined_path)}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    msg = f"Combined sequence file created: {os.path.basename(combined_path)}"
+                    if past_events:
+                        msg += f"\n\nNote: {len(past_events)} past event(s) excluded:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                    MessageBox.Show(msg, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 else:
-                    MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    if past_events:
+                        msg = f"Cannot create combined sequence file.\n\nAll {len(past_events)} selected event(s) are in the past:\n"
+                        for event_name in past_events:
+                            msg += f"  • {event_name}\n"
+                        MessageBox.Show(msg, "No Future Events", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                    else:
+                        MessageBox.Show("Failed to create combined sequence file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 return
 
         # Not creating combined: fall back to existing behaviour
@@ -2146,6 +2206,9 @@ class OccultationManagerGUI(Form):
             # Apply the initially chosen template to the first event, then prompt for each subsequent event individually.
             success = 0
             errors = 0
+            past_events = []
+            now = datetime.utcnow()
+            
             for idx, ev in enumerate(selected_events):
                 if idx == 0:
                     per_template = template_path
@@ -2158,6 +2221,12 @@ class OccultationManagerGUI(Form):
                     per_template = per_dialog.get_selected_template_path()
 
                 try:
+                    # Check if event is in the past
+                    if ev.end_time and ev.end_time < now:
+                        past_events.append(ev.event_name)
+                        print(f"Skipping past event: {ev.event_name} (ended {ev.end_time})")
+                        continue
+                    
                     ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequence_path(), self.config)
                     if ok:
                         success += 1
@@ -2167,8 +2236,14 @@ class OccultationManagerGUI(Form):
                     errors += 1
                     print(f"Error creating sequence for {ev.event_name}: {ex}")
 
-            MessageBox.Show(f"Successfully created {success} of {success + errors} sequence files.", 
-                           "Sequence Creation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            # Build completion message
+            completion_msg = f"Successfully created {success} of {success + errors} sequence files."
+            if past_events:
+                completion_msg += f"\n\nSkipped {len(past_events)} past event(s):\n"
+                for event_name in past_events:
+                    completion_msg += f"  • {event_name}\n"
+            
+            MessageBox.Show(completion_msg, "Sequence Creation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
     
     def create_sequences_for_events(self, template_path):
         """Create sequence files for selected events"""
@@ -2184,11 +2259,18 @@ class OccultationManagerGUI(Form):
         else:
             sequence_path = self.config.get_sequence_path()
         
-        success_count, error_count, message = self.generate_sequences_for_events(template_path)
+        success_count, error_count, past_events, message = self.generate_sequences_for_events(template_path)
         
         self.update_status(message)
-        MessageBox.Show(f"Successfully created {success_count} of {success_count + error_count} sequence files.", 
-                       "Sequence Creation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
+        
+        # Build completion message
+        completion_msg = f"Successfully created {success_count} of {success_count + error_count} sequence files."
+        if past_events:
+            completion_msg += f"\n\nSkipped {len(past_events)} past event(s):\n"
+            for event_name in past_events:
+                completion_msg += f"  • {event_name}\n"
+        
+        MessageBox.Show(completion_msg, "Sequence Creation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information)
     
     def generate_combined_script_click(self, sender, e):
         """Generate single combined sequence file with all selected events in time order"""
@@ -2213,14 +2295,24 @@ class OccultationManagerGUI(Form):
             return
         
         template_path = template_dialog.get_selected_template_path()
-        combined_path = self.create_combined_sequence_file(selected_events, template_path)
+        combined_path, past_events = self.create_combined_sequence_file(selected_events, template_path)
 
         if combined_path:
-            MessageBox.Show(f"Combined sequence file generated: {os.path.basename(combined_path)}", "Success", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Information)
+            msg = f"Combined sequence file generated: {os.path.basename(combined_path)}"
+            if past_events:
+                msg += f"\n\nNote: {len(past_events)} past event(s) excluded:\n"
+                for event_name in past_events:
+                    msg += f"  • {event_name}\n"
+            MessageBox.Show(msg, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
         else:
-            MessageBox.Show("Failed to generate combined sequence file.", "Error", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Error)
+            if past_events:
+                msg = f"Cannot create combined sequence file.\n\nAll {len(past_events)} selected event(s) are in the past:\n"
+                for event_name in past_events:
+                    msg += f"  • {event_name}\n"
+                MessageBox.Show(msg, "No Future Events", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            else:
+                MessageBox.Show("Failed to generate combined sequence file.", "Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
 
     def create_combined_sequence_file(self, events, template_path_or_map):
         """Create a single sequence file with all events in time order.
@@ -2231,7 +2323,7 @@ class OccultationManagerGUI(Form):
           allow per-event templates within the single combined file.
         """
         if not events:
-            return False
+            return None, []
 
         try:
             # Sort events by event time (preferred) and fall back to GOTO time if event time unavailable
@@ -2244,6 +2336,23 @@ class OccultationManagerGUI(Form):
                     )
                 )
             )
+
+            # Filter out past events and track them
+            now = datetime.utcnow()
+            past_event_names = []
+            future_events = []
+            
+            for event in sorted_events:
+                if event.end_time and event.end_time < now:
+                    past_event_names.append(event.event_name)
+                    print(f"Excluding past event from combined sequence: {event.event_name} (ended {event.end_time})")
+                else:
+                    future_events.append(event)
+            
+            # Use only future events for the combined sequence
+            if not future_events:
+                print("No future events to include in combined sequence")
+                return None, past_event_names
 
             # Generate filename
             date_str = datetime.utcnow().strftime('%Y%m%d')
@@ -2258,20 +2367,22 @@ class OccultationManagerGUI(Form):
             # Add header
             combined_content.append("# Combined Sequence File")
             combined_content.append(f"# Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
-            combined_content.append(f"# Events: {len(sorted_events)}")
+            combined_content.append(f"# Events: {len(future_events)}")
             combined_content.append(f"# Station(s): {', '.join(stations)}")
+            if past_event_names:
+                combined_content.append(f"# Note: {len(past_event_names)} past event(s) excluded")
             combined_content.append("#")
 
             # Add event summary
             combined_content.append("# Event Schedule:")
-            for i, event in enumerate(sorted_events, 1):
+            for i, event in enumerate(future_events, 1):
                 combined_content.append(f"# {i:2d}. {event.event_time} UTC - {event.get_asteroid_display_name()}")
             combined_content.append("#" + "=" * 70)
             combined_content.append("")
 
             # Process each event and add its sequence content
-            for i, event in enumerate(sorted_events, 1):
-                self.update_status(f"Processing event {i}/{len(sorted_events)}: {event.event_name}")
+            for i, event in enumerate(future_events, 1):
+                self.update_status(f"Processing event {i}/{len(future_events)}: {event.event_name}")
 
                 # Add event separator
                 combined_content.append(f"# Event {i}: {event.get_asteroid_display_name()}")
@@ -2300,7 +2411,7 @@ class OccultationManagerGUI(Form):
                         print(f"Error generating sequence for {event.event_name}: {e}")
 
                 # Add spacing between events (except for last one)
-                if i < len(sorted_events):
+                if i < len(future_events):
                     combined_content.append("")
                     combined_content.append("#" + "=" * 70)
                     combined_content.append("")
@@ -2310,13 +2421,13 @@ class OccultationManagerGUI(Form):
                 f.write('\n'.join(combined_content))
 
             self.update_status(f"Combined sequence saved: {combined_filename}")
-            # Return the path to the generated combined file for callers
-            return combined_path
+            # Return the path to the generated combined file and past event names for callers
+            return combined_path, past_event_names
 
         except Exception as e:
             self.update_status(f"Error creating combined sequence: {e}")
             print(f"Error creating combined sequence: {e}")
-            return False
+            return None, []
 
     def format_template(self, template_content, event):
         """Format template with event data"""
@@ -2599,7 +2710,7 @@ class OccultationManagerGUI(Form):
                     os.makedirs(sequence_path, exist_ok=True)
                 
                 # Write the temporary sequence file
-                with open(temp_sequence_path, 'w') as f:
+                with open(temp_sequence_path, 'w', encoding='utf-8') as f:
                     f.write(report_content)
                     
             except Exception as write_error:
@@ -2988,7 +3099,7 @@ class OccultationManagerGUI(Form):
             # Log results to file for troubleshooting
             try:
                 log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
-                with open(log_path, 'a') as log_file:
+                with open(log_path, 'a', encoding='utf-8') as log_file:
                     from datetime import datetime
                     log_file.write(f"\n{'='*70}\n")
                     log_file.write(f"Sequence Run: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC\n")

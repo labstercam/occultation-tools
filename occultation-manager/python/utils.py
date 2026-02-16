@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from templates import TemplateManager
 import urllib.request
 import json
@@ -242,7 +242,7 @@ def save_occultation_sequence(occ, template_path="", sequence_path=None, config=
             pre_goto_time_local=occ_dict.get('pre_goto_time_local', '') 
         )
         
-        with open(full_seq_path, 'w') as f:
+        with open(full_seq_path, 'w', encoding='utf-8') as f:
             f.write(report)
         
         return True
