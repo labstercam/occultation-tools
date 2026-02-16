@@ -37,7 +37,7 @@ class TemplateManager:
         """Load template content from file"""
         try:
             if template_path and os.path.exists(template_path):
-                with open(template_path, 'r') as f:
+                with open(template_path, 'r', encoding='utf-8-sig') as f:
                     return f.read()
             else:
                 return None

@@ -151,7 +151,7 @@ class ConfigManager:
         config_path = self.get_config_path()
         try:
             if os.path.exists(config_path):
-                with open(config_path, 'r') as f:
+                with open(config_path, 'r', encoding='utf-8') as f:
                     saved_config = json.load(f)
                 
                 # Update current config with saved values
@@ -174,7 +174,7 @@ class ConfigManager:
             # Ensure config directory exists
             os.makedirs(self.config_folder, exist_ok=True)
             
-            with open(config_path, 'w') as f:
+            with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2)
             
             print(f"Configuration saved to: {config_path}")

@@ -35,7 +35,7 @@ def parse_aota_report(file_path):
         }
     """
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
     except (IOError, OSError) as e:
         print(f"Error reading AOTA Report file: {e}")

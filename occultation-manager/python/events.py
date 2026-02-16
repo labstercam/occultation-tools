@@ -28,7 +28,7 @@ class EventProcessor:
         try:
             full_path = config.get_full_file_path(filename)
             if os.path.exists(full_path):
-                with open(full_path, 'r') as f:
+                with open(full_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
         except Exception as ex:
             print(f"Error loading occultations: {ex}")
@@ -39,7 +39,7 @@ class EventProcessor:
         """Save occultations to JSON file"""
         try:
             full_path = config.get_full_file_path(filename)
-            with open(full_path, 'w') as f:
+            with open(full_path, 'w', encoding='utf-8') as f:
                 json.dump(events_data, f, indent=2)
             return True
         except Exception as ex:
@@ -130,7 +130,7 @@ class EventProcessor:
         module_dir = os.path.dirname(os.path.abspath(__file__))
         debug_log = os.path.join(module_dir, "owc_raw_download.log")
         try:
-            with open(debug_log, 'w') as f:  # 'w' to overwrite each time
+            with open(debug_log, 'w', encoding='utf-8') as f:  # 'w' to overwrite each time
                 f.write("="*80 + "\n")
                 f.write("RAW OWC DOWNLOAD DATA - COMPLETE DUMP\n")
                 f.write("="*80 + "\n")
@@ -152,7 +152,7 @@ class EventProcessor:
                 if station['IsOwnStation']:
                     # DEBUG: Log raw OWC station data
                     try:
-                        with open(debug_log, 'a') as f:
+                        with open(debug_log, 'a', encoding='utf-8') as f:
                             f.write("\n" + "-"*80 + "\n")
                             f.write("Event: " + str(name) + "\n")
                             f.write("Station: " + str(station.get('StationName', 'Unknown')) + "\n")
@@ -419,7 +419,7 @@ class OccultationEvent:
         module_dir = os.path.dirname(os.path.abspath(__file__))
         debug_log = os.path.join(module_dir, "owc_data_debug.log")
         try:
-            with open(debug_log, 'a') as f:
+            with open(debug_log, 'a', encoding='utf-8') as f:
                 f.write("\n" + "="*80 + "\n")
                 f.write("OWC Event Data Debug\n")
                 f.write("Available keys: " + str(sorted(data.keys())) + "\n")
@@ -954,7 +954,7 @@ class OccultationManager:
         
         for event in filtered_events:
             if status :
-                self.selected_events.remove(event)
+                self.selected_events.discard(event)
             else:
                 self.selected_events.add(event)
         return not status
