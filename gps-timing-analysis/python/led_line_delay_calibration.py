@@ -518,6 +518,41 @@ def save_tangra_csv(aperture_measurements, timestamps, frame_numbers,
 # These functions are adapted from gps-timing-analysis/python/light_curves.py
 # Simplified to remove pandas/numpy dependencies for IronPython compatibility
 
+def invert_measurements(measurements, auto_detect_max=True, max_value=None):
+    """Invert signal measurements for inverted GPS PPS patterns
+    
+    Converts 100ms OFF, 900ms ON pattern to 100ms ON, 900ms OFF pattern
+    by subtracting all values from the maximum.
+    
+    Args:
+        measurements: Dictionary {y_position: [measurement_list]}
+        auto_detect_max: If True, find max from data; if False, use max_value
+        max_value: Explicit max value to use for inversion
+        
+    Returns:
+        Dictionary with inverted measurements (same structure)
+    """
+    inverted = {}
+    
+    # Determine max value for inversion
+    if auto_detect_max or max_value is None:
+        # Find maximum across all apertures
+        all_values = []
+        for y_pos in measurements:
+            all_values.extend(measurements[y_pos])
+        max_val = max(all_values)
+    else:
+        max_val = max_value
+    
+    print("Inverting signals using max value: {0:.1f}".format(max_val))
+    
+    # Invert each aperture's measurements
+    for y_pos in measurements:
+        inverted[y_pos] = [max_val - val for val in measurements[y_pos]]
+    
+    return inverted
+
+
 def analyse_gps_flash_iron(tangra_object, col='signal_1', exposure_ms=50, 
                            flash_ms=100, background=None):
     """Analyze a light curve for GPS flashes and calculate time offsets
@@ -1031,6 +1066,14 @@ class LEDLineDelayCalibrationForm(Form):
         self.textbox_flash.Location = Point(480, 48)
         self.textbox_flash.Width = 60
         
+        # Invert signal checkbox
+        self.checkbox_invert = CheckBox()
+        self.checkbox_invert.Text = "Invert Signal (for inverted PPS)"
+        self.checkbox_invert.Location = Point(560, 48)
+        self.checkbox_invert.Width = 120
+        self.checkbox_invert.AutoSize = True
+        self.checkbox_invert.CheckedChanged += self.on_invert_changed
+        
         # Start button
         self.button_start = Button()
         self.button_start.Text = "Start Calibration"
@@ -1083,6 +1126,7 @@ class LEDLineDelayCalibrationForm(Form):
         self.Controls.Add(self.textbox_duration)
         self.Controls.Add(self.label_flash)
         self.Controls.Add(self.textbox_flash)
+        self.Controls.Add(self.checkbox_invert)
         self.Controls.Add(self.label_mode)
         self.Controls.Add(self.radio_live)
         self.Controls.Add(self.radio_adv)
@@ -1107,6 +1151,24 @@ class LEDLineDelayCalibrationForm(Form):
             self.button_start.Text = "Start Calibration"
             self.textbox_duration.Enabled = True
             self.label_duration.Enabled = True
+    
+    def on_invert_changed(self, sender, event):
+        """Handle invert checkbox change - show warning when enabled"""
+        if self.checkbox_invert.Checked:
+            # Show warning message
+            result = MessageBox.Show(
+                "Invert can be used for an LED that is ON for 900 ms and OFF for 100 ms. "
+                "The built in LED on an Arduino module does this, as do some GPS receivers. "
+                "It is better to use a proper GPS flasher, but acceptable calibration is "
+                "possible with an inverted flash.",
+                "Inverted PPS Signal Warning",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Warning
+            )
+            
+            # If user cancels, uncheck the box
+            if result == DialogResult.Cancel:
+                self.checkbox_invert.Checked = False
         
     def start_calibration(self, sender, event):
         """Start LED line delay calibration in separate thread"""
@@ -1264,6 +1326,14 @@ class LEDLineDelayCalibrationForm(Form):
             
             # 5. Create tangra objects for all apertures
             self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Processing data...'))
+            
+            # Apply signal inversion if requested
+            if self.checkbox_invert.Checked:
+                print("\nApplying signal inversion...")
+                self.capture_handler.measurements = invert_measurements(
+                    self.capture_handler.measurements,
+                    auto_detect_max=True
+                )
             
             tangra_objects = []
             aperture_y_positions = sorted(self.capture_handler.measurements.keys())
@@ -1545,6 +1615,14 @@ class LEDLineDelayCalibrationForm(Form):
         
         # Continue with analysis (same as live capture from step 5 onwards)
         self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Creating TANGRA objects...'))
+        
+        # Apply signal inversion if requested
+        if self.checkbox_invert.Checked:
+            print("\nApplying signal inversion...")
+            self.capture_handler.measurements = invert_measurements(
+                self.capture_handler.measurements,
+                auto_detect_max=True
+            )
         
         # Create TANGRA objects and analyze
         tangra_objects = []
