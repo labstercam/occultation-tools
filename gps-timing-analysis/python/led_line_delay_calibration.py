@@ -49,7 +49,21 @@ Version: 3.0.0 - Production release with ADV replay support
 import time
 import math
 import os
+import sys
 from datetime import datetime, timedelta
+
+# Add script directory to sys.path for imports (needed when using execfile())
+# This allows importing adv_helper.py from the same directory
+try:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # __file__ not defined (happens with execfile() in IronPython)
+    # Use current working directory as fallback
+    script_dir = os.path.abspath(os.getcwd())
+
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+    print("Added to Python path: " + script_dir)
 
 # .NET/CLR imports for SharpCap
 import clr
@@ -70,9 +84,19 @@ import OxyPlot.Axes
 try:
     import adv_helper
     ADV_AVAILABLE = adv_helper.is_advlib_available()
-except:
+    if ADV_AVAILABLE:
+        print("ADV support is AVAILABLE - ADV file replay mode enabled")
+    else:
+        print("ADV support not available - AdvLib DLLs could not be loaded")
+        print("  Check SharpCap log for AdvLib loading errors from adv_helper.py")
+except Exception as e:
     ADV_AVAILABLE = False
-    print("ADV support not available (adv_helper.py not found or AdvLib DLLs missing)")
+    print("ADV support not available - could not import adv_helper.py")
+    print("  Error: " + str(e))
+    print("  Script directory: " + script_dir)
+    import traceback
+    traceback.print_exc()
+
 
 
 
@@ -188,6 +212,13 @@ class FrameCaptureHandler:
             self.apertures: List of (y_center, Rectangle) tuples for all apertures
             self.measurements: Initialized dictionary for each aperture
         """
+        # Validate frame dimensions
+        if frame_width < aperture_size or frame_height < aperture_size:
+            raise Exception(
+                "Frame too small for aperture.\n" +
+                "Frame: {0}x{1}, Aperture: {2}x{2}".format(
+                    frame_width, frame_height, aperture_size))
+        
         self.frame_width = frame_width
         self.frame_height = frame_height
         self.apertures = []
@@ -312,24 +343,22 @@ def create_tangra_object(measurements, timestamps, frame_numbers, y_position,
     return tangra_obj
 
 
-def save_tangra_csv(top_measurements, bottom_measurements, timestamps, frame_numbers, 
-                   top_y, bottom_y, exposure_ms, filename, camera_info):
+def save_tangra_csv(aperture_measurements, timestamps, frame_numbers, 
+                   aperture_y_positions, exposure_ms, filename, camera_info):
     """Save aperture measurements in TANGRA CSV format
     
     Generates a CSV file compatible with TANGRA photometry software format.
-    Top aperture is saved as Star 1, bottom aperture as Star 2.
+    Exports 4 apertures: top 2 and bottom 2 from the aperture list.
     Background values are set to 0 (not used for GPS timing analysis).
     
     Args:
-        top_measurements: List of mean intensity values from top aperture
-        bottom_measurements: List of mean intensity values from bottom aperture
+        aperture_measurements: Dictionary {y_position: [measurements]} for all apertures
         timestamps: List of datetime objects for each frame
         frame_numbers: List of frame numbers
-        top_y: Y coordinate of top aperture center
-        bottom_y: Y coordinate of bottom aperture center
+        aperture_y_positions: List of Y positions for all apertures (sorted top to bottom)
         exposure_ms: Exposure time in milliseconds
         filename: Output CSV filename (e.g., 'LED_Calibration_2024-01-15.csv')
-        camera_info: Dictionary with camera info (name, resolution)
+        camera_info: Dictionary with camera info (name, resolution, adv_filename (optional))
         
     Returns:
         Full path to saved CSV file
@@ -337,61 +366,129 @@ def save_tangra_csv(top_measurements, bottom_measurements, timestamps, frame_num
     import os
     from datetime import datetime as dt
     
-    # Build CSV content as list of lines
-    csv_lines = []
+    # Get measurements for top 2 and bottom 2 apertures
+    top1_y = aperture_y_positions[0]
+    top2_y = aperture_y_positions[1] if len(aperture_y_positions) > 1 else aperture_y_positions[0]
+    bottom2_y = aperture_y_positions[-2] if len(aperture_y_positions) > 1 else aperture_y_positions[-1]
+    bottom1_y = aperture_y_positions[-1]
     
-    # Line 1: TANGRA header
-    csv_lines.append("Tangra")
+    top1_measurements = aperture_measurements[top1_y]
+    top2_measurements = aperture_measurements[top2_y]
+    bottom2_measurements = aperture_measurements[bottom2_y]
+    bottom1_measurements = aperture_measurements[bottom1_y]
     
-    # Line 2: Original filename (use camera name and timestamp)
-    timestamp_str = dt.utcnow().strftime("%Y%m%d_%H%M%S")
-    original_filename = "{0}_LED_Calibration_{1}.raw".format(camera_info.get('name', 'Camera'), timestamp_str)
-    csv_lines.append(original_filename)
-    
-    # Lines 3-6: Empty
-    csv_lines.append("")
-    csv_lines.append("")
-    csv_lines.append("")
-    csv_lines.append("")
-    
-    # Line 7: Measurement parameters header
-    csv_lines.append("Video File Format,Frame Rate,Frames in Video,Frame Width,Frame Height,Acquisition Delay (ms),Colour Channel,Binning,Tracked")
-    
-    # Line 8: Measurement parameters data
+    # Parse camera info
     resolution_str = camera_info.get('resolution', '640x480')
     width, height = resolution_str.split('x')
-    params_line = "SharpCap Live,{0},{1},{2},{3},0.0,Green,1,False".format(
-        round(1000.0 / exposure_ms, 2) if exposure_ms > 0 else 30.0,  # Frame rate
-        len(frame_numbers),  # Total frames
-        width,
-        height
-    )
-    csv_lines.append(params_line)
+    frame_width = camera_info.get('width', int(width))
+    frame_height = int(height)
+    camera_name = camera_info.get('name', 'Camera')
     
-    # Line 9: Aperture details header
-    csv_lines.append("Object,Type,Aperture,StartingX,StartingY")
+    # Measurement aperture size (10x10 rectangle)
+    aperture_size = 10
+    aperture_half = aperture_size / 2.0
     
-    # Line 10: Star 1 (top aperture)
-    csv_lines.append("1,Fixed Aperture,Rectangle (10x10 fixed),5,{0}".format(int(top_y)))
+    # Calculate centered X coordinate
+    x_center = frame_width * 0.5
     
-    # Line 11: Star 2 (bottom aperture)
-    csv_lines.append("2,Fixed Aperture,Rectangle (10x10 fixed),5,{0}".format(int(bottom_y)))
+    # Build CSV content as list of lines (comma-separated for TANGRA format)
+    csv_lines = []
     
-    # Lines 12-13: Blank
+    # ===== TOP FILE HEADER (Lines 1-4) =====
+    # Line 1: Tangra version
+    csv_lines.append("Tangra v3.7.0.5")
+    
+    # Line 2: Measurement count
+    csv_lines.append("Measurments of 4 objects")
+    
+    # Line 3: Original filename
+    if camera_info.get('adv_filename'):
+        # Use actual ADV filename if available
+        original_filename = camera_info.get('adv_filename')
+    else:
+        # Generate filename for live capture
+        timestamp_str = dt.utcnow().strftime("%Y-%m-%d")
+        time_str = dt.utcnow().strftime("%H_%M_%SZ")
+        original_filename = "D:\\SharpCap Captures\\LED_Calibration\\{0}\\Light\\{1}_.adv".format(timestamp_str, time_str)
+    csv_lines.append(original_filename)
+    
+    # Line 4: Video format info
+    csv_lines.append("Asteroidal Video (ADV2.16), Time: Timestamp Saving During Recording")
+    
+    # Lines 5-6: Empty
     csv_lines.append("")
     csv_lines.append("")
     
-    # Line 14: Light curve header
-    csv_lines.append("FrameNo,Time (UT),Signal 1,Background 1,Signal 2,Background 2")
+    # ===== CAMERA/RECORDING BLOCK (Lines 7-8) =====
+    # Line 7: Camera/recording parameters header (comma + space separator)
+    camera_header = "Reversed Gamma, Colour, Measured Band, Integration, Digital Filter, Signal Method, Background Method, Instrumental Delay Corrections, Camera, AAV Integration, First Frame, Last Frame, Reversed Camera Response, Video File Format, Acquisition Delay (ms)"
+    csv_lines.append(camera_header)
     
-    # Lines 15+: Light curve data
-    for frame_no, timestamp, signal1, signal2 in zip(frame_numbers, timestamps, top_measurements, bottom_measurements):
-        time_str = "[{0}]".format(timestamp.strftime("%H:%M:%S.%f"))
-        data_line = "{0},{1},{2:.1f},0.0,{3:.1f},0.0".format(
-            frame_no,
-            time_str,
-            signal1,
-            signal2
+    # Line 8: Camera/recording parameters data (comma separator, no spaces)
+    first_frame = frame_numbers[0] if frame_numbers else 1
+    last_frame = frame_numbers[-1] if frame_numbers else len(frame_numbers)
+    camera_data = "1.00,no,Red,no,NoFilter,AperturePhotometry,AverageBackground,Not Required,{0},,{1},{2},,ADV,0.0".format(
+        camera_name, first_frame, last_frame)
+    csv_lines.append(camera_data)
+    csv_lines.append("")  # Line 9: Empty
+    
+    # ===== OBJECT/APERTURES BLOCK (Lines 10-14) =====
+    # Line 10: Aperture details header (comma + space separator)
+    aperture_header = "Object, Type, Aperture, Tolerance, FWHM, Measured, StartingX, StartingY, Fixed"
+    csv_lines.append(aperture_header)
+    
+    # Lines 11-14: 4 apertures (comma separator, no spaces)
+    # For GPS flash, use the center of the measurement rectangle as the aperture position
+    # Aperture value is half the measurement rectangle size (5.0 for 10x10 rectangle)
+    # FWHM is also half the measurement rectangle size
+    # Starting X/Y is the center of the rectangle
+    # All apertures are along the vertical center line
+    
+    # Aperture 1: Top aperture (first)
+    csv_lines.append("1,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(top1_y)))
+    
+    # Aperture 2: Second from top
+    csv_lines.append("2,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(top2_y)))
+    
+    # Aperture 3: Second from bottom
+    csv_lines.append("3,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(bottom2_y)))
+    
+    # Aperture 4: Bottom aperture (last)
+    csv_lines.append("4,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(bottom1_y)))
+    
+    # Lines 15-16: Blank
+    csv_lines.append("")
+    csv_lines.append("")
+    
+    # ===== DATA BLOCK (Lines 17+) =====
+    # Line 17: Data header (comma separator, space before " Background")
+    data_header = "FrameNo,Time (UT),Signal (1), Background (1),Signal (2), Background (2),Signal (3), Background (3),Signal (4), Background (4)"
+    csv_lines.append(data_header)
+    
+    # Lines 18+: Light curve data (comma separator, no spaces)
+    for i, (frame_no, timestamp) in enumerate(zip(frame_numbers, timestamps)):
+        time_str = "[{0}]".format(timestamp.strftime("%H:%M:%S.%f")[:-3])  # Truncate to 3 decimal places
+        
+        # Get signals for all 4 apertures (integers, 0 dp)
+        signal1 = int(round(top1_measurements[i]))
+        signal2 = int(round(top2_measurements[i]))
+        signal3 = int(round(bottom2_measurements[i]))
+        signal4 = int(round(bottom1_measurements[i]))
+        
+        # Background set to 0 (not used for GPS timing analysis)
+        bg1 = 0
+        bg2 = 0
+        bg3 = 0
+        bg4 = 0
+        
+        # Format data line (comma-separated)
+        data_line = "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}".format(
+            frame_no, time_str,
+            signal1, bg1, signal2, bg2, signal3, bg3, signal4, bg4
         )
         csv_lines.append(data_line)
     
@@ -777,7 +874,7 @@ def create_line_delay_plot(all_delays, fit_result):
     plot_model = OxyPlot.PlotModel()
     plot_model.Title = 'GPS LED Line Delay Calibration'
     
-    # Add subtitle with equation if fit_result available
+    # Add subtitle with equation and quality assessment if fit_result available
     if fit_result:
         slope = fit_result['slope']
         intercept = fit_result['intercept']
@@ -786,6 +883,21 @@ def create_line_delay_plot(all_delays, fit_result):
         sign = '+' if slope >= 0 else '-'
         subtitle = 'Line delay of {0:.3g} {1} {2:.3g} x Y ms, R\u00b2 = {3:.3f}'.format(
             intercept, sign, abs(slope), r_squared)
+        
+        # Add quality indicator to subtitle
+        if r_squared >= 0.98:
+            subtitle += ' - Excellent'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Green
+        elif r_squared >= 0.96:
+            subtitle += ' - Good'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Green
+        elif r_squared >= 0.9:
+            subtitle += ' - Poor - REDO'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Red
+        else:
+            subtitle += ' - Failed - REDO'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Red
+        
         plot_model.Subtitle = subtitle
     
     # Create scatter series for measurements
@@ -886,12 +998,14 @@ class LEDLineDelayCalibrationForm(Form):
         self.radio_live.Location = Point(140, 18)
         self.radio_live.AutoSize = True
         self.radio_live.Checked = True
+        self.radio_live.CheckedChanged += self.on_mode_changed
         
         self.radio_adv = RadioButton()
         self.radio_adv.Text = "Use ADV File"
         self.radio_adv.Location = Point(260, 18)
         self.radio_adv.AutoSize = True
         self.radio_adv.Enabled = ADV_AVAILABLE
+        self.radio_adv.CheckedChanged += self.on_mode_changed
         if not ADV_AVAILABLE:
             self.radio_adv.Text = "Use ADV File (not available)"
         
@@ -979,6 +1093,20 @@ class LEDLineDelayCalibrationForm(Form):
         self.Controls.Add(self.textbox_results)
         self.Controls.Add(self.plot_view)
         self.Controls.Add(self.button_close)
+    
+    def on_mode_changed(self, sender, event):
+        """Handle mode selection change - update UI based on selected mode"""
+        if self.radio_adv.Checked:
+            # ADV mode selected
+            self.button_start.Text = "Load ADV File"
+            self.textbox_duration.Enabled = False
+            self.label_duration.Enabled = False
+            # Note: Stop button not functional in ADV mode (file processing can't be interrupted)
+        else:
+            # Live capture mode selected
+            self.button_start.Text = "Start Calibration"
+            self.textbox_duration.Enabled = True
+            self.label_duration.Enabled = True
         
     def start_calibration(self, sender, event):
         """Start LED line delay calibration in separate thread"""
@@ -993,7 +1121,7 @@ class LEDLineDelayCalibrationForm(Form):
             )
             return
         
-        # Disable start button, enable stop
+        # Disable start button, enable stop (though stop doesn't work for ADV processing)
         self.button_start.Enabled = False
         self.button_stop.Enabled = True
         self.label_status.Text = "Starting..."
@@ -1007,17 +1135,27 @@ class LEDLineDelayCalibrationForm(Form):
     def run_calibration_thread(self, form):
         """Main calibration workflow - runs in separate thread"""
         try:
-            # Get parameters
-            duration = float(form.textbox_duration.Text)
-            flash_ms = float(form.textbox_flash.Text)
+            # Get parameters with validation
+            try:
+                duration = float(form.textbox_duration.Text)
+                flash_ms = float(form.textbox_flash.Text)
+            except ValueError:
+                raise Exception("Invalid input: Duration and Flash Duration must be numeric values")
+            
+            # Validate parameter ranges
+            if flash_ms <= 0 or flash_ms > 1000:
+                raise Exception("GPS Flash Duration must be between 0 and 1000 ms")
+            
             use_adv = form.radio_adv.Checked
             
             # Branch based on capture mode
             if use_adv:
-                # ADV file loading workflow (camera not required)
-                form.run_adv_workflow(duration, flash_ms, None)
+                # ADV file loading workflow (camera not required, duration not used)
+                form.run_adv_workflow(flash_ms, None)
             else:
-                # Live capture workflow (requires camera)
+                # Live capture workflow (requires camera and duration)
+                if duration <= 0 or duration > 300:
+                    raise Exception("Capture Duration must be between 0 and 300 seconds")
                 camera = SharpCap.SelectedCamera
                 form.run_live_workflow(duration, flash_ms, camera)
                 
@@ -1180,22 +1318,19 @@ class LEDLineDelayCalibrationForm(Form):
             camera_info = {
                 'name': camera.DeviceName if hasattr(camera, 'DeviceName') else 'Camera',
                 'resolution': '{0}x{1}'.format(roi.Width, roi.Height),
+                'width': roi.Width,
                 'roi_x': roi.X,
                 'roi_y': roi.Y
             }
             
-            # Save CSV with first and last aperture data
+            # Save CSV with top 2 and bottom 2 aperture data
             csv_path = None
             try:
-                first_y = aperture_y_positions[0]
-                last_y = aperture_y_positions[-1]
                 csv_path = save_tangra_csv(
-                    self.capture_handler.measurements[first_y],
-                    self.capture_handler.measurements[last_y],
+                    self.capture_handler.measurements,
                     self.capture_handler.timestamps,
                     self.capture_handler.frame_numbers,
-                    first_y,
-                    last_y,
+                    aperture_y_positions,
                     exposure_ms,
                     csv_filename,
                     camera_info
@@ -1273,26 +1408,17 @@ class LEDLineDelayCalibrationForm(Form):
             self.SafeInvoke(lambda: setattr(self.button_start, 'Enabled', True))
             self.SafeInvoke(lambda: setattr(self.button_stop, 'Enabled', False))
     
-    def run_adv_workflow(self, duration, flash_ms, camera):
-        """Run calibration using ADV file loading and replay"""
+    def run_adv_workflow(self, flash_ms, camera):
+        """Run calibration using ADV file loading and replay
+        
+        Args:
+            flash_ms: GPS flash duration in milliseconds
+            camera: Camera object (not used, kept for signature consistency)
+        """
         import adv_helper
         
-        # Prompt user to load ADV file
-        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Waiting to load ADV file...'))
-        
-        msg = "Load an ADV recording for calibration.\n\n"
-        msg += "Manually record now using SharpCap to ADV or use an existing file.\n\n"
-        msg += "Press OK when ready to load the file from disk."
-        
-        result = MessageBox.Show(msg, "Load ADV File", 
-                                MessageBoxButtons.OKCancel, 
-                                MessageBoxIcon.Information)
-        
-        if result != DialogResult.OK:
-            raise Exception("ADV file loading cancelled by user")
-        
-        # Prompt for ADV file location
-        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Locating ADV file...'))
+        # Go straight to file selection dialog (skip the informational prompt)
+        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Select ADV file...'))
         
         # Prompt user to browse for ADV file
         dialog = OpenFileDialog()
@@ -1319,7 +1445,11 @@ class LEDLineDelayCalibrationForm(Form):
             adv_file_name = os.path.basename(dialog.FileName)
             print("User selected: " + dialog.FileName)
         else:
-            raise Exception("ADV file not selected")
+            # User cancelled file selection - exit gracefully
+            print("ADV file selection cancelled by user")
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Cancelled'))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Gray))
+            return  # Exit gracefully without error
         
         # Process ADV file
         self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Processing ADV file...'))
@@ -1477,21 +1607,18 @@ class LEDLineDelayCalibrationForm(Form):
         # Camera info for CSV - extract from ADV filename if possible
         camera_info = {
             'name': adv_file_name.split('_')[0] if '_' in adv_file_name else 'Camera',
-            'resolution': '{0}x{1}'.format(frame_width, frame_height)
+            'resolution': '{0}x{1}'.format(frame_width, frame_height),
+            'width': frame_width
         }
         
         # Save CSV
         csv_path = None
         try:
-            first_y = aperture_y_positions[0]
-            last_y = aperture_y_positions[-1]
             csv_path = save_tangra_csv(
-                self.capture_handler.measurements[first_y],
-                self.capture_handler.measurements[last_y],
+                self.capture_handler.measurements,
                 self.capture_handler.timestamps,
                 self.capture_handler.frame_numbers,
-                first_y,
-                last_y,
+                aperture_y_positions,
                 exposure_ms,
                 csv_filename,
                 camera_info
@@ -1534,6 +1661,9 @@ class LEDLineDelayCalibrationForm(Form):
         
         fit_result = fit_line_delays(all_delays_filtered)
         
+        if not fit_result:
+            raise Exception("Linear fit failed. Please check data and try again.")
+        
         # Display results
         self.SafeInvoke(lambda: self.display_results(
             all_delays_filtered, fit_result, tangra_objects, 
@@ -1560,8 +1690,18 @@ class LEDLineDelayCalibrationForm(Form):
         intercept = fit_result['intercept']
         r_squared = fit_result['r_squared']
         sign = '+' if slope >= 0 else '-'
-        results_text += "Line delay of {0:.3g} {1} {2:.3g} x Y ms, R\u00b2 = {3:.3f}\r\n\r\n".format(
+        results_text += "Line delay of {0:.3g} {1} {2:.3g} x Y ms, R\u00b2 = {3:.3f}\r\n".format(
             intercept, sign, abs(slope), r_squared)
+        
+        # Add quality assessment based on R²
+        if r_squared >= 0.98:
+            results_text += "Excellent calibration fit.\r\n\r\n"
+        elif r_squared >= 0.96:
+            results_text += "Good calibration fit, but could be better. Check the flash brightness is not too high or low and is evenly illuminated.\r\n\r\n"
+        elif r_squared >= 0.9:
+            results_text += "Poor calibration fit. Please redo with better flash illumination.\r\n\r\n"
+        else:
+            results_text += "Very poor or failed calibration. Please redo with better flash illumination.\r\n\r\n"
         
         # Show CSV file path if available
         if csv_path:

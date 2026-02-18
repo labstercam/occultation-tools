@@ -30,8 +30,33 @@ from pathlib import Path
 
 # Add reference to AdvLib .NET assembly
 # DLLs should be in ../lib/ directory relative to this script
-script_dir = os.path.dirname(os.path.abspath(__file__))
+# Handle both normal execution and SharpCap execfile() scenarios
+try:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # __file__ not defined (can happen with execfile() in some environments)
+    # Fall back to current working directory
+    script_dir = os.path.abspath(os.getcwd())
+    print("WARNING: __file__ not defined, using current directory: " + script_dir)
+
 lib_dir = os.path.join(os.path.dirname(script_dir), 'lib')
+
+# Verify lib_dir exists, if not try alternate relative paths
+if not os.path.exists(lib_dir):
+    # Try looking for gps-timing-analysis/lib from various relative locations
+    alt_paths = [
+        os.path.join(script_dir, '..', 'lib'),
+        os.path.join(os.getcwd(), '..', 'lib')
+    ]
+    for alt_path in alt_paths:
+        alt_path = os.path.abspath(alt_path)
+        if os.path.exists(alt_path):
+            lib_dir = alt_path
+            print("Found lib directory at: " + lib_dir)
+            break
+    
+print("ADV Helper: Using lib directory: " + lib_dir)
+print("  Exists: " + str(os.path.exists(lib_dir)))
 
 # Add lib directory to path for DLL loading
 if lib_dir not in sys.path:
@@ -41,16 +66,28 @@ if lib_dir not in sys.path:
 ADVLIB_AVAILABLE = False
 try:
     advlib_path = os.path.join(lib_dir, 'AdvLib.dll')
+    print("Checking for AdvLib.dll at: " + advlib_path)
+    
     if os.path.exists(advlib_path):
+        print("  AdvLib.dll found, attempting to load...")
         clr.AddReferenceToFileAndPath(advlib_path)
         from Adv import AdvFile2, AdvError, AdvFrameInfo
         ADVLIB_AVAILABLE = True
-        print("AdvLib loaded successfully from: " + lib_dir)
+        print("  SUCCESS: AdvLib loaded and Adv namespace imported")
+    else:
+        print("  ERROR: AdvLib.dll not found at expected location")
+        print("  Please download and place DLLs in: " + lib_dir)
+        print("  Required files: AdvLib.dll, AdvLib.Core32.dll, AdvLib.Core64.dll")
 except Exception as e:
-    print("WARNING: Could not load AdvLib (ADV recording will not be available)")
-    print("  Error: " + str(e))
-    print("  To enable ADV recording, place DLLs in: " + lib_dir)
-    print("  Required: AdvLib.dll, AdvLib.Core32.dll, AdvLib.Core64.dll")
+    print("ERROR loading AdvLib:")
+    print("  " + str(type(e).__name__) + ": " + str(e))
+    print("  DLL location checked: " + advlib_path)
+    print("  To enable ADV file support:")
+    print("    1. Download AdvLib from: http://www.hristopavlov.net/adv/AdvLib.NET.zip")
+    print("    2. Extract DLLs to: " + lib_dir)
+    print("    3. Unblock DLLs (right-click > Properties > Unblock)")
+    import traceback
+    traceback.print_exc()
 
 # ============================================================================
 # ADV File Reading Functions
