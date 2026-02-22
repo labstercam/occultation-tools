@@ -85,6 +85,10 @@ occultation-manager/
 - Configurable event retention period (1-400 days, default 14)
 - Automatic SharpCap sequence generation with customizable templates
 - Customizable per-event settings (exposure, gain, recording duration)
+- **Generate Dummy Events**: Create realistic test events for practice and testing
+  - Configure event timing, location, and spacing
+  - Events visible from your observatory location
+  - Easy deletion when no longer needed
 - **Observation Preparation Panel**: Integrated workflow for setting up events
   - Load event for preparation with summary display
   - GOTO mount control with automatic slewing

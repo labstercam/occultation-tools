@@ -279,9 +279,13 @@ FIRST USE
 GETTING STARTED
 ---------------
 • Download Events: Syncs with OWC to get your station assignments
+• Generate Dummy Events: Create realistic test events for practice
+  - Configure number, timing, location, and spacing
+  - Events visible from your observatory
+  - Delete when done using Quick Filters Delete button
 • Station Filter: Shows events for specific location
 • Event Grid: All event information with sortable columns
-• Quick Filters: Show Today/Future/All events
+• Quick Filters: Show Today/Future/All events, Delete selected events
 • Observation Preparation: Test GOTO, plate solve, camera setup
 • Create Sequences: Generate customizable SharpCap .scs files
 • Night Mode: Red theme for observing sessions
@@ -856,6 +860,7 @@ A tool for managing asteroid occultation observations through customizable Sharp
 
 FEATURES:
 • Automated event download from OccultWatcher Cloud
+• Generate realistic test events for practice and testing
 • Interactive observation preparation tools  
 • Customizable SharpCap sequence generation
 • Full control over recording workflow automation
