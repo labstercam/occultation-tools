@@ -262,6 +262,40 @@ class FrameCaptureHandler:
         print("  Aperture size: {0}x{1} pixels".format(aperture_width, aperture_height))
         print("  Y positions: {0}".format([y for y, _ in self.apertures]))
     
+    def setup_single_aperture(self, frame_width, frame_height, y_center, aperture_size=10):
+        """Setup a single measurement aperture at specified Y position
+        
+        Used for long-term stability testing with single aperture.
+        
+        Args:
+            frame_width: Width of camera frame in pixels
+            frame_height: Height of camera frame in pixels
+            y_center: Y center position for aperture
+            aperture_size: Size of square aperture in pixels (default 10x10)
+        
+        Sets:
+            self.apertures: List with single (y_center, Rectangle) tuple
+            self.measurements: Initialized dictionary for the aperture
+        """
+        self.frame_width = frame_width
+        self.frame_height = frame_height
+        self.apertures = []
+        self.measurements = {}
+        
+        # Center horizontal position
+        x_center = int(frame_width * 0.5 - aperture_size * 0.5)
+        y_top = int(y_center - aperture_size * 0.5)
+        
+        # Create single aperture
+        rect = Rectangle(x_center, y_top, aperture_size, aperture_size)
+        self.apertures.append((y_center, rect))
+        self.measurements[y_center] = []
+        
+        print("Single aperture configured:")
+        print("  Frame: {0}x{1} pixels".format(frame_width, frame_height))
+        print("  Aperture: {0}x{1} at ({2}, {3})".format(
+            aperture_size, aperture_size, x_center, y_center))
+    
     def start_capture(self, camera):
         """Start capturing frames from the camera
         
@@ -994,6 +1028,7 @@ class LEDLineDelayCalibrationForm(Form):
     def __init__(self):
         """Initialize the calibration form"""
         self.capture_handler = FrameCaptureHandler()
+        self.stop_requested = False
         self.InitializeComponent()
         # Force handle creation to avoid invoke errors from background threads
         handle = self.Handle
@@ -1013,14 +1048,39 @@ class LEDLineDelayCalibrationForm(Form):
                 action()
             except:
                 print("Warning: Could not update UI: " + str(ex))
+    
+    def set_and_refresh_plot(self, plot_view, plot_model):
+        """Set plot model and force refresh"""
+        plot_view.Model = plot_model
+        plot_view.InvalidatePlot(True)
         
     def InitializeComponent(self):
         """Setup GUI components"""
         self.Text = "GPS LED Line Delay Calibration"
-        self.ClientSize = Size(700, 550)
+        self.ClientSize = Size(720, 880)
         self.TopMost = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
+        
+        # Create tab control
+        self.tab_control = TabControl()
+        self.tab_control.Location = Point(10, 10)
+        self.tab_control.Size = Size(700, 860)
+        
+        # Create tabs
+        self.tab_calibration = TabPage()
+        self.tab_calibration.Text = "Line Delay Calibration"
+        self.tab_calibration.Size = Size(692, 534)
+        
+        self.tab_stability = TabPage()
+        self.tab_stability.Text = "Long Term Timing Stability"
+        self.tab_stability.Size = Size(692, 534)
+        
+        self.tab_control.TabPages.Add(self.tab_calibration)
+        self.tab_control.TabPages.Add(self.tab_stability)
+        self.Controls.Add(self.tab_control)
+        
+        # === LINE DELAY CALIBRATION TAB ===
         
         # Capture mode selection (moved to top)
         self.label_mode = Label()
@@ -1121,22 +1181,125 @@ class LEDLineDelayCalibrationForm(Form):
         self.button_close.Size = Size(80, 25)
         self.button_close.Click += self.close_form
         
-        # Add controls
-        self.Controls.Add(self.label_duration)
-        self.Controls.Add(self.textbox_duration)
-        self.Controls.Add(self.label_flash)
-        self.Controls.Add(self.textbox_flash)
-        self.Controls.Add(self.checkbox_invert)
-        self.Controls.Add(self.label_mode)
-        self.Controls.Add(self.radio_live)
-        self.Controls.Add(self.radio_adv)
-        self.Controls.Add(self.button_start)
-        self.Controls.Add(self.button_stop)
-        self.Controls.Add(self.label_status)
-        self.Controls.Add(self.label_results)
-        self.Controls.Add(self.textbox_results)
-        self.Controls.Add(self.plot_view)
-        self.Controls.Add(self.button_close)
+        # Add controls to calibration tab
+        self.tab_calibration.Controls.Add(self.label_duration)
+        self.tab_calibration.Controls.Add(self.textbox_duration)
+        self.tab_calibration.Controls.Add(self.label_flash)
+        self.tab_calibration.Controls.Add(self.textbox_flash)
+        self.tab_calibration.Controls.Add(self.checkbox_invert)
+        self.tab_calibration.Controls.Add(self.label_mode)
+        self.tab_calibration.Controls.Add(self.radio_live)
+        self.tab_calibration.Controls.Add(self.radio_adv)
+        self.tab_calibration.Controls.Add(self.button_start)
+        self.tab_calibration.Controls.Add(self.button_stop)
+        self.tab_calibration.Controls.Add(self.label_status)
+        self.tab_calibration.Controls.Add(self.label_results)
+        self.tab_calibration.Controls.Add(self.textbox_results)
+        self.tab_calibration.Controls.Add(self.plot_view)
+        self.tab_calibration.Controls.Add(self.button_close)
+        
+        # === LONG TERM TIMING STABILITY TAB ===
+        
+        # Capture Duration
+        self.label_stab_duration = Label()
+        self.label_stab_duration.Text = "Capture Duration (seconds):"
+        self.label_stab_duration.Location = Point(20, 20)
+        self.label_stab_duration.AutoSize = True
+        
+        self.textbox_stab_duration = TextBox()
+        self.textbox_stab_duration.Text = "30"
+        self.textbox_stab_duration.Location = Point(210, 18)
+        self.textbox_stab_duration.Width = 60
+        
+        # Test Duration
+        self.label_test_duration = Label()
+        self.label_test_duration.Text = "Test Duration (HH:MM):"
+        self.label_test_duration.Location = Point(300, 20)
+        self.label_test_duration.AutoSize = True
+        
+        self.textbox_test_duration = TextBox()
+        self.textbox_test_duration.Text = "01:00"
+        self.textbox_test_duration.Location = Point(460, 18)
+        self.textbox_test_duration.Width = 60
+        
+        # GPS Flash Duration
+        self.label_stab_flash = Label()
+        self.label_stab_flash.Text = "GPS Flash Duration (ms):"
+        self.label_stab_flash.Location = Point(20, 50)
+        self.label_stab_flash.AutoSize = True
+        
+        self.textbox_stab_flash = TextBox()
+        self.textbox_stab_flash.Text = "100"
+        self.textbox_stab_flash.Location = Point(210, 48)
+        self.textbox_stab_flash.Width = 60
+        
+        # Invert checkbox
+        self.checkbox_stab_invert = CheckBox()
+        self.checkbox_stab_invert.Text = "Invert Signal (for inverted PPS)"
+        self.checkbox_stab_invert.Location = Point(300, 48)
+        self.checkbox_stab_invert.AutoSize = True
+        self.checkbox_stab_invert.CheckedChanged += self.on_stab_invert_changed
+        
+        # Start button
+        self.button_stab_start = Button()
+        self.button_stab_start.Text = "Start Stability Test"
+        self.button_stab_start.Location = Point(20, 80)
+        self.button_stab_start.Size = Size(140, 30)
+        self.button_stab_start.Click += self.start_stability_test
+        
+        # Stop button
+        self.button_stab_stop = Button()
+        self.button_stab_stop.Text = "Stop"
+        self.button_stab_stop.Location = Point(180, 80)
+        self.button_stab_stop.Size = Size(80, 30)
+        self.button_stab_stop.Enabled = False
+        self.button_stab_stop.Click += self.stop_stability_test
+        
+        # Status label
+        self.label_stab_status = Label()
+        self.label_stab_status.Text = "Ready"
+        self.label_stab_status.Location = Point(280, 88)
+        self.label_stab_status.AutoSize = True
+        self.label_stab_status.Font = Font(self.label_stab_status.Font.FontFamily, 9, FontStyle.Bold)
+        
+        # Statistics text box
+        self.label_stab_stats = Label()
+        self.label_stab_stats.Text = "Statistics:"
+        self.label_stab_stats.Location = Point(20, 120)
+        self.label_stab_stats.AutoSize = True
+        
+        self.textbox_stab_stats = TextBox()
+        self.textbox_stab_stats.Location = Point(20, 140)
+        self.textbox_stab_stats.Size = Size(660, 80)
+        self.textbox_stab_stats.Multiline = True
+        self.textbox_stab_stats.ReadOnly = True
+        self.textbox_stab_stats.ScrollBars = ScrollBars.Vertical
+        
+        # Time series plot
+        self.plot_stab_timeseries = OxyPlot.WindowsForms.PlotView()
+        self.plot_stab_timeseries.Location = Point(20, 230)
+        self.plot_stab_timeseries.Size = Size(660, 200)
+        
+        # Histogram plot
+        self.plot_stab_histogram = OxyPlot.WindowsForms.PlotView()
+        self.plot_stab_histogram.Location = Point(20, 440)
+        self.plot_stab_histogram.Size = Size(660, 380)
+        
+        # Add controls to stability tab
+        self.tab_stability.Controls.Add(self.label_stab_duration)
+        self.tab_stability.Controls.Add(self.textbox_stab_duration)
+        self.tab_stability.Controls.Add(self.label_test_duration)
+        self.tab_stability.Controls.Add(self.textbox_test_duration)
+        self.tab_stability.Controls.Add(self.label_stab_flash)
+        self.tab_stability.Controls.Add(self.textbox_stab_flash)
+        self.tab_stability.Controls.Add(self.checkbox_stab_invert)
+        self.tab_stability.Controls.Add(self.button_stab_start)
+        self.tab_stability.Controls.Add(self.button_stab_stop)
+        self.tab_stability.Controls.Add(self.label_stab_status)
+        self.tab_stability.Controls.Add(self.label_stab_stats)
+        self.tab_stability.Controls.Add(self.textbox_stab_stats)
+        self.tab_stability.Controls.Add(self.plot_stab_timeseries)
+        self.tab_stability.Controls.Add(self.plot_stab_histogram)
     
     def on_mode_changed(self, sender, event):
         """Handle mode selection change - update UI based on selected mode"""
@@ -1844,6 +2007,464 @@ class LEDLineDelayCalibrationForm(Form):
         except Exception as ex:
             print("Error in close_form: " + str(ex))
             self.Close()  # Close anyway
+
+    # === LONG TERM TIMING STABILITY METHODS ===
+    
+    def on_stab_invert_changed(self, sender, event):
+        """Handle stability invert checkbox change - show warning when enabled"""
+        if self.checkbox_stab_invert.Checked:
+            # Show warning message
+            result = MessageBox.Show(
+                "Invert can be used for an LED that is ON for 900 ms and OFF for 100 ms. "
+                "The built in LED on an Arduino module does this, as do some GPS receivers. "
+                "It is better to use a proper GPS flasher, but acceptable calibration is "
+                "possible with an inverted flash.",
+                "Inverted PPS Signal Warning",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Warning
+            )
+            
+            # If user cancels, uncheck the box
+            if result == DialogResult.Cancel:
+                self.checkbox_stab_invert.Checked = False
+    
+    def start_stability_test(self, sender, event):
+        """Start long-term timing stability test"""
+        # Check camera connection
+        if SharpCap.SelectedCamera is None:
+            MessageBox.Show(
+                "No camera is connected.\n\nPlease connect a camera before running the stability test.",
+                "Camera Connection Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+            return
+        
+        # Validate test duration format
+        test_duration_str = self.textbox_test_duration.Text.strip()
+        try:
+            parts = test_duration_str.split(':')
+            if len(parts) != 2:
+                raise ValueError("Invalid format")
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            if hours < 0 or minutes < 0 or minutes >= 60:
+                raise ValueError("Invalid time values")
+        except:
+            MessageBox.Show(
+                "Invalid Test Duration format.\n\nPlease use HH:MM format (e.g., 01:30 for 1 hour 30 minutes).",
+                "Input Validation Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+            return
+        
+        # Disable start button, enable stop
+        self.button_stab_start.Enabled = False
+        self.button_stab_stop.Enabled = True
+        
+        # Start test in background thread
+        import threading
+        test_thread = threading.Thread(target=self.run_stability_test_thread)
+        test_thread.daemon = True
+        test_thread.start()
+    
+    def stop_stability_test(self, sender, event):
+        """Stop the stability test"""
+        try:
+            self.stop_requested = True
+            self.SafeInvoke(lambda: setattr(self.label_stab_status, 'Text', 'Stopping...'))
+        except Exception as ex:
+            print("Error in stop_stability_test: " + str(ex))
+    
+    def run_stability_test_thread(self):
+        """Background thread for long-term stability testing"""
+        try:
+            camera = SharpCap.SelectedCamera
+            if camera is None:
+                self.SafeInvoke(lambda: MessageBox.Show(
+                    "Camera disconnected during test.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                ))
+                return
+            
+            # Get test parameters
+            capture_duration = float(self.textbox_stab_duration.Text)
+            flash_ms = float(self.textbox_stab_flash.Text)
+            test_duration_str = self.textbox_test_duration.Text.strip()
+            parts = test_duration_str.split(':')
+            test_duration_seconds = int(parts[0]) * 3600 + int(parts[1]) * 60
+            do_invert = self.checkbox_stab_invert.Checked
+            
+            self.stop_requested = False
+            
+            # Storage for all flash delays across all capture periods
+            all_delays = []
+            all_timestamps = []
+            
+            start_time = datetime.utcnow()
+            elapsed_time = 0
+            cycle_count = 0
+            
+            self.SafeInvoke(lambda: setattr(self.label_stab_status, 'Text', 
+                'Starting stability test...'))
+            
+            while elapsed_time < test_duration_seconds and not self.stop_requested:
+                cycle_count += 1
+                remaining_time = test_duration_seconds - elapsed_time
+                remaining_str = "{0:02d}:{1:02d}:{2:02d}".format(
+                    int(remaining_time // 3600),
+                    int((remaining_time % 3600) // 60),
+                    int(remaining_time % 60)
+                )
+                
+                self.SafeInvoke(lambda rs=remaining_str: setattr(self.label_stab_status, 'Text',
+                    'Cycle {0} - Remaining: {1}'.format(cycle_count, rs)))
+                
+                # Perform one capture cycle (returns list of (delay, pps_time) tuples)
+                cycle_results = self.do_stability_capture_cycle(
+                    camera, capture_duration, flash_ms, do_invert)
+                
+                if cycle_results:
+                    # Add delays and their actual UTC timestamps
+                    for delay, pps_time in cycle_results:
+                        all_delays.append(delay)
+                        all_timestamps.append(pps_time)
+                    
+                    # Update plots and statistics
+                    self.update_stability_display(all_delays, all_timestamps, start_time)
+                
+                # Update elapsed time
+                elapsed_time = (datetime.utcnow() - start_time).total_seconds()
+            
+            # Test complete
+            self.SafeInvoke(lambda: setattr(self.label_stab_status, 'Text',
+                'Test complete - {0} flashes recorded'.format(len(all_delays))))
+            
+        except Exception as ex:
+            error_msg = "Stability test error: " + str(ex)
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            self.SafeInvoke(lambda msg=error_msg: setattr(self.label_stab_status, 'Text', msg))
+        
+        finally:
+            # Re-enable start button, disable stop
+            self.SafeInvoke(lambda: setattr(self.button_stab_start, 'Enabled', True))
+            self.SafeInvoke(lambda: setattr(self.button_stab_stop, 'Enabled', False))
+    
+    def do_stability_capture_cycle(self, camera, duration, flash_ms, do_invert):
+        """Perform one capture cycle and return valid flash delays with timestamps
+        
+        Returns:
+            List of (time_offset, pps_actual_time) tuples for valid GPS flashes
+        """
+        try:
+            # Get camera parameters
+            roi = camera.ROI
+            exposure_ms = camera.Controls.Exposure.ExposureMs
+            
+            # Setup single aperture in middle of frame
+            self.capture_handler = FrameCaptureHandler()
+            frame_width = roi.Width
+            frame_height = roi.Height
+            
+            print("Stability test parameters:")
+            print("  Exposure: {0} ms".format(exposure_ms))
+            print("  Frame dimensions: {0}x{1}".format(frame_width, frame_height))
+            
+            # Single aperture at vertical center
+            aperture_size = 10
+            y_center = frame_height // 2
+            self.capture_handler.setup_single_aperture(frame_width, frame_height, y_center, aperture_size)
+            
+            # Store exposure for timestamp conversion in frame handler (CRITICAL!)
+            # Without this, framehandler defaults to 50ms which causes wrong mid-frame timestamps
+            self.capture_handler.exposure_ms = exposure_ms
+            
+            # Start capture
+            self.capture_handler.start_capture(camera)
+            time.sleep(0.5)
+            
+            # Wait for capture duration
+            time.sleep(duration)
+            
+            # Stop capture
+            self.capture_handler.stop_capture(camera)
+            
+            # Apply inversion if requested
+            if do_invert:
+                self.capture_handler.measurements = invert_measurements(
+                    self.capture_handler.measurements,
+                    auto_detect_max=True
+                )
+            
+            # Process the data
+            measurements = self.capture_handler.measurements[y_center]
+            timestamps = self.capture_handler.timestamps
+            frame_numbers = self.capture_handler.frame_numbers
+            
+            if len(measurements) == 0:
+                return []
+            
+            # Create tangra object
+            tangra_obj = create_tangra_object(
+                measurements, timestamps, frame_numbers,
+                y_center, 'stability_aperture', exposure_ms
+            )
+            tangra_obj['frame_height'] = frame_height
+            
+            # Analyze GPS flashes
+            lcv = analyse_gps_flash_iron(
+                tangra_obj, col='signal_1',
+                exposure_ms=exposure_ms,
+                flash_ms=flash_ms,
+                background=None
+            )
+            
+            # Calculate delays for each valid flash
+            results = []
+            peak_numbers = set([row['peak_no'] for row in lcv if row['peak_no'] > 0])
+            
+            for peak_no in peak_numbers:
+                result = calculate_delays_iron(
+                    lcv, peak_no, exposure_ms, flash_ms,
+                    y_center, frame_height
+                )
+                
+                if result:
+                    time_offset = result['time_offset']
+                    n_frames = result['n_frames']
+                    pps_actual_time = result['pps_actual_time']
+                    frac_flux_frame1 = result['frac_flux_frame1']
+                    
+                    # Debug output for first flash
+                    if len(results) == 0:
+                        print("  First flash: offset={0:.3f}ms, UTC={1}, n_frames={2}, flux_frac={3:.3f}".format(
+                            time_offset, pps_actual_time.strftime("%H:%M:%S"), n_frames, frac_flux_frame1))
+                    
+                    # Quality filtering like line delay calibration:
+                    # - Reject transition frames (too dim or too bright)
+                    # - Reject if too few/many frames or extreme offset values
+                    if (2 <= n_frames <= 4 and 
+                        -80 < time_offset < 80 and
+                        0.1 < frac_flux_frame1 < 0.9):
+                        results.append((time_offset, pps_actual_time))
+            
+            return results
+            
+        except Exception as ex:
+            print("Stability cycle error: " + str(ex))
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    def update_stability_display(self, all_delays, all_timestamps, start_time):
+        """Update plots and statistics for stability test"""
+        try:
+            if len(all_delays) == 0:
+                return
+            
+            n_total = len(all_delays)
+            
+            # Remove outliers (3% tails = 1.5% each end) for statistics
+            sorted_delays = sorted(all_delays)
+            if n_total >= 20:  # Only remove outliers if we have enough data
+                trim_count = max(1, int(n_total * 0.015))  # 1.5% from each end
+                filtered_delays = sorted_delays[trim_count:-trim_count]
+                n_filtered = len(filtered_delays)
+                print("Statistics: removed {0} outliers ({1:.1f}%), using {2} measurements".format(
+                    2*trim_count, 100.0*2*trim_count/n_total, n_filtered))
+            else:
+                filtered_delays = sorted_delays
+                n_filtered = n_total
+            
+            # Calculate statistics on filtered data
+            n = len(filtered_delays)
+            mean_delay = sum(filtered_delays) / n
+            median_delay = filtered_delays[n // 2] if n % 2 == 1 else (filtered_delays[n//2-1] + filtered_delays[n//2]) / 2.0
+            min_delay = filtered_delays[0]
+            max_delay = filtered_delays[-1]
+            
+            # Calculate 95% CI using sample statistics with t-distribution
+            # Use sample variance (divide by n-1) for unbiased estimator
+            if n > 1:
+                variance = sum((x - mean_delay) ** 2 for x in filtered_delays) / (n - 1)
+                std_delay = math.sqrt(variance)
+                
+                # Use t-distribution for sample CI (more accurate for smaller samples)
+                # For large n (>30), t ≈ 1.96, but we'll use a simple approximation
+                # t-critical values: n=30->2.04, n=60->2.00, n=120->1.98, n=inf->1.96
+                if n >= 120:
+                    t_critical = 1.98
+                elif n >= 60:
+                    t_critical = 2.00
+                elif n >= 30:
+                    t_critical = 2.04
+                else:
+                    t_critical = 2.09  # Conservative for smaller samples
+                
+                # 95% CI for the mean
+                ci_95_mean = t_critical * std_delay / math.sqrt(n)
+                
+                # 95% prediction interval for individual measurements (±2 std for ~95%)
+                prediction_interval = 2.0 * std_delay
+            else:
+                std_delay = 0.0
+                ci_95_mean = 0.0
+                prediction_interval = 0.0
+            
+            # Update statistics text
+            if n_filtered < n_total:
+                stats_text = "Total Flashes: {0} ({1} after removing {2} outliers)\r\n".format(n_total, n_filtered, n_total - n_filtered)
+            else:
+                stats_text = "Total Flashes: {0}\r\n".format(n)
+            stats_text += "Mean: {0:.3f} ms (95% CI: ± {1:.3f} ms)\r\n".format(mean_delay, ci_95_mean)
+            stats_text += "Median: {0:.3f} ms\r\n".format(median_delay)
+            stats_text += "Range: {0:.3f} to {1:.3f} ms\r\n".format(min_delay, max_delay)
+            stats_text += "Std Dev: {0:.3f} ms (95% of data within ± {1:.3f} ms)".format(std_delay, prediction_interval)
+            
+            self.SafeInvoke(lambda txt=stats_text: setattr(self.textbox_stab_stats, 'Text', txt))
+            
+            # Create time series plot - show ALL measurements
+            timeseries_plot = self.create_timeseries_plot(all_delays, all_timestamps, start_time)
+            self.SafeInvoke(lambda p=timeseries_plot: self.set_and_refresh_plot(self.plot_stab_timeseries, p))
+            
+            # Create histogram - use filtered data (outliers removed)
+            histogram_plot = self.create_histogram_plot(filtered_delays, mean_delay, ci_95_mean)
+            self.SafeInvoke(lambda p=histogram_plot: self.set_and_refresh_plot(self.plot_stab_histogram, p))
+            
+        except Exception as ex:
+            print("Error updating stability display: " + str(ex))
+            import traceback
+            traceback.print_exc()
+    
+    def create_timeseries_plot(self, delays, timestamps, start_time):
+        """Create time series plot of GPS flash delays"""
+        plot_model = OxyPlot.PlotModel()
+        plot_model.Title = "GPS Flash Timing Delays Over Time"
+        
+        # Create scatter series
+        scatter_series = OxyPlot.Series.ScatterSeries()
+        scatter_series.MarkerType = OxyPlot.MarkerType.Circle
+        scatter_series.MarkerSize = 3
+        scatter_series.MarkerFill = OxyPlot.OxyColors.Blue
+        
+        # Use elapsed seconds from test start based on actual PPS time
+        if timestamps:
+            for i, (delay, timestamp) in enumerate(zip(delays, timestamps)):
+                elapsed_seconds = (timestamp - start_time).total_seconds()
+                scatter_series.Points.Add(OxyPlot.Series.ScatterPoint(elapsed_seconds, delay))
+        
+        plot_model.Series.Add(scatter_series)
+        
+        # Configure axes
+        x_axis = OxyPlot.Axes.LinearAxis()
+        x_axis.Position = OxyPlot.Axes.AxisPosition.Bottom
+        x_axis.Title = 'Elapsed Time (seconds)'
+        plot_model.Axes.Add(x_axis)
+        
+        y_axis = OxyPlot.Axes.LinearAxis()
+        y_axis.Position = OxyPlot.Axes.AxisPosition.Left
+        y_axis.Title = 'Time Offset (ms)'
+        
+        # Make Y-axis range 3x larger than data range for better visibility
+        if delays:
+            min_delay = min(delays)
+            max_delay = max(delays)
+            data_range = max_delay - min_delay
+            if data_range > 0:
+                center = (min_delay + max_delay) / 2.0
+                expanded_range = data_range * 1.5  # 3x total (1.5x padding on each side)
+                y_axis.Minimum = center - expanded_range
+                y_axis.Maximum = center + expanded_range
+            else:
+                # Single value - show ±5ms range
+                y_axis.Minimum = min_delay - 5.0
+                y_axis.Maximum = max_delay + 5.0
+        
+        plot_model.Axes.Add(y_axis)
+        
+        return plot_model
+    
+    def create_histogram_plot(self, delays, mean_delay, ci_95_mean):
+        """Create histogram of GPS flash delays with annotations"""
+        plot_model = OxyPlot.PlotModel()
+        plot_model.Title = "Distribution of GPS Flash Timing Delays (outliers removed)"
+        
+        # Create histogram with 1 ms bins
+        bin_width = 1.0
+        min_val = min(delays)
+        max_val = max(delays)
+        
+        # Determine bin edges
+        bin_start = math.floor(min_val / bin_width) * bin_width
+        bin_end = math.ceil(max_val / bin_width) * bin_width
+        num_bins = int((bin_end - bin_start) / bin_width)
+        
+        # Ensure at least 1 bin for single-value datasets
+        if num_bins == 0:
+            num_bins = 1
+            bin_end = bin_start + bin_width
+        
+        # Count frequencies
+        bins = [0] * num_bins
+        for delay in delays:
+            bin_index = int((delay - bin_start) / bin_width)
+            if 0 <= bin_index < num_bins:
+                bins[bin_index] += 1
+        
+        # Create histogram using RectangleAnnotations (ColumnSeries not available)
+        max_count = max(bins) if bins else 1
+        
+        for i, count in enumerate(bins):
+            if count > 0:  # Only draw bars with data
+                bin_left = bin_start + i * bin_width
+                bin_right = bin_start + (i + 1) * bin_width
+                
+                # Create filled rectangle for each bar
+                rect = OxyPlot.Annotations.RectangleAnnotation()
+                rect.MinimumX = bin_left
+                rect.MaximumX = bin_right
+                rect.MinimumY = 0
+                rect.MaximumY = count
+                rect.Fill = OxyPlot.OxyColors.SteelBlue
+                rect.Stroke = OxyPlot.OxyColors.Black
+                rect.StrokeThickness = 1
+                
+                plot_model.Annotations.Add(rect)
+        
+        print("Histogram: {0} bins, {1} total points, max count={2}".format(num_bins, len(delays), max_count))
+        
+        # Add mean line annotation
+        mean_line = OxyPlot.Annotations.LineAnnotation()
+        mean_line.Type = OxyPlot.Annotations.LineAnnotationType.Vertical
+        mean_line.X = mean_delay
+        mean_line.Color = OxyPlot.OxyColors.Red
+        mean_line.LineStyle = OxyPlot.LineStyle.Dash
+        mean_line.Text = "Mean: {0:.2f} ms".format(mean_delay)
+        plot_model.Annotations.Add(mean_line)
+        
+        # Configure axes with 1ms margins on data range
+        x_axis = OxyPlot.Axes.LinearAxis()
+        x_axis.Position = OxyPlot.Axes.AxisPosition.Bottom
+        x_axis.Title = 'Time Offset (ms)'
+        x_axis.Minimum = min(delays) - 1.0  # 1ms left margin
+        x_axis.Maximum = max(delays) + 1.0  # 1ms right margin
+        plot_model.Axes.Add(x_axis)
+        
+        y_axis = OxyPlot.Axes.LinearAxis()
+        y_axis.Position = OxyPlot.Axes.AxisPosition.Left
+        y_axis.Title = 'Frequency'
+        plot_model.Axes.Add(y_axis)
+        
+        # Add subtitle with 95% CI for the mean
+        plot_model.Subtitle = "95% CI (mean): ± {0:.3f} ms".format(ci_95_mean)
+        
+        return plot_model
+
 
 
 # =============================================================================
