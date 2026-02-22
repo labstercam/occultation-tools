@@ -2,6 +2,27 @@
 
 ## Core Components
 
+### Dummy Event Generator
+
+The Dummy Event Generator creates realistic test occultation events for practice and testing without requiring OccultWatcher Cloud access.
+
+**Key Features:**
+- Generates 1-100 test events with configurable timing and spacing
+- Events calculated to be visible from your observer location using sidereal time
+- Realistic parameters: star magnitudes, durations, coordinates, exposures
+- Events added directly to occultations.json alongside real events
+- Easily identifiable with TEST-#### IDs (e.g., TEST-1001, TEST-1002)
+- Simple deletion using the Delete button in Quick Filters
+
+**Usage:**
+1. Click "Generate Dummy Events" in toolbar
+2. Configure number of events, start time, interval, and location
+3. Click Generate - events appear immediately in the event grid
+4. Use for testing sequences, workflows, and equipment setup
+5. Select and delete dummy events when no longer needed
+
+See [DUMMY_EVENTS_FEATURE.md](DUMMY_EVENTS_FEATURE.md) for complete documentation.
+
 ### Report Generation System
 
 ⚠️ **Status**: Report generation is still under development and has NOT been approved by North America or Trans-Tasman reporting coordinators.

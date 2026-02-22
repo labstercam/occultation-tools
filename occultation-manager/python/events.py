@@ -965,4 +965,66 @@ class OccultationManager:
         for event in self.all_events:
             if event.station_name:
                 stations.add(event.station_name)
-        return sorted(list(stations))    
+        return sorted(list(stations))
+    
+    def delete_events(self, events_to_delete):
+        """
+        Delete events from both JSON files and internal lists
+        
+        Args:
+            events_to_delete: List of OccultationEvent objects to delete
+        
+        Returns:
+            Number of events deleted
+        """
+        if not events_to_delete:
+            return 0
+        
+        try:
+            # Get unique_ids of events to delete
+            # Use original_data to get the exact unique_id from the JSON
+            delete_ids = set()
+            for event in events_to_delete:
+                # Try to get unique_id from original_data, fallback to event_id
+                # Handle None or empty string properly
+                unique_id = event.original_data.get('unique_id') or event.event_id
+                if unique_id:
+                    delete_ids.add(unique_id)
+            
+            if not delete_ids:
+                return 0
+            
+            # Helper function to extract event ID (unique_id or id, handling None/empty)
+            def get_event_id(event_dict):
+                """Extract unique_id or id from event dictionary, handling None/empty strings"""
+                return event_dict.get('unique_id') or event_dict.get('id') or ''
+            
+            # Delete from occultations.json (main file)
+            occultations_file = self.config.get_occultations_file()
+            occultations_data = EventProcessor.load_occultations(occultations_file, self.config)
+            if occultations_data:
+                occultations_data = [e for e in occultations_data if get_event_id(e) not in delete_ids]
+                EventProcessor.save_occultations(occultations_data, occultations_file, self.config)
+            
+            # Delete from occultations_latest.json
+            latest_file = self.config.get_latest_occultations_file()
+            latest_data = EventProcessor.load_occultations(latest_file, self.config)
+            if latest_data:
+                latest_data = [e for e in latest_data if get_event_id(e) not in delete_ids]
+                EventProcessor.save_occultations(latest_data, latest_file, self.config)
+            
+            # Update internal lists and count actual removals
+            original_count = len(self.all_events)
+            self.all_events = [e for e in self.all_events if e not in events_to_delete]
+            self.events = [e for e in self.events if e not in events_to_delete]
+            deleted_count = original_count - len(self.all_events)
+            
+            # Clear deleted events from selected_events
+            for event in events_to_delete:
+                self.selected_events.discard(event)
+            
+            return deleted_count
+            
+        except Exception as e:
+            print("Error deleting events: {}".format(e))
+            return 0

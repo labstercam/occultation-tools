@@ -31,6 +31,7 @@ from gui_dialogs import ExposureEditDialog, EventDetailsDialog, ConfigurationDia
 from templates import TemplateManager
 from utils import save_occultation_sequence
 from help import HelpManager
+from dummy_event_generator import DummyEventGeneratorDialog, DummyEventGenerator
 # na_report import moved to lazy load in generate_report_click() to avoid crashes
 
 class OccultationManagerGUI(Form):
@@ -422,6 +423,15 @@ class OccultationManagerGUI(Form):
         except Exception:
             pass
 
+        btn_dummy_events = Button()
+        btn_dummy_events.Text = "Generate Dummy Events"
+        btn_dummy_events.Click += self.generate_dummy_events_click
+        toolbar.Controls.Add(btn_dummy_events)
+        try:
+            self._autosize_button(btn_dummy_events, height=btn_h + extra_h)
+        except Exception:
+            pass
+
         self.cbo_stations = ComboBox()
         try:
             cbo_w = int(round(150 * sf))
@@ -492,7 +502,7 @@ class OccultationManagerGUI(Form):
 
         # Layout the toolbar buttons with a fixed 4px gap
         try:
-            self._layout_row(toolbar, [btn_download, btn_refresh, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, btn_generate_report, self.btn_night_mode], start_x=start_x, y=start_y, gap=gap)
+            self._layout_row(toolbar, [btn_download, btn_refresh, btn_dummy_events, self.cbo_stations, btn_event_details, btn_edit_exposure, btn_create_sequences, btn_run_sequences, btn_generate_report, self.btn_night_mode], start_x=start_x, y=start_y, gap=gap)
         except Exception:
             pass
 
@@ -638,6 +648,11 @@ class OccultationManagerGUI(Form):
         btn_select_toggle .Click += self.select_toggle_click
         actions_group.Controls.Add(btn_select_toggle)
 
+        btn_delete = Button()
+        btn_delete.Text = "Delete"
+        btn_delete.Click += self.delete_selected_events_click
+        actions_group.Controls.Add(btn_delete)
+
         # Give filter buttons scaled height
         try:
             btn_h = int(self.size_constants.get('button_height', int(round(25 * sf))))
@@ -646,8 +661,8 @@ class OccultationManagerGUI(Form):
 
         try:
             # Nudge quick-filter row down by 1 pixel for visual spacing
-            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle], start_x=10, y=int(round(15 * sf)) + 1, gap=gap)
-            for b in (btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle):
+            self._layout_row(actions_group, [btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle, btn_delete], start_x=10, y=int(round(15 * sf)) + 1, gap=gap)
+            for b in (btn_filter_today, btn_filter_upcoming, btn_show_all, btn_select_toggle, btn_delete):
                 try:
                     self._autosize_button(b, height=btn_h)
                 except Exception:
@@ -855,6 +870,50 @@ class OccultationManagerGUI(Form):
             MessageBox.Show(f"Error downloading events: {ex}", "Download Error", 
                           MessageBoxButtons.OK, MessageBoxIcon.Error)
     
+    def generate_dummy_events_click(self, sender, e):
+        """Handle dummy events button click"""
+        try:
+            dialog = DummyEventGeneratorDialog(self.config, self.theme_manager)
+            result = dialog.ShowDialog()
+            
+            if result == DialogResult.OK and dialog.result_params:
+                self.update_status("Generating dummy events...")
+                
+                # Generate events
+                events = DummyEventGenerator.generate_events(dialog.result_params, self.config)
+                
+                # Save events to main occultations files
+                success = DummyEventGenerator.save_events(events, self.config)
+                
+                if success:
+                    # Reload events from files
+                    self.manager.load_events_from_files()
+                    self.refresh_display()
+                    self.populate_station_filter()
+                    self.update_status(f"Generated and added {len(events)} dummy events")
+                    MessageBox.Show(
+                        f"Successfully generated {len(events)} dummy events.\n\nUse the Delete button to remove them when no longer needed.",
+                        "Success",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    )
+                else:
+                    self.update_status("Error saving generated events")
+                    MessageBox.Show(
+                        "Failed to save generated events",
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    )
+        except Exception as ex:
+            self.update_status(f"Error generating dummy events: {ex}")
+            MessageBox.Show(
+                f"Error generating dummy events: {ex}",
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+    
     def refresh_events_click(self, sender, e):
         """Handle refresh button click"""
         self.load_initial_data()
@@ -877,6 +936,74 @@ class OccultationManagerGUI(Form):
         status = self.manager.toggle_event_selection()
         self.events_grid.toggle_all_events(status=status)
         self.update_selection_summary()
+
+    def delete_selected_events_click(self, sender, e):
+        """Handle delete selected events button click"""
+        try:
+            # Get selected events from grid checkboxes
+            selected_events = self.get_displayed_selected_events()
+            
+            if not selected_events:
+                MessageBox.Show(
+                    "No events selected for deletion.",
+                    "No Selection",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                )
+                return
+            
+            # Build confirmation message
+            event_count = len(selected_events)
+            event_names = "\n".join(["  - " + event.name for event in selected_events[:20]])  # Limit to first 20
+            if event_count > 20:
+                event_names += "\n  ... and {} more".format(event_count - 20)
+            
+            message = "You are about to delete {} event(s):\n\n{}".format(event_count, event_names)
+            message += "\n\nEvents will be deleted on this local PC. "
+            message += "They will NOT be deleted from Occult Watcher Cloud and might reappear when you download again."
+            message += "\n\nAre you sure you want to delete these events?"
+            
+            # Show confirmation dialog
+            result = MessageBox.Show(
+                message,
+                "Confirm Deletion",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning
+            )
+            
+            if result == DialogResult.Yes:
+                self.update_status("Deleting events...")
+                
+                # Delete events
+                deleted_count = self.manager.delete_events(selected_events)
+                
+                if deleted_count > 0:
+                    # Refresh display
+                    self.refresh_display()
+                    self.populate_station_filter()
+                    self.update_status("Deleted {} event(s)".format(deleted_count))
+                    MessageBox.Show(
+                        "Successfully deleted {} event(s)".format(deleted_count),
+                        "Success",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    )
+                else:
+                    self.update_status("No events were deleted")
+                    MessageBox.Show(
+                        "Failed to delete events",
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    )
+        except Exception as ex:
+            self.update_status("Error deleting events: {}".format(ex))
+            MessageBox.Show(
+                "Error deleting events: {}".format(ex),
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
 
 
     # "Download & Run Tonight" flow removed per user request.
