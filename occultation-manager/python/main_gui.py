@@ -1019,7 +1019,7 @@ class OccultationManagerGUI(Form):
         # 'Apply to All Events' which controls whether the chosen template should
         # be applied to every selected event or only to the first (and prompt for
         # each subsequent event).
-        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
         if template_dialog.ShowDialog() != DialogResult.OK:
             return
 
@@ -1055,7 +1055,7 @@ class OccultationManagerGUI(Form):
                     if idx == 0:
                         templates_map[ev.event_id] = template_path
                     else:
-                        per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                        per_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
                         per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
                         if per_dialog.ShowDialog() != DialogResult.OK:
                             # User cancelled; abort combined creation
@@ -1111,7 +1111,7 @@ class OccultationManagerGUI(Form):
                     # Use the template chosen in the initial dialog for the first event
                     per_template = template_path
                 else:
-                    per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                    per_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
                     per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
                     if per_dialog.ShowDialog() != DialogResult.OK:
                         # User cancelled per-event selection; stop processing further
@@ -1282,7 +1282,7 @@ class OccultationManagerGUI(Form):
                           "Past Event", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
         
-        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
         if template_dialog.ShowDialog() == DialogResult.OK:
             template_path = template_dialog.get_selected_template_path()
             
@@ -2260,7 +2260,7 @@ class OccultationManagerGUI(Form):
         # checkbox 'Apply to All Events' which controls whether the chosen
         # template should be applied to every selected event or only to the
         # first (and prompt for each subsequent event).
-        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
         if template_dialog.ShowDialog() != DialogResult.OK:
             return
 
@@ -2296,7 +2296,7 @@ class OccultationManagerGUI(Form):
                     if idx == 0:
                         templates_map[ev.event_id] = template_path
                     else:
-                        per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                        per_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
                         per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
                         if per_dialog.ShowDialog() != DialogResult.OK:
                             # User cancelled; abort combined creation
@@ -2340,7 +2340,7 @@ class OccultationManagerGUI(Form):
                 if idx == 0:
                     per_template = template_path
                 else:
-                    per_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+                    per_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
                     per_dialog.Text = f"Select Template for {ev.get_asteroid_display_name()}"
                     if per_dialog.ShowDialog() != DialogResult.OK:
                         # User cancelled per-event selection; abort remaining events
@@ -2417,7 +2417,7 @@ class OccultationManagerGUI(Form):
                 return
         
         # Get template for sequence generation
-        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
         if template_dialog.ShowDialog() != DialogResult.OK:
             return
         
@@ -2678,7 +2678,7 @@ class OccultationManagerGUI(Form):
     
     def show_template_manager_click(self, sender, e):
         """Show template manager"""
-        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager)
+        template_dialog = TemplateSelectionDialog(self.config, self.theme_manager, self.help_manager)
         template_dialog.ShowDialog()
     
     def show_help_click(self, sender, e):

@@ -35,9 +35,10 @@ def _detect_scale_factor():
 class HelpDialog(Form):
     """Interactive help dialog for the Occultation Manager with DPI scaling"""
     
-    def __init__(self, theme_manager):
+    def __init__(self, theme_manager, initial_topic=None):
         Form.__init__(self)
         self.theme_manager = theme_manager
+        self.initial_topic = initial_topic
         self._sf = _detect_scale_factor()
         self.setup_ui()
         theme_colors = self.theme_manager.get_current_theme()
@@ -67,8 +68,11 @@ class HelpDialog(Form):
         # Right panel - Help content
         self.setup_help_content(main_split.Panel2)
         
-        # Load initial content
-        self.load_overview_content()
+        # Load initial content (select appropriate topic)
+        if self.initial_topic == "template_modification":
+            self.select_topic_by_tag("template_modification")
+        else:
+            self.select_topic_by_tag("quickstart")
         
         # Close button
         btn_close = Button()
@@ -151,8 +155,9 @@ class HelpDialog(Form):
         for node in self.tree_topics.Nodes:
             node.Expand()
         
-        # Select Quick Start by default
-        self.tree_topics.SelectedNode = quickstart_node
+        # Store reference for initial topic selection
+        self.quickstart_node = quickstart_node
+        self.template_node = template_node
     
     def topic_selected(self, sender, e):
         """Handle topic selection"""
@@ -169,6 +174,17 @@ class HelpDialog(Form):
     
     def load_overview_content(self):
         """Load the quick start content by default"""
+        self.load_help_content("quickstart")
+    
+    def select_topic_by_tag(self, tag):
+        """Select and display a topic by its tag"""
+        for node in self.tree_topics.Nodes:
+            if node.Tag == tag:
+                self.tree_topics.SelectedNode = node
+                self.load_help_content(tag)
+                return
+        # Fallback to quickstart if not found
+        self.tree_topics.SelectedNode = self.quickstart_node
         self.load_help_content("quickstart")
     
     def get_help_content(self, topic):
@@ -839,9 +855,9 @@ class HelpManager:
     def __init__(self, theme_manager):
         self.theme_manager = theme_manager
     
-    def show_help(self, parent_form=None):
-        """Show the help dialog"""
-        help_dialog = HelpDialog(self.theme_manager)
+    def show_help(self, parent_form=None, topic=None):
+        """Show the help dialog, optionally opening to a specific topic"""
+        help_dialog = HelpDialog(self.theme_manager, initial_topic=topic)
         if parent_form:
             help_dialog.Owner = parent_form
         help_dialog.ShowDialog()
