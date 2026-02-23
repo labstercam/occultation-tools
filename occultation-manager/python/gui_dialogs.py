@@ -1402,10 +1402,11 @@ class ConfigurationDialog(Form):
 class TemplateSelectionDialog(Form):
     """Enhanced dialog for selecting sequence template with DPI scaling"""
     
-    def __init__(self, config, theme_manager):
+    def __init__(self, config, theme_manager, help_manager=None):
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
+        self.help_manager = help_manager
         self.selected_template_path = ""
         self._sf = _detect_scale_factor()
         self.setup_ui()
@@ -1430,6 +1431,15 @@ class TemplateSelectionDialog(Form):
         lbl_templates.Size = Size(int(200 * sf), int(20 * sf))
         self.Controls.Add(lbl_templates)
         
+        # Open Templates Folder button
+        btn_open_folder = Button()
+        btn_open_folder.Text = "Open Templates Folder"
+        btn_open_folder.Location = Point(int(620 * sf), int(8 * sf))
+        _autosize_button(btn_open_folder, sf)
+        btn_open_folder.Anchor = AnchorStyles.Top | AnchorStyles.Right
+        btn_open_folder.Click += self.open_templates_folder
+        self.Controls.Add(btn_open_folder)
+        
         self.lst_templates = ListBox()
         self.lst_templates.Location = Point(int(10 * sf), int(35 * sf))
         self.lst_templates.Size = Size(int(760 * sf), int(150 * sf))
@@ -1440,10 +1450,27 @@ class TemplateSelectionDialog(Form):
         # Load templates
         self.load_templates()
         
+        # Help buttons row
+        btn_utc_info = Button()
+        btn_utc_info.Text = "UTC or Local Time Template?"
+        btn_utc_info.Location = Point(int(10 * sf), int(190 * sf))
+        _autosize_button(btn_utc_info, sf)
+        btn_utc_info.Click += self.show_utc_vs_local_info
+        self.Controls.Add(btn_utc_info)
+        
+        btn_template_help = Button()
+        btn_template_help.Text = "Template Help"
+        btn_template_help.Location = Point(int(250 * sf), int(190 * sf))
+        _autosize_button(btn_template_help, sf)
+        btn_template_help.Click += self.show_template_help
+        if not self.help_manager:
+            btn_template_help.Enabled = False
+        self.Controls.Add(btn_template_help)
+        
         # Template preview with proper scrolling - FIXED
         lbl_preview = Label()
         lbl_preview.Text = "Template Preview:"
-        lbl_preview.Location = Point(int(10 * sf), int(200 * sf))
+        lbl_preview.Location = Point(int(10 * sf), int(225 * sf))
         lbl_preview.Size = Size(int(200 * sf), int(20 * sf))
         self.Controls.Add(lbl_preview)
         
@@ -1453,8 +1480,8 @@ class TemplateSelectionDialog(Form):
         self.txt_preview.ScrollBars = ScrollBars.Both  # Both horizontal and vertical scrollbars
         self.txt_preview.WordWrap = False  # FIXED: Disable word wrap for proper horizontal scrolling
         self.txt_preview.Font = Font("Courier New", 9 * sf)  # Monospace font matching dialog text size
-        self.txt_preview.Location = Point(int(10 * sf), int(225 * sf))
-        self.txt_preview.Size = Size(int(760 * sf), int(300 * sf))
+        self.txt_preview.Location = Point(int(10 * sf), int(250 * sf))
+        self.txt_preview.Size = Size(int(760 * sf), int(275 * sf))
         self.txt_preview.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         self.Controls.Add(self.txt_preview)
         
@@ -1545,6 +1572,91 @@ class TemplateSelectionDialog(Form):
     def get_selected_template_path(self):
         """Get the selected template path"""
         return self.selected_template_path
+    
+    def open_templates_folder(self, sender, e):
+        """Open the templates folder in Windows Explorer"""
+        try:
+            template_files, template_folder = TemplateManager.find_template_files(self.config.get_file_folder())
+            if os.path.exists(template_folder):
+                os.startfile(template_folder)
+            else:
+                MessageBox.Show(
+                    f"Templates folder not found:\n{template_folder}",
+                    "Folder Not Found",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                )
+        except Exception as ex:
+            MessageBox.Show(
+                f"Error opening templates folder:\n{str(ex)}",
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+    
+    def show_utc_vs_local_info(self, sender, e):
+        """Show information about UTC vs Local Time templates"""
+        info_text = (
+            "UTC TEMPLATES (Recommended):\n"
+            "\u2022 Start at exactly the UTC times specified\n"
+            "\u2022 Work correctly across midnight boundaries\n"
+            "\u2022 Handle late starts gracefully\n"
+            "\u2022 Include countdown options (notification banner or dialog window)\n"
+            "\n"
+            "LOCAL TIME TEMPLATES:\n"
+            "\u2022 Do not know what the date is, only work for current day\n"
+            "\u2022 Can have problems with midnight changeover\n"
+            "\u2022 If a sequence step starts late, it may wait another 24 hours\n"
+            "\n"
+            "IMPORTANT NOTES:\n"
+            "\u2022 Templates have detailed comments explaining how they work and any limitations\n"
+            "\u2022 Whichever you choose, do extensive tests to understand how they work on your system with your equipment\n"
+            "\n"
+            "Recommendation: Use UTC templates for reliable, predictable behavior."
+        )
+        MessageBox.Show(
+            info_text,
+            "UTC vs Local Time Templates",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+    
+    def show_template_help(self, sender, e):
+        """Open help dialog to Template Modification section"""
+        if self.help_manager:
+            self.help_manager.show_help(self, topic="template_modification")
+    
+    def show_utc_vs_local_info(self, sender, e):
+        """Show information about UTC vs Local Time templates"""
+        info_text = (
+            "UTC TEMPLATES (Recommended):\n"
+            "\u2022 Start at exactly the UTC times specified\n"
+            "\u2022 Work correctly across midnight boundaries\n"
+            "\u2022 Handle late starts gracefully\n"
+            "\u2022 Include countdown options (notification banner or dialog window)\n"
+            "\n"
+            "LOCAL TIME TEMPLATES:\n"
+            "\u2022 Do not know what the date is, only work for current day\n"
+            "\u2022 Can have problems with midnight changeover\n"
+            "\u2022 If a sequence step starts late, it may wait another 24 hours\n"
+            "\n"
+            "IMPORTANT NOTES:\n"
+            "\u2022 Templates have detailed comments explaining how they work and any limitations\n"
+            "\u2022 Whichever you choose, do extensive tests to understand how they work on your system with your equipment\n"
+            "\n"
+            "Recommendation: Use UTC templates for reliable, predictable behavior."
+        )
+        MessageBox.Show(
+            info_text,
+            "UTC vs Local Time Templates",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+    
+    def show_template_help(self, sender, e):
+        """Open help dialog to Template Modification section"""
+        if self.help_manager:
+            self.help_manager.show_help(self, topic="template_modification")
 
 
 class LocationConfirmDialog(Form):
