@@ -1,0 +1,63 @@
+# Waiting notifications and Countdown Functions for the Sequencer
+# These do a 'safe' countdown. If run late they will just pass the time. They are safe for passing through midnight. 
+# They can be interrupted or stopped by the user without locking or crashing the sequence
+# The normal sequencer functions of WAIT UNTIL LOCALTIME or WAIT UNTIL AFTER LOCALTIME are not fully safe
+# as Sharpcap does not know what day it is, and treats midnight as start of day
+# So if the sequence is started late when using WAIT UNTIL LOCALTIME it will wait until the next day and miss the event.
+# If the sequence is run using WAIT UNTIL AFTER LOCALTIME then if the event local time is after midnight it will start immediately
+
+# To help solve these potential issues some countdown functions are provided.
+# Choose which one you want to use and MAKE SURE YOU TEST IT AND ARE HAPPY WITH THE BEHAVIOUR
+# The more complex countdowns may be less reliable.
+
+# Note that when defining function using RUN PYTHON CODE they must be a single line of code (no line breaks) and cannot use normal if or other flow control statments
+# Hence the rather odd syntax formatting.
+
+# Copy these into your sequencer code
+# Include the UTC event tags where appropriate, e.g {goto_time} (see the Help menu)
+
+
+
+#######################
+# Notification with no countdown
+# Display a SharpCap Notification with countdown.
+# Safe as uses no Python CODE
+# But has risks as it only uses the Sequence WAIT UNTIL
+# which doesn't know what day it is or when midnight it
+#######################
+
+
+    SHOW NOTIFICATION "Waiting until {goto_time}_local" COLOUR Green DURATION 10000
+    # Note MUST use the local time tags with the WAIT statements!
+    WAIT UNTIL LOCALTIME "{goto_time_local}"
+    CLEAR NOTIFICATION
+
+#######################
+# Countdown Notification using UTC
+# Display a SharpCap Notification with countdown.
+# More complex, perhaps less reliable
+#######################
+
+RUN PYTHON CODE "import datetime as dt; import time; import clr; clr.AddReference('System'); from System import Action"
+RUN PYTHON CODE "def format_time(seconds): days = seconds // 86400; hours = (seconds % 86400) // 3600; mins = (seconds % 3600) // 60; secs = seconds % 60; return (str(days) + ' Days ' if days > 0 else '') + str(hours).zfill(2) + ':' + str(mins).zfill(2) + ':' + str(secs).zfill(2)"
+RUN PYTHON CODE "def sleep_60_in_10(): (time.sleep(10) if SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if SharpCap.Sequencer.IsRunning else None)"
+RUN PYTHON CODE "def countdown_utc(date_string, message, target_dt=None, is_first=True): target_dt = dt.datetime.strptime(date_string,'%Y-%m-%dT%H:%M:%S') if is_first else target_dt; remaining = int((target_dt - dt.datetime.utcnow()).total_seconds()); status = 0; formatted = format_time(remaining); alert = ' ⚠️ LESS THAN 5 MIN!' if remaining < 300 and remaining >= 60 else (' 🔴 LESS THAN 1 MIN!' if remaining < 60 else ''); notify_seconds = 60 if remaining > 300 else 2; (SharpCap.ShowNotification(message + ': ' + formatted + ' remaining' + alert, status, False, notify_seconds, None, None, None) if remaining > 0 else None); sleep_time = 1 if remaining <= 300 else 60; (time.sleep(1) if remaining > 0 and remaining <= 300 and SharpCap.Sequencer.IsRunning else None); (sleep_60_in_10() if remaining > 300 and SharpCap.Sequencer.IsRunning else None); (countdown_utc(date_string, message, target_dt, False) if remaining > sleep_time and SharpCap.Sequencer.IsRunning else None)"
+
+# Example
+# NOTE: Must use the UTC tags, e.g. {goto_time}, {start_time}. See the Help menu
+RUN PYTHON CODE "countdown_utc('{goto_time}','Waiting for GOTO')"
+
+#######################
+# Countdown Dialog using UTC
+# Display a Windows dialog with count down and stop button
+# Most complex, and perhaps the least reliable
+#######################
+RUN PYTHON CODE "import datetime as dt; import time; import clr; clr.AddReference('System.Windows.Forms'); clr.AddReference('System.Drawing'); from System.Windows.Forms import Form, Label, Button, FormStartPosition, DockStyle, FormBorderStyle, Application, Panel; from System.Drawing import Size, Font, FontStyle, ContentAlignment"
+RUN PYTHON CODE "def format_time(seconds): days = seconds // 86400; hours = (seconds % 86400) // 3600; mins = (seconds % 3600) // 60; secs = seconds % 60; return (str(days) + ' Days ' if days > 0 else '') + str(hours).zfill(2) + ':' + str(mins).zfill(2) + ':' + str(secs).zfill(2)"
+RUN PYTHON CODE "def sleep_60_in_10_dialog(stopped): (time.sleep(10) if not stopped[0] and SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if not stopped[0] and SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if not stopped[0] and SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if not stopped[0] and SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if not stopped[0] and SharpCap.Sequencer.IsRunning else None); (time.sleep(10) if not stopped[0] and SharpCap.Sequencer.IsRunning else None)"
+RUN PYTHON CODE "def update_countdown(form, labels, target_dt, stopped): remaining = int((target_dt - dt.datetime.utcnow()).total_seconds()); (labels[1].__setattr__('Text', format_time(remaining)) if remaining > 0 else None); Application.DoEvents(); sleep_time = 1 if remaining <= 300 else 60; (time.sleep(1) if remaining > 0 and remaining <= 300 and not stopped[0] and SharpCap.Sequencer.IsRunning else None); (sleep_60_in_10_dialog(stopped) if remaining > 300 and not stopped[0] and SharpCap.Sequencer.IsRunning else None); (update_countdown(form, labels, target_dt, stopped) if remaining > 0 and not stopped[0] and SharpCap.Sequencer.IsRunning else form.Close())"
+RUN PYTHON CODE "def countdown_dialog(date_string, message): target_dt = dt.datetime.strptime(date_string,'%Y-%m-%dT%H:%M:%S'); form = Form(); form.Text = message; form.Size = Size(400, 180); form.FormBorderStyle = FormBorderStyle.FixedDialog; form.StartPosition = FormStartPosition.CenterScreen; form.MaximizeBox = False; form.MinimizeBox = False; form.TopMost = True; panel = Panel(); panel.Dock = DockStyle.Fill; lbl_msg = Label(); lbl_msg.Text = message; lbl_msg.Font = Font('Arial', 10, FontStyle.Regular); lbl_msg.Dock = DockStyle.Top; lbl_msg.Height = 30; lbl_msg.TextAlign = ContentAlignment.MiddleCenter; lbl_time = Label(); lbl_time.Font = Font('Arial', 20, FontStyle.Bold); lbl_time.Dock = DockStyle.Fill; lbl_time.TextAlign = ContentAlignment.MiddleCenter; lbl_remain = Label(); lbl_remain.Text = 'remaining'; lbl_remain.Font = Font('Arial', 9, FontStyle.Regular); lbl_remain.Dock = DockStyle.Bottom; lbl_remain.Height = 25; lbl_remain.TextAlign = ContentAlignment.MiddleCenter; panel.Controls.Add(lbl_time); panel.Controls.Add(lbl_msg); panel.Controls.Add(lbl_remain); button = Button(); button.Text = 'Stop Countdown'; button.Dock = DockStyle.Bottom; button.Height = 40; stopped = [False]; button.Click += lambda s, e: (stopped.__setitem__(0, True), form.Close()); form.Controls.Add(panel); form.Controls.Add(button); form.Show(); update_countdown(form, [lbl_msg, lbl_time, lbl_remain], target_dt, stopped)"
+
+# Example
+# NOTE: Must use the UTC tags, e.g. {goto_time}, {start_time}. See the Help menu
+RUN PYTHON CODE "countdown_dialog('{goto_time}', 'Waiting for GOTO')"
