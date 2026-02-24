@@ -1179,6 +1179,17 @@ class OccultationManagerGUI(Form):
             self.Invoke(System.Action[str](self.update_status), message)
         else:
             self.update_status(message)
+
+    def _show_run_sequences_notification(self, message, log_path=None):
+        """Show a concise SharpCap notification for run-sequences completion."""
+        try:
+            notify_message = message
+            if log_path:
+                log_uri = "file:///" + log_path.replace('\\', '/')
+                notify_message = f"{message}\nOpen log: {log_uri}"
+            self.sharpcap.ShowNotification(notify_message, 0, False, 20, None, None, None)
+        except Exception as ex:
+            print(f"Could not show SharpCap notification: {ex}")
     
     def show_event_details_click(self, sender, e):
         """Show detailed event information"""
@@ -2891,24 +2902,35 @@ class OccultationManagerGUI(Form):
                 return
             
             camera = self.sharpcap.SelectedCamera
-            if hasattr(camera.Controls, 'Binning'):
-                self._sequence_saved_settings['binning'] = camera.Controls.Binning.Value
-            if hasattr(camera.Controls, 'Exposure'):
-                self._sequence_saved_settings['exposure'] = camera.Controls.Exposure.ExposureMs
-            if hasattr(camera.Controls, 'Gain'):
-                self._sequence_saved_settings['gain'] = camera.Controls.Gain.Value
-            if hasattr(camera.Controls, 'Resolution'):
-                self._sequence_saved_settings['resolution'] = camera.Controls.Resolution.Value
-            if hasattr(camera.Controls, 'DisplayBlackLevel'):
-                self._sequence_saved_settings['display_black'] = camera.Controls.DisplayBlackLevel.Value
-            if hasattr(camera.Controls, 'DisplayMidLevel'):
-                self._sequence_saved_settings['display_mid'] = camera.Controls.DisplayMidLevel.Value
-            if hasattr(camera.Controls, 'DisplayWhiteLevel'):
-                self._sequence_saved_settings['display_white'] = camera.Controls.DisplayWhiteLevel.Value
+            saved_count = 0
+
+            def try_save_setting(key, getter, label):
+                nonlocal saved_count
+                try:
+                    value = getter()
+                    if value is not None:
+                        self._sequence_saved_settings[key] = value
+                        saved_count += 1
+                    else:
+                        print(f"Camera setting not available (None): {label}")
+                except Exception as ex:
+                    print(f"Camera setting not available ({label}): {ex}")
+
+            try_save_setting('binning', lambda: camera.Controls.Binning.Value, 'Binning')
+            try_save_setting('exposure', lambda: camera.Controls.Exposure.ExposureMs, 'Exposure')
+            try_save_setting('gain', lambda: camera.Controls.Gain.Value, 'Gain')
+            try_save_setting('resolution', lambda: camera.Controls.Resolution.Value, 'Resolution')
+            try_save_setting('display_black', lambda: camera.Controls.DisplayBlackLevel.Value, 'DisplayBlackLevel')
+            try_save_setting('display_mid', lambda: camera.Controls.DisplayMidLevel.Value, 'DisplayMidLevel')
+            try_save_setting('display_white', lambda: camera.Controls.DisplayWhiteLevel.Value, 'DisplayWhiteLevel')
+
+            if saved_count == 0:
+                print("Warning: No camera settings could be saved")
+                return
             
             exposure = self._sequence_saved_settings.get('exposure', 'N/A')
             gain = self._sequence_saved_settings.get('gain', 'N/A')
-            self.update_status(f"Camera settings saved (Exp: {exposure}ms, Gain: {gain})")
+            self.update_status(f"Camera settings saved ({saved_count} settings, Exp: {exposure}ms, Gain: {gain})")
         except Exception as ex:
             # Clear any partial settings on error
             self._sequence_saved_settings = {}
@@ -2927,29 +2949,37 @@ class OccultationManagerGUI(Form):
             
             camera = self.sharpcap.SelectedCamera
             self.update_status("Restoring camera settings...")
+
+            restored_count = 0
+            skipped_count = 0
+
+            def try_restore_setting(key, setter, label):
+                nonlocal restored_count, skipped_count
+                if key not in self._sequence_saved_settings:
+                    return
+                try:
+                    setter(self._sequence_saved_settings[key])
+                    restored_count += 1
+                except Exception as ex:
+                    skipped_count += 1
+                    print(f"Could not restore camera setting ({label}): {ex}")
             
-            if 'binning' in self._sequence_saved_settings and hasattr(camera.Controls, 'Binning'):
-                camera.Controls.Binning.Value = self._sequence_saved_settings['binning']
+            try_restore_setting('binning', lambda v: setattr(camera.Controls.Binning, 'Value', v), 'Binning')
             
-            if 'exposure' in self._sequence_saved_settings and hasattr(camera.Controls, 'Exposure'):
-                camera.Controls.Exposure.ExposureMs = self._sequence_saved_settings['exposure']
+            if 'exposure' in self._sequence_saved_settings:
                 exposure_to_wait = self._sequence_saved_settings['exposure']
+                try_restore_setting('exposure', lambda v: setattr(camera.Controls.Exposure, 'ExposureMs', v), 'Exposure')
             else:
                 exposure_to_wait = 100
             
-            if 'gain' in self._sequence_saved_settings and hasattr(camera.Controls, 'Gain'):
-                camera.Controls.Gain.Value = self._sequence_saved_settings['gain']
+            try_restore_setting('gain', lambda v: setattr(camera.Controls.Gain, 'Value', v), 'Gain')
             
-            if 'resolution' in self._sequence_saved_settings and hasattr(camera.Controls, 'Resolution'):
-                camera.Controls.Resolution.Value = self._sequence_saved_settings['resolution']
+            try_restore_setting('resolution', lambda v: setattr(camera.Controls.Resolution, 'Value', v), 'Resolution')
             
             # Restore display levels
-            if 'display_black' in self._sequence_saved_settings and hasattr(camera.Controls, 'DisplayBlackLevel'):
-                camera.Controls.DisplayBlackLevel.Value = self._sequence_saved_settings['display_black']
-            if 'display_mid' in self._sequence_saved_settings and hasattr(camera.Controls, 'DisplayMidLevel'):
-                camera.Controls.DisplayMidLevel.Value = self._sequence_saved_settings['display_mid']
-            if 'display_white' in self._sequence_saved_settings and hasattr(camera.Controls, 'DisplayWhiteLevel'):
-                camera.Controls.DisplayWhiteLevel.Value = self._sequence_saved_settings['display_white']
+            try_restore_setting('display_black', lambda v: setattr(camera.Controls.DisplayBlackLevel, 'Value', v), 'DisplayBlackLevel')
+            try_restore_setting('display_mid', lambda v: setattr(camera.Controls.DisplayMidLevel, 'Value', v), 'DisplayMidLevel')
+            try_restore_setting('display_white', lambda v: setattr(camera.Controls.DisplayWhiteLevel, 'Value', v), 'DisplayWhiteLevel')
             
             # Start background thread for stabilization wait (don't block UI)
             def wait_for_stabilization():
@@ -2971,7 +3001,7 @@ class OccultationManagerGUI(Form):
             
             # Update status immediately (before wait completes)
             wait_time = (exposure_to_wait * 2) / 1000.0
-            self.update_status(f"Camera settings restored (stabilizing {wait_time:.1f}s)...")
+            self.update_status(f"Camera settings restored ({restored_count} settings, {skipped_count} skipped, stabilizing {wait_time:.1f}s)...")
             
         except Exception as ex:
             print(f"Warning: Could not restore camera settings: {ex}")
@@ -3145,8 +3175,8 @@ class OccultationManagerGUI(Form):
         if final_status != "Failed":
             context = self._sequence_context if hasattr(self, '_sequence_context') else None
             if context == 'run_sequences':
-                MessageBox.Show("All sequences completed successfully!\n\nCamera settings have been restored.",
-                            "Sequences Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+                self._show_run_sequences_notification("Run Sequences complete. Camera settings restored.", log_path)
             else:  # test_recording or None
                 MessageBox.Show("Test recording sequence completed successfully!\n\nCamera settings have been restored.",
                             "Test Recording Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
@@ -3213,15 +3243,19 @@ class OccultationManagerGUI(Form):
             if failed == 0 and errors == 0:
                 icon = MessageBoxIcon.Information
                 title = "All Sequences Completed Successfully"
+                notification_message = f"Run Sequences complete: {successful}/{total} succeeded. Camera settings restored."
             elif successful > 0:
                 icon = MessageBoxIcon.Warning
                 title = "Sequences Completed with Failures"
+                notification_message = f"Run Sequences complete: {successful}/{total} succeeded, {failed + errors} issues. See sequence_errors.log."
             else:
                 icon = MessageBoxIcon.Error
                 title = "Sequences Completed with Errors"
+                notification_message = f"Run Sequences finished with errors: 0/{total} succeeded. See sequence_errors.log."
             
             self.update_status(f"Sequences completed: {successful} succeeded, {failed + errors} failed")
-            MessageBox.Show(summary_message, title, MessageBoxButtons.OK, icon)
+            log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+            self._show_run_sequences_notification(notification_message, log_path)
             
             # Log results to file for troubleshooting
             try:
@@ -3245,8 +3279,8 @@ class OccultationManagerGUI(Form):
         else:
             # No results tracked (shouldn't happen, but handle gracefully)
             self.update_status("Sequences completed")
-            MessageBox.Show("All sequences completed!\n\nCamera settings have been restored.",
-                        "Sequences Completed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+            self._show_run_sequences_notification("Run Sequences complete. Camera settings restored.", log_path)
         
         # Bring main window to front
         self.Activate()
