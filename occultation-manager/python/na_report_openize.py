@@ -49,7 +49,6 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
     
     # Use original template with data validation enabled
     TEMPLATE_FILENAME = 'NorthAmerica_AstReportForm_V5.6.12r.xlsx'
-    TEMPLATE_SUBFOLDER = ''  # Template is now in python folder
     
     def __init__(self, config):
         """Initialize with configuration manager"""
@@ -65,8 +64,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
     
     def get_template_path(self):
         """Get path to original template file with data validation"""
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(script_dir, self.TEMPLATE_SUBFOLDER, self.TEMPLATE_FILENAME)
+        return os.path.join(self.config.get_templates_master_reports_folder(), self.TEMPLATE_FILENAME)
     
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
@@ -106,7 +104,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         
         try:
             # Get report folder
-            report_folder = os.path.join(self.config.get_file_folder(), 'Reports')
+            report_folder = self.config.get_reports_folder()
             if not os.path.exists(report_folder):
                 os.makedirs(report_folder)
             

@@ -15,8 +15,8 @@ SharpCap Occultation Manager streamlines your occultation observation workflow b
 3. **Load in SharpCap**:
    - Open SharpCap
    - Go to **File → SharpCap Settings → Startup Scripts**
-   - Browse to the extracted folder
-   - Select the `main.py` script
+   - Browse to the extracted `app` folder
+   - Select the `app/main.py` script
    - Click OK and restart SharpCap
 
 <img width="666" height="155" alt="SharpCap Settings" src="https://github.com/user-attachments/assets/42a9d9c9-4273-4a88-8d0a-428cca649afe" />
@@ -28,16 +28,18 @@ SharpCap Occultation Manager streamlines your occultation observation workflow b
 ### First Startup - Automatic Setup
 
 On first launch, the Occultation Manager automatically:
-- **Detects installation location** and configures file paths
+- **Detects installation location** and uses fixed folders
 - **Creates folder structure**:
-  - `files/` - Configuration, event data, template copies
-  - `files/Reports/` - Generated Excel reports
-  - `sequences/` - SharpCap sequence files (.scs)
-- **Saves configuration** to `files/occultation_config.json`
+   - `data/config/` - Configuration file storage
+   - `data/events/` - Event JSON files
+   - `data/templates/` - Working template copies (user-editable)
+   - `data/sequences/` - SharpCap sequence files (.scs)
+   - `data/reports/` - Generated Excel reports
+- **Saves configuration** to `data/config/occultation_config.json`
 
-**Template files** are copied to both:
-- Main folder - Original reference copies
-- `files/` folder - Working copies for customization
+**Template files** are sourced from:
+- `resources/templates_master/` - Master templates (distributed)
+- `data/templates/` - Working copies used by sequence generation
 
 ### Configuration
 
@@ -46,13 +48,17 @@ After installation, configure the application:
 1. **Credentials** (Required):
    - Go to **Tools → Configuration → Credentials**
    - Enter your Occult Watcher Cloud email and API key
+   - Set **Days to Retain** for event history (default 14, range 1-400)
    - Get your API key at: https://cloud.occultwatcher.net/user-profile
 
-2. **File Paths** (Optional - auto-configured on first run):
-   - **My file folder**: Already set to `{install_dir}/files`
-   - **Sequence path**: Already set to `{install_dir}/sequences`
-   - **Event retention**: Default 14 days (1-400 days)
-   - Paths only need changing if you want different locations
+2. **File Paths Tab**:
+   - Paths are fixed to the installation folder structure
+   - Use built-in buttons to open Explorer for:
+     - `data/config/`
+     - `data/events/`
+     - `data/reports/`
+     - `data/sequences/`
+     - `data/templates/`
 
 3. **Observer Settings**:
    - **User Settings**: Observer name, location, telescope details
@@ -66,15 +72,20 @@ After installation, configure the application:
 After extraction and first run:
 ```
 occultation-manager/
-├── main.py                          # SharpCap startup script
-├── files/                           # Data folder
-│   ├── occultation_config.json     # Your settings (auto-created)
-│   ├── occultations.json           # Downloaded events
-│   ├── SharpCap *template.txt      # Working template copies
-│   └── Reports/                    # Generated reports
-├── sequences/                       # Generated sequences
-├── SharpCap *template.txt          # Original templates
-└── [application files...]
+├── app/                             # SharpCap startup and Python modules
+│   ├── main.py                      # SharpCap startup script
+│   ├── *.py
+│   └── lib/                         # Openize SDK DLLs
+├── resources/
+│   └── templates_master/            # Distributed master templates
+│       ├── sequencer/
+│       └── reports/
+└── data/                            # User data (auto-created)
+   ├── config/occultation_config.json
+   ├── events/occultations.json
+   ├── templates/                   # Working template copies
+   ├── sequences/                   # Generated .scs files
+   └── reports/                     # Generated report files
 ```
 
 ## Key Features

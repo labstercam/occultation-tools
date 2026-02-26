@@ -592,42 +592,36 @@ class ConfigurationDialog(Form):
         self.MinimizeBox = False
         
         # Create tabs
-        tab_control = TabControl()
-        tab_control.Location = Point(int(10 * sf), int(10 * sf))
-        tab_control.Size = Size(int(560 * sf), int(600 * sf))
-        self.Controls.Add(tab_control)
+        self.tab_control = TabControl()
+        self.tab_control.Location = Point(int(10 * sf), int(10 * sf))
+        self.tab_control.Size = Size(int(560 * sf), int(600 * sf))
+        self.Controls.Add(self.tab_control)
         
         # User Credentials Tab
         tab_credentials = TabPage()
         tab_credentials.Text = "Credentials"
         self.setup_credentials_tab(tab_credentials)
-        tab_control.TabPages.Add(tab_credentials)
+        self.tab_control.TabPages.Add(tab_credentials)
         
         # File Paths Tab
         tab_paths = TabPage()
         tab_paths.Text = "File Paths"
         self.setup_paths_tab(tab_paths)
-        tab_control.TabPages.Add(tab_paths)
+        self.tab_control.TabPages.Add(tab_paths)
         
         # Recording Settings Tab
         tab_recording = TabPage()
         tab_recording.Text = "User Settings"
         self.setup_recording_tab(tab_recording)
-        tab_control.TabPages.Add(tab_recording)
+        self.tab_control.TabPages.Add(tab_recording)
         
         # Observer/Telescope Tab
         tab_observer = TabPage()
         tab_observer.Text = "Observer/Telescope"
         self.setup_observer_telescope_tab(tab_observer)
-        tab_control.TabPages.Add(tab_observer)
+        self.tab_control.TabPages.Add(tab_observer)
         
-        # API Settings Tab
-        tab_api = TabPage()
-        tab_api.Text = "API Settings"
-        #self.setup_api_tab(tab_api)
         self.setup_api_tab(tab_credentials)
-        
-        #tab_control.TabPages.Add(tab_api)
         
         # Buttons
         btn_ok = Button()
@@ -684,12 +678,24 @@ class ConfigurationDialog(Form):
         self.txt_password.UseSystemPasswordChar = True
         tab.Controls.Add(self.txt_password)
         self.tooltip.SetToolTip(self.txt_password, "Your Occult Watcher Cloud account password")
+
+        lbl_retention_days = Label()
+        lbl_retention_days.Text = "Days to Retain:"
+        lbl_retention_days.Location = Point(int(20 * sf), int(180 * sf))
+        lbl_retention_days.Size = Size(int(100 * sf), int(20 * sf))
+        tab.Controls.Add(lbl_retention_days)
+
+        self.txt_retention_days = TextBox()
+        self.txt_retention_days.Location = Point(int(130 * sf), int(180 * sf))
+        self.txt_retention_days.Size = Size(int(100 * sf), int(20 * sf))
+        tab.Controls.Add(self.txt_retention_days)
+        self.tooltip.SetToolTip(self.txt_retention_days, "Number of days to retain events in the occultations file (1-400 days)")
         
-        # Information Panel at bottom (after API fields are added)
+        # Information panel
         info_panel = GroupBox()
         info_panel.Text = "How to Get Your OWC Credentials"
-        info_panel.Location = Point(int(20 * sf), int(190 * sf))
-        info_panel.Size = Size(int(500 * sf), int(140 * sf))
+        info_panel.Location = Point(int(20 * sf), int(220 * sf))
+        info_panel.Size = Size(int(500 * sf), int(145 * sf))
         tab.Controls.Add(info_panel)
         
         info_text = Label()
@@ -699,18 +705,43 @@ class ConfigurationDialog(Form):
                          "4. Find or generate your API Key in that section\n"
                          "5. Copy your email and API Key to the fields above")
         info_text.Location = Point(int(10 * sf), int(20 * sf))
-        info_text.Size = Size(int(480 * sf), int(80 * sf))
+        info_text.Size = Size(int(480 * sf), int(88 * sf))
         info_text.AutoSize = False
         info_panel.Controls.Add(info_text)
         
         # Clickable link to user profile
         link_profile = LinkLabel()
         link_profile.Text = "Open OWC User Profile →"
-        link_profile.Location = Point(int(10 * sf), int(105 * sf))
+        link_profile.Location = Point(int(10 * sf), int(112 * sf))
         link_profile.AutoSize = True
         link_profile.LinkClicked += self.open_owc_profile
         info_panel.Controls.Add(link_profile)
         self.tooltip.SetToolTip(link_profile, "Opens https://cloud.occultwatcher.net/user-profile in your browser")
+
+        download_panel = GroupBox()
+        download_panel.Text = "How Download from OWC Works"
+        download_panel.Location = Point(int(20 * sf), int(375 * sf))
+        download_panel.Size = Size(int(500 * sf), int(140 * sf))
+        tab.Controls.Add(download_panel)
+
+        download_text = Label()
+        download_text.Text = ("When you click 'Download Events', the application:\n"
+                     "1. Reads your 'Upcoming Events' from OWC (link below)\n"
+                     "2. Saves the downloaded events to data/events/\n"
+                     "3. Merges with existing occultation events data\n"
+                     "4. Retains only events no more than the specified days old")
+        download_text.Location = Point(int(10 * sf), int(20 * sf))
+        download_text.Size = Size(int(480 * sf), int(80 * sf))
+        download_text.AutoSize = False
+        download_panel.Controls.Add(download_text)
+
+        link_events = LinkLabel()
+        link_events.Text = "Open My Events on OWC →"
+        link_events.Location = Point(int(10 * sf), int(105 * sf))
+        link_events.AutoSize = True
+        link_events.LinkClicked += self.open_owc_events
+        download_panel.Controls.Add(link_events)
+        self.tooltip.SetToolTip(link_events, "Opens https://cloud.occultwatcher.net/my-events in your browser")
     
     def open_owc_profile(self, sender, e):
         """Open OWC user profile page in browser"""
@@ -723,110 +754,54 @@ class ConfigurationDialog(Form):
     def setup_paths_tab(self, tab):
         """Setup file paths tab with DPI scaling"""
         sf = self._sf
-        
-        # All file paths fields at top with even spacing
-        lbl_file_folder = Label()
-        lbl_file_folder.Text = "File Folder:"
-        lbl_file_folder.Location = Point(int(20 * sf), int(20 * sf))
-        lbl_file_folder.Size = Size(int(100 * sf), int(20 * sf))
-        tab.Controls.Add(lbl_file_folder)
-        
-        self.txt_file_folder = TextBox()
-        self.txt_file_folder.Location = Point(int(130 * sf), int(20 * sf))
-        self.txt_file_folder.Size = Size(int(250 * sf), int(20 * sf))
-        tab.Controls.Add(self.txt_file_folder)
-        self.tooltip.SetToolTip(self.txt_file_folder, "Folder where event data is stored, templates are read from (*.txt files with 'template' in name), and Reports subfolder is created")
-        
-        btn_browse_folder = Button()
-        btn_browse_folder.Text = "Browse"
-        btn_browse_folder.Location = Point(int(390 * sf), int(19 * sf))
-        _autosize_button(btn_browse_folder, sf, height=int(22 * sf))
-        btn_browse_folder.Click += self.browse_file_folder_click
-        tab.Controls.Add(btn_browse_folder)
-        self.tooltip.SetToolTip(btn_browse_folder, "Browse for file folder location")
-        
-        lbl_sequence_path = Label()
-        lbl_sequence_path.Text = "Sequence Path:"
-        lbl_sequence_path.Location = Point(int(20 * sf), int(60 * sf))
-        lbl_sequence_path.Size = Size(int(100 * sf), int(20 * sf))
-        tab.Controls.Add(lbl_sequence_path)
-        
-        self.txt_sequence_path = TextBox()
-        self.txt_sequence_path.Location = Point(int(130 * sf), int(60 * sf))
-        self.txt_sequence_path.Size = Size(int(250 * sf), int(20 * sf))
-        tab.Controls.Add(self.txt_sequence_path)
-        self.tooltip.SetToolTip(self.txt_sequence_path, "Folder where generated .scs sequence files are saved. Leave empty to use File Folder. Can be different for organizational purposes.")
-        
-        btn_browse_sequence = Button()
-        btn_browse_sequence.Text = "Browse"
-        btn_browse_sequence.Location = Point(int(390 * sf), int(59 * sf))
-        _autosize_button(btn_browse_sequence, sf, height=int(22 * sf))
-        btn_browse_sequence.Click += self.browse_sequence_path_click
-        tab.Controls.Add(btn_browse_sequence)
-        self.tooltip.SetToolTip(btn_browse_sequence, "Browse for sequence file location")
-        
-        lbl_occ_file = Label()
-        lbl_occ_file.Text = "Occultations File:"
-        lbl_occ_file.Location = Point(int(20 * sf), int(100 * sf))
-        lbl_occ_file.Size = Size(int(100 * sf), int(20 * sf))
-        tab.Controls.Add(lbl_occ_file)
-        
-        self.txt_occ_file = TextBox()
-        self.txt_occ_file.Location = Point(int(130 * sf), int(100 * sf))
-        self.txt_occ_file.Size = Size(int(300 * sf), int(20 * sf))
-        tab.Controls.Add(self.txt_occ_file)
-        self.tooltip.SetToolTip(self.txt_occ_file, "Filename for the main occultation events data file (merged with downloads, retention period set below)")
-        
-        lbl_latest_file = Label()
-        lbl_latest_file.Text = "Latest File:"
-        lbl_latest_file.Location = Point(int(20 * sf), int(140 * sf))
-        lbl_latest_file.Size = Size(int(100 * sf), int(20 * sf))
-        tab.Controls.Add(lbl_latest_file)
-        
-        self.txt_latest_file = TextBox()
-        self.txt_latest_file.Location = Point(int(130 * sf), int(140 * sf))
-        self.txt_latest_file.Size = Size(int(300 * sf), int(20 * sf))
-        tab.Controls.Add(self.txt_latest_file)
-        self.tooltip.SetToolTip(self.txt_latest_file, "Filename for storing the latest downloaded occultation events (replaced on each download)")
-        
-        lbl_retention_days = Label()
-        lbl_retention_days.Text = "Days to Retain:"
-        lbl_retention_days.Location = Point(int(20 * sf), int(180 * sf))
-        lbl_retention_days.Size = Size(int(100 * sf), int(20 * sf))
-        tab.Controls.Add(lbl_retention_days)
-        
-        self.txt_retention_days = TextBox()
-        self.txt_retention_days.Location = Point(int(130 * sf), int(180 * sf))
-        self.txt_retention_days.Size = Size(int(100 * sf), int(20 * sf))
-        tab.Controls.Add(self.txt_retention_days)
-        self.tooltip.SetToolTip(self.txt_retention_days, "Number of days to retain events in the occultations file (1-400 days)")
-        
-        # Information Panel at bottom
-        info_panel = GroupBox()
-        info_panel.Text = "How Download from OWC Works"
-        info_panel.Location = Point(int(20 * sf), int(220 * sf))
-        info_panel.Size = Size(int(500 * sf), int(140 * sf))
-        tab.Controls.Add(info_panel)
-        
-        info_text = Label()
-        info_text.Text = ("When you click 'Download Events', the application:\n"
-                         "1. Reads your 'Upcoming Events' from OWC (link below)\n"
-                         "2. Saves the downloaded events to 'Latest File'\n"
-                         "3. Merges with existing 'Occultations File'\n"
-                         "4. Retains only events no more than the specified days old")
-        info_text.Location = Point(int(10 * sf), int(20 * sf))
-        info_text.Size = Size(int(480 * sf), int(80 * sf))
-        info_text.AutoSize = False
-        info_panel.Controls.Add(info_text)
-        
-        # Clickable link to my events
-        link_events = LinkLabel()
-        link_events.Text = "Open My Events on OWC →"
-        link_events.Location = Point(int(10 * sf), int(105 * sf))
-        link_events.AutoSize = True
-        link_events.LinkClicked += self.open_owc_events
-        info_panel.Controls.Add(link_events)
-        self.tooltip.SetToolTip(link_events, "Opens https://cloud.occultwatcher.net/my-events in your browser")
+
+        lbl_folder_actions = Label()
+        lbl_folder_actions.Text = "Open Data Folders in Windows Explorer"
+        lbl_folder_actions.Location = Point(int(20 * sf), int(20 * sf))
+        lbl_folder_actions.Size = Size(int(350 * sf), int(20 * sf))
+        tab.Controls.Add(lbl_folder_actions)
+
+        btn_open_config = Button()
+        btn_open_config.Text = "Open Config Folder"
+        btn_open_config.Location = Point(int(20 * sf), int(60 * sf))
+        _autosize_button(btn_open_config, sf, min_width=int(160 * sf))
+        btn_open_config.Click += self.open_config_folder_click
+        tab.Controls.Add(btn_open_config)
+
+        btn_open_events = Button()
+        btn_open_events.Text = "Open Events Folder"
+        btn_open_events.Location = Point(int(200 * sf), int(60 * sf))
+        _autosize_button(btn_open_events, sf, min_width=int(160 * sf))
+        btn_open_events.Click += self.open_events_folder_click
+        tab.Controls.Add(btn_open_events)
+
+        btn_open_reports = Button()
+        btn_open_reports.Text = "Open Reports Folder"
+        btn_open_reports.Location = Point(int(20 * sf), int(100 * sf))
+        _autosize_button(btn_open_reports, sf, min_width=int(160 * sf))
+        btn_open_reports.Click += self.open_reports_folder_click
+        tab.Controls.Add(btn_open_reports)
+
+        btn_open_sequences = Button()
+        btn_open_sequences.Text = "Open Sequences Folder"
+        btn_open_sequences.Location = Point(int(200 * sf), int(100 * sf))
+        _autosize_button(btn_open_sequences, sf, min_width=int(160 * sf))
+        btn_open_sequences.Click += self.open_sequences_folder_click
+        tab.Controls.Add(btn_open_sequences)
+
+        btn_open_templates = Button()
+        btn_open_templates.Text = "Open Templates Folder"
+        btn_open_templates.Location = Point(int(20 * sf), int(140 * sf))
+        _autosize_button(btn_open_templates, sf, min_width=int(160 * sf))
+        btn_open_templates.Click += self.open_templates_folder_click
+        tab.Controls.Add(btn_open_templates)
+
+        lbl_path_note = Label()
+        lbl_path_note.Text = "Folders are fixed under the installation data directory."
+        lbl_path_note.Location = Point(int(20 * sf), int(190 * sf))
+        lbl_path_note.Size = Size(int(500 * sf), int(20 * sf))
+        lbl_path_note.ForeColor = Color.Gray
+        tab.Controls.Add(lbl_path_note)
     
     def open_owc_events(self, sender, e):
         """Open OWC my events page in browser"""
@@ -835,6 +810,31 @@ class ConfigurationDialog(Form):
         except Exception as ex:
             MessageBox.Show(f"Could not open browser: {ex}", "Error", 
                           MessageBoxButtons.OK, MessageBoxIcon.Warning)
+
+    def _open_folder_in_explorer(self, folder_path):
+        """Open a folder in Windows Explorer"""
+        try:
+            if folder_path and not os.path.exists(folder_path):
+                os.makedirs(folder_path, exist_ok=True)
+            os.startfile(folder_path)
+        except Exception as ex:
+            MessageBox.Show(f"Could not open folder: {ex}", "Error",
+                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
+
+    def open_config_folder_click(self, sender, e):
+        self._open_folder_in_explorer(self.config.get_config_folder())
+
+    def open_events_folder_click(self, sender, e):
+        self._open_folder_in_explorer(self.config.get_events_folder())
+
+    def open_reports_folder_click(self, sender, e):
+        self._open_folder_in_explorer(self.config.get_reports_folder())
+
+    def open_sequences_folder_click(self, sender, e):
+        self._open_folder_in_explorer(self.config.get_sequences_folder())
+
+    def open_templates_folder_click(self, sender, e):
+        self._open_folder_in_explorer(self.config.get_templates_folder())
     
     def setup_recording_tab(self, tab):
         """Setup recording settings tab with DPI scaling"""
@@ -1068,6 +1068,7 @@ class ConfigurationDialog(Form):
         self.txt_host = TextBox()
         self.txt_host.Location = Point(int(130 * sf), int(100 * sf))
         self.txt_host.Size = Size(int(300 * sf), int(20 * sf))
+        self.txt_host.ReadOnly = True
         tab.Controls.Add(self.txt_host)
         self.tooltip.SetToolTip(self.txt_host, "API server hostname or URL for custom occultation data sources")
         
@@ -1220,10 +1221,6 @@ class ConfigurationDialog(Form):
         """Load current configuration into controls"""
         self.txt_email.Text = self.config.get_owc_email()
         self.txt_password.Text = self.config.get_owc_password()
-        self.txt_file_folder.Text = self.config.get_file_folder()
-        self.txt_sequence_path.Text = self.config.get_sequence_path()
-        self.txt_occ_file.Text = self.config.get_occultations_file()
-        self.txt_latest_file.Text = self.config.get_latest_occultations_file()
         self.txt_retention_days.Text = str(self.config.get_days_to_retain_events())
         self.txt_base_duration.Text = str(self.config.get_base_duration())
         self.txt_goto_lead.Text = str(self.config.get_goto_lead_time())
@@ -1245,18 +1242,12 @@ class ConfigurationDialog(Form):
         self.txt_observer_fax.Text = self.config.get_observer_fax()
     
     def browse_file_folder_click(self, sender, e):
-        """Browse for file folder"""
-        dialog = FolderBrowserDialog()
-        dialog.SelectedPath = self.txt_file_folder.Text
-        if dialog.ShowDialog() == DialogResult.OK:
-            self.txt_file_folder.Text = dialog.SelectedPath
+        """Open fixed events folder"""
+        self._open_folder_in_explorer(self.config.get_events_folder())
     
     def browse_sequence_path_click(self, sender, e):
-        """Browse for sequence path"""
-        dialog = FolderBrowserDialog()
-        dialog.SelectedPath = self.txt_sequence_path.Text
-        if dialog.ShowDialog() == DialogResult.OK:
-            self.txt_sequence_path.Text = dialog.SelectedPath
+        """Open fixed sequences folder"""
+        self._open_folder_in_explorer(self.config.get_sequences_folder())
     
     def save_config_click(self, sender, e):
         """Save configuration"""
@@ -1264,10 +1255,6 @@ class ConfigurationDialog(Form):
             # Update config with form values
             self.config.set_owc_email(self.txt_email.Text)
             self.config.set_owc_password(self.txt_password.Text)
-            self.config.set_file_folder(self.txt_file_folder.Text)
-            self.config.set_sequence_path(self.txt_sequence_path.Text)
-            self.config.set_occultations_file(self.txt_occ_file.Text)
-            self.config.set_latest_occultations_file(self.txt_latest_file.Text)
             
             # Validate and save retention days
             retention_days = int(self.txt_retention_days.Text)
@@ -1391,13 +1378,71 @@ class ConfigurationDialog(Form):
                           MessageBoxButtons.OK, MessageBoxIcon.Error)
     
     def reset_defaults_click(self, sender, e):
-        """Reset to default configuration"""
-        if MessageBox.Show("Reset all settings to defaults?", "Confirm Reset", 
-                         MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes:
-            self.config.reset_to_defaults()
-            self.load_current_config()
-            MessageBox.Show("Configuration reset to defaults", "Reset Complete", 
+        """Reset current tab settings to defaults"""
+        selected_tab = None
+        tab_name = ""
+        try:
+            selected_tab = self.tab_control.SelectedTab
+            tab_name = selected_tab.Text if selected_tab else ""
+        except Exception:
+            tab_name = ""
+
+        if tab_name == "File Paths":
+            MessageBox.Show("File paths are fixed and have no resettable values.", "No Reset Needed",
                           MessageBoxButtons.OK, MessageBoxIcon.Information)
+            return
+
+        if not tab_name:
+            tab_name = "All Tabs"
+
+        if MessageBox.Show(f"Reset settings on '{tab_name}' tab to defaults?", "Confirm Reset",
+                         MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes:
+            return
+
+        defaults = self.config.default_config
+
+        try:
+            if tab_name == "Credentials":
+                self.config.set_owc_email(defaults.get('owc_user_email', ''))
+                self.config.set_owc_password(defaults.get('owc_user_password', ''))
+                self.config.set_days_to_retain_events(defaults.get('days_to_retain_events', 14))
+                self.config.set_host(defaults.get('host', ''))
+                self.config.set_api_key(defaults.get('apiKey', ''))
+            elif tab_name == "User Settings":
+                self.config.set_base_duration(defaults.get('base_duration', 60))
+                self.config.set_goto_lead_time(defaults.get('goto_lead_time', 240))
+                self.config.set_mag_for_40ms_exposure(defaults.get('mag_for_40ms_exposure', 12.0))
+                self.config.set_default_gain(defaults.get('default_gain', 450))
+                self.config.set_sync_mount(defaults.get('sync_mount', True))
+                self.config.set_display_utc(defaults.get('display_utc', True))
+            elif tab_name == "Observer/Telescope":
+                self.config.set_observer_name(defaults.get('observer_name', ''))
+                self.config.set_observer_email(defaults.get('observer_email', ''))
+                self.config.set_observer_address(defaults.get('observer_address', ''))
+                self.config.set_observer_city(defaults.get('observer_city', ''))
+                self.config.set_observer_state(defaults.get('observer_state', ''))
+                self.config.set_observer_country(defaults.get('observer_country', ''))
+                self.config.set_observer_phone(defaults.get('observer_phone', ''))
+                self.config.set_observer_fax(defaults.get('observer_fax', ''))
+            else:
+                # Fallback: preserve previous behavior if tab is unknown
+                self.config.reset_to_defaults()
+
+            self.config.save_config()
+            self.load_current_config()
+
+            try:
+                self._orig_goto_lead = self.config.get_goto_lead_time()
+                self._orig_base_duration = self.config.get_base_duration()
+                self._orig_mag_ref = self.config.get_mag_for_40ms_exposure()
+            except Exception:
+                pass
+
+            MessageBox.Show(f"'{tab_name}' settings reset to defaults", "Reset Complete",
+                          MessageBoxButtons.OK, MessageBoxIcon.Information)
+        except Exception as ex:
+            MessageBox.Show(f"Error resetting defaults: {ex}", "Reset Error",
+                          MessageBoxButtons.OK, MessageBoxIcon.Error)
 
 class TemplateSelectionDialog(Form):
     """Enhanced dialog for selecting sequence template with DPI scaling"""
@@ -1467,7 +1512,7 @@ class TemplateSelectionDialog(Form):
             btn_template_help.Enabled = False
         self.Controls.Add(btn_template_help)
         
-        # Template preview with proper scrolling - FIXED
+        # Template preview with proper scrolling
         lbl_preview = Label()
         lbl_preview.Text = "Template Preview:"
         lbl_preview.Location = Point(int(10 * sf), int(225 * sf))
@@ -1478,7 +1523,7 @@ class TemplateSelectionDialog(Form):
         self.txt_preview.Multiline = True
         self.txt_preview.ReadOnly = True
         self.txt_preview.ScrollBars = ScrollBars.Both  # Both horizontal and vertical scrollbars
-        self.txt_preview.WordWrap = False  # FIXED: Disable word wrap for proper horizontal scrolling
+        self.txt_preview.WordWrap = False
         self.txt_preview.Font = Font("Courier New", 9 * sf)  # Monospace font matching dialog text size
         self.txt_preview.Location = Point(int(10 * sf), int(250 * sf))
         self.txt_preview.Size = Size(int(760 * sf), int(275 * sf))
@@ -1530,14 +1575,12 @@ class TemplateSelectionDialog(Form):
         # Wire events
         self.lst_templates.SelectedIndexChanged += self.template_selected
 
-        # `apply_for_all` is initialized from the checkbox above so no-op here
-
         self.AcceptButton = btn_ok
         self.CancelButton = btn_cancel
     
     def load_templates(self):
         """Load available templates into the list"""
-        template_files, template_folder = TemplateManager.find_template_files(self.config.get_file_folder())
+        template_files, template_folder = TemplateManager.find_template_files(self.config.get_templates_folder())
         
         # Add template files
         for template_file in template_files:
@@ -1554,7 +1597,7 @@ class TemplateSelectionDialog(Form):
         """Handle template selection change with proper preview"""
         if self.lst_templates.SelectedIndex >= 0:
             # Get the selected template file
-            template_files, template_folder = TemplateManager.find_template_files(self.config.get_file_folder())
+            template_files, template_folder = TemplateManager.find_template_files(self.config.get_templates_folder())
             if self.lst_templates.SelectedIndex < len(template_files):
                 template_file = template_files[self.lst_templates.SelectedIndex]
                 self.selected_template_path = os.path.join(template_folder, template_file)
@@ -1562,7 +1605,7 @@ class TemplateSelectionDialog(Form):
             else:
                 template_content = None
             
-            # Show preview with proper line breaks - FIXED
+            # Show preview with proper line breaks
             if template_content:
                 # Don't truncate, let scrollbars handle the content
                 self.txt_preview.Text = template_content.replace('\n','\r\n')
@@ -1576,7 +1619,7 @@ class TemplateSelectionDialog(Form):
     def open_templates_folder(self, sender, e):
         """Open the templates folder in Windows Explorer"""
         try:
-            template_files, template_folder = TemplateManager.find_template_files(self.config.get_file_folder())
+            template_files, template_folder = TemplateManager.find_template_files(self.config.get_templates_folder())
             if os.path.exists(template_folder):
                 os.startfile(template_folder)
             else:

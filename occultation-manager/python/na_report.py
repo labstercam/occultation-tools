@@ -27,9 +27,8 @@ class NAReportGenerator(ReportGeneratorBase):
         super(NAReportGenerator, self).__init__(config)
     
     def get_template_path(self):
-        """Get path to local template file bundled with the project"""
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(script_dir, self.TEMPLATE_FILENAME)
+        """Get path to master report template"""
+        return os.path.join(self.config.get_templates_master_reports_folder(), self.TEMPLATE_FILENAME)
     
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, tangra_data=None, aota_report_data=None, aota_xml_used=False, clouds=None, stability=None, other_conditions=None):
         """Generate a North American report using placeholder replacement
@@ -53,7 +52,7 @@ class NAReportGenerator(ReportGeneratorBase):
         
         try:
             # Get report folder
-            report_folder = os.path.join(self.config.get_file_folder(), 'Reports')
+            report_folder = self.config.get_reports_folder()
             if not os.path.exists(report_folder):
                 os.makedirs(report_folder)
             

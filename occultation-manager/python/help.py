@@ -212,7 +212,7 @@ INSTALLATION
    ✅ RECOMMENDED: Documents\\SharpCap\\occultation-manager
 3. Start SharpCap
 4. Go to File → SharpCap Settings → Startup Scripts
-5. Browse to the extracted folder and select the 'main.py' script
+5. Browse to the extracted app folder and select 'app/main.py'
 6. Click OK and restart SharpCap
 
 A new "Occultations" button appears in SharpCap's main toolbar.
@@ -223,29 +223,35 @@ When you first launch Occultation Manager, it automatically:
 
 • Detects your installation directory
 • Creates folder structure:
-  - files/ - Configuration, event data, template copies
-  - files/Reports/ - Generated Excel reports
-  - sequences/ - SharpCap sequence files (.scs)
-• Sets default paths to installation directory
-• Copies template files to files/ folder for easy customization
-• Saves configuration to files/occultation_config.json
-
-You can use these default paths or change them in Configuration.
+    - data/config/ - Configuration storage
+    - data/events/ - Event data files
+    - data/templates/ - Working template copies
+    - data/sequences/ - SharpCap sequence files (.scs)
+    - data/reports/ - Generated Excel reports
+    - resources/templates_master/ - Master templates
+• Uses fixed install-relative paths (no path setup required)
+• Seeds missing templates from resources/templates_master/sequencer/
+• Saves configuration to data/config/occultation_config.json
 
 FOLDER STRUCTURE
 ----------------
 After extraction and first run:
 
 occultation-manager/
-├── main.py                          # SharpCap startup script
-├── files/                           # Data folder (auto-created)
-│   ├── occultation_config.json     # Your settings
-│   ├── occultations.json           # Downloaded events
-│   ├── SharpCap *template.txt      # Working template copies
-│   └── Reports/                    # Generated reports
-├── sequences/                       # Generated sequences (auto-created)
-├── SharpCap *template.txt          # Original templates (reference)
-└── [application files...]
+├── app/
+│   ├── main.py                      # SharpCap startup script
+│   ├── *.py
+│   └── lib/
+├── resources/
+│   └── templates_master/
+│       ├── sequencer/
+│       └── reports/
+└── data/                            # Auto-created user data
+    ├── config/occultation_config.json
+    ├── events/occultations.json
+    ├── templates/
+    ├── sequences/
+    └── reports/
 
 INITIAL CONFIGURATION
 ---------------------
@@ -258,19 +264,17 @@ CREDENTIALS TAB (Required):
 • OWC Password: Your OWC password
 • API Key: Get from https://cloud.occultwatcher.net/user-profile
   Go to User Profile → Permissions & Settings
-
-FILE PATHS TAB (Optional - Already Configured):
-• File Folder: Already set to {install_dir}/files
-  - Configuration saved here (occultation_config.json)
-  - Templates: Any .txt file with "template" in filename
-  - Reports: Saved to Reports/ subfolder (auto-created)
-  - Event data: occultations.json and occultations_latest.json
-  
-• Sequence Path: Already set to {install_dir}/sequences
-  - Sequence files saved here: YYYYMMDD [Event Name].scs
-  - Change only if you want a different location
-
 • Days to Retain Events: How long to keep old events (default: 14)
+• Includes "How Download from OWC Works" guidance panel
+
+FILE PATHS TAB:
+• Paths are fixed by installation layout and are not user-configurable
+• Use buttons to open these folders in Windows Explorer:
+        - data/config/
+        - data/events/
+        - data/templates/
+        - data/sequences/
+        - data/reports/
 
 USER SETTINGS TAB:
 • Base Duration: Extra recording time (default: 60s)
@@ -290,7 +294,7 @@ FIRST USE
 4. Select an event and explore the Observation Preparation panel
 5. Check event checkboxes and click Create Sequences
 6. Choose a template (recommend: SharpCap Sequence UTC Template)
-7. Find generated .scs files in your Sequence Path folder
+7. Find generated .scs files in data/sequences/
 
 GETTING STARTED
 ---------------
@@ -384,7 +388,7 @@ STEP 5: GENERATE SEQUENCES (PREFERRED METHOD)
   - Minimal template (basic automation, assumes manual setup)
   - Just Record template (recording only, no GOTO/plate solve)
 
-• .scs files created in your Sequence Path folder
+• .scs files created in data/sequences/
 • One file per event: YYYYMMDD [Event Name].scs
 
 STEP 6A: AUTOMATED RECORDING (RECOMMENDED)
@@ -512,28 +516,27 @@ FILE LOCATIONS
 Understanding where files are read from and saved to:
 
 TEMPLATES (read from):
-• Location: File Folder (configured in Tools → Configuration)
+• Location: data/templates/ (fixed path)
 • Files: Any .txt file with "template" in the filename
 • Examples: "SharpCap Sequence UTC template.txt", "MyCustom template.txt"
-• The application scans File Folder for these files when you click 
+• The application scans data/templates/ for these files when you click 
   Create Sequences
 
 SEQUENCES (saved to):
-• Location: Sequence Path (configured in Tools → Configuration)
+• Location: data/sequences/ (fixed path)
 • Files: .scs files generated from templates
 • Naming: YYYYMMDD [Event Name].scs
 • Examples: "20260125 433 Eros - Station ABC.scs"
-• If Sequence Path is empty, sequences are saved to File Folder
 
 REPORTS (saved to):
-• Location: [File Folder]/Reports/ subfolder (auto-created)
+• Location: data/reports/ (fixed path)
 • Files: .xlsx Excel report files
 • Naming: YYYYMMDD_number_name_catalog_star±Observer_Station.xlsx
 • Examples: "20251107_778_Theobalda_Gaia_DR3_12345+Smith_Observatory.xlsx"
 
 CREATING CUSTOM TEMPLATES
 --------------------------
-1. Create a new .txt file in your File Folder
+1. Create a new .txt file in data/templates/
 2. Include "template" in the filename (e.g., "MyCustom template.txt")
 3. Write SharpCap sequencer commands
 4. Insert placeholder variables in curly braces: {variable_name}

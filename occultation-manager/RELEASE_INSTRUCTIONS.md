@@ -12,22 +12,23 @@ cd occultation-manager
 ```
 
 This script automatically:
-- Creates the correct folder structure with `files/`, `sequences/`, `files/Reports/`, and `lib/`
-- Copies all necessary files including Openize SDK DLLs
-- Distributes README files to appropriate folders
-- Copies template files to both main folder and `files/` folder
+- Creates the fixed folder structure with `app/`, `resources/templates_master/`, and `data/`
+- Copies all necessary files including Openize SDK DLLs into `app/lib/`
+- Places master templates in `resources/templates_master/{sequencer,reports}/`
+- Seeds empty data folders under `data/{config,events,templates,sequences,reports}/`
 - Generates `occultation-manager-v0.2.0-beta.2.zip`
 
 ### Manual File List (if needed)
 
 If you need to create the package manually, include these files from `occultation-manager/`:
 
-**Python Files (all .py files from python/ folder):**
+**Application Python Files (copied into `app/`):**
 - aota_dialogs.py
 - aota_parser.py
 - aota_report_parser.py
 - comprehensive_report_dialog.py
 - config.py
+- dummy_event_generator.py
 - equipment_dialogs.py
 - events.py
 - file_selection_dialog.py
@@ -49,32 +50,34 @@ If you need to create the package manually, include these files from `occultatio
 - tt_report_openize.py
 - utils.py
 
-**SharpCap Sequence Templates:**
+**Sequencer Master Templates (copied into `resources/templates_master/sequencer/`):**
 - python\SharpCap Minimal Local Time template.txt
 - python\SharpCap Just Record template.txt
 - python\SharpCap Sequence Local Time template.txt
 - python\SharpCap Sequence UTC template.txt
 - python\SharpCap Test Recording template.txt
 
-**Countdown Reference File:**
+**Countdown Reference File (in sequencer masters):**
 - python\countdown python for sequencer.scs
 
-**Report Templates (Excel files - Openize-compatible):**
+**Report Master Templates (copied into `resources/templates_master/reports/`):**
 - python\NorthAmerica_AstReportForm_V5.6.12r.xlsx
+- python\NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
 - python\RASNZ_AstReporttForm_V4.1.2.G.xlsx
+- python\RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx
 
-**Openize SDK DLLs:**
+**Openize SDK DLLs (copied into `app/lib/`):**
 - python\lib\Openize.OpenXMLSDK.dll
 - python\lib\DocumentFormat.OpenXml.dll
 - python\lib\DocumentFormat.OpenXml.Framework.dll
 - python\lib\README.md
 
-**Documentation:**
+**Documentation (package root and app):**
 - python\ReadMe.md
 - ReadMe.md (from occultation-manager/)
 - RELEASE_NOTES.md
 
-**Folder README Files:**
+**Data folder README seed files:**
 - README_files_folder.txt
 - README_sequences_folder.txt
 - README_reports_folder.txt
@@ -88,35 +91,29 @@ The release ZIP should have this structure:
 
 ```
 occultation-manager/
-├── main.py                                        <-- SharpCap startup script
-├── files/                                         <-- Data folder (pre-created)
-│   ├── README.txt                                <-- Explains folder purpose
-│   ├── SharpCap Minimal Local Time template.txt  <-- Working copies
-│   ├── SharpCap Just Record template.txt
-│   ├── SharpCap Sequence Local Time template.txt
-│   ├── SharpCap Sequence UTC template.txt
-│   ├── SharpCap Test Recording template.txt
-│   └── Reports/                                  <-- Report output folder
-│       └── README.txt
-├── sequences/                                     <-- Sequence output folder (pre-created)
-│   └── README.txt
-├── lib/                                          <-- Openize SDK DLLs (pre-created)
-│   ├── Openize.OpenXMLSDK.dll
-│   ├── DocumentFormat.OpenXml.dll
-│   ├── DocumentFormat.OpenXml.Framework.dll
-│   └── README.md                                 <-- DLL installation guide
-├── SharpCap Minimal Local Time template.txt      <-- Original reference copies
-├── SharpCap Just Record template.txt
-├── SharpCap Sequence Local Time template.txt
-├── SharpCap Sequence UTC template.txt
-├── SharpCap Test Recording template.txt
-├── countdown python for sequencer.scs
-├── NorthAmerica_AstReportForm_V5.6.12r.xlsx      <-- Openize-compatible templates
-├── RASNZ_AstReporttForm_V4.1.2.G.xlsx
-├── moon_icon_178489.ico
+├── app/                                           <-- SharpCap startup + Python modules
+│   ├── main.py                                    <-- SharpCap startup script target
+│   ├── *.py
+│   ├── moon_icon_178489.ico
+│   ├── ReadMe.md
+│   └── lib/
+│       ├── Openize.OpenXMLSDK.dll
+│       ├── DocumentFormat.OpenXml.dll
+│       ├── DocumentFormat.OpenXml.Framework.dll
+│       └── README.md
+├── resources/
+│   └── templates_master/
+│       ├── sequencer/                             <-- .txt/.scs master templates
+│       └── reports/                               <-- .xlsx report masters
+├── data/                                          <-- User data root (pre-created)
+│   ├── config/
+│   ├── events/
+│   ├── templates/
+│   ├── sequences/
+│   └── reports/
 ├── ReadMe.md                                      <-- User documentation
 ├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.2 features
-└── [all .py files from python/ folder]
+└── RELEASE_INSTRUCTIONS.md
 ```
 
 ### Creating the Release on GitHub
@@ -154,18 +151,20 @@ occultation-manager/
       - ✅ **Recommended**: `Documents\SharpCap\occultation-manager`
    2. Start SharpCap
    3. Go to **File → SharpCap Settings → Startup Scripts**
-   4. Browse to the extracted folder and select `main.py`
+   4. Browse to the extracted `app` folder and select `app/main.py`
    5. Restart SharpCap
    6. Click the "Occultations" button in SharpCap toolbar
    
    **First Startup - Automatic Configuration:**
    - Automatically detects installation directory
-   - Creates folder structure: `files/`, `sequences/`, `files/Reports/`
-   - Sets default paths to installation directory
-   - Copies template files for customization
+   - Uses fixed folders under `data/` and `resources/templates_master/`
+   - Creates data folders: `data/config`, `data/events`, `data/templates`, `data/sequences`, `data/reports`
+   - Seeds missing working templates into `data/templates`
    
    **Initial Configuration:**
    - Configure OWC credentials in **Tools → Configuration → Credentials**
+   - Set **Days to Retain** in the Credentials tab (default 14)
+   - Use **Tools → Configuration → File Paths** buttons to open `data/config`, `data/events`, `data/templates`, `data/sequences`, and `data/reports`
    - Get API key from https://cloud.occultwatcher.net/user-profile
    - All other settings are pre-configured and optional
    
@@ -178,7 +177,7 @@ occultation-manager/
    - **No More XML Placeholders**: Eliminates manual XML string replacement approach
    - **Preserves Excel Features**: Maintains data validation, formulas, and formatting
    - **IronPython Compatible**: Fully tested with IronPython 3.4.2 on .NET 8.0
-   - **Bundled DLLs**: Required .NET assemblies included in `lib/` folder - no additional downloads needed
+   - **Bundled DLLs**: Required .NET assemblies included in `app/lib/` - no additional downloads needed
    
    ### Enhanced Report Features
    - **Conditions Section**: Added clouds and stability fields to comprehensive report dialog
@@ -391,11 +390,10 @@ Before creating the release, verify:
 
 ### Configuration & Installation
 - [ ] First startup creates folder structure automatically
-- [ ] Default paths set to installation directory
-- [ ] Configuration saved to files/occultation_config.json
-- [ ] Custom paths persist across restarts
-- [ ] README files present in files/, sequences/, Reports/ folders
-- [ ] Template files copied to both locations
+- [ ] Fixed install-relative paths active (no path configuration required)
+- [ ] Configuration saved to data/config/occultation_config.json
+- [ ] README seed files present in data/events, data/sequences, data/reports
+- [ ] Working templates seeded into data/templates from resources/templates_master/sequencer
 
 ### Sequence Execution (New in v0.2.0-beta.1)
 - [ ] Run Sequences button executes multiple selected sequences
