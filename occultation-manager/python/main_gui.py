@@ -1120,7 +1120,7 @@ class OccultationManagerGUI(Form):
 
                 # Attempt to save sequence for this single event
                 try:
-                    ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequence_path(), self.config)
+                    ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequences_folder(), self.config)
                     if ok:
                         success_events.append(ev)
                 except Exception as ex:
@@ -1149,7 +1149,7 @@ class OccultationManagerGUI(Form):
         success_count = 0
         error_count = 0
         past_events = []
-        sequence_path = self.config.get_sequence_path()
+        sequence_path = self.config.get_sequences_folder()
         now = datetime.utcnow()
         
         for i, event in enumerate(selected_events):
@@ -1298,7 +1298,7 @@ class OccultationManagerGUI(Form):
             template_path = template_dialog.get_selected_template_path()
             
             self.update_status(f"Generating sequence for {event.event_name}...")
-            success = save_occultation_sequence(event, template_path, self.config.get_sequence_path(), self.config)
+            success = save_occultation_sequence(event, template_path, self.config.get_sequences_folder(), self.config)
             
             if success:
                 self.update_status("Sequence generated successfully")
@@ -1442,7 +1442,7 @@ class OccultationManagerGUI(Form):
                 start_time = datetime.strptime(event.start_time_str, '%Y-%m-%dT%H:%M:%S')
                 clean_name = "".join(c for c in event.name if c.isalnum() or c in ('(',')',' ', '-', '_')).rstrip()
                 seq_name = start_time.strftime('%Y%m%d') + ' ' + clean_name + '.scs'
-                sequence_file_path = os.path.join(self.config.get_sequence_path(), seq_name)
+                sequence_file_path = os.path.join(self.config.get_sequences_folder(), seq_name)
                 
                 if not os.path.exists(sequence_file_path):
                     self.Activate()
@@ -2365,7 +2365,7 @@ class OccultationManagerGUI(Form):
                         print(f"Skipping past event: {ev.event_name} (ended {ev.end_time})")
                         continue
                     
-                    ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequence_path(), self.config)
+                    ok = save_occultation_sequence(ev, per_template or "", self.config.get_sequences_folder(), self.config)
                     if ok:
                         success += 1
                     else:
@@ -2385,17 +2385,7 @@ class OccultationManagerGUI(Form):
     
     def create_sequences_for_events(self, template_path):
         """Create sequence files for selected events"""
-        # `txt_sequence_path` is created by the configuration UI; guard in case
-        # the main form doesn't have that control (fixes attribute errors).
-        if hasattr(self, 'txt_sequence_path') and self.txt_sequence_path is not None:
-            sequence_path = self.txt_sequence_path.Text
-            # Persist the chosen path to config
-            try:
-                self.config.set_sequence_path(sequence_path)
-            except Exception:
-                pass
-        else:
-            sequence_path = self.config.get_sequence_path()
+        sequence_path = self.config.get_sequences_folder()
         
         success_count, error_count, past_events, message = self.generate_sequences_for_events(template_path)
         
@@ -2497,7 +2487,7 @@ class OccultationManagerGUI(Form):
             stations = set(event.station_name for event in events)
             station_name = list(stations)[0] if len(stations) == 1 else "MultiStation"
             combined_filename = f"{date_str}_{station_name}_Combined_Sequences.scs"
-            combined_path = os.path.join(self.config.get_sequence_path(), combined_filename)
+            combined_path = os.path.join(self.config.get_sequences_folder(), combined_filename)
 
             # Build combined sequence content
             combined_content = []
@@ -2663,10 +2653,9 @@ class OccultationManagerGUI(Form):
     def browse_sequence_path_click(self, sender, e):
         """Handle browse sequence path button click"""
         dialog = FolderBrowserDialog()
-        dialog.SelectedPath = self.txt_sequence_path.Text
+        dialog.SelectedPath = self.config.get_sequences_folder()
         if dialog.ShowDialog() == DialogResult.OK:
-            self.txt_sequence_path.Text = dialog.SelectedPath
-            self.config.set_sequence_path(dialog.SelectedPath)
+            self.update_status(f"Sequence path is fixed in beta: {self.config.get_sequences_folder()}")
     
     def show_configuration_click(self, sender, e):
         """Show configuration dialog"""
@@ -2796,7 +2785,7 @@ class OccultationManagerGUI(Form):
         try:
             # Check for template file
             template_name = "SharpCap Test Recording Template.txt"
-            template_folder = self.config.get_file_folder()
+            template_folder = self.config.get_templates_folder()
             template_path = os.path.join(template_folder, template_name)
             
             if not os.path.exists(template_path):
@@ -2807,7 +2796,7 @@ class OccultationManagerGUI(Form):
             
             # Create temporary sequence file
             temp_sequence_name = "temp_test_record.scs"
-            sequence_path = self.config.get_sequence_path()
+            sequence_path = self.config.get_sequences_folder()
             temp_sequence_path = os.path.join(sequence_path, temp_sequence_name)
             
             self.update_status(f"Creating test recording sequence for {event.event_name}...")
@@ -3175,7 +3164,7 @@ class OccultationManagerGUI(Form):
         if final_status != "Failed":
             context = self._sequence_context if hasattr(self, '_sequence_context') else None
             if context == 'run_sequences':
-                log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+                log_path = os.path.join(self.config.get_events_folder(), 'sequence_errors.log')
                 self._show_run_sequences_notification("Run Sequences complete. Camera settings restored.", log_path)
             else:  # test_recording or None
                 MessageBox.Show("Test recording sequence completed successfully!\n\nCamera settings have been restored.",
@@ -3254,12 +3243,12 @@ class OccultationManagerGUI(Form):
                 notification_message = f"Run Sequences finished with errors: 0/{total} succeeded. See sequence_errors.log."
             
             self.update_status(f"Sequences completed: {successful} succeeded, {failed + errors} failed")
-            log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+            log_path = os.path.join(self.config.get_events_folder(), 'sequence_errors.log')
             self._show_run_sequences_notification(notification_message, log_path)
             
             # Log results to file for troubleshooting
             try:
-                log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+                log_path = os.path.join(self.config.get_events_folder(), 'sequence_errors.log')
                 with open(log_path, 'a', encoding='utf-8') as log_file:
                     from datetime import datetime
                     log_file.write(f"\n{'='*70}\n")
@@ -3279,7 +3268,7 @@ class OccultationManagerGUI(Form):
         else:
             # No results tracked (shouldn't happen, but handle gracefully)
             self.update_status("Sequences completed")
-            log_path = os.path.join(self.config.get_file_folder(), 'sequence_errors.log')
+            log_path = os.path.join(self.config.get_events_folder(), 'sequence_errors.log')
             self._show_run_sequences_notification("Run Sequences complete. Camera settings restored.", log_path)
         
         # Bring main window to front

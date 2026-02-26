@@ -3,6 +3,10 @@ REPORTS FOLDER
 
 This folder is for storing generated Excel observation reports.
 
+Notes:
+- This folder is fixed at data/reports/ in the install layout
+- Report templates are sourced from resources/templates_master/reports/
+
 Generated reports will be saved here with filenames based on:
 - Event date and time
 - Asteroid name and number

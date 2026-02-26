@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 
 class ConfigManager:
     """Manages all configuration and settings with persistent storage"""
@@ -9,6 +10,7 @@ class ConfigManager:
     def __init__(self, config_folder=None):
         # Detect installation directory
         self.script_dir = self._detect_script_directory()
+        self.install_root = self._detect_install_root()
         
         # Default configuration values
         self.default_config = {
@@ -16,11 +18,9 @@ class ConfigManager:
             'owc_user_email': 'your_owc_email',
             'owc_user_password': 'your_owc_password',
             
-            # File paths
-            'my_file_folder': os.path.join(self.script_dir, 'files'),
+            # File names and retention
             'my_occultations_file': 'occultations.json',
             'my_latest_occultations_file': 'occultations_latest.json',
-            'sequence_path': os.path.join(self.script_dir, 'sequences'),
             'days_to_retain_events': 14,  # Number of days to retain events (1-400)
             
             # Recording parameters
@@ -70,9 +70,9 @@ class ConfigManager:
         if config_folder:
             self.config_folder = os.path.normpath(config_folder)
         else:
-            # Use files folder for config storage
+            # Use fixed data/config folder for config storage
             try:
-                self.config_folder = os.path.normpath(self.default_config['my_file_folder'])
+                self.config_folder = os.path.normpath(self.get_config_folder())
                 if not os.path.exists(self.config_folder):
                     os.makedirs(self.config_folder, exist_ok=True)
             except:
@@ -86,18 +86,17 @@ class ConfigManager:
         
         self.load_config()
         
-        # On first startup, create folder structure
-        if not config_exists:
-            self._create_folder_structure()
-        
-        # Ensure all paths use proper separators
-        self._normalize_paths()
+        # Ensure required folders exist
+        self._create_folder_structure()
+
+        # Seed template working copies from master templates
+        self._seed_template_working_copies()
         
         # Change to working directory
         try:
-            os.chdir(self.get_file_folder())
+            os.chdir(self.get_data_root())
         except:
-            print(f"Warning: Could not change to directory {self.get_file_folder()}")
+            print(f"Warning: Could not change to directory {self.get_data_root()}")
     
     def _detect_script_directory(self):
         """Detect the directory where the script is located"""
@@ -118,14 +117,61 @@ class ConfigManager:
         
         # Last resort: use current working directory
         return os.path.normpath(os.getcwd())
+
+    def _detect_install_root(self):
+        """Detect install root from script location."""
+        try:
+            return os.path.normpath(os.path.dirname(self.script_dir))
+        except:
+            return os.path.normpath(os.getcwd())
+
+    # Fixed path model
+    def get_install_root(self):
+        return os.path.normpath(self.install_root)
+
+    def get_data_root(self):
+        return os.path.normpath(os.path.join(self.get_install_root(), 'data'))
+
+    def get_config_folder(self):
+        return os.path.normpath(os.path.join(self.get_data_root(), 'config'))
+
+    def get_events_folder(self):
+        return os.path.normpath(os.path.join(self.get_data_root(), 'events'))
+
+    def get_templates_folder(self):
+        return os.path.normpath(os.path.join(self.get_data_root(), 'templates'))
+
+    def get_sequences_folder(self):
+        return os.path.normpath(os.path.join(self.get_data_root(), 'sequences'))
+
+    def get_reports_folder(self):
+        return os.path.normpath(os.path.join(self.get_data_root(), 'reports'))
+
+    def get_resources_root(self):
+        return os.path.normpath(os.path.join(self.get_install_root(), 'resources'))
+
+    def get_templates_master_root(self):
+        return os.path.normpath(os.path.join(self.get_resources_root(), 'templates_master'))
+
+    def get_templates_master_sequencer_folder(self):
+        return os.path.normpath(os.path.join(self.get_templates_master_root(), 'sequencer'))
+
+    def get_templates_master_reports_folder(self):
+        return os.path.normpath(os.path.join(self.get_templates_master_root(), 'reports'))
     
     def _create_folder_structure(self):
-        """Create default folder structure on first startup"""
+        """Create fixed folder structure"""
         try:
             folders_to_create = [
-                self.config['my_file_folder'],
-                self.config['sequence_path'],
-                os.path.join(self.config['my_file_folder'], 'Reports')
+                self.get_data_root(),
+                self.get_config_folder(),
+                self.get_events_folder(),
+                self.get_templates_folder(),
+                self.get_sequences_folder(),
+                self.get_reports_folder(),
+                self.get_templates_master_root(),
+                self.get_templates_master_sequencer_folder(),
+                self.get_templates_master_reports_folder()
             ]
             
             for folder in folders_to_create:
@@ -134,13 +180,29 @@ class ConfigManager:
                     print(f"Created folder: {folder}")
         except Exception as e:
             print(f"Warning: Could not create folder structure: {e}")
-    
-    def _normalize_paths(self):
-        """Normalize all path configurations"""
-        path_keys = ['my_file_folder', 'sequence_path']
-        for key in path_keys:
-            if key in self.config and self.config[key]:
-                self.config[key] = os.path.normpath(self.config[key])
+
+    def _seed_template_working_copies(self):
+        """Copy missing template working copies from master templates."""
+        try:
+            master_folder = self.get_templates_master_sequencer_folder()
+            working_folder = self.get_templates_folder()
+
+            if not os.path.exists(master_folder):
+                return
+
+            for filename in os.listdir(master_folder):
+                lower = filename.lower()
+                if not (lower.endswith('.txt') or lower.endswith('.scs')):
+                    continue
+
+                source_path = os.path.join(master_folder, filename)
+                target_path = os.path.join(working_folder, filename)
+
+                if os.path.isfile(source_path) and not os.path.exists(target_path):
+                    shutil.copy2(source_path, target_path)
+                    print(f"Seeded template: {filename}")
+        except Exception as e:
+            print(f"Warning: Could not seed template working copies: {e}")
     
     def get_config_path(self):
         """Get the full path to the configuration file"""
@@ -186,7 +248,6 @@ class ConfigManager:
     def reset_to_defaults(self):
         """Reset configuration to default values"""
         self.config = self.default_config.copy()
-        self._normalize_paths()
         return self.save_config()
     
     # User credentials
@@ -204,10 +265,12 @@ class ConfigManager:
     
     # File paths
     def get_file_folder(self):
-        return os.path.normpath(self.config['my_file_folder'])
+        # Legacy accessor retained temporarily for callers not yet migrated.
+        return self.get_data_root()
     
     def set_file_folder(self, folder):
-        self.config['my_file_folder'] = os.path.normpath(folder)
+        # Legacy no-op in fixed path model.
+        print("set_file_folder ignored: fixed path model is enabled")
     
     def get_occultations_file(self):
         return self.config['my_occultations_file']
@@ -222,10 +285,12 @@ class ConfigManager:
         self.config['my_latest_occultations_file'] = filename
     
     def get_sequence_path(self):
-        return os.path.normpath(self.config['sequence_path'])
+        # Legacy accessor retained temporarily for callers not yet migrated.
+        return self.get_sequences_folder()
     
     def set_sequence_path(self, path):
-        self.config['sequence_path'] = os.path.normpath(path)
+        # Legacy no-op in fixed path model.
+        print("set_sequence_path ignored: fixed path model is enabled")
     
     def get_days_to_retain_events(self):
         return self.config.get('days_to_retain_events', 14)
@@ -369,7 +434,7 @@ class ConfigManager:
     
     def get_full_file_path(self, filename):
         """Get full path for a file in the configured folder"""
-        return os.path.join(self.get_file_folder(), filename)
+        return os.path.join(self.get_events_folder(), filename)
     
     def validate_config(self):
         """Validate current configuration"""
@@ -384,14 +449,14 @@ class ConfigManager:
         
         # Check paths exist or can be created
         try:
-            folder = self.get_file_folder()
+            folder = self.get_data_root()
             if not os.path.exists(folder):
                 os.makedirs(folder, exist_ok=True)
         except Exception as e:
             errors.append(f"Cannot access/create file folder: {e}")
         
         try:
-            seq_path = self.get_sequence_path()
+            seq_path = self.get_sequences_folder()
             if not os.path.exists(seq_path):
                 os.makedirs(seq_path, exist_ok=True)
         except Exception as e:

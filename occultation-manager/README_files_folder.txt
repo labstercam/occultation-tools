@@ -1,15 +1,13 @@
-FILES FOLDER
-============
+DATA/EVENTS FOLDER
+==================
 
-This folder is for storing occultation event data files and generated reports.
+This folder stores occultation event data files.
 
-Default Contents:
-- occultations.json - Your downloaded occultation events
+Typical Contents:
+- occultations.json - Downloaded occultation events
 - occultations_latest.json - Most recently downloaded events
-- occultation_config.json - Your configuration settings
 
-Reports Subfolder:
-- Generated Excel reports (.xlsx files) will be saved in the Reports subfolder
-
-Usage:
-Set this folder path in Configuration > File and Data Settings > "My file folder"
+Notes:
+- This folder is fixed at data/events/ in the install layout
+- Configuration is stored in data/config/occultation_config.json
+- Generated reports are stored in data/reports/
