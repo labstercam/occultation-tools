@@ -298,7 +298,7 @@ FIRST USE
 
 GETTING STARTED
 ---------------
-• Download Events: Syncs with OWC to get your station assignments
+• Download: Syncs with OWC to get your station assignments
 • Generate Dummy Events: Create realistic test events for practice
   - Configure number, timing, location, and spacing
   - Events visible from your observatory
@@ -327,7 +327,7 @@ while handling timing and coordination automatically.
 
 STEP 1: DOWNLOAD EVENTS
 ------------------------
-Click Download button (or File → Download Events)
+Click Download button (or File → Download)
 • Retrieves assigned events from Occult Watcher Cloud
 • Calculates optimal exposure times based on star magnitudes
 • Calculates recording durations with uncertainty buffers
@@ -356,8 +356,8 @@ Use Observation Preparation panel for manual setup and testing:
 
 • Load Event: Select event from grid
 • Setup: Configure SharpCap camera (sets exposure, copies coordinates)
-• GOTO & Center: Slew telescope to target
-• Plate Solve & Label: Verify pointing and mark target star
+• GOTO: Slew telescope to target
+• Plate Solve: Verify pointing and mark target star
 
 This allows you to:
 • Test equipment before the event
@@ -419,8 +419,8 @@ If you prefer complete manual control:
 • Use Observation Preparation panel to set up manually
 • Load Event: Select event and load
 • Setup: Configure camera
-• GOTO & Center: Position telescope when ready
-• Plate Solve & Label: Verify pointing
+• GOTO: Position telescope when ready
+• Plate Solve: Verify pointing
 • Start Recording manually in SharpCap at event time
 • Monitor and control everything yourself
 
@@ -435,7 +435,7 @@ STEP 6C: RUN SEQUENCES DIRECTLY (NEW ASYNC METHOD)
 Run multiple sequences directly from Occultation Manager:
 
 • Select multiple events and check their checkboxes
-• Click Run Sequences button (or Sequences → Run Selected Sequences)
+• Click Run Sequences button (or Sequences → Run Sequences)
 • Sequences execute automatically in time order
 • Each sequence runs to completion before starting the next
 • SharpCap remains responsive throughout execution
@@ -471,7 +471,7 @@ STEP 8: GENERATE REPORT (UNDER DEVELOPMENT - NOT APPROVED)
 has NOT been approved by reporting coordinators. All generated reports 
 must be carefully verified before submission.
 
-Tools → Generate Report:
+Events → Generate Report:
 • Select report format (North America / Trans-Tasman)
 • Choose equipment (telescope/camera)
 • Set observation type (Positive/Negative/Unsure)
@@ -645,6 +645,8 @@ The SAFEST way to run sequences is directly through SharpCap's Sequencer:
 
 ALTERNATIVE - OCCULTATION-MANAGER EXECUTION:
 You can also run sequences from Occultation Manager (Run Sequences button):
+Note: It is safer to run sequences directly from SharpCap.
+Note: Combined Sequences can only be run directly from SharpCap.
 • More complex process with additional monitoring
 • Provides Stop button control during execution
 • Useful for attended sessions with multiple events

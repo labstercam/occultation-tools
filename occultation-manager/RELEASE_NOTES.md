@@ -175,6 +175,8 @@ observations. These handle midnight, next-day events, and DST correctly.
 - Fewest points of failure
 
 **Method 2: Occultation Manager Run Sequences (Alternative)**
+- Note: It is safer to run sequences directly from SharpCap.
+- Note: Combined Sequences can only be run directly from SharpCap.
 - Run from Occultation Manager's Run Sequences button
 - More complex with additional monitoring layer
 - Provides Stop button control

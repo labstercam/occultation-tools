@@ -522,29 +522,45 @@ class OccultationManagerGUI(Form):
         
         # File menu
         menu_file = ToolStripMenuItem("File")
-        menu_file.DropDownItems.Add(ToolStripMenuItem("Download Events", None, self.download_events_click))
-        menu_file.DropDownItems.Add(ToolStripMenuItem("Refresh Events", None, self.refresh_events_click))
+        menu_file.DropDownItems.Add(ToolStripMenuItem("Download", None, self.download_events_click))
+        menu_file.DropDownItems.Add(ToolStripMenuItem("Refresh", None, self.refresh_events_click))
         menu_file.DropDownItems.Add(ToolStripSeparator())
         menu_file.DropDownItems.Add(ToolStripMenuItem("Exit", None, self.exit_click))
         menu_bar.Items.Add(menu_file)
         
         # Events menu
         menu_events = ToolStripMenuItem("Events")
+        menu_events.DropDownItems.Add(ToolStripMenuItem("Generate Dummy Events", None, self.generate_dummy_events_click))
+        menu_events.DropDownItems.Add(ToolStripSeparator())
         menu_events.DropDownItems.Add(ToolStripMenuItem("Event Details", None, self.show_event_details_click))
         menu_events.DropDownItems.Add(ToolStripMenuItem("Edit Settings", None, self.edit_exposure_click))
-        menu_events.DropDownItems.Add(ToolStripSeparator())
         menu_events.DropDownItems.Add(ToolStripMenuItem("Generate Report", None, self.generate_report_click))
-        menu_events.DropDownItems.Add(ToolStripSeparator())
-        menu_events.DropDownItems.Add(ToolStripMenuItem("Select All", None, self.select_all_click))
-        menu_events.DropDownItems.Add(ToolStripMenuItem("Select None", None, self.select_none_click))
         menu_bar.Items.Add(menu_events)
+
+        # Quick Filters menu
+        menu_quick_filters = ToolStripMenuItem("Quick Filters")
+        menu_quick_filters.DropDownItems.Add(ToolStripMenuItem("Today", None, self.filter_today_click))
+        menu_quick_filters.DropDownItems.Add(ToolStripMenuItem("Future", None, self.filter_upcoming_click))
+        menu_quick_filters.DropDownItems.Add(ToolStripMenuItem("All", None, self.show_all_click))
+        menu_quick_filters.DropDownItems.Add(ToolStripMenuItem("On/Off", None, self.select_toggle_click))
+        menu_quick_filters.DropDownItems.Add(ToolStripSeparator())
+        menu_quick_filters.DropDownItems.Add(ToolStripMenuItem("Delete", None, self.delete_selected_events_click))
+        menu_bar.Items.Add(menu_quick_filters)
+
+        # Observation menu
+        menu_observation = ToolStripMenuItem("Observation")
+        menu_observation.DropDownItems.Add(ToolStripMenuItem("Load Event", None, self.load_event_for_prep_click))
+        menu_observation.DropDownItems.Add(ToolStripMenuItem("GOTO", None, self.goto_and_center_click))
+        menu_observation.DropDownItems.Add(ToolStripMenuItem("Plate Solve", None, self.plate_solve_label_click))
+        menu_observation.DropDownItems.Add(ToolStripMenuItem("Setup", None, self.setup_for_event_click))
+        menu_observation.DropDownItems.Add(ToolStripMenuItem("Test Recording", None, self.test_recording_click_async))
+        menu_observation.DropDownItems.Add(ToolStripMenuItem("Stop", None, self.stop_sequence_click))
+        menu_bar.Items.Add(menu_observation)
         
         # Sequences menu
         menu_sequences = ToolStripMenuItem("Sequences")
         menu_sequences.DropDownItems.Add(ToolStripMenuItem("Create Sequences", None, self.create_sequences_click))
-        menu_sequences.DropDownItems.Add(ToolStripMenuItem("Generate Combined Script", None, self.generate_combined_script_click))
-        menu_sequences.DropDownItems.Add(ToolStripSeparator())
-        menu_sequences.DropDownItems.Add(ToolStripMenuItem("Run Selected Sequences", None, self.run_sequences_click_async))
+        menu_sequences.DropDownItems.Add(ToolStripMenuItem("Run Sequences", None, self.run_sequences_click_async))
         menu_bar.Items.Add(menu_sequences)
         
         # Tools menu
@@ -555,6 +571,8 @@ class OccultationManagerGUI(Form):
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Manage Cameras", None, self.show_camera_manager_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Template Manager", None, self.show_template_manager_click))
+        menu_tools.DropDownItems.Add(ToolStripSeparator())
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Night Mode", None, self.toggle_night_mode_click))
         menu_bar.Items.Add(menu_tools)
         
         # Help menu - MODIFIED
@@ -1385,7 +1403,10 @@ class OccultationManagerGUI(Form):
                         MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
         
-        if MessageBox.Show(f"This will run {len(future_events)} sequence(s) in order.\n\nContinue?", 
+        if MessageBox.Show(f"This will run {len(future_events)} sequence(s) in order.\n\n"
+                f"Note: It is safer to run sequences directly from SharpCap.\n"
+                f"Note: Combined Sequences can only be run directly from SharpCap.\n\n"
+                f"Continue?", 
                         "Confirm Run Sequences", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes:
             
             # Run in background thread to avoid blocking SharpCap
@@ -1425,7 +1446,10 @@ class OccultationManagerGUI(Form):
         future_events.sort(key=lambda x: x.goto_time if hasattr(x, 'goto_time') and x.goto_time else x.event_datetime)
         
         self.Activate()
-        if MessageBox.Show(f"This will run {len(future_events)} sequence(s) in order.\n\nContinue?", 
+        if MessageBox.Show(f"This will run {len(future_events)} sequence(s) in order.\n\n"
+                f"Note: It is safer to run sequences directly from SharpCap.\n"
+                f"Note: Combined Sequences can only be run directly from SharpCap.\n\n"
+                f"Continue?", 
                         "Confirm Run Sequences", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes:
             return
         

@@ -378,6 +378,8 @@ There are two ways to execute your generated sequences:
 - Fewest points of failure
 
 **METHOD 2: Occultation Manager Run Sequences (Alternative)**
+- Note: It is safer to run sequences directly from SharpCap.
+- Note: Combined Sequences can only be run directly from SharpCap.
 - Select events and click Run Sequences button
 - Manager executes sequences via RunAsync API
 - Provides Stop button control during execution
