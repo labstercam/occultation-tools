@@ -9,6 +9,7 @@
 - Performed a brief cleanup to archive or remove out-of-date code/files.
 - Updated release-facing documentation and version references for Beta.3.
 - Updated release packaging/version pointers (ZIP naming and instructions).
+- Release packaging now pre-seeds `data/templates` with sequencer master templates.
 
 ---
 

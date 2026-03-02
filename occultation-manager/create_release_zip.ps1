@@ -148,6 +148,12 @@ foreach ($file in $sequencerMasterFiles) {
     Copy-ExistingFile -Source $file -Destination $dest
 }
 
+Write-Host "`nCopying sequencer master templates to data/templates/..." -ForegroundColor Cyan
+foreach ($file in $sequencerMasterFiles) {
+    $dest = Join-Path $dataTemplatesDir (Split-Path $file -Leaf)
+    Copy-ExistingFile -Source $file -Destination $dest
+}
+
 Write-Host "`nCopying report template masters to resources/templates_master/reports/..." -ForegroundColor Cyan
 foreach ($file in $reportMasterFiles) {
     $dest = Join-Path $masterReportsDir (Split-Path $file -Leaf)

@@ -15,7 +15,8 @@ This script automatically:
 - Creates the fixed folder structure with `app/`, `resources/templates_master/`, and `data/`
 - Copies all necessary files including Openize SDK DLLs into `app/lib/`
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
-- Seeds empty data folders under `data/{config,events,templates,sequences,reports}/`
+- Pre-seeds `data/templates/` with working copies of the sequencer master templates
+- Seeds/creates data folders under `data/{config,events,templates,sequences,reports}/`
 - Generates `occultation-manager-v0.2.0-beta.3.zip`
 
 ### Manual File List (if needed)
@@ -57,6 +58,14 @@ If you need to create the package manually, include these files from `occultatio
 
 **Countdown Reference File (in sequencer masters):**
 - python\countdown python for sequencer.scs
+
+**Working Template Copies (also copied into `data/templates/`):**
+- SharpCap Minimal Local Time template.txt
+- SharpCap Just Record template.txt
+- SharpCap Sequence Local Time template.txt
+- SharpCap Sequence UTC template.txt
+- SharpCap Test Recording template.txt
+- countdown python for sequencer.scs
 
 **Report Master Templates (copied into `resources/templates_master/reports/`):**
 - python\NorthAmerica_AstReportForm_V5.6.12r.xlsx
@@ -104,7 +113,7 @@ occultation-manager/
 ├── data/                                          <-- User data root (pre-created)
 │   ├── config/
 │   ├── events/
-│   ├── templates/
+│   ├── templates/                                 <-- Pre-seeded working template copies
 │   ├── sequences/
 │   └── reports/
 ├── ReadMe.md                                      <-- User documentation
@@ -144,7 +153,7 @@ occultation-manager/
    
    ## 📦 Installation
    
-   **Download:** [occultation-manager-v0.2.0-beta.3.zip](link-will-be-auto-generated)
+   **Download:** [occultation-manager-v0.2.0-beta.3.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip)
    
    ### Quick Start:
    1. Download and extract the ZIP file to a location with read/write access
@@ -271,6 +280,8 @@ occultation-manager/
 5. **Upload ZIP file:**
    - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.3.zip`
    - Drag and drop ZIP to "Attach binaries" section in GitHub release
+   - GitHub does **not** auto-update markdown links in release notes; paste this URL manually in the notes:
+     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip`
 
 6. **Set release options:**
    - ✅ Check "Set as a pre-release" (this is a beta version)
@@ -291,6 +302,7 @@ The release will be available at:
    - `RELEASE_NOTES.md` - Version header
    - `create_release_zip.ps1` - `$version` variable
    - This file (`RELEASE_INSTRUCTIONS.md`)
+   - Release notes download URL (must match tag + ZIP filename)
 
 2. **Test the release ZIP**:
    - Run `create_release_zip.ps1`
@@ -318,7 +330,7 @@ The release will be available at:
 2. **Test installation** from GitHub release ZIP
 3. **Update documentation** if any installation issues found
 - Direct link: `https://github.com/labstercam/occultation-tools/releases/latest`
-- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.1.0/occultation-manager-v0.1.0.zip`
+- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip`
 
 Update README.md with this download link.
 
