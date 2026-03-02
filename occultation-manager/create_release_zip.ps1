@@ -1,6 +1,6 @@
 # Create release ZIP for Occultation Manager (folder-based layout)
 
-$version = "0.2.0-beta.2"
+$version = "0.2.0-beta.3"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green

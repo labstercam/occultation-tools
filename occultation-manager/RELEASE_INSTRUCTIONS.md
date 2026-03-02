@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.2
+# Release Package Instructions - v0.2.0-beta.3
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -16,7 +16,7 @@ This script automatically:
 - Copies all necessary files including Openize SDK DLLs into `app/lib/`
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
 - Seeds empty data folders under `data/{config,events,templates,sequences,reports}/`
-- Generates `occultation-manager-v0.2.0-beta.2.zip`
+- Generates `occultation-manager-v0.2.0-beta.3.zip`
 
 ### Manual File List (if needed)
 
@@ -108,7 +108,7 @@ occultation-manager/
 │   ├── sequences/
 │   └── reports/
 ├── ReadMe.md                                      <-- User documentation
-├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.2 features
+├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.3 features
 └── RELEASE_INSTRUCTIONS.md
 ```
 
@@ -122,16 +122,16 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.2.0-beta.2`
+   - Tag: `v0.2.0-beta.3`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.2 - Excel Report Improvements`
+   - Release title: `Occultation Manager v0.2.0-beta.3 - Documentation and Release Preparation Update`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.2 - Excel Report Improvements
+   # Occultation Manager v0.2.0-beta.3 - Documentation and Release Preparation Update
    
    **Improved Excel report generation** with Openize SDK for SharpCap.
    
@@ -144,7 +144,7 @@ occultation-manager/
    
    ## 📦 Installation
    
-   **Download:** [occultation-manager-v0.2.0-beta.2.zip](link-will-be-auto-generated)
+   **Download:** [occultation-manager-v0.2.0-beta.3.zip](link-will-be-auto-generated)
    
    ### Quick Start:
    1. Download and extract the ZIP file to a location with read/write access
@@ -171,7 +171,7 @@ occultation-manager/
    
    See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
    
-   ## ✨ What's New in Beta.2
+   ## ✨ What's New in Beta.3
    
    ### Openize SDK Implementation
    - **Direct Excel Cell Manipulation**: Uses Openize.OpenXML-SDK for reliable Excel report generation
@@ -269,7 +269,7 @@ occultation-manager/
    ```
 
 5. **Upload ZIP file:**
-   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.2.zip`
+   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.3.zip`
    - Drag and drop ZIP to "Attach binaries" section in GitHub release
 
 6. **Set release options:**
@@ -280,7 +280,7 @@ occultation-manager/
 ### After Publishing
 
 The release will be available at:
-- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.2`
+- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.3`
 - Latest release: `https://github.com/labstercam/occultation-tools/releases/latest`
 
 ## Version Control Best Practices
@@ -302,14 +302,14 @@ The release will be available at:
 3. **Commit all changes**:
    ```bash
    git add .
-   git commit -m "Release v0.2.0-beta.2"
+   git commit -m "Release v0.2.0-beta.3"
    git push
    ```
 
 4. **Create and push tag**:
    ```bash
-   git tag v0.2.0-beta.2
-   git push origin v0.2.0-beta.2
+   git tag v0.2.0-beta.3
+   git push origin v0.2.0-beta.3
    ```
 
 ### After Release
@@ -396,7 +396,7 @@ Before creating the release, verify:
 - [ ] README seed files present in data/events, data/sequences, data/reports
 - [ ] Working templates seeded into data/templates from resources/templates_master/sequencer
 
-### Sequence Execution (Available in v0.2.0-beta.2)
+### Sequence Execution (Available in v0.2.0-beta.3)
 - [ ] Run Sequences button executes multiple selected sequences
 - [ ] Sequences run in chronological order
 - [ ] Progress updates show current sequence
@@ -417,7 +417,7 @@ Before creating the release, verify:
 - [ ] About dialog shows correct information
 
 ### Documentation
-- [ ] README.md up to date with v0.2.0-beta.2 features
+- [ ] README.md up to date with v0.2.0-beta.3 features
 - [ ] RELEASE_NOTES.md reflects current functionality
 - [ ] Installation instructions clear and accurate
 - [ ] Configuration steps documented

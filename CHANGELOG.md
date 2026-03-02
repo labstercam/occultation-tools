@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Documentation refreshed for current structure and release-facing guidance.
 
+## [0.2.0-beta.3] - 2026-03
+
+### Maintenance
+- Brief cleanup pass completed to archive or remove out-of-date code/files.
+
+### Documentation
+- Updated release-facing version references from `0.2.0-beta.2` to `0.2.0-beta.3`.
+- Updated release package naming/links and related release-prep documentation.
+
 ## [0.2.0-beta.2] - 2026-02
 
 ### Documentation

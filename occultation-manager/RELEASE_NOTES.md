@@ -1,9 +1,14 @@
 # Occultation Manager - Release Notes
 
-## Documentation & Housekeeping Update (March 2026)
+## Version 0.2.0-beta.3 (March 2026)
 
+**Bug Fixes, User Improvements, Documentation and Release Preparation Update**
+
+- Bugs fixes from user testing reports
+- Improvements based on user feedback including better folder and file management
 - Performed a brief cleanup to archive or remove out-of-date code/files.
-- Updated documentation to reflect the current project/release state.
+- Updated release-facing documentation and version references for Beta.3.
+- Updated release packaging/version pointers (ZIP naming and instructions).
 
 ---
 

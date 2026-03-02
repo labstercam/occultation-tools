@@ -206,7 +206,7 @@ Installation and first-time setup for Occultation Manager.
 
 INSTALLATION
 ------------
-1. Download occultation-manager-v0.2.0-beta.2.zip from GitHub
+1. Download occultation-manager-v0.2.0-beta.3.zip from GitHub
 2. Extract to a folder with read/write access
    ⚠️ AVOID Program Files - Windows may restrict write access
    ✅ RECOMMENDED: Documents\\SharpCap\\occultation-manager

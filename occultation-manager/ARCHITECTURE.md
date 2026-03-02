@@ -724,7 +724,7 @@ User → Selects event → Generate Report Button
 
 ## Version History Context
 
-Current version: **0.2.0-beta.2** (Second Public Beta - February 2026)
+Current version: **0.2.0-beta.3** (Third Public Beta - March 2026)
 
 Key capabilities implemented:
 - Automatic folder structure creation
@@ -737,5 +737,5 @@ Key capabilities implemented:
 
 ---
 
-*Last Updated: February 2026*
+*Last Updated: March 2026*
 *For API reference and reusable components, see API.md*
