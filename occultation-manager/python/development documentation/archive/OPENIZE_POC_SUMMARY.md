@@ -9,10 +9,14 @@
    - Does NOT alter any existing functions
    - Uses original template with data validation
 
-2. **[test_openize_tt_report.py](test_openize_tt_report.py)**
+2. **[test_openize_tt_report.py](../testing/test_openize_tt_report.py)**
    - Test script to verify SDK availability
    - Demonstrates differences between old/new approaches
    - Shows usage examples
+
+**Current testing workflow note:**
+- Active scripts live in `testing/`: `verify_openize_sharpcap.py`, `test_openize_integration.py`, `test_openize_tt_report.py`
+- Older legacy/one-off scripts were moved to `testing/archive/` and are not part of the active testing workflow
 
 3. **[OPENIZE_MIGRATION_POC.md](OPENIZE_MIGRATION_POC.md)**
    - Complete documentation with cell mappings
@@ -82,7 +86,7 @@ All cells discovered from `TT_PLACEHOLDERS.txt`:
 
 ### Same Interface
 ```python
-# Works exactly like the old generator
+# Uses the same generate_report call pattern as prior implementations
 generator = TTReportGeneratorOpenize(config)
 output_path = generator.generate_report(
     event=event,
@@ -110,7 +114,7 @@ See [lib/README.md](lib/README.md) for detailed instructions.
 
 Run the test script:
 ```bash
-python test_openize_tt_report.py
+python testing/test_openize_tt_report.py
 ```
 
 Expected output:
@@ -131,9 +135,9 @@ report_path = generator.generate_report(event, telescope_id, camera_id)
 
 ### 4. Compare Outputs
 
-Generate the same report with both generators:
-- Old: `tt_report.py` → Uses placeholder template
-- New: `tt_report_openize.py` → Uses original template
+Generate reports with the current generator and compare to any archived baseline outputs:
+- Legacy baseline: `tt_report.py` output files (if previously generated)
+- Current: `tt_report_openize.py` → Uses original template
 
 Compare:
 - Cell values match ✓
@@ -152,7 +156,7 @@ Consider:
 ## Advantages Over Current Implementation
 
 ### Code Quality
-| Aspect | Old (tt_report.py) | New (tt_report_openize.py) |
+| Aspect | Legacy (tt_report.py, removed) | Current (tt_report_openize.py) |
 |--------|-------------------|----------------------------|
 | Lines of code | 680 | 580 |
 | XML manipulation | Complex | None |
@@ -178,24 +182,24 @@ Consider:
 - ❌ Old: Complex XML debugging
 - ✅ New: Clean error messages
 
-## Files NOT Modified
+## Files Status
 
-As requested, NO existing files were altered:
-- ✅ `tt_report.py` - UNCHANGED
-- ✅ `na_report.py` - UNCHANGED  
+- ❌ `tt_report.py` - REMOVED
+- ✅ `tt_report_openize.py` - ACTIVE
+- ❌ `na_report.py` - REMOVED
+- ✅ `na_report_openize.py` - ACTIVE
 - ✅ `report_generator_base.py` - UNCHANGED
-- ✅ All other existing files - UNCHANGED
 
 ## FAQ
 
 **Q: Do I need to change existing code?**
-A: No! The old generator still works. This is just a new option.
+A: No additional migration is required for current code paths; Openize is the active TT generator.
 
 **Q: What if Openize SDK has bugs?**
-A: You can always fall back to `tt_report.py`. Both generators coexist.
+A: Use archived historical reports as reference and troubleshoot `tt_report_openize.py`; the old generator has been removed.
 
 **Q: Can I use this for NA reports too?**
-A: Yes! The same approach can be applied to `na_report.py`.
+A: Yes. NA already uses `na_report_openize.py`.
 
 **Q: Does this work with IronPython?**
 A: Yes! Openize SDK is a .NET library, fully compatible with IronPython via `clr`.
@@ -213,7 +217,7 @@ A: Openize SDK is MIT licensed - free to use in commercial and non-commercial pr
 
 - **Installation Guide:** [lib/README.md](lib/README.md)
 - **Full Documentation:** [OPENIZE_MIGRATION_POC.md](OPENIZE_MIGRATION_POC.md)
-- **Test Script:** [test_openize_tt_report.py](test_openize_tt_report.py)
+- **Test Script:** [test_openize_tt_report.py](../testing/test_openize_tt_report.py)
 - **Openize GitHub:** https://github.com/openize-com/openize-open-xml-sdk-net
 - **NuGet Package:** https://www.nuget.org/packages/Openize.OpenXML-SDK/
 
@@ -234,7 +238,7 @@ A: Openize SDK is MIT licensed - free to use in commercial and non-commercial pr
         ▼                             ▼
 ┌──────────────────┐        ┌──────────────────┐
 │  tt_report.py    │        │tt_report_openize │
-│  (EXISTING)      │        │  (NEW - POC)     │
+│  (REMOVED)       │        │  (CURRENT)       │
 ├──────────────────┤        ├──────────────────┤
 │ • Placeholder    │        │ • Direct cell    │
 │   template       │        │   access         │
@@ -260,7 +264,7 @@ A: Openize SDK is MIT licensed - free to use in commercial and non-commercial pr
 - [x] Create new generator class
 - [x] Map all 50+ cells from placeholder file
 - [x] Preserve all data sources (Tangra, AOTA, etc.)
-- [x] Maintain same interface as old generator
+- [x] Maintain interface compatibility with prior generator API
 - [x] Document cell mappings
 - [x] Create test script
 - [x] Write migration guide
@@ -268,7 +272,7 @@ A: Openize SDK is MIT licensed - free to use in commercial and non-commercial pr
 ⏳ **Pending (requires DLL installation):**
 - [ ] Verify DLLs load correctly in IronPython
 - [ ] Generate test report
-- [ ] Compare with old generator output
+- [ ] Compare with archived baseline report outputs
 - [ ] Test data validation works
 - [ ] Performance testing
 

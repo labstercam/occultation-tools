@@ -17,7 +17,8 @@ import os
 from datetime import datetime
 
 # Add python folder to path
-script_dir = r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python"
+test_dir = os.path.dirname(os.path.abspath(__file__))
+script_dir = os.path.dirname(test_dir)
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
 

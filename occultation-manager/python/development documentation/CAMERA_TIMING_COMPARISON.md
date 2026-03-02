@@ -1,8 +1,12 @@
 # Camera Types and Timing Types - Report Format Comparison
 
+## Status Note (2026-03)
+
+This comparison reflects current NA/TT Openize generators and current OBS.XML export mapping.
+
 ## Individual Report Formats
 
-### North America (IOTA) Report - `na_report.py`
+### North America (IOTA) Report - `na_report_openize.py`
 
 **Timing Options (from equipment_dialogs.py):**
 - GPS - other linking
@@ -29,7 +33,7 @@
 
 ---
 
-### Trans-Tasman (RASNZ) Report - `tt_report.py`
+### Trans-Tasman (RASNZ) Report - `tt_report_openize.py`
 
 **Timing Options:**
 - GPS - other linking
@@ -292,18 +296,18 @@ Consider adding a new field:
 
 ## Current Implementation Status
 
-✅ **Fully Implemented:**
+✓ **Fully Implemented:**
 - NA report timing/camera fields
 - TT report timing/camera fields  
 - Occult4 observing method mapping (video/photometer/sequential)
 - Occult4 time source (defaults to GPS)
 
-⚠️ **Limited Mapping:**
+⚠ **Limited Mapping:**
 - GPS hardware variants (VTI, KIWI) → Generic GPS code in Occult4
 - No explicit mapping for NTP, telephone, stopwatch in NA/TT
 - Camera model details not preserved in Occult4 observing method code
 
-✅ **Acceptable Trade-offs:**
+✓ **Acceptable Trade-offs:**
 - Hardware specifics documented in free-text fields (NA/TT)
 - Standardized codes provide consistency (Occult4)
 - All essential timing information preserved across formats

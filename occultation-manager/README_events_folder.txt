@@ -1,5 +1,5 @@
-DATA/EVENTS FOLDER
-==================
+EVENTS FOLDER
+=============
 
 This folder stores occultation event data files.
 
@@ -10,4 +10,5 @@ Typical Contents:
 Notes:
 - This folder is fixed at data/events/ in the install layout
 - Configuration is stored in data/config/occultation_config.json
+- Generated sequences are stored in data/sequences/
 - Generated reports are stored in data/reports/

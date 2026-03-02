@@ -1,5 +1,9 @@
 # OBS.XML Requirements for Single Observation Reporting
 
+## Status Note (2026-03)
+
+This requirements summary is maintained for current single-observation export behavior.
+
 ## Overview
 This document identifies which sections of the OBS.XML format (v2.15+) are required for single observation reporting versus multi-chord analysis.
 
@@ -73,7 +77,7 @@ All fields required, though most may have default values for single observations
 10. Std Dev Dec offset mas (default "0")
 11. Known double star component ID (or blank)
 
-#### `<Asteroid>` (12 fields) - Asteroid information
+#### `<Asteroid>` (13 fields) - Asteroid information
 All fields required, though motion coefficients may be zeros:
 1. Asteroid number
 2. Asteroid name
@@ -181,31 +185,31 @@ According to the obs.md specification, these sections are **OPTIONAL** and only 
 ## Summary for Implementation
 
 **For single observation reporting, export:**
-✅ FileVersion
-✅ Date
-✅ Star (with available data, defaults for unknowns)
-✅ StarIssues (with available data, defaults for unknowns)
-✅ Asteroid (with available data, zeros for motion coefficients if unknown)
-✅ Prediction
-✅ Observer section (ID, Conditions, D, R)
-✅ Added/LastEdited dates
+✓ FileVersion
+✓ Date
+✓ Star (with available data, defaults for unknowns)
+✓ StarIssues (with available data, defaults for unknowns)
+✓ Asteroid (with available data, zeros for motion coefficients if unknown)
+✓ Prediction
+✓ Observer section (ID, Conditions, D, R)
+✓ Added/LastEdited dates
 
 **Do NOT export:**
-❌ EventFits section - Added by IOTA after multi-chord analysis
-❌ Astrometry section - Added by IOTA after computing astrometric solution
+✗ EventFits section - Added by IOTA after multi-chord analysis
+✗ Astrometry section - Added by IOTA after computing astrometric solution
 
 ## Data Availability for Single Observations
 
 From our AOTA/NA reports we have:
-- ✅ Basic event data (date, time, location)
-- ✅ Observer information (name, location, equipment)
-- ✅ Star identification and coordinates (from event data)
-- ✅ Asteroid identification (from event data)
-- ✅ Observation timing (D and R times from Tangra/AOTA)
-- ✅ Observing conditions (from observer notes)
-- ✅ Event code (Positive/Negative from observation type)
-- ✅ S/N ratio (from Tangra analysis)
-- ✅ Timing accuracy (from Tangra analysis)
+- ✓ Basic event data (date, time, location)
+- ✓ Observer information (name, location, equipment)
+- ✓ Star identification and coordinates (from event data)
+- ✓ Asteroid identification (from event data)
+- ✓ Observation timing (D and R times from Tangra/AOTA)
+- ✓ Observing conditions (from observer notes)
+- ✓ Event code (Positive/Negative from observation type)
+- ✓ S/N ratio (from Tangra analysis)
+- ✓ Timing accuracy (from Tangra analysis)
 
 From OWC downloads we could get additional prediction data, but this is optional for the basic report.
 
@@ -213,7 +217,7 @@ The asteroid motion coefficients (dX, dY, d2X, etc.) and parallax would need to 
 
 ## Implementation Status
 
-**✅ COMPLETED** - `occult4_export.py` (version 2.15)
+**✓ COMPLETED** - `occult4_export.py` (version 2.15)
 
 The Occult 4 XML export functionality is fully implemented and integrated into the report generation workflow. Key implementation details:
 

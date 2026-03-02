@@ -5,6 +5,8 @@
 
 Tools for automating occultation observations and validating timing accuracy.
 
+Repository housekeeping update: out-of-date code/files were briefly cleaned up (archived/removed as appropriate), and documentation was refreshed.
+
 📋 **[View CHANGELOG](CHANGELOG.md)** for release history and version details.
 
 ## Tools in this Repository

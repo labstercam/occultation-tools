@@ -1,5 +1,10 @@
 # TT Report Generation - Openize SDK Migration
 
+## Status Note (2026-03)
+
+Migration is complete and Openize-based generators are the production path for both TT and NA report generation.
+This document is retained as technical migration history and reference material.
+
 ## Proof of Concept Documentation
 
 This document describes the proof-of-concept migration from XML string replacement to the Openize OpenXML SDK for Trans-Tasman (RASNZ) report generation.
@@ -8,7 +13,7 @@ This document describes the proof-of-concept migration from XML string replaceme
 
 ## Overview
 
-### Current Implementation (`tt_report.py`)
+### Legacy Implementation (`tt_report.py`, removed)
 - Creates Excel template with placeholder text (`{{OBSERVATION_TYPE}}`, etc.)
 - Manually manipulates ZIP file structure and XML content
 - Uses `zipfile` and `xml.etree.ElementTree` for string replacements
@@ -25,16 +30,16 @@ This document describes the proof-of-concept migration from XML string replaceme
 ## Key Benefits
 
 ### 1. **Preserves Excel Features**
-- ✅ Data validation dropdowns work immediately
-- ✅ Cell formatting remains intact
-- ✅ Formulas are preserved
-- ✅ Conditional formatting maintained
+- ✓ Data validation dropdowns work immediately
+- ✓ Cell formatting remains intact
+- ✓ Formulas are preserved
+- ✓ Conditional formatting maintained
 
 ### 2. **More Reliable**
-- ✅ No XML namespace issues
-- ✅ Robust to Excel structure changes
-- ✅ Type-safe cell operations
-- ✅ Automatic value validation
+- ✓ No XML namespace issues
+- ✓ Robust to Excel structure changes
+- ✓ Type-safe cell operations
+- ✓ Automatic value validation
 
 ### 3. **Cleaner Code**
 ```python
@@ -62,13 +67,14 @@ worksheet.Cells['A2'].PutValue(observation_type)
 ```
 occultation-manager/python/
 ├── lib/                                    # NEW: .NET DLLs
-│   ├── Openize.OpenXML-SDK.dll            # Main SDK
-│   └── DocumentFormat.OpenXml.dll         # Dependency
+│   ├── Openize.OpenXMLSDK.dll             # Main SDK
+│   ├── DocumentFormat.OpenXml.dll         # Dependency
+│   └── DocumentFormat.OpenXml.Framework.dll # Dependency
 ├── development documentation/
 │   └── RASNZ_AstReporttForm_V4.1.2.G.xlsx # Original template (with validation)
-├── tt_report.py                           # Existing implementation (UNCHANGED)
+├── tt_report.py                           # Legacy implementation (removed)
 ├── tt_report_openize.py                   # NEW: Openize-based generator
-└── test_openize_tt_report.py              # NEW: Test/demo script
+└── testing/test_openize_tt_report.py      # NEW: Test/demo script
 ```
 
 ### Dependencies
@@ -225,7 +231,7 @@ Inherits from `ReportGeneratorBase` to maintain compatibility with existing infr
 ```python
 from tt_report_openize import TTReportGeneratorOpenize
 
-# Initialize (same as old generator)
+# Initialize (interface-compatible with prior generator)
 generator = TTReportGeneratorOpenize(config)
 
 # Generate report (identical interface)
@@ -251,6 +257,10 @@ else:
 python test_openize_tt_report.py
 ```
 
+Current testing layout note:
+- Active scripts are in `testing/` (`verify_openize_sharpcap.py`, `test_openize_integration.py`, `test_openize_tt_report.py`)
+- Older legacy/one-off scripts were moved to `testing/archive/` for historical reference and are not part of the active testing workflow
+
 The test script will:
 1. Check if Openize SDK is available
 2. Verify template file exists
@@ -272,8 +282,9 @@ Click "Download package" to get `openize.openxml-sdk.25.7.0.nupkg`
 The .nupkg file is a ZIP archive. Extract these files:
 
 ```
-lib/netstandard2.0/Openize.OpenXML-SDK.dll
+lib/netstandard2.0/Openize.OpenXMLSDK.dll
 lib/netstandard2.0/DocumentFormat.OpenXml.dll
+lib/netstandard2.0/DocumentFormat.OpenXml.Framework.dll
 ```
 
 Or use PowerShell:
@@ -290,13 +301,14 @@ nuget install Openize.OpenXML-SDK -OutputDirectory ./packages
 ```
 occultation-manager/python/
 └── lib/
-    ├── Openize.OpenXML-SDK.dll
-    └── DocumentFormat.OpenXml.dll
+    ├── Openize.OpenXMLSDK.dll
+    ├── DocumentFormat.OpenXml.dll
+    └── DocumentFormat.OpenXml.Framework.dll
 ```
 
 ### 4. Verify Installation
 ```bash
-python test_openize_tt_report.py
+python testing/test_openize_tt_report.py
 ```
 
 You should see:
@@ -307,32 +319,32 @@ You should see:
 
 ---
 
-## Migration Strategy
+## Migration Strategy (Historical Checklist)
 
-### Phase 1: Testing (Current)
+### Phase 1: Testing (Completed)
 - [x] Create proof-of-concept implementation
 - [x] Document cell mappings
 - [x] Create test script
 - [ ] Generate test reports with sample data
-- [ ] Compare output with existing generator
+- [ ] Compare output with archived baseline reports
 - [ ] Verify Excel features work correctly
 
-### Phase 2: Integration
-- [ ] Add Openize generator to main GUI
-- [ ] Add option to choose generator (old vs new)
-- [ ] Run parallel testing with real data
+### Phase 2: Integration (Completed)
+- [x] Add Openize generator to main GUI
+- [x] Remove old/new generator option
+- [ ] Continue real-data validation
 - [ ] Gather user feedback
 
-### Phase 3: Migration
+### Phase 3: Migration (Completed)
 - [ ] Address any issues found in testing
 - [ ] Update documentation
-- [ ] Make Openize generator the default
-- [ ] Keep old generator as fallback option
+- [x] Make Openize generator the default
+- [x] Remove old generator fallback option
 
-### Phase 4: Cleanup
-- [ ] Remove placeholder template files
+### Phase 4: Cleanup (In Progress)
+- [x] Remove placeholder template files from packaging
 - [ ] Update user documentation
-- [ ] Consider migrating NA reports to Openize
+- [x] Migrate NA reports to Openize
 
 ---
 
@@ -340,8 +352,8 @@ You should see:
 
 ### Code Complexity
 
-**Old Implementation:**
-- 680 lines in `tt_report.py`
+**Old Implementation (legacy):**
+- 680 lines in `tt_report.py` (removed)
 - Complex XML parsing and manipulation
 - String replacement in multiple XML files
 - Namespace handling required
@@ -408,7 +420,7 @@ Both approaches are fast enough for single report generation:
 ## Future Enhancements
 
 ### 1. North America Reports
-Apply same approach to `na_report.py` for consistency
+Keep `na_report_openize.py` aligned with TT Openize approach for consistency
 
 ### 2. Batch Processing
 Leverage Openize SDK for efficient multi-report generation
@@ -438,12 +450,13 @@ Populate cells that use formulas for calculations
 
 For questions or issues with this proof of concept:
 
-1. Run the test script: `python test_openize_tt_report.py`
-2. Check cell mappings in this document
-3. Review example usage above
-4. Verify DLLs are correctly installed
+1. Run the test script: `python testing/test_openize_tt_report.py`
+2. If reviewing older ad hoc tests, check `testing/archive/` (not part of the active testing workflow)
+3. Check cell mappings in this document
+4. Review example usage above
+5. Verify DLLs are correctly installed
 
 ---
 
-*Last Updated: February 12, 2026*
-*Version: 1.0 - Proof of Concept*
+*Last Reviewed: 2026-03-02*
+*Version: 1.1 - Historical migration reference*

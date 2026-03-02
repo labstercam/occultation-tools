@@ -1,5 +1,12 @@
 # Occultation Manager - Release Notes
 
+## Documentation & Housekeeping Update (March 2026)
+
+- Performed a brief cleanup to archive or remove out-of-date code/files.
+- Updated documentation to reflect the current project/release state.
+
+---
+
 ## Version 0.2.0-beta.2 (February 2026)
 
 **Excel Report Generation Improvements**
@@ -37,7 +44,7 @@ This release improves Excel report generation with the Openize SDK for more reli
 
 #### Breaking Changes
 - Excel templates updated to non-placeholder versions
-- Old XML-based report generators retained for fallback
+- Old XML-based report generators removed
 
 ### Technical Details
 

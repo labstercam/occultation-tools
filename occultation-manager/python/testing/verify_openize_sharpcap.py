@@ -16,8 +16,14 @@ print("=" * 70)
 print("OPENIZE SDK DLL VERIFICATION")
 print("=" * 70)
 
-# Add lib path
-script_dir = r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python"
+# Resolve project paths from this script location
+try:
+    current_file = __file__
+except NameError:
+    current_file = r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python\testing\verify_openize_sharpcap.py"
+
+testing_dir = os.path.dirname(os.path.abspath(current_file))
+script_dir = os.path.dirname(testing_dir)  # ...\python
 lib_path = os.path.join(script_dir, 'lib')
 
 print(f"\nScript directory: {script_dir}")
@@ -25,7 +31,8 @@ print(f"Lib directory: {lib_path}")
 
 if os.path.exists(lib_path):
     print(f"✓ Lib directory exists")
-    sys.path.append(lib_path)
+    if lib_path not in sys.path:
+        sys.path.append(lib_path)
     
     # List DLL files in lib root
     print("\nDLL files found in lib/:")

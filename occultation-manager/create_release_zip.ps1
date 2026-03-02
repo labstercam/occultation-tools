@@ -67,7 +67,6 @@ $pythonFiles = @(
     "python\light_curves_iron.py",
     "python\main.py",
     "python\main_gui.py",
-    "python\na_report.py",
     "python\na_report_openize.py",
     "python\occult4_export.py",
     "python\report_generator_base.py",
@@ -75,7 +74,6 @@ $pythonFiles = @(
     "python\tangra_dialogs.py",
     "python\templates.py",
     "python\theme.py",
-    "python\tt_report.py",
     "python\tt_report_openize.py",
     "python\utils.py"
 )
@@ -93,9 +91,7 @@ $sequencerMasterFiles = @(
 # Report template masters
 $reportMasterFiles = @(
     "python\NorthAmerica_AstReportForm_V5.6.12r.xlsx",
-    "python\NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx",
-    "python\RASNZ_AstReporttForm_V4.1.2.G.xlsx",
-    "python\RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx"
+    "python\RASNZ_AstReporttForm_V4.1.2.G.xlsx"
 )
 
 # App support files
@@ -166,8 +162,8 @@ Write-Host "`nCopying top-level docs..." -ForegroundColor Cyan
 }
 
 # Seed data README files for user guidance
-if (Test-Path "README_files_folder.txt") {
-    Copy-Item "README_files_folder.txt" "$dataEventsDir\README.txt" -Force
+if (Test-Path "README_events_folder.txt") {
+    Copy-Item "README_events_folder.txt" "$dataEventsDir\README.txt" -Force
 }
 if (Test-Path "README_sequences_folder.txt") {
     Copy-Item "README_sequences_folder.txt" "$dataSequencesDir\README.txt" -Force

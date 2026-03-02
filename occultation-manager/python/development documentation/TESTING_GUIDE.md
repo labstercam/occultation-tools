@@ -1,5 +1,9 @@
 # Testing Openize SDK in SharpCap
 
+## Status Note (2026-03)
+
+This guide covers the current Openize-based report testing workflow.
+
 ## Quick Start Guide
 
 Since this project uses **IronPython embedded in SharpCap**, you'll need to test from within SharpCap's scripting environment.
@@ -14,7 +18,7 @@ Since this project uses **IronPython embedded in SharpCap**, you'll need to test
 
 ```python
 # In SharpCap's Python console, type:
-execfile(r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python\verify_openize_sharpcap.py")
+execfile(r"<repo>\occultation-manager\python\verify_openize_sharpcap.py")
 ```
 
 **Expected output:**
@@ -39,7 +43,7 @@ If Step 1 passed, test the full report generation:
 
 ```python
 # In SharpCap's Python console, type:
-execfile(r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python\test_openize_integration.py")
+execfile(r"<repo>\occultation-manager\python\test_openize_integration.py")
 ```
 
 **Expected output:**
@@ -67,19 +71,19 @@ INTEGRATION TEST PASSED!
 
 ## Step 3: Verify the Generated Report
 
-1. **Navigate to the Reports folder:**
+1. **Navigate to the reports folder:**
    ```
-   c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python\Reports\
+   <repo>\occultation-manager\data\reports\
    ```
 
 2. **Open the generated .xlsx file in Excel**
 
 3. **Check that:**
-   - ✅ All cells are populated with test data
-   - ✅ Data validation dropdowns work (try clicking cells with dropdowns)
-   - ✅ Formulas are intact (if any)
-   - ✅ Formatting is preserved
-   - ✅ No error cells or #REF! errors
+   - ✓ All cells are populated with test data
+   - ✓ Data validation dropdowns work (try clicking cells with dropdowns)
+   - ✓ Formulas are intact (if any)
+   - ✓ Formatting is preserved
+   - ✓ No error cells or #REF! errors
 
 ---
 
@@ -93,7 +97,7 @@ import sys
 sys.path.append(r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python")
 
 # Then run either verification script
-execfile(r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python\verify_openize_sharpcap.py")
+execfile(r"<repo>\occultation-manager\python\verify_openize_sharpcap.py")
 ```
 
 ---
@@ -110,9 +114,10 @@ execfile(r"c:\Users\AstroPC\Git\occultation-tools\occultation-manager\python\ver
 ### "Could not load file or assembly 'DocumentFormat.OpenXml'"
 
 **Check:**
-1. DLL exists in: `lib\netstandard2.0\DocumentFormat.OpenXml.dll` or `lib\net462\`
-2. File is not blocked
-3. File size is ~5-8 MB
+1. DLL exists in: `lib\DocumentFormat.OpenXml.dll`
+2. `DocumentFormat.OpenXml.Framework.dll` exists in: `lib\DocumentFormat.OpenXml.Framework.dll`
+3. File is not blocked
+4. File size is ~5-8 MB
 
 ### "No module named tt_report_openize"
 
@@ -149,15 +154,24 @@ Must exist (original template with data validation, NOT the placeholder version)
 - ✓ Can save modified workbook
 - ✓ Output file is valid .xlsx format
 
+### test_openize_tt_report.py
+- ✓ Openize SDK availability check
+- ✓ Template availability check
+- ✓ Openize migration proof-of-concept walkthrough
+
+### archive/
+- Contains archived one-off/legacy test scripts retained for reference
+- Not part of the active testing workflow
+
 ---
 
 ## Next Steps After Successful Tests
 
 1. **Compare with existing generator:**
-   - Generate same report with `tt_report.py` (old)
-   - Generate same report with `tt_report_openize.py` (new)
-   - Compare cell values
-   - Verify data validation only works in new version
+   - Use historical baseline outputs from legacy XML approach (if available)
+   - Generate report with `tt_report_openize.py` or `na_report_openize.py` (current)
+   - Compare critical cell values
+   - Verify data validation works in current version
 
 2. **Test with real data:**
    - Use actual event from OccultWatcher
@@ -166,14 +180,14 @@ Must exist (original template with data validation, NOT the placeholder version)
    - Verify timing accuracy
 
 3. **Plan integration:**
-   - Add option to main GUI
-   - Allow user to choose generator
-   - Run parallel testing
+   - Validate through current comprehensive report dialog flow
+   - Test with both NA and TT report selections
+   - Confirm AOTA/Tangra source selection behavior
    - Collect feedback
 
 4. **Consider NA reports:**
-   - Apply same approach to `na_report.py`
-   - Create `na_report_openize.py`
+   - Use `na_report_openize.py` for NA reports
+   - Keep NA and TT Openize generators aligned
    - Unified Excel manipulation strategy
 
 ---
@@ -183,27 +197,26 @@ Must exist (original template with data validation, NOT the placeholder version)
 ```
 occultation-manager/python/
 ├── lib/
-│   ├── Openize.OpenXMLSDK.dll           ← Main DLL
-│   ├── netstandard2.0/
-│   │   └── DocumentFormat.OpenXml.dll   ← Dependency
-│   └── net462/
-│       └── DocumentFormat.OpenXml.dll   ← Alternative
+│   ├── Openize.OpenXMLSDK.dll                ← Main DLL
+│   ├── DocumentFormat.OpenXml.dll            ← Dependency
+│   └── DocumentFormat.OpenXml.Framework.dll  ← Dependency
 │
 ├── development documentation/
 │   └── RASNZ_AstReporttForm_V4.1.2.G.xlsx  ← Original template
 │
 ├── tt_report_openize.py                  ← New generator
-├── verify_openize_sharpcap.py            ← DLL verification
-├── test_openize_integration.py           ← Full integration test
-├── OPENIZE_MIGRATION_POC.md              ← Full documentation
-└── OPENIZE_POC_SUMMARY.md                ← Quick summary
+├── testing/verify_openize_sharpcap.py    ← DLL verification
+├── testing/test_openize_integration.py   ← Full integration test
+├── testing/test_openize_tt_report.py     ← Openize POC test script
+├── testing/archive/                      ← Archived legacy/one-off tests
+└── OPENIZE_MIGRATION_POC.md              ← Historical migration notes
 ```
 
 ---
 
 ## Support
 
-If tests fail or you encounter issues:
+If tests fail or you encounter an issue:
 1. Check all file locations above
 2. Review error messages carefully
 3. Try unblocking DLL files in Windows
@@ -212,4 +225,4 @@ If tests fail or you encounter issues:
 
 ---
 
-*Happy Testing!* 🚀
+*Happy Testing!*

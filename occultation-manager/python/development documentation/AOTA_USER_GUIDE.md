@@ -1,5 +1,9 @@
 # AOTA Import Feature - Quick Start Guide
 
+## Status Note (2026-03)
+
+This guide reflects the current report workflow using `LocationConfirmDialog` and `ComprehensiveReportDialog`.
+
 ## What is AOTA?
 
 AOTA (Asteroid Occultation Timing Analysis) is a tool that analyzes your occultation videos and extracts precise disappearance (D) and reappearance (R) times. The analysis results are saved in XML files with the extension `.aota.xml`.
@@ -16,22 +20,22 @@ AOTA (Asteroid Occultation Timing Analysis) is a tool that analyzes your occulta
 2. Select a **past event** from the event list
 3. Click **"Generate Report"** button
 
-### Step 3: Follow the Report Generation Wizard
-The wizard will guide you through several dialogs:
+### Step 3: Follow the Report Generation Flow
+The current flow uses a **Comprehensive Report Dialog**:
 
-1. **Select Report Type**: Choose "North America" or "Trans-Tasman"
-2. **Select Equipment**: Choose your telescope and camera
-3. **Confirm Location**: Verify your observation site coordinates
-4. **Import AOTA Data?** ← **NEW!**
-   - Dialog asks: "Do you want to import timing data from an AOTA analysis file?"
-   - Click **Yes** if you have an AOTA file
-   - Click **No** to skip (you can fill timing manually later)
+1. **Confirm Location**: Verify your observation site coordinates.
+2. **Choose Report + Equipment**: Select report type, telescope, and camera.
+3. **Set Observation Type**: Positive, Negative, or Unsure.
+4. **Browse Data Folder**: Select one folder containing your files.
+  - Tangra CSV
+  - Optional AOTA XML (`*.aota.xml`)
+  - Optional AOTA Report text file
+5. **Select Files in Lists**: Pick the detected files in the dialog lists.
 
-### Step 4: Select Your AOTA File (if you clicked Yes)
-1. A file browser opens
-2. Navigate to your AOTA file
-3. Select the `*.aota.xml` file
-4. Click **OK**
+### Step 4: AOTA Data Selection Rules
+- **Positive / Unsure**: At least one of AOTA XML or AOTA Report is required.
+- **Negative**: AOTA inputs are optional.
+- If both AOTA XML and AOTA Report are provided, AOTA Report timing is preferred in report generation.
 
 ### Step 5: Select Event (only if multiple events in file)
 If your AOTA file contains multiple events:
@@ -48,7 +52,7 @@ If only one event exists, it's selected automatically.
 
 ### Step 6: Report Generated!
 - Report saves with all your observation details
-- AOTA timing data is filled into the appropriate cells
+- AOTA timing data is filled when supplied
 - Success message shows the file location
 
 ## What Data Gets Imported?
@@ -97,19 +101,19 @@ The parser extracts:
 ## Common Scenarios
 
 ### Scenario 1: Single Event
-✅ AOTA file has one event → Automatically selected → Report generated
+✓ AOTA file has one event → Automatically selected → Report generated
 
 ### Scenario 2: Multiple Events  
-✅ AOTA file has 3 events → Dialog shows all 3 → You select one → Report generated
+✓ AOTA file has 3 events → Dialog shows all 3 → You select one → Report generated
 
 ### Scenario 3: No Valid Events
-⚠️ AOTA file only has non-events → Warning shown → Report still generated without timing
+⚠ AOTA file only has non-events → Warning shown → Report still generated without timing
 
 ### Scenario 4: No AOTA File
-✅ Click "No" when asked → Report generated → Fill timing manually in Excel
+✓ Do not select AOTA XML or AOTA Report (Negative observation) → Report generated
 
 ### Scenario 5: AOTA Import Fails
-⚠️ Parse error → Error message → Report still generated → Fill timing manually
+⚠ Parse error → Error message → Report still generated → Fill timing manually
 
 ## Tips
 
@@ -138,42 +142,11 @@ The parser extracts:
 
 ### Report generated but AOTA data missing
 - Check the Excel file - data should be in the timing section (rows 31-37)
-- Verify you selected "Yes" to import
+- Verify you selected an AOTA XML or AOTA Report file in the dialog lists
 - Check console output for any error messages
 - If it fails, you can still enter the data manually
 
 ## Need Help?
 
 - Check the console output for detailed error messages
-- Review the AOTA_IMPLEMENTATION.md file for technical details
-- Ensure your report templates have the new AOTA placeholders
-
-## Template Setup (For Admin)
-
-If you're setting up templates, you need to add these placeholders:
-
-**North American Template (Cells N31-T37)**:
-```
-N31: {{AOTA_D_HOURS}}
-P31: {{AOTA_D_MINUTES}}
-R31: {{AOTA_D_SECONDS}}
-T31: {{AOTA_D_ERROR}}
-N37: {{AOTA_R_HOURS}}
-P37: {{AOTA_R_MINUTES}}
-R37: {{AOTA_R_SECONDS}}
-T37: {{AOTA_R_ERROR}}
-```
-
-**Trans-Tasman Template (Cells G31-M37)**:
-```
-G31: {{AOTA_D_HOURS}}
-I31: {{AOTA_D_MINUTES}}
-K31: {{AOTA_D_SECONDS}}
-M31: {{AOTA_D_ERROR}}
-G37: {{AOTA_R_HOURS}}
-I37: {{AOTA_R_MINUTES}}
-K37: {{AOTA_R_SECONDS}}
-M37: {{AOTA_R_ERROR}}
-```
-
-Save the updated templates in the python folder.
+- Review `AOTA_IMPLEMENTATION.md` for technical details

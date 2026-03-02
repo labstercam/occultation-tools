@@ -1,3 +1,9 @@
+# OBS.XML Format Reference (Source Copy)
+
+## Status Note (2026-03)
+
+This file is a source-format reference copy used for export semantics and terminology checks.
+
 Format for Asteroid Occultation Observations
 Version 2.15+
 XML format

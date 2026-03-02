@@ -21,7 +21,7 @@ The Dummy Event Generator creates realistic test occultation events for practice
 4. Use for testing sequences, workflows, and equipment setup
 5. Select and delete dummy events when no longer needed
 
-See [DUMMY_EVENTS_FEATURE.md](DUMMY_EVENTS_FEATURE.md) for complete documentation.
+See [DUMMY_EVENTS_FEATURE.md](development documentation/DUMMY_EVENTS_FEATURE.md) for complete documentation.
 
 ### Report Generation System
 
@@ -173,15 +173,15 @@ Complete code snippets and implementation notes in `countdown python for sequenc
 
 #### Report Generators
 
-**na_report.py** - North America (IOTA V5.6.12r)
+**na_report_openize.py** - North America (IOTA V5.6.12r, Openize)
 - Uses template: `NorthAmerica_AstReportForm_V5.6.12r.xlsx`
-- Populates 47 mapped cells with event and timing data
+- Openize-based cell population preserving Excel validation/formulas
 - **Video format and exposure/integration** sourced from Tangra CSV analysis
 - Filename format: `YYYYMMDD_asteroidnumber_asteroidname_starcatalog_starnumber-surname_station.xlsx`
 
-**tt_report.py** - Trans-Tasman (RASNZ V4.1.2.G)
-- Uses template: `TransTasman_AstReportForm_V4.1.2.G.xlsx`
-- Similar structure with regional-specific fields
+**tt_report_openize.py** - Trans-Tasman (RASNZ V4.1.2.G, Openize)
+- Uses template: `RASNZ_AstReporttForm_V4.1.2.G.xlsx`
+- Openize-based cell population preserving Excel validation/formulas
 - **Video format and exposure/integration** sourced from Tangra CSV analysis
 
 **occult4_export.py** - Occult 4 XML Export (Version 2.15+)
@@ -255,7 +255,7 @@ get_observation_summary(tangra_csv_path)
   - Extracts "Acquisition Delay (ms)" column
 - Maps Tangra format codes to report-standard format names
 
-**Report Placeholders Populated**:
+**Report Fields Populated**:
 ```
 {{STARTED_OBSERVING_HOURS}}
 {{STARTED_OBSERVING_MINUTES}}
@@ -299,7 +299,7 @@ get_event_summary(parsed_data, event_number)
 - Reappearance uncertainty: ±error in seconds
 - Signal-to-Noise Ratio: Average SNR at event locations
 
-**Report Placeholders Populated**:
+**Report Fields Populated**:
 ```
 {{AOTA_D_HOURS}}
 {{AOTA_D_MINUTES}}
@@ -425,5 +425,6 @@ Core event data model with automatic calculations and customizable overrides:
 - 1 application icon (.ico file)
 
 **Development Files** (excluded from release):
-- `testing/` - Unit test scripts for development and debugging
+- `testing/` - Active verification scripts (`verify_openize_sharpcap.py`, `test_openize_integration.py`, `test_openize_tt_report.py`)
+- `testing/archive/` - Archived legacy/one-off test scripts kept for reference (not part of the active testing workflow)
 - `development documentation/` - Implementation notes, bug tracking, and technical specifications

@@ -5,12 +5,18 @@ This script demonstrates the difference between the old XML string replacement
 approach and the new Openize SDK approach for generating TT reports.
 
 Usage:
-    python test_openize_tt_report.py
+    python testing/test_openize_tt_report.py
 """
 
 import os
 import sys
 from datetime import datetime
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PYTHON_DIR = os.path.dirname(SCRIPT_DIR)
+
+if PYTHON_DIR not in sys.path:
+    sys.path.insert(0, PYTHON_DIR)
 
 # Mock event class for testing
 class MockEvent:
@@ -60,9 +66,8 @@ def test_template_availability():
     print("TESTING TEMPLATE FILE AVAILABILITY")
     print("=" * 70)
     
-    script_dir = os.path.dirname(os.path.abspath(__file__))
     template_path = os.path.join(
-        script_dir, 
+        PYTHON_DIR,
         'RASNZ_AstReporttForm_V4.1.2.G.xlsx'
     )
     
@@ -82,7 +87,7 @@ def compare_approaches():
     print("COMPARING OLD VS NEW APPROACH")
     print("=" * 70)
     
-    print("\nOLD APPROACH (tt_report.py):")
+    print("\nOLD APPROACH (legacy tt_report.py - removed):")
     print("  ✗ Creates template with placeholders ({{PLACEHOLDER}})")
     print("  ✗ Uses zipfile + XML string manipulation")
     print("  ✗ Can break Excel data validation")
@@ -151,7 +156,7 @@ print(f"Report generated: {output_path}")
     
     print(code)
     
-    print("\nNote: The interface is identical to TTReportGenerator!")
+    print("\nNote: The interface remains compatible with the legacy generator API.")
     print("      This makes migration easy - just change the import.")
 
 
