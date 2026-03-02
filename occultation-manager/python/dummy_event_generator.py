@@ -6,6 +6,7 @@ Generates realistic test occultation events
 import json
 import os
 import random
+import math
 from datetime import datetime, timedelta
 from System.Windows.Forms import (
     Form, Label, TextBox, Button, ComboBox, RadioButton, GroupBox,
@@ -281,25 +282,83 @@ class DummyEventGenerator:
         Returns:
             LST in hours (0-24)
         """
-        # Julian Date
-        a = (14 - utc_time.month) // 12
-        y = utc_time.year + 4800 - a
-        m = utc_time.month + 12 * a - 3
-        jd = utc_time.day + (153 * m + 2) // 5 + 365 * y + y // 4 - y // 100 + y // 400 - 32045
-        jd += (utc_time.hour - 12) / 24.0 + utc_time.minute / 1440.0 + utc_time.second / 86400.0
-        
-        # Days since J2000.0
-        d = jd - 2451545.0
-        
-        # Greenwich Mean Sidereal Time (GMST) in hours
-        gmst = 18.697374558 + 24.06570982441908 * d
-        gmst = gmst % 24
-        
-        # Local Sidereal Time (LST)
-        lst = gmst + longitude / 15.0
-        lst = lst % 24
-        
-        return lst
+        # Julian Date (UTC) with fractional day
+        year = utc_time.year
+        month = utc_time.month
+        day_fraction = (
+            utc_time.day
+            + utc_time.hour / 24.0
+            + utc_time.minute / 1440.0
+            + (utc_time.second + utc_time.microsecond / 1e6) / 86400.0
+        )
+
+        if month <= 2:
+            year -= 1
+            month += 12
+
+        a = int(year / 100)
+        b = 2 - a + int(a / 4)
+        jd = (
+            int(365.25 * (year + 4716))
+            + int(30.6001 * (month + 1))
+            + day_fraction
+            + b
+            - 1524.5
+        )
+
+        t = (jd - 2451545.0) / 36525.0
+
+        # Greenwich Mean Sidereal Time (degrees)
+        gmst_deg = (
+            280.46061837
+            + 360.98564736629 * (jd - 2451545.0)
+            + 0.000387933 * t * t
+            - (t * t * t) / 38710000.0
+        )
+
+        # Local Sidereal Time (hours), longitude positive east
+        lst_deg = (gmst_deg + longitude) % 360.0
+        return lst_deg / 15.0
+
+    @staticmethod
+    def calculate_local_zenith(utc_time, latitude, longitude):
+        """Return local zenith in equatorial coordinates (RA hours, Dec degrees)."""
+        zenith_ra = DummyEventGenerator.calculate_sidereal_time(utc_time, longitude)
+        zenith_dec = latitude
+        return zenith_ra, zenith_dec
+
+    @staticmethod
+    def calculate_alt_az(utc_time, ra_hours, dec_degrees, latitude, longitude):
+        """Convert RA/Dec to apparent horizontal coordinates Alt/Az (degrees)."""
+        lst_hours = DummyEventGenerator.calculate_sidereal_time(utc_time, longitude)
+        hour_angle_hours = (lst_hours - ra_hours) % 24.0
+        if hour_angle_hours > 12.0:
+            hour_angle_hours -= 24.0
+
+        hour_angle_rad = math.radians(hour_angle_hours * 15.0)
+        dec_rad = math.radians(dec_degrees)
+        lat_rad = math.radians(latitude)
+
+        sin_alt = (
+            math.sin(dec_rad) * math.sin(lat_rad)
+            + math.cos(dec_rad) * math.cos(lat_rad) * math.cos(hour_angle_rad)
+        )
+        sin_alt = max(-1.0, min(1.0, sin_alt))
+        alt_rad = math.asin(sin_alt)
+
+        cos_alt = math.cos(alt_rad)
+        if abs(cos_alt) < 1e-10:
+            az_deg = 0.0
+        else:
+            sin_az = -math.sin(hour_angle_rad) * math.cos(dec_rad) / cos_alt
+            cos_az = (
+                math.sin(dec_rad) - math.sin(alt_rad) * math.sin(lat_rad)
+            ) / (cos_alt * math.cos(lat_rad))
+            az_rad = math.atan2(sin_az, cos_az)
+            az_deg = (math.degrees(az_rad) + 360.0) % 360.0
+
+        alt_deg = math.degrees(alt_rad)
+        return alt_deg, az_deg
     
     @staticmethod
     def generate_events(params, config):
@@ -341,10 +400,14 @@ class DummyEventGenerator:
             # Calculate recording duration (base + uncertainty)
             recording_duration = int(config.config.get('base_duration', 60) + event_uncertainty * 2)
             
-            # Calculate star altitude (rough estimate)
-            # For simplicity, assume objects near meridian have good altitude
-            star_alt = random.uniform(30.0, 70.0)
-            star_az = random.uniform(0.0, 360.0)
+            # Calculate star altitude/azimuth from generated RA/Dec, event time, and observer location
+            star_alt, star_az = DummyEventGenerator.calculate_alt_az(
+                current_time,
+                ra,
+                dec,
+                params['latitude'],
+                params['longitude']
+            )
             
             # Calculate exposure based on magnitude
             mag_for_40ms = float(config.config.get('mag_for_40ms_exposure', 12.0))

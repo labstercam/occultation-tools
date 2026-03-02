@@ -46,31 +46,23 @@ All three active formats (NA, TT, Occult4) are integrated into the same workflow
   - Month names constant
 - All region-specific generators inherit from this
 
-#### `report_type_dialog.py`
-- Dialog window for selecting report format
-- Shows event name for context
-- Radio buttons for each region
-- Grays out non-implemented options
-- Returns selected report type ('north_america', 'trans_tasman', etc.)
+#### `report_type_dialog.py` (legacy, removed)
+- Original standalone dialog for selecting report format
+- Replaced by integrated selection flow in `comprehensive_report_dialog.py`
 
-#### `tt_report.py`
-- Trans-Tasman report generator skeleton
-- Inherits from `ReportGeneratorBase`
-- Contains placeholder methods for all required functionality
-- Ready to be filled in once XLSX template is available
-- Includes debug logging like NA version
+#### `tt_report.py` (legacy, removed)
+- Original Trans-Tasman XML/string-replacement generator
+- Replaced by `tt_report_openize.py`
 
 ### 2. Modified Files
 
-#### `na_report.py`
-- Now inherits from `ReportGeneratorBase`
-- Removed duplicate code that's now in base class
-- Kept NA-specific star catalog parsing (more detailed than base)
-- Otherwise unchanged - all existing functionality preserved
+#### `na_report.py` (legacy, removed)
+- Original North America XML/string-replacement generator
+- Replaced by `na_report_openize.py`
 
 #### `main_gui.py`
 - Updated `generate_report_for_event()` method
-- Now shows report type selection dialog FIRST
+- Uses `ComprehensiveReportDialog` for report type + equipment + input flow
 - Creates appropriate report generator based on selection (NA/TT/Occult4)
 - Checks template exists before proceeding
 - Integrated Occult4 XML export into workflow:
@@ -94,17 +86,17 @@ ReportGeneratorBase (base class)
 ├── Template management
 └── Abstract methods
 
-NAReportGenerator (North America)
+NAReportGeneratorOpenize (North America)
 ├── Inherits from base
 ├── NA-specific cell mappings
-├── NA-specific formatting
-└── Fully implemented
+├── Openize direct cell writing
+└── Active implementation
 
-TTReportGenerator (Trans-Tasman)
+TTReportGeneratorOpenize (Trans-Tasman)
 ├── Inherits from base
-├── TT-specific cell mappings (TODO)
-├── TT-specific formatting (TODO)
-└── Framework ready
+├── TT-specific cell mappings
+├── Openize direct cell writing
+└── Active implementation
 
 [Future: SODIS, IOTA-EA generators]
 ```
@@ -116,9 +108,8 @@ TTReportGenerator (Trans-Tasman)
 3. User selects format (e.g., "Trans-Tasman / RASNZ")
 4. System creates appropriate report generator
 5. System checks template exists (shows error if missing)
-6. Equipment selection dialog appears
-7. Location confirmation dialog appears
-8. Report is generated using selected format
+6. Report inputs are confirmed in comprehensive dialog
+7. Report is generated using selected format
 
 ## Next Steps Required
 
@@ -160,14 +151,10 @@ Once you have the XLSX file, I need to:
    - Different field names
    - Different cell locations
 
-4. **Implement the methods** in tt_report.py:
-   - `get_cell_mapping()` - with correct cell addresses
-   - `_fill_event_data()` - event-specific fields
-   - `_fill_observer_data()` - observer information
-   - `_fill_telescope_data()` - telescope details
-   - `_fill_recording_times()` - timing data
-   - `_fill_metadata()` - camera and other metadata
-   - Update filename generation based on TT conventions
+4. **Maintain methods** in `tt_report_openize.py`:
+   - Keep cell mappings aligned with template updates
+   - Keep event/observer/telescope/timing metadata mapping current
+   - Keep filename generation aligned with TT conventions
 
 ## Testing Recommendations
 
@@ -187,7 +174,7 @@ Once TT report is implemented:
 
 1. ✅ **Base class inheritance**: Properly implemented with super()
 2. ✅ **Import order**: All imports at top of files
-3. ✅ **Error handling**: Debug logging included in TT generator
+3. ✅ **Error handling**: Debug logging included in TT Openize generator
 4. ✅ **User flow**: Report type selected before equipment to avoid confusion
 5. ✅ **Template checking**: Validates template exists before proceeding
 6. ✅ **Backwards compatibility**: NA report unchanged, existing code still works
@@ -210,9 +197,9 @@ Once TT report is implemented:
 
 - `occult4_export.py` - NEW: Occult 4 XML export (919 lines)
 - `report_generator_base.py` - Review base class methods
-- `report_type_dialog.py` - Review UI and flow
-- `tt_report.py` - Review structure (placeholder)
-- `na_report.py` - Review changes (minimal)
+- `comprehensive_report_dialog.py` - Review integrated report-input UI flow
+- `tt_report_openize.py` - Review active TT implementation
+- `na_report_openize.py` - Review active NA implementation
 - `main_gui.py` - Review integration point
 - `sequence_runner.py` - Review Occult4 integration
 

@@ -49,3 +49,13 @@ test_output/
 
 # Config files with sensitive data (if any)
 # config_local.json
+
+# Occultation Manager runtime data (generated locally)
+occultation-manager/data/config/occultation_config.json
+occultation-manager/data/events/occultations.json
+occultation-manager/data/events/occultations_latest.json
+occultation-manager/data/reports/
+
+# Legacy local runtime locations (kept for compatibility)
+occultation-manager/python/files/
+occultation-manager/python/Reports/

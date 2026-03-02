@@ -2,7 +2,7 @@ NORTH AMERICAN REPORT TEMPLATE PLACEHOLDERS
 ============================================
 
 Place these exact placeholder strings in the corresponding cells in the NA template.
-The template with placeholders should be saved as: NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
+Use this as a historical placeholder mapping reference only.
 
 Based on the original cell mapping from fillinnareport.py:
 
@@ -100,8 +100,8 @@ INSTRUCTIONS FOR TEMPLATE CREATION:
 
 1. Open the original NorthAmerica_AstReportForm_V5.6.12r.xlsx file
 2. Replace the content in each cell above with the corresponding placeholder
-3. Save the file as NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
-4. Place the template file in the same directory as na_report.py
+3. Save a working copy for reference use (do not package as a required runtime template)
+4. Keep runtime report generation pointed at NorthAmerica_AstReportForm_V5.6.12r.xlsx
 
 NOTES:
 ------

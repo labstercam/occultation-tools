@@ -1,5 +1,9 @@
 # OBS.XML Data Field Mapping
 
+## Status Note (2026-03)
+
+This mapping is maintained as an active reference for current `occult4_export.py` behavior.
+
 ## Purpose
 This document maps available data sources to OBS.XML format fields for single observation reporting.
 
@@ -108,22 +112,22 @@ The Occelmnt structure contains detailed prediction data from Occult4 calculatio
 - Index 2-4: Year, Month, Day of event
 - Index 5: UT at closest approach (decimal hours)
 - Index 6-7: **X, Y** - Shadow coordinates at closest approach (Earth radii)
-- Index 8-9: **dX, dY** - Hourly rate of change in X, Y (Earth radii/hr) ✅
-- Index 10-11: **d2X, d2Y** - 2nd order rate of change (Earth radii/hr²) ✅
-- Index 12-13: **d3X, d3Y** - 3rd order rate of change (Earth radii/hr³) ✅
+- Index 8-9: **dX, dY** - Hourly rate of change in X, Y (Earth radii/hr) ✓
+- Index 10-11: **d2X, d2Y** - 2nd order rate of change (Earth radii/hr²) ✓
+- Index 12-13: **d3X, d3Y** - 3rd order rate of change (Earth radii/hr³) ✓
 
 **From `<Star>` tag (comma-separated, 14 fields total):**
 - Index 0: Identifier (catalog designation)
-- Index 1: **RA** - BCRS J2000 position (decimal hours) ✅
-- Index 2: **Dec** - BCRS J2000 position (decimal degrees) ✅
-- Index 3: **Mb** - Blue magnitude ✅
-- Index 4: **Mv** - Visual magnitude ✅
-- Index 5: **Mr** - Red magnitude ✅
-- Index 6: **dia** - Stellar diameter in mas ✅
+- Index 1: **RA** - BCRS J2000 position (decimal hours) ✓
+- Index 2: **Dec** - BCRS J2000 position (decimal degrees) ✓
+- Index 3: **Mb** - Blue magnitude ✓
+- Index 4: **Mv** - Visual magnitude ✓
+- Index 5: **Mr** - Red magnitude ✓
+- Index 6: **dia** - Stellar diameter in mas ✓
 - Index 7: Double star code (0=none, 1=WDS, 2=other, 4=variable, cumulative)
 - Index 8: K2 flag ("K" if Kepler2 target, blank otherwise)
-- Index 9: **RA Apparent** - Apparent RA of date (decimal hours) ✅
-- Index 10: **Dec Apparent** - Apparent Dec of date (decimal degrees) ✅
+- Index 9: **RA Apparent** - Apparent RA of date (decimal hours) ✓
+- Index 10: **Dec Apparent** - Apparent Dec of date (decimal degrees) ✓
 - Index 11: MagDropsAdjusted_NearbyStars - Flag: 0=not adjusted, 1=adjusted
 - Index 12: BrightNearbyCount - Bright nearby stars count (or -1 if not checked)
 - Index 13: TotalNearbyCount - All nearby stars count (or -1 if not checked)
@@ -131,18 +135,18 @@ The Occelmnt structure contains detailed prediction data from Occult4 calculatio
 **From `<Object>` tag (comma-separated):**
 - Index 0: Number (asteroid number or PxMyy for planet moons)
 - Index 1: Name
-- Index 2: **Magnitude** - Asteroid magnitude ✅
-- Index 3: **Diameter** (km) - augmented by star diameter ✅
+- Index 2: **Magnitude** - Asteroid magnitude ✓
+- Index 3: **Diameter** (km) - augmented by star diameter ✓
 - Index 4: Distance (AU)
 - Index 5: Number of rings
 - Index 6: Number of moons
 - Index 7: dRA - Hourly rate of change in RA (s/hr)
 - Index 8: dDec - Hourly rate of change in Dec (arcsec/hr)
 - Index 9: Taxonomic class
-- Index 10: **Diameter uncertainty** (km) ✅
+- Index 10: **Diameter uncertainty** (km) ✓
 - Index 11: Planet moon in shadow flag
-- Index 12: **MagV_Asteroid** - V magnitude ✅
-- Index 13: **MagR_Asteroid** - R magnitude ✅
+- Index 12: **MagV_Asteroid** - V magnitude ✓
+- Index 13: **MagR_Asteroid** - R magnitude ✓
 
 **From `<Earth>` tag (comma-separated):**
 - Index 0: Substellar longitude (deg)
@@ -153,15 +157,15 @@ The Occelmnt structure contains detailed prediction data from Occult4 calculatio
 
 **From `<Errors>` tag (comma-separated):**
 - Index 0: Path width uncertainty (fraction of path width)
-- Index 1: **Major axis** of error ellipse (arcsec) ✅
-- Index 2: **Minor axis** of error ellipse (arcsec) ✅
-- Index 3: **PA** of major axis (degrees) ✅
-- Index 4: **1-sigma** star/asteroid position error (arcsec) ✅
+- Index 1: **Major axis** of error ellipse (arcsec) ✓
+- Index 2: **Minor axis** of error ellipse (arcsec) ✓
+- Index 3: **PA** of major axis (degrees) ✓
+- Index 4: **1-sigma** star/asteroid position error (arcsec) ✓
 - Index 5: Error basis description string
-- Index 6: **Reliability** (RUWE value, or -1/-2/-3/-4 for special cases) ✅
-- Index 7: **Duplicate Source** flag (0/1/-1) ✅
-- Index 8: **Non-GAIA proper motion** flag (0/1/-1) ✅
-- Index 9: **Proper motion using UCAC4** flag (0/1/-1) ✅
+- Index 6: **Reliability** (RUWE value, or -1/-2/-3/-4 for special cases) ✓
+- Index 7: **Duplicate Source** flag (0/1/-1) ✓
+- Index 8: **Non-GAIA proper motion** flag (0/1/-1) ✓
+- Index 9: **Proper motion using UCAC4** flag (0/1/-1) ✓
 
 **From `<Orbit>` tag (comma-separated):**
 - Orbital elements for plotting (not needed for observation reporting)
@@ -185,7 +189,7 @@ Structure not yet fully defined, but likely includes:
 - Event detection parameters
 - Additional SNR metrics
 
-### 6. OWC Downloaded Events (from owc_downloaded_events.json)
+### 7. OWC Downloaded Events (from owc_downloaded_events.json)
 Additional fields available in raw OWC data (not all parsed into OccultationEvent):
 
 **Extended Star Data:**
@@ -225,7 +229,7 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 - `CloudCover` - Cloud cover percentage
 - `HighCloud` - High cloud boolean
 
-### 6. User Input / Observation Type
+### 8. User Input / Observation Type
 - `observation_type` - "Positive", "Negative", or "Unsure"
 
 ---
@@ -454,7 +458,7 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 
 ## Summary of Data Availability
 
-### ✅ Available from Current Sources
+### ✓ Available from Current Sources
 - Event date/time (PREDICTION from OWC)
 - **Star coordinates:** RA/Dec J2000 from Occelmnt `<Star>` (preferred) or OWC `RAJ2000Hours`/`DEJ2000Deg`
 - **Star coordinates:** RA/Dec Apparent from Occelmnt `<Star>` indices 9-10 ✨ NEW!
@@ -474,20 +478,20 @@ Additional fields available in raw OWC data (not all parsed into OccultationEven
 - D and R uncertainties (from AOTA Report)
 - Signal-to-noise ratio (from AOTA Report)
 
-### ❌ NOT Available (Use Defaults)
+### ✗ NOT Available (Use Defaults)
 - Gaia version and ID (unless parsed from catalog name)
-- **RA/Dec Apparent coordinates** - ~~NOT available~~ **NOW AVAILABLE from Occelmnt!** ✅
-- **Stellar diameter** - ~~Often null~~ **NOW AVAILABLE from Occelmnt!** ✅
-- **Asteroid motion coefficients** - ~~Need ephemeris~~ **NOW AVAILABLE from Occelmnt!** ✅
+- **RA/Dec Apparent coordinates** - ~~NOT available~~ **NOW AVAILABLE from Occelmnt!** ✓
+- **Stellar diameter** - ~~Often null~~ **NOW AVAILABLE from Occelmnt!** ✓
+- **Asteroid motion coefficients** - ~~Need ephemeris~~ **NOW AVAILABLE from Occelmnt!** ✓
 - Parallax and dParallax (still not available - would need separate calculation)
-- **Asteroid diameter uncertainty** - ~~Not available~~ **NOW AVAILABLE from Occelmnt!** ✅
+- **Asteroid diameter uncertainty** - ~~Not available~~ **NOW AVAILABLE from Occelmnt!** ✓
 - Second observer names
 - Observing conditions (stability, transparency) - need user input
 - Time adjustment value
 - Personal equation (PEqn)
 - Plot codes
 
-### ⚠️ Needs Calculation/Mapping
+### ⚠ Needs Calculation/Mapping
 - Hour as decimal (from datetime)
 - DMS format coordinates (from decimal degrees)
 - Telescope type code (from telescope type string)

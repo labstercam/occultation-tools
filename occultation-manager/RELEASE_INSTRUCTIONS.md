@@ -38,7 +38,6 @@ If you need to create the package manually, include these files from `occultatio
 - light_curves_iron.py
 - main.py
 - main_gui.py
-- na_report.py
 - na_report_openize.py
 - occult4_export.py
 - report_generator_base.py
@@ -46,7 +45,6 @@ If you need to create the package manually, include these files from `occultatio
 - tangra_dialogs.py
 - templates.py
 - theme.py
-- tt_report.py
 - tt_report_openize.py
 - utils.py
 
@@ -62,9 +60,7 @@ If you need to create the package manually, include these files from `occultatio
 
 **Report Master Templates (copied into `resources/templates_master/reports/`):**
 - python\NorthAmerica_AstReportForm_V5.6.12r.xlsx
-- python\NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx
 - python\RASNZ_AstReporttForm_V4.1.2.G.xlsx
-- python\RASNZ_AstReporttForm_V4.1.2.G_Template.xlsx
 
 **Openize SDK DLLs (copied into `app/lib/`):**
 - python\lib\Openize.OpenXMLSDK.dll
@@ -78,7 +74,7 @@ If you need to create the package manually, include these files from `occultatio
 - RELEASE_NOTES.md
 
 **Data folder README seed files:**
-- README_files_folder.txt
+- README_events_folder.txt
 - README_sequences_folder.txt
 - README_reports_folder.txt
 
@@ -140,6 +136,11 @@ occultation-manager/
    **Improved Excel report generation** with Openize SDK for SharpCap.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
+
+   ## 🧹 Maintenance
+
+   - Archived or removed out-of-date code/files.
+   - Refreshed documentation to match current project/release state.
    
    ## 📦 Installation
    
@@ -395,7 +396,7 @@ Before creating the release, verify:
 - [ ] README seed files present in data/events, data/sequences, data/reports
 - [ ] Working templates seeded into data/templates from resources/templates_master/sequencer
 
-### Sequence Execution (New in v0.2.0-beta.1)
+### Sequence Execution (Available in v0.2.0-beta.2)
 - [ ] Run Sequences button executes multiple selected sequences
 - [ ] Sequences run in chronological order
 - [ ] Progress updates show current sequence
@@ -416,7 +417,7 @@ Before creating the release, verify:
 - [ ] About dialog shows correct information
 
 ### Documentation
-- [ ] README.md up to date with v0.2.0-beta.1 features
+- [ ] README.md up to date with v0.2.0-beta.2 features
 - [ ] RELEASE_NOTES.md reflects current functionality
 - [ ] Installation instructions clear and accurate
 - [ ] Configuration steps documented

@@ -1,5 +1,9 @@
 # SharpCap RunAsync Implementation
 
+## Status Note (2026-03)
+
+This implementation reference remains applicable to the current asynchronous sequence execution flow.
+
 ## Overview
 
 This document describes the implementation of asynchronous sequence execution in the Occultation Manager using SharpCap's `RunAsync()` API, including the critical threading architecture required for stable operation.

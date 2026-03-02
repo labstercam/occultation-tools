@@ -1,5 +1,12 @@
 # AOTA Import Feature Implementation
 
+## Status Note (2026-03)
+
+This document includes implementation history from the AOTA rollout.
+Current report generation uses `LocationConfirmDialog` followed by `ComprehensiveReportDialog` in `main_gui.py`, where users select report type, equipment, observation type, and files from a single folder-scanning workflow.
+
+For Positive/Unsure observations, at least one of AOTA XML or AOTA Report is required in the current dialog validation.
+
 ## Overview
 This feature allows users to import timing data from AOTA (Asteroid Occultation Timing Analysis) XML files and include the analyzed D (disappearance) and R (reappearance) times in their occultation reports.
 
@@ -78,7 +85,7 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 - G31, I31, K31, M31 for D times and error
 - G37, I37, K37, M37 for R times and error
 
-### 3. na_report.py (North American Report Generator)
+### 3. na_report_openize.py (North American Report Generator)
 **Added**:
 - `observation_type` parameter to `generate_report()` method
 - **WAS_MISS field logic**: Inverse of observation type
@@ -95,7 +102,7 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
   - Preserves decimal precision using string representations
   - Handles missing data gracefully
 
-### 4. tt_report.py (Trans-Tasman Report Generator)
+### 4. tt_report_openize.py (Trans-Tasman Report Generator)
 **Added**:
 - `observation_type` parameter to `generate_report()` method
 - **WAS_MISS field logic**: Inverse of observation type
@@ -131,37 +138,33 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 6. Generates report with standard data
 7. **NEW**: Adds AOTA data to generated report (if imported)
 
-**Added `_add_aota_to_existing_report()` method**:
-- Post-processes generated Excel file
-- Replaces AOTA placeholders in worksheet XML
-- Handles shared strings
+**AOTA report population workflow**:
+- Populates AOTA timing fields directly in the generated workbook
 - Preserves all other report content
-- **Debug logging**: Prints which placeholders are replaced
+- **Debug logging**: Prints imported AOTA values
 - Uses string representations to preserve decimal precision
 
 ### 6. gui_dialogs.py
 **Modified**:
 - `LocationConfirmDialog` button text changed from "Confirm & Generate Report" to "Next - event D/R"
 
-## User Workflow
+## User Workflow (Historical + Current Notes)
 
 ### Generating a Report with AOTA Data
 
 1. **Select Event**: Choose a past event from the event list
 2. **Click "Generate Report"**
-3. **Select Report Type**: Choose North America or Trans-Tasman
-4. **Select Equipment**: Choose telescope and camera
-5. **Confirm Location**: Verify/edit observation location, click "Next - event D/R"
-6. **Select Observation Type**: Choose result of observation
+3. **Confirm Location** in the location dialog
+4. **Use Comprehensive Report Dialog** to choose report type, equipment, and observation type
+5. **Browse to folder** containing Tangra CSV and optional AOTA XML / AOTA Report files
+6. **Select detected files** in the dialog lists, then continue
    - **Positive**: Saw the occultation (asteroid blocked the star)
    - **Negative**: Did not see occultation (missed or wasn't in path)
    - **Unsure**: Uncertain about detection
    
 7. **AOTA Import** (Positive/Unsure only):
-   - File picker opens automatically for Positive or Unsure observations
-   - Browse to your *.aota.xml file
-   - Click OK (or Cancel to skip AOTA import)
-   - **Note**: Negative observations skip this step entirely
+  - At least one of AOTA XML or AOTA Report must be selected
+  - Negative observations can continue without AOTA data
 
 8. **Select Event** (if multiple in AOTA file):
    - Dialog shows all valid events with timing details
@@ -220,12 +223,12 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 3. Multiple valid events require user selection
 4. Camera metadata is extracted for context
 
-## Template Updates Required
+## Template Updates Required (Historical Context)
 
-To use this feature, report templates must include the new placeholders in the appropriate cells.
+Original implementation notes below describe placeholder-based migration work. Current Openize report generation uses maintained template assets and integrated mapping logic in active generators.
 
 ### North American Template
-Add to `NorthAmerica_AstReportForm_V5.6.12r_Template.xlsx`:
+Add to `NorthAmerica_AstReportForm_V5.6.12r.xlsx`:
 
 **Timing Section** (rows 31-37):
 - Cell N31: `{{AOTA_D_HOURS}}`
@@ -290,7 +293,7 @@ The implementation includes comprehensive error handling:
 1. **Automation**: No manual transcription of timing data
 2. **Accuracy**: Direct import eliminates transcription errors
 3. **Precision**: Preserves original decimal places from AOTA analysis
-4. **Flexibility**: 
+4. **Flexibility**:
    - Optional AOTA import for Positive/Unsure observations
    - Automatic skip for Negative observations
    - Works with or without AOTA data

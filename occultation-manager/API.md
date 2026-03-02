@@ -288,17 +288,20 @@ config = ConfigManager()
 # Or specify custom config folder
 config = ConfigManager(config_folder="/path/to/config")
 
-# Access file paths
-files_folder = config.get_file_folder()  # Data storage location
-sequences_folder = config.get_sequence_path()  # Sequence files location
+# Access file paths (fixed path model)
+data_root = config.get_data_root()  # Install-relative data root
+events_folder = config.get_events_folder()  # Event cache JSON files
+templates_folder = config.get_templates_folder()  # Working template copies
+sequences_folder = config.get_sequences_folder()  # Sequence files location
+reports_folder = config.get_reports_folder()  # Generated reports
 full_path = config.get_full_file_path('occultations.json')
 
 # Get configuration path
 config_path = config.get_config_path()  # Path to JSON config file
 
 # User credentials
-email = config.get_owc_user_email()
-password = config.get_owc_user_password()
+email = config.get_owc_email()
+password = config.get_owc_password()
 
 # Recording parameters
 base_duration = config.get_base_duration()  # Recording duration (seconds)
@@ -420,7 +423,7 @@ camera = {
 ```
 
 **Configuration Storage:**
-- File: `{install_dir}/files/occultation_config.json`
+- File: `{install_dir}/data/config/occultation_config.json`
 - Format: JSON
 - Encoding: UTF-8
 - Auto-created on first run
@@ -492,7 +495,7 @@ templates = TemplateManager(config)
 
 # Find template files in folder
 template_files, folder_path = TemplateManager.find_template_files(
-    template_folder=config.get_file_folder()
+    template_folder=config.get_templates_folder()
 )
 
 # Get template file info
@@ -500,7 +503,7 @@ size, mtime = TemplateManager.get_template_info(template_path)
 
 # Load template content
 content = TemplateManager.load_template(
-    template_path='C:/install/files/UTC_Notification_Countdown.txt',
+    template_path='C:/install/data/templates/SharpCap Sequence UTC Template.txt',
     config=config
 )
 
@@ -512,7 +515,7 @@ if content:
     content = content.replace('{object_name}', '(778) Theobalda')
     
     # Save manually
-    output_path = os.path.join(config.get_sequence_path(), 'event.scs')
+    output_path = os.path.join(config.get_sequences_folder(), 'event.scs')
     with open(output_path, 'w') as f:
         f.write(content)
 ```
@@ -532,40 +535,42 @@ if content:
 | `{star_name}` | String | `UCAC4 361-199861` | Target star |
 
 **Template File Locations:**
-- Originals: `{install_dir}/*.txt` (bundled with application)
-- Working copies: `{install_dir}/files/*.txt` (user-editable)
+- Master templates: `{install_dir}/resources/templates_master/sequencer/*.txt`
+- Working copies: `{install_dir}/data/templates/*.txt` (user-editable)
 
 **Template Types:**
-1. **Simple_Notification.txt** - Basic WAIT UNTIL
-2. **UTC_Notification_Countdown.txt** - Auto-updating countdown
-3. **UTC_Dialog_Countdown.txt** - Windows dialog with stop button
+1. **SharpCap Sequence UTC Template.txt** - UTC sequence with countdown
+2. **SharpCap Sequence Local Time Template.txt** - Local-time sequence with countdown
+3. **SharpCap Minimal Local Time Template.txt** - Minimal local-time sequence
+4. **SharpCap Just Record Template.txt** - Recording-only sequence
+5. **SharpCap Test Recording Template.txt** - Short test recording sequence
 
 ---
 
 ## Report Generation API
 
-Modules: `na_report.py`, `tt_report.py`, `report_generator_base.py`, `occult4_export.py`
+Modules: `na_report_openize.py`, `tt_report_openize.py`, `report_generator_base.py`, `occult4_export.py`
 
 ### Overview
 
 Three report generators create standardized observation reports:
-- **NAReportGenerator** - IOTA North American format (.xlsx)
-- **TTReportGenerator** - RASNZ Trans-Tasman format (.xlsx)
+- **NAReportGeneratorOpenize** - IOTA North American format (.xlsx)
+- **TTReportGeneratorOpenize** - RASNZ Trans-Tasman format (.xlsx)
 - **Occult4Exporter** - Occult 4 XML format (.xml)
 
 All use the same data sources and similar APIs.
 
 ---
 
-### NAReportGenerator
+### NAReportGeneratorOpenize
 
-Generates IOTA North American occultation report forms.
+Generates IOTA North American occultation report forms using Openize.
 
 ```python
-from na_report import NAReportGenerator
+from na_report_openize import NAReportGeneratorOpenize
 
 # Initialize
-generator = NAReportGenerator(config)
+generator = NAReportGeneratorOpenize(config)
 
 # Generate report
 report_path = generator.generate_report(
@@ -589,28 +594,28 @@ report_path = generator.generate_report(
 )
 
 print(f"Report saved to: {report_path}")
-# Returns: C:/install/files/Reports/20251223_778_Theobalda_Report.xlsx
+# Returns: C:/install/data/reports/20251223_778_Theobalda_Report.xlsx
 ```
 
 **Report Output:**
 - Format: Microsoft Excel (.xlsx)
-- Location: `{install_dir}/files/Reports/`
+- Location: `{install_dir}/data/reports/`
 - Filename: `YYYYMMDD_ObjectNumber_ObjectName_Report.xlsx`
 - Opens automatically in Excel after generation
 
 ---
 
-### TTReportGenerator
+### TTReportGeneratorOpenize
 
-Generates RASNZ Trans-Tasman occultation report forms.
+Generates RASNZ Trans-Tasman occultation report forms using Openize.
 
 ```python
-from tt_report import TTReportGenerator
+from tt_report_openize import TTReportGeneratorOpenize
 
 # Initialize
-generator = TTReportGenerator(config)
+generator = TTReportGeneratorOpenize(config)
 
-# Generate report (same API as NAReportGenerator)
+# Generate report (same API as NAReportGeneratorOpenize)
 report_path = generator.generate_report(
     event=event_object,
     telescope_id='telescope_uuid',
@@ -662,7 +667,7 @@ xml_path = exporter.export_observation_to_path(
 
 **XML Output:**
 - Format: Occult 4 XML Version 2.15
-- Location: `{install_dir}/files/Reports/`
+- Location: `{install_dir}/data/reports/` (via `get_file_folder()/Reports` compatibility path)
 - Filename: `YYYYMMDD_ObjectNumber_ObjectName_StarID_Occult4.xml`
 - Compatible with Occult 4 software for analysis
 
@@ -690,7 +695,7 @@ class MyReportGenerator(ReportGeneratorBase):
 - `parse_star_catalog(star_name)` → (catalog, number)
   - Example: `"UCAC4 361-199861"` → `("UCAC4", "361-199861")`
 - `_generate_filename(event, date_str)` → filename string
-- `_create_report_with_replacements(template, output, replacements)` → None
+- `get_template_path()` → full path to the active report template
 
 **Months Constant:**
 ```python
@@ -879,7 +884,7 @@ templates = TemplateManager(config)
 manager.load_events_from_files()
 
 # Load template
-template_path = os.path.join(config.get_file_folder(), 'UTC_Notification_Countdown.txt')
+template_path = os.path.join(config.get_templates_folder(), 'SharpCap Sequence UTC Template.txt')
 template_content = TemplateManager.load_template(template_path, config)
 
 # Generate sequences for each event
@@ -893,7 +898,7 @@ for event in manager.all_events[:5]:  # First 5 events
     
     # Save
     filename = f"{event.event_datetime.strftime('%Y%m%d')} {event.name}.scs"
-    output_path = os.path.join(config.get_sequence_path(), filename)
+    output_path = os.path.join(config.get_sequences_folder(), filename)
     with open(output_path, 'w') as f:
         f.write(content)
     
@@ -905,12 +910,12 @@ for event in manager.all_events[:5]:  # First 5 events
 ```python
 from config import ConfigManager
 from events import OccultationManager
-from na_report import NAReportGenerator
+from na_report_openize import NAReportGeneratorOpenize
 
 # Setup
 config = ConfigManager()
 manager = OccultationManager(config)
-generator = NAReportGenerator(config)
+generator = NAReportGeneratorOpenize(config)
 
 # Load events
 manager.load_events_from_files()
@@ -1032,7 +1037,7 @@ if SharpCap.Sequencer.Status == "Failed":
 
 1. Create new module inheriting from `ReportGeneratorBase`
 2. Implement `generate_report()` method
-3. Create Excel template with placeholders
+3. Map required report fields to workbook cells (Openize pattern)
 4. Add to comprehensive report dialog
 
 ```python
@@ -1042,14 +1047,13 @@ class MyReportGenerator(ReportGeneratorBase):
     TEMPLATE_FILENAME = 'MyTemplate.xlsx'
     
     def generate_report(self, event, **kwargs):
-        replacements = self._build_replacements(event)
-        # Add custom replacements
-        replacements['{{CUSTOM_FIELD}}'] = 'value'
+        # Build data model and write values to target worksheet cells
+        # using direct Openize cell access
         
         # Generate
         template = self.get_template_path()
-        output = os.path.join(self.config.get_file_folder(), 'Reports', filename)
-        self._create_report_with_replacements(template, output, replacements)
+        output = os.path.join(self.config.get_reports_folder(), filename)
+        # Open workbook with Openize, write mapped cells, and save to output
         return output
 ```
 
@@ -1057,7 +1061,7 @@ class MyReportGenerator(ReportGeneratorBase):
 
 1. Create .txt file with SharpCap sequence commands
 2. Use data tags: `{goto_time}`, `{start_time}`, `{duration}`
-3. Place in `files/` folder
+3. Place in `data/templates/` folder
 4. Add to template selection dialog
 
 ```plaintext
@@ -1110,7 +1114,7 @@ def download_from_custom_source(api_url, params):
 - Review console for error messages
 
 **Sequences not generating:**
-- Verify template files exist in `files/` folder
+- Verify template files exist in `data/templates/` folder
 - Check sequence folder path in configuration
 - Ensure events have valid datetime values
 
@@ -1118,7 +1122,7 @@ def download_from_custom_source(api_url, params):
 - Check template .xlsx files are present
 - Verify telescope/camera IDs are valid
 - Ensure event has all required fields
-- Check Reports folder exists and is writable
+- Check `data/reports/` exists and is writable
 
 **SharpCap integration errors:**
 - Verify SharpCap version is 4.1.13+

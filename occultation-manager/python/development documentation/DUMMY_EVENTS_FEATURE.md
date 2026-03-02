@@ -1,7 +1,11 @@
 # Dummy Event Generator Feature
 
+## Status Note (2026-03)
+
+This feature is active in the current UI and writes to event files under `data/events/`.
+
 ## Overview
-The Dummy Event Generator creates realistic test occultation events for testing the occultation-manager without requiring OccultWatcher Cloud access. Generated events are added directly to your main occultations files and can be easily deleted when no longer needed.
+The Dummy Event Generator creates realistic test occultation events for testing the Occultation Manager without requiring OccultWatcher Cloud access. Generated events are added directly to your main occultation files and can be easily deleted when no longer needed.
 
 ## Quick Start
 

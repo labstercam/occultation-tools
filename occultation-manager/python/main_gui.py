@@ -1351,25 +1351,103 @@ class OccultationManagerGUI(Form):
             # Check if mount control is available
             if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
                 mount = self.sharpcap.Mounts.SelectedMount
+
+                # Verify mount supports GOTO before attempting slew
+                if hasattr(mount, 'CanGoto') and not mount.CanGoto:
+                    print("GOTO not supported by selected mount (CanGoto=False)")
+                    self.update_status("GOTO not supported by selected mount")
+                    return False
                 
-                # Use the async method with SafeGetAsyncResult to properly wait for completion
-                # SafeGetAsyncResult blocks until the async operation completes
+                # Start async slew and wait for the task to complete
                 print(f"Starting GOTO to: RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
-                result = self.sharpcap.SafeGetAsyncResult(mount.StartSlewToAsync(coordinates, CancellationToken()))
-                
-                # Wait a moment for mount to settle after slew completes
-                time.sleep(2)
-                if not mount.IsSettled:
-                    print("Waiting for mount to settle...")
-                    # Wait up to 30 seconds for mount to settle
-                    wait_start = time.time()
-                    while not mount.IsSettled and (time.time() - wait_start) < 30:
-                        time.sleep(1)
+                self.update_status("Starting mount slew...")
+                slew_task = mount.StartSlewToAsync(coordinates, CancellationToken())
+                self.update_status("Slewing to target...")
+                self.sharpcap.SafeWaitForAsync(slew_task)
+
+                # Some drivers complete the async task before physical motion fully stops.
+                # Keep status as "Slewing..." until slewing state clears when available.
+                if hasattr(mount, 'Slewing'):
+                    slew_monitor_start = time.time()
+                    slew_monitor_timeout_seconds = 300
+                    while mount.Slewing and (time.time() - slew_monitor_start) < slew_monitor_timeout_seconds:
+                        time.sleep(0.25)
+                elif hasattr(mount, 'IsSlewing'):
+                    slew_monitor_start = time.time()
+                    slew_monitor_timeout_seconds = 300
+                    while mount.IsSlewing and (time.time() - slew_monitor_start) < slew_monitor_timeout_seconds:
+                        time.sleep(0.25)
+
+                self.update_status("Waiting for mount to settle...")
+
+                # Use SharpCap mount settle helper when available.
+                # Do not hard-fail on settle-state ambiguity to avoid false negatives.
+                if hasattr(mount, 'WaitUntilSettled'):
+                    try:
+                        self.update_status("Waiting for mount to settle...")
+                        settle_task = mount.WaitUntilSettled(True, CancellationToken())
+                        self.sharpcap.SafeWaitForAsync(settle_task)
+                        self.update_status("Mount settled")
+                    except Exception as settle_ex:
+                        print(f"Warning: WaitUntilSettled failed: {settle_ex}")
+                        self.update_status("Mount settle status unavailable; continuing")
+                else:
+                    # Fallback best-effort checks for mounts without WaitUntilSettled
+                    if hasattr(mount, 'Slewing'):
+                        self.update_status("Waiting for mount to settle...")
+                        settle_start = time.time()
+                        settle_timeout_seconds = 20
+                        while mount.Slewing and (time.time() - settle_start) < settle_timeout_seconds:
+                            time.sleep(0.25)
+                        if mount.Slewing:
+                            print("Warning: mount still reports slewing after async completion")
+                            self.update_status("Mount still reports slewing; continuing")
+                        else:
+                            self.update_status("Mount settled")
+                    elif hasattr(mount, 'IsSlewing'):
+                        self.update_status("Waiting for mount to settle...")
+                        settle_start = time.time()
+                        settle_timeout_seconds = 20
+                        while mount.IsSlewing and (time.time() - settle_start) < settle_timeout_seconds:
+                            time.sleep(0.25)
+                        if mount.IsSlewing:
+                            print("Warning: mount still reports IsSlewing after async completion")
+                            self.update_status("Mount still reports slewing; continuing")
+                        else:
+                            self.update_status("Mount settled")
+
+                    if hasattr(mount, 'IsSettled'):
+                        self.update_status("Waiting for mount to settle...")
+                        settle_start = time.time()
+                        settle_timeout_seconds = 20
+                        while (not mount.IsSettled) and (time.time() - settle_start) < settle_timeout_seconds:
+                            time.sleep(0.25)
+                        if not mount.IsSettled:
+                            print("Warning: mount did not report settled state after async completion")
+                            self.update_status("Mount settle state not confirmed; continuing")
+                        else:
+                            self.update_status("Mount settled")
                 
                 # Optionally sync mount after GOTO
                 if self.config.get_sync_mount():
-                    print("Performing Solve And Sync...")
-                    mount.SolveAndSync() 
+                    if hasattr(mount, 'CanSync') and not mount.CanSync:
+                        print("Skipping SolveAndSync: mount does not support sync (CanSync=False)")
+                        self.update_status("Mount settled. Sync not supported by mount")
+                    else:
+                        self.update_status("Mount settled. Running plate solve/sync...")
+                        print("Performing Solve And Sync...")
+                        try:
+                            sync_ok = self.sharpcap.SafeGetAsyncResult(mount.SolveAndSync())
+                            if not sync_ok:
+                                print("Warning: SolveAndSync reported failure")
+                                self.update_status("Solve/sync completed with warning")
+                            else:
+                                self.update_status("Solve/sync complete")
+                        except Exception as sync_ex:
+                            print(f"Warning: SolveAndSync failed: {sync_ex}")
+                            self.update_status("Solve/sync failed; continuing")
+                else:
+                    self.update_status("Mount settled. GOTO complete")
 
                 print(f"GOTO completed: RA {event.ra:.4f}h, Dec {event.dec:.4f}°")
                 return True
@@ -1377,7 +1455,7 @@ class OccultationManagerGUI(Form):
                 # Show coordinates for manual GOTO
                 print(f"Manual GOTO required: RA {event.ra:.6f}h, Dec {event.dec:.6f}°")
                 result = MessageBox.Show(f"No mount control available.\n\nPlease manually GOTO:\n\nYou can use the SharpCap Push To Assistant" +
-                                    f"RA: {event.ra:.6f} hours\nDec: {event.dec:.6f}°\n\n" +
+                                    f"\n\nRA: {event.ra:.6f} hours\nDec: {event.dec:.6f}°\n\n" +
                                     f"These coordinates have been copied to the clipboard.",
                                     "Manual GOTO Required", MessageBoxButtons.OKCancel, MessageBoxIcon.Information)
                 System.Windows.Forms.Clipboard.SetText(f"{event.ra:.6f}, {event.dec:.6f}")
@@ -2065,7 +2143,7 @@ class OccultationManagerGUI(Form):
             else:
                 print(f"ERROR: Report generation failed (check log)")
                 self.update_status("Report generation failed")
-                MessageBox.Show("Report generation failed. Tip: Close the Excel file if it's already open.\n\nCheck report_debug.log for details.", 
+                MessageBox.Show("Report generation failed. Tip: Close the Excel file if it's already open.\n\nCheck the SharpCap console output for details.", 
                             "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         except Exception as ex:
             import traceback
@@ -2600,14 +2678,14 @@ class OccultationManagerGUI(Form):
                 goto_time=event.goto_time_str,
                 pre_goto=pre_goto_formatted,
                 recording_duration=event.recording_duration,
-                star_mag=event.star_mag,
-                comb_mag=event.comb_mag,
-                mag_drop=event.mag_drop,
-                time_error=event.event_uncertainty,
-                ra=event.ra,
-                dec=event.dec,
+                star_mag=format(event.star_mag, '.1f'),
+                comb_mag=format(event.comb_mag, '.1f'),
+                mag_drop=format(event.mag_drop, '.1f'),
+                time_error=format(event.event_uncertainty, '.1f'),
+                ra=format(event.ra, '.6f'),
+                dec=format(event.dec, '.6f'),
                 asteroid_name=event.object_name,
-                exposure=event.get_exposure_seconds(),
+                exposure=format(event.get_exposure_seconds(), '.3f'),
                 gain=event.gain_value,
                 # Add simple local time variables
                 event_time_local=event.event_time_local,
@@ -3454,8 +3532,6 @@ class OccultationManagerGUI(Form):
             self.update_status(f"GOTO error: {ex}")
             MessageBox.Show(f"GOTO error: {ex}", "Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Error)
-            MessageBox.Show(f"GOTO & center error: {ex}", "Error", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Error)
 
     def execute_complete_goto_sequence(self, event):
         """Execute the complete GOTO sequence with error handling"""
@@ -3480,19 +3556,36 @@ class OccultationManagerGUI(Form):
         """Verify mount position after GOTO by plate solving and checking distance from target.
         Returns: 'success' if within tolerance, 'retry' if user wants to retry, 'failed' if plate solve failed"""
         import math
+        result = None
         
         try:
             # Capture and plate solve
             if not self.sharpcap.SelectedCamera:
                 print("Camera not selected for position verification")
                 return "failed"
+
+            self.update_status("Verifying mount position via plate solve...")
+
+            if (not hasattr(self.sharpcap, 'BlindSolver') or
+                not self.sharpcap.BlindSolver or
+                (hasattr(self.sharpcap.BlindSolver, 'IsAvailable') and not self.sharpcap.BlindSolver.IsAvailable)):
+                print("Plate solver not available for position verification")
+                return "failed"
+
+            if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
+                verify_mount = self.sharpcap.Mounts.SelectedMount
+                if hasattr(verify_mount, 'IsPlateSolveAvailable') and not verify_mount.IsPlateSolveAvailable:
+                    print("Selected mount reports plate solve unavailable")
+                    return "failed"
             
             # Perform plate solve to get current mount position
             result = self.sharpcap.SafeGetAsyncResult(
                 self.sharpcap.BlindSolver.SolveAsync(self.plate_solve_purpose.Annotation, CancellationToken())
             )
             
-            if not result or str(type(result)) != "<class 'RADecPosition'>":
+            if (not result or
+                not hasattr(result, 'RightAscension') or
+                not hasattr(result, 'Declination')):
                 print(f"Plate solve failed during position verification: {result}")
                 return "failed"
             
@@ -3553,11 +3646,22 @@ class OccultationManagerGUI(Form):
                     return "success"
                     
         except Exception as e:
-            print(f"Error verifying GOTO position: {e}")
+            print(f"Error verifying GOTO position: {e} (result: {result})")
             return "failed"
 
     def plate_solve_label_click(self, sender, e):
         """Plate solve, verify position, and label the target star"""
+        # Always activate annotation layer when Plate Solve is pressed,
+        # regardless of later solve/visibility success.
+        try:
+            if (hasattr(self.sharpcap, 'DeepSkyAnnotation') and
+                self.sharpcap.DeepSkyAnnotation and
+                (not self.sharpcap.DeepSkyAnnotation.IsActive)):
+                self.update_status("Activating Deep Sky Annotation...")
+                self.sharpcap.DeepSkyAnnotation.Activate()
+        except Exception as ex:
+            print(f"Warning: Could not activate Deep Sky Annotation: {ex}")
+
         if not self._preparation_event:
             MessageBox.Show("Please load an event first using 'Load Event' button", "No Event Loaded", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning)
@@ -3573,7 +3677,7 @@ class OccultationManagerGUI(Form):
             
             if position_check == "retry":
                 # User wants to retry GOTO
-                self.update_status("Please click 'GOTO & Center' to reposition mount")
+                self.update_status("Please click 'GOTO' to reposition mount")
                 return
             elif position_check == "failed":
                 self.update_status("Plate solve failed during position verification")
@@ -3611,28 +3715,44 @@ class OccultationManagerGUI(Form):
         if not self.sharpcap.SelectedCamera:
             MessageBox.Show("Camera is not selected", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return False
+
+        if (not hasattr(self.sharpcap, 'BlindSolver') or
+            not self.sharpcap.BlindSolver or
+            (hasattr(self.sharpcap.BlindSolver, 'IsAvailable') and not self.sharpcap.BlindSolver.IsAvailable)):
+            self.update_status("Plate solver is not available")
+            MessageBox.Show("Plate solver is not available", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return False
+
+        if hasattr(self.sharpcap, 'Mounts') and self.sharpcap.Mounts.SelectedMount:
+            solve_mount = self.sharpcap.Mounts.SelectedMount
+            if hasattr(solve_mount, 'IsPlateSolveAvailable') and not solve_mount.IsPlateSolveAvailable:
+                self.update_status("Mount reports plate solve unavailable")
+                MessageBox.Show("Mount reports plate solve unavailable", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return False
+
         if (not self.sharpcap.DeepSkyAnnotation.IsActive):
             self.update_status("Activating Deep Sky Annotation...")
-            self.sharpcap.DeepSkyAnnotation.Activate()        
+            self.sharpcap.DeepSkyAnnotation.Activate()
 
-
+        result = None
         try:
+            self.update_status("Running plate solve for target labeling...")
             result = self.sharpcap.SafeGetAsyncResult(self.sharpcap.BlindSolver.SolveAsync(self.plate_solve_purpose.Annotation, CancellationToken()))
             #result = self.sharpcap.SafeWaitForAsync(self.sharpcap.BlindSolver.SolveAsync(PlateSolvePurpose.Annotation, CancellationToken()))
             print("Plate Solve result:", result)
-            self.update_status(result)
-            # if (result == None):
-            #     print("Plate Solve is not installed or configurated")
-            #     self.update_status("Plate Solve is not installed or configurated")
-            #     MessageBox.Show("Failed to Plate Solve - adjust configure or exposure and try again", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            #     return
+            if (not result or
+                not hasattr(result, 'RightAscension') or
+                not hasattr(result, 'Declination')):
+                print("Plate Solve returned unexpected result:", result)
+                self.update_status("Plate Solve failed: invalid solve result")
+                MessageBox.Show("Failed to Plate Solve - invalid solve result. Adjust configure/exposure and try again", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return False
+            self.update_status(str(result))
         except Exception as ex:
-            if(str(type(result)) != "<class 'RADecPosition'>"):                  
-                print("Plate Solve Failure:", result, ex)
-                self.update_status(f"Plate Solve is not installed or configurated: {result} {ex}")
-                MessageBox.Show(f"Failed to Plate Solve - adjust configure or exposure and try again {ex}", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-                return
-        
+            print("Plate Solve Failure:", result, ex)
+            self.update_status(f"Plate Solve failed: {ex}")
+            MessageBox.Show(f"Failed to Plate Solve - adjust configure or exposure and try again\n\n{ex}", "Plate Solve Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return False
         
         res  = self.sharpcap.SelectedCamera.Controls.Resolution.Value.Split("x")
         result = self.sharpcap.PixelPositionProvider.MapPixel(PointF(int(float(res[0])/2), int(float(res[1])/2)))
@@ -3641,5 +3761,7 @@ class OccultationManagerGUI(Form):
         
         System.Windows.Forms.Clipboard.SetText(Event_Annotation)
 
-        self.sharpcap.DeepSkyAnnotation.PasteClipboardDataAsCustom()        
-        return
+        self.update_status("Applying annotation overlay...")
+        self.sharpcap.DeepSkyAnnotation.PasteClipboardDataAsCustom()
+        self.update_status("Annotation applied")
+        return True
