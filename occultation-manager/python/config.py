@@ -30,6 +30,7 @@ class ConfigManager:
             'default_gain': 450,
             'sync_mount': True,
             'display_utc': True,
+            'output_debug_logs': False,
             
             # Observer information for NA Report Form
             'observer_name': '',
@@ -335,6 +336,12 @@ class ConfigManager:
     def set_display_utc(self, enabled):
         self.config['display_utc'] = enabled
 
+    def get_output_debug_logs(self):
+        return self.config.get('output_debug_logs', False)
+
+    def set_output_debug_logs(self, enabled):
+        self.config['output_debug_logs'] = bool(enabled)
+
     # Observer configuration
     def get_observer_name(self):
         return self.config.get('observer_name', '')
@@ -482,6 +489,9 @@ class ConfigManager:
 
         if not isinstance(self.config['display_utc'], bool):
             errors.append("Display UTC must be a boolean value")    
+
+        if not isinstance(self.config.get('output_debug_logs', False), bool):
+            errors.append("Output debug logs must be a boolean value")
                 
 
         return errors

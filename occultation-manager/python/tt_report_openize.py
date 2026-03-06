@@ -291,7 +291,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "E23", timing_device)
         
         self._set_cell(worksheet, "O22", "Video Recording")  # TIMING_METHOD
-        self._set_cell(worksheet, "AA22", "Yes")  # ASTEROID_VISIBLE
+        self._set_cell(worksheet, "AA22", "No")  # ASTEROID_VISIBLE
         
         # OTE (Occultation Timing Extraction)
         ote_value = self._determine_ote_value()
@@ -316,7 +316,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
                 exposure_sec = exposure_ms / 1000.0
                 print(f"\nSetting integration time: {exposure_ms}ms = {exposure_sec}s")
                 self._set_cell(worksheet, "P25", exposure_sec)
-                self._set_cell(worksheet, "T25", "Seconds")
+                self._set_cell(worksheet, "S25", "Seconds")
         
         # Camera delay correction from Tangra data
         if self._tangra_data and 'acquisition_delay' in self._tangra_data:
@@ -464,18 +464,18 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
             return
         
         # Disappearance (D) times - F, H, J columns for hours, minutes, seconds:
-        # Cell F31: AOTA_D_HOURS
-        # Cell H31: AOTA_D_MINUTES
-        # Cell J31: AOTA_D_SECONDS
+        # Cell F33: AOTA_D_HOURS
+        # Cell H33: AOTA_D_MINUTES
+        # Cell J33: AOTA_D_SECONDS
         # Cell M33: AOTA_D_ERROR
         d_hours = aota_report_summary.get('d_hours')
         d_minutes = aota_report_summary.get('d_minutes')
         d_seconds = aota_report_summary.get('d_seconds')
         
-        if d_hours and d_minutes and d_seconds:
-            self._set_cell(worksheet, "F31", d_hours)
-            self._set_cell(worksheet, "H31", d_minutes)
-            self._set_cell(worksheet, "J31", d_seconds)
+        if d_hours is not None and d_minutes is not None and d_seconds is not None:
+            self._set_cell(worksheet, "F33", d_hours)
+            self._set_cell(worksheet, "H33", d_minutes)
+            self._set_cell(worksheet, "J33", d_seconds)
             
             d_uncertainty = aota_report_summary.get('d_uncertainty')
             if d_uncertainty is not None:
@@ -485,18 +485,18 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
                     print(f"Warning: Could not format d_uncertainty: {d_uncertainty}")
         
         # Reappearance (R) times - F, H, J columns for hours, minutes, seconds:
-        # Cell F37: AOTA_R_HOURS
-        # Cell H37: AOTA_R_MINUTES
-        # Cell J37: AOTA_R_SECONDS
+        # Cell F35: AOTA_R_HOURS
+        # Cell H35: AOTA_R_MINUTES
+        # Cell J35: AOTA_R_SECONDS
         # Cell M35: AOTA_R_ERROR
         r_hours = aota_report_summary.get('r_hours')
         r_minutes = aota_report_summary.get('r_minutes')
         r_seconds = aota_report_summary.get('r_seconds')
         
-        if r_hours and r_minutes and r_seconds:
-            self._set_cell(worksheet, "F37", r_hours)
-            self._set_cell(worksheet, "H37", r_minutes)
-            self._set_cell(worksheet, "J37", r_seconds)
+        if r_hours is not None and r_minutes is not None and r_seconds is not None:
+            self._set_cell(worksheet, "F35", r_hours)
+            self._set_cell(worksheet, "H35", r_minutes)
+            self._set_cell(worksheet, "J35", r_seconds)
             
             r_uncertainty = aota_report_summary.get('r_uncertainty')
             if r_uncertainty is not None:

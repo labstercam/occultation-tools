@@ -203,7 +203,7 @@ class ComprehensiveReportDialog(Form):
         grp_files = GroupBox()
         grp_files.Text = "4. Observation Files"
         grp_files.Location = Point(10, y_pos)
-        grp_files.Size = Size(940, 190)
+        grp_files.Size = Size(940, 240)
         main_panel.Controls.Add(grp_files)
         
         # Folder selection
@@ -247,6 +247,13 @@ class ComprehensiveReportDialog(Form):
         self.aota_listbox.SelectionMode = SelectionMode.One
         self.aota_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.aota_listbox)
+
+        self.aota_preview_label = Label()
+        self.aota_preview_label.Text = "D/R: -"
+        self.aota_preview_label.Location = Point(15, 176)
+        self.aota_preview_label.Size = Size(285, 40)
+        self.aota_preview_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.aota_preview_label)
         
         # Tangra CSV files (middle)
         lbl_csv = Label()
@@ -268,6 +275,13 @@ class ComprehensiveReportDialog(Form):
         self.csv_listbox.SelectionMode = SelectionMode.One
         self.csv_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.csv_listbox)
+
+        self.csv_preview_label = Label()
+        self.csv_preview_label.Text = "Observing times: -"
+        self.csv_preview_label.Location = Point(315, 176)
+        self.csv_preview_label.Size = Size(285, 40)
+        self.csv_preview_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.csv_preview_label)
         
         # AOTA Report files (right)
         lbl_report = Label()
@@ -289,8 +303,15 @@ class ComprehensiveReportDialog(Form):
         self.report_listbox.SelectionMode = SelectionMode.One
         self.report_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.report_listbox)
+
+        self.report_preview_label = Label()
+        self.report_preview_label.Text = "D/R: -"
+        self.report_preview_label.Location = Point(615, 176)
+        self.report_preview_label.Size = Size(305, 40)
+        self.report_preview_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.report_preview_label)
         
-        y_pos += 200
+        y_pos += 250
         
         # ===== SECTION 5: CONDITIONS =====
         grp_conditions = GroupBox()
@@ -518,6 +539,9 @@ class ComprehensiveReportDialog(Form):
         self.aota_listbox.Items.Clear()
         self.csv_listbox.Items.Clear()
         self.report_listbox.Items.Clear()
+        self.aota_preview_label.Text = "D/R: -"
+        self.csv_preview_label.Text = "Observing times: -"
+        self.report_preview_label.Text = "D/R: -"
         
         if not os.path.exists(folder_path):
             self.aota_count_label.Text = "Folder not found"
@@ -572,6 +596,8 @@ class ComprehensiveReportDialog(Form):
                 self.csv_listbox.SelectedIndex = 0
             if report_count > 0:
                 self.report_listbox.SelectedIndex = 0
+
+            self.update_extracted_time_previews()
             
             self.update_button_state()
             
@@ -588,7 +614,118 @@ class ComprehensiveReportDialog(Form):
     
     def selection_changed(self, sender, e):
         """Handle file selection changed"""
+        self.update_extracted_time_previews()
         self.update_button_state()
+
+    def update_extracted_time_previews(self):
+        """Update preview labels with extracted times from selected files"""
+        self._update_tangra_preview()
+        self._update_aota_xml_preview()
+        self._update_aota_report_preview()
+
+    def _format_time_value(self, value):
+        """Format time value for preview with sensible precision"""
+        if value is None:
+            return "-"
+
+        if isinstance(value, str):
+            text = value.strip()
+            return text if text else "-"
+
+        try:
+            # Keep integers compact; round fractional values to sensible precision
+            if float(value).is_integer():
+                return str(int(value))
+            return ("{0:.3f}".format(float(value))).rstrip('0').rstrip('.')
+        except Exception:
+            return str(value)
+
+    def _format_hms(self, hours, minutes, seconds):
+        """Format H:M:S triplet for preview"""
+        return "{0}:{1}:{2}".format(
+            self._format_time_value(hours),
+            self._format_time_value(minutes),
+            self._format_time_value(seconds)
+        )
+
+    def _update_tangra_preview(self):
+        """Update Tangra CSV observing time preview"""
+        try:
+            if self.csv_listbox.SelectedIndex < 0:
+                self.csv_preview_label.Text = "Observing times: -"
+                return
+
+            tangra_path = self.csv_files[self.csv_listbox.SelectedIndex]
+            import light_curves_iron as lc
+            summary = lc.get_observation_summary(tangra_path, percentiles=[1, 99])
+
+            start_time = summary.get('start_time', '') if summary else ''
+            end_time = summary.get('end_time', '') if summary else ''
+
+            if start_time or end_time:
+                self.csv_preview_label.Text = "Start: {0}\nEnd: {1}".format(
+                    self._format_time_value(start_time),
+                    self._format_time_value(end_time)
+                )
+            else:
+                self.csv_preview_label.Text = "Observing times: not found"
+        except Exception:
+            self.csv_preview_label.Text = "Observing times: unable to extract"
+
+    def _update_aota_xml_preview(self):
+        """Update AOTA XML D/R preview"""
+        try:
+            if self.aota_listbox.SelectedIndex < 0:
+                self.aota_preview_label.Text = "D/R: -"
+                return
+
+            aota_path = self.aota_files[self.aota_listbox.SelectedIndex]
+            from aota_parser import parse_aota_file
+            aota_result = parse_aota_file(aota_path)
+
+            if not aota_result:
+                self.aota_preview_label.Text = "D/R: unable to extract"
+                return
+
+            valid_events = aota_result.get_valid_events()
+            if not valid_events:
+                self.aota_preview_label.Text = "D/R: not found"
+                return
+
+            evt = valid_events[0]
+            d_seconds = evt.d_seconds_str if evt.d_seconds_str is not None else evt.d_seconds
+            r_seconds = evt.r_seconds_str if evt.r_seconds_str is not None else evt.r_seconds
+            d_time = self._format_hms(evt.d_hours, evt.d_minutes, d_seconds)
+            r_time = self._format_hms(evt.r_hours, evt.r_minutes, r_seconds)
+            self.aota_preview_label.Text = "D: {0}\nR: {1}".format(d_time, r_time)
+        except Exception:
+            self.aota_preview_label.Text = "D/R: unable to extract"
+
+    def _update_aota_report_preview(self):
+        """Update AOTA Report D/R preview"""
+        try:
+            if self.report_listbox.SelectedIndex < 0:
+                self.report_preview_label.Text = "D/R: -"
+                return
+
+            report_path = self.aota_report_files[self.report_listbox.SelectedIndex]
+            import aota_report_parser as arp
+            parsed_report = arp.parse_aota_report(report_path)
+
+            if not parsed_report or not parsed_report.get('events'):
+                self.report_preview_label.Text = "D/R: not found"
+                return
+
+            summary = arp.get_event_summary(parsed_report, 0)
+            if not summary:
+                self.report_preview_label.Text = "D/R: not found"
+                return
+
+            d_time = self._format_hms(summary.get('d_hours'), summary.get('d_minutes'), summary.get('d_seconds'))
+            r_time = self._format_hms(summary.get('r_hours'), summary.get('r_minutes'), summary.get('r_seconds'))
+            self.report_preview_label.Text = "D: {0}\nR: {1}".format(d_time, r_time)
+        except Exception:
+            self.report_preview_label.Text = "D/R: unable to extract"
     
     def update_button_state(self):
         """Update generate button state and status message"""

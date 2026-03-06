@@ -1,0 +1,54 @@
+#IOTA-ES ASTEROIDAL OCCULTATION - REPORT FORM 2.03
+#Event
+#Occultation: xxxxTIVE
+#DATE: %EVENT-DATE% 
+#PREDICTTIME: %EventTimeUT%
+#STAR: %STAR%  
+#ASTEROID: %ASTEROID%                 
+#Nr: %ASTEROID-NO%
+#OBSERVER
+#Observer1: 
+#Observer2:
+#moreObs:
+#E-mail: 
+#Address: 
+#OBSERVING_STATION
+#NearestCity: 
+#Countrycode:
+#Coordinates LAT +/-DD MM SS.S  LON +/-DDD MM SS.S 
+#Latitude:  
+#Longitude: 
+#Altitude:  
+#Datum _blank=WGS84 N=NAD1927 E=ED1950 T=Tokyo G=GB1936 *=unspecified, or other
+#Datum:
+#Teleskop _=unstated 1=Refractor 2=Newtonian 3=SCT 4=Dobsonian 5=Binoculars 6=Other 7=None 8=eVscope 
+#Telescope: 
+#Aperture in cm
+#Aperture: 
+#FocalLength in cm
+#FocalLength: 
+#ObservingMethod   _=unspecified a=Analogue & digital video b=Digital SLR-camera video c=Photometer d=Sequential images e=Drift scan f=Visual g=Other 
+#ObservingMethod: 		    
+#Observation
+#StartObs:
+#D D=Main Star d=second Star G=satellite main star g=satellite 2nd star N=ring  M=non detection +time hh:mm:ss.s
+#D:
+#Acc_D:
+#R R=Main Star r=second Star B=satellite main star b=satellite 2nd star N=ring  M=non detection +time hh:mm:ss.s
+#R:
+#Acc_R:
+#EndObs:
+#Duration:
+#Exp_Time:
+#Timesource  _=unspecified a=GPS b=NTP c=Telephone (fixed or mobile) d=Radio time signal e=Internal clock of recorder f=Stopwatch g=Other
+#Timesource:		 
+#Camera:
+#Signal/Noise:
+#Weatherconditions
+#Wind:
+#Temperature:
+#Transparency 1=Clear 2=Fog 3=Thin cloud <2 [mag loss <2 mag.] 4=Thick cloud >2 [mag loss >2 mag. 5=Broken opaque cloud [that is, observed thru gaps in the cloud] 6=Star faint 7=By averted vision
+#Transparency: 3
+#Stability _=unstated 1=Steady 2=Slight flickering 3=Strong flickering 
+#Stability: 
+#Comments:

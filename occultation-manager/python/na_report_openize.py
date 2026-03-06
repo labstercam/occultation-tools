@@ -421,46 +421,100 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         """
         if not aota_report_summary:
             return
+
+        def _is_blank(value):
+            return value is None or (isinstance(value, str) and value.strip() == '')
+
+        def _normalize_hms(hours, minutes, seconds):
+            """Normalize possible combined time formats into H/M/S components."""
+            if _is_blank(hours) and _is_blank(minutes) and isinstance(seconds, str):
+                sec_text = seconds.strip()
+                # Handle accidental combined format in seconds slot: "HH MM SS.s"
+                parts = sec_text.split()
+                if len(parts) == 3:
+                    return parts[0], parts[1], parts[2]
+
+            # Handle accidental combined format in hours slot: "HH MM SS.s"
+            if isinstance(hours, str):
+                hour_text = hours.strip()
+                parts = hour_text.split()
+                if len(parts) == 3 and _is_blank(minutes) and _is_blank(seconds):
+                    return parts[0], parts[1], parts[2]
+
+            return hours, minutes, seconds
+
+        def _to_int_or_none(value):
+            if _is_blank(value):
+                return None
+            try:
+                return int(str(value).strip())
+            except Exception:
+                return None
+
+        def _to_seconds_float_or_none(value):
+            if _is_blank(value):
+                return None
+            try:
+                # Ensure numeric write to Excel with sensible precision
+                return round(float(str(value).strip()), 3)
+            except Exception:
+                return None
         
-        # Disappearance (D) times - N, P, R, T columns:
-        # Cell N31: AOTA_D_HOURS
-        # Cell P31: AOTA_D_MINUTES
-        # Cell R31: AOTA_D_SECONDS
-        # Cell T31: AOTA_D_ERROR
+        # Disappearance (D) times - F, H, J columns:
+        # Cell F32: AOTA_D_HOURS
+        # Cell H32: AOTA_D_MINUTES
+        # Cell J32: AOTA_D_SECONDS
+        # Cell M33: AOTA_D_ERROR
         d_hours = aota_report_summary.get('d_hours')
         d_minutes = aota_report_summary.get('d_minutes')
         d_seconds = aota_report_summary.get('d_seconds')
+        d_hours, d_minutes, d_seconds = _normalize_hms(d_hours, d_minutes, d_seconds)
+
+        d_hours_num = _to_int_or_none(d_hours)
+        d_minutes_num = _to_int_or_none(d_minutes)
+        d_seconds_num = _to_seconds_float_or_none(d_seconds)
         
-        if d_hours and d_minutes and d_seconds:
-            self._set_cell(worksheet, "N31", d_hours)
-            self._set_cell(worksheet, "P31", d_minutes)
-            self._set_cell(worksheet, "R31", d_seconds)
+        if d_hours_num is not None or d_minutes_num is not None or d_seconds_num is not None:
+            if d_hours_num is not None:
+                self._set_cell(worksheet, "F32", d_hours_num)
+            if d_minutes_num is not None:
+                self._set_cell(worksheet, "H32", d_minutes_num)
+            if d_seconds_num is not None:
+                self._set_cell(worksheet, "J32", d_seconds_num)
             
             d_uncertainty = aota_report_summary.get('d_uncertainty')
             if d_uncertainty is not None:
                 try:
-                    self._set_cell(worksheet, "T31", float(d_uncertainty))
+                    self._set_cell(worksheet, "M33", float(d_uncertainty))
                 except (ValueError, TypeError):
                     print(f"Warning: Could not format d_uncertainty: {d_uncertainty}")
         
-        # Reappearance (R) times - N, P, R, T columns:
-        # Cell N37: AOTA_R_HOURS
-        # Cell P37: AOTA_R_MINUTES
-        # Cell R37: AOTA_R_SECONDS
-        # Cell T37: AOTA_R_ERROR
+        # Reappearance (R) times - F, H, J columns:
+        # Cell F36: AOTA_R_HOURS
+        # Cell H36: AOTA_R_MINUTES
+        # Cell J36: AOTA_R_SECONDS
+        # Cell M35: AOTA_R_ERROR
         r_hours = aota_report_summary.get('r_hours')
         r_minutes = aota_report_summary.get('r_minutes')
         r_seconds = aota_report_summary.get('r_seconds')
+        r_hours, r_minutes, r_seconds = _normalize_hms(r_hours, r_minutes, r_seconds)
+
+        r_hours_num = _to_int_or_none(r_hours)
+        r_minutes_num = _to_int_or_none(r_minutes)
+        r_seconds_num = _to_seconds_float_or_none(r_seconds)
         
-        if r_hours and r_minutes and r_seconds:
-            self._set_cell(worksheet, "N37", r_hours)
-            self._set_cell(worksheet, "P37", r_minutes)
-            self._set_cell(worksheet, "R37", r_seconds)
+        if r_hours_num is not None or r_minutes_num is not None or r_seconds_num is not None:
+            if r_hours_num is not None:
+                self._set_cell(worksheet, "F36", r_hours_num)
+            if r_minutes_num is not None:
+                self._set_cell(worksheet, "H36", r_minutes_num)
+            if r_seconds_num is not None:
+                self._set_cell(worksheet, "J36", r_seconds_num)
             
             r_uncertainty = aota_report_summary.get('r_uncertainty')
             if r_uncertainty is not None:
                 try:
-                    self._set_cell(worksheet, "T37", float(r_uncertainty))
+                    self._set_cell(worksheet, "M35", float(r_uncertainty))
                 except (ValueError, TypeError):
                     print(f"Warning: Could not format r_uncertainty: {r_uncertainty}")
         

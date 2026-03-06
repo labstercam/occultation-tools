@@ -6,7 +6,7 @@ import json
 import time
 
 
-def get_location_name_from_coordinates(latitude, longitude, timeout=10):
+def get_location_name_from_coordinates(latitude, longitude, timeout=10, verbose=True):
     """
     Look up nearest city/town for given coordinates using Nominatim (OpenStreetMap)
     Returns formatted location string, or None if lookup fails
@@ -75,7 +75,8 @@ def get_location_name_from_coordinates(latitude, longitude, timeout=10):
                        address.get('municipality'))
             
             if not city:
-                print("No city/town found in geocoding result")
+                if verbose:
+                    print("No city/town found in geocoding result")
                 return None
             
             # Format based on country
@@ -93,21 +94,25 @@ def get_location_name_from_coordinates(latitude, longitude, timeout=10):
                 # International format: City, COUNTRY_CODE
                 location_str = "{}, {}".format(city, country_code)
             
-            print("Location lookup successful: {}".format(location_str))
+            if verbose:
+                print("Location lookup successful: {}".format(location_str))
             return location_str
         
-        print("No address data returned from geocoding API")
+        if verbose:
+            print("No address data returned from geocoding API")
         return None
         
     except urllib.error.URLError as e:
-        print("Network error during location lookup: {}".format(e))
+        if verbose:
+            print("Network error during location lookup: {}".format(e))
         return None
     except Exception as e:
-        print("Error looking up location: {}".format(e))
+        if verbose:
+            print("Error looking up location: {}".format(e))
         return None
 
 
-def get_elevation_from_coordinates(latitude, longitude, timeout=10):
+def get_elevation_from_coordinates(latitude, longitude, timeout=10, verbose=True):
     """
     Look up elevation for given coordinates using Open-Elevation API
     Returns elevation in meters relative to WGS84 datum, or None if lookup fails
@@ -133,17 +138,21 @@ def get_elevation_from_coordinates(latitude, longitude, timeout=10):
         if 'results' in data and len(data['results']) > 0:
             elevation = data['results'][0].get('elevation')
             if elevation is not None:
-                print("Elevation lookup successful: {} meters at {}, {}".format(elevation, latitude, longitude))
+                if verbose:
+                    print("Elevation lookup successful: {} meters at {}, {}".format(elevation, latitude, longitude))
                 return float(elevation)
         
-        print("No elevation data returned from API")
+        if verbose:
+            print("No elevation data returned from API")
         return None
         
     except urllib.error.URLError as e:
-        print("Network error during elevation lookup: {}".format(e))
+        if verbose:
+            print("Network error during elevation lookup: {}".format(e))
         return None
     except Exception as e:
-        print("Error looking up elevation: {}".format(e))
+        if verbose:
+            print("Error looking up elevation: {}".format(e))
         return None
 
 

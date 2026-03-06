@@ -6,13 +6,11 @@ import urllib.request
 import math
 from datetime import datetime, timedelta
 
-# Import geocoding functions for use during event download
+# Import location lookup function for use during event download
 try:
-    from utils import get_elevation_from_coordinates, get_location_name_from_coordinates
+    from utils import get_location_name_from_coordinates
 except ImportError:
     # Fallback if utils not available
-    def get_elevation_from_coordinates(lat, lon):
-        return None
     def get_location_name_from_coordinates(lat, lon):
         return None
 
@@ -91,10 +89,10 @@ class EventProcessor:
         if data:
             request.data = json.dumps(data).encode('utf-8')
         
-        response = urllib.request.urlopen(request)
+        response = urllib.request.urlopen(request, timeout=20)
         return json.loads(response.read().decode('utf-8'))
 
-    def update_ow_cloud_events(self):
+    def update_ow_cloud_events(self, progress_callback=None):
         """Get all your OWC announced events using configuration"""
         try:
             result = EventProcessor.get_owc_events(
@@ -103,10 +101,42 @@ class EventProcessor:
                 self.config.get_owc_password()
             )
         except urllib.error.HTTPError as e:
-            print(f"HTTP Error: {e.code} - {e.reason}")
-            return []
+            raise RuntimeError(f"OW Cloud HTTP Error: {e.code} - {e.reason}")
+        except urllib.error.URLError as e:
+            reason = getattr(e, 'reason', e)
+            raise RuntimeError(f"OW Cloud Connection Error: {reason}")
+        except Exception as e:
+            raise RuntimeError(f"OW Cloud Connection Error: {e}")
 
-        result = EventProcessor.process_owc_events(result, sitefilter='', config=self.config)
+        # Build geocode cache from existing saved events so repeated downloads
+        # can reuse elevation/location by coordinates instead of API calls.
+        geocode_cache = {}
+        existing_occultations = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
+        if existing_occultations:
+            for existing in existing_occultations:
+                try:
+                    latitude = existing.get('latitude')
+                    longitude = existing.get('longitude')
+                    if latitude is None or longitude is None:
+                        continue
+                    cache_key = (round(float(latitude), 6), round(float(longitude), 6))
+                    elevation = existing.get('elevation', 0.0)
+                    obs_location = existing.get('obs_location', '')
+                    if elevation is not None or obs_location:
+                        geocode_cache[cache_key] = {
+                            'elevation': float(elevation) if elevation is not None else 0.0,
+                            'obs_location': str(obs_location) if obs_location else ''
+                        }
+                except Exception:
+                    pass
+
+        result = EventProcessor.process_owc_events(
+            result,
+            sitefilter='',
+            config=self.config,
+            progress_callback=progress_callback,
+            geocode_cache=geocode_cache
+        )
         EventProcessor.save_occultations(result, self.config.get_latest_occultations_file(), self.config)
         latest_occultations = EventProcessor.load_occultations(self.config.get_latest_occultations_file(), self.config)
 
@@ -123,23 +153,46 @@ class EventProcessor:
         return latest_occultations
     
     @staticmethod    
-    def process_owc_events(owevents, sitefilter, config):
+    def process_owc_events(owevents, sitefilter, config, progress_callback=None, geocode_cache=None):
         """Process OWC events to extract the parameters"""
-        # DEBUG: Log raw OWC data at the start
+        # Optional debug logging (controlled by config)
         import os
+        debug_enabled = False
+        try:
+            debug_enabled = bool(config.get_output_debug_logs())
+        except Exception:
+            debug_enabled = False
+
         module_dir = os.path.dirname(os.path.abspath(__file__))
         debug_log = os.path.join(module_dir, "owc_raw_download.log")
-        try:
-            with open(debug_log, 'w', encoding='utf-8') as f:  # 'w' to overwrite each time
-                f.write("="*80 + "\n")
-                f.write("RAW OWC DOWNLOAD DATA - COMPLETE DUMP\n")
-                f.write("="*80 + "\n")
-                f.write("Number of events: " + str(len(owevents)) + "\n\n")
-            print("DEBUG: Writing raw OWC data to: " + debug_log)
-        except Exception as e:
-            print("DEBUG: Error creating log file: " + str(e))
+        if debug_enabled:
+            try:
+                with open(debug_log, 'w', encoding='utf-8') as f:  # 'w' to overwrite each time
+                    f.write("="*80 + "\n")
+                    f.write("RAW OWC DOWNLOAD DATA - COMPLETE DUMP\n")
+                    f.write("="*80 + "\n")
+                    f.write("Number of events: " + str(len(owevents)) + "\n\n")
+                print("DEBUG: Writing raw OWC data to: " + debug_log)
+            except Exception as e:
+                print("DEBUG: Error creating log file: " + str(e))
         
         occultations = []
+        geocode_cache = geocode_cache or {}
+
+        total_events = 0
+        for owevent in owevents:
+            stations = owevent.get('Stations', [])
+            for station in stations:
+                if station.get('IsOwnStation'):
+                    total_events += 1
+
+        processed_events = 0
+        if progress_callback:
+            try:
+                progress_callback(0, total_events, "")
+            except Exception:
+                pass
+
         for owevent in owevents:
             name = owevent['Object']
             eventDuration = float(owevent['MaxDurSec'])
@@ -150,32 +203,39 @@ class EventProcessor:
 
             for station in owevent['Stations']:
                 if station['IsOwnStation']:
-                    # DEBUG: Log raw OWC station data
-                    try:
-                        with open(debug_log, 'a', encoding='utf-8') as f:
-                            f.write("\n" + "-"*80 + "\n")
-                            f.write("Event: " + str(name) + "\n")
-                            f.write("Station: " + str(station.get('StationName', 'Unknown')) + "\n")
-                            f.write("\nAll station keys: " + str(sorted(station.keys())) + "\n")
-                            f.write("\nAll station data:\n")
-                            for key in sorted(station.keys()):
-                                f.write("  " + str(key) + " = " + str(station[key]) + "\n")
-                            f.write("\nELEVATION FIELD CHECK:\n")
-                            if 'Elevation' in station:
-                                f.write("  >>> FOUND 'Elevation': " + str(station['Elevation']) + " <<<\n")
-                            else:
-                                f.write("  'Elevation' field NOT FOUND\n")
-                            if 'Altitude' in station:
-                                f.write("  >>> FOUND 'Altitude': " + str(station['Altitude']) + " <<<\n")
-                            else:
-                                f.write("  'Altitude' field NOT FOUND\n")
-                            if 'Height' in station:
-                                f.write("  >>> FOUND 'Height': " + str(station['Height']) + " <<<\n")
-                            else:
-                                f.write("  'Height' field NOT FOUND\n")
-                        print("DEBUG: Logged station data for: " + str(station.get('StationName', 'Unknown')))
-                    except Exception as e:
-                        print("DEBUG: Error writing station data: " + str(e))
+                    processed_events += 1
+                    if progress_callback:
+                        try:
+                            progress_callback(processed_events, total_events, owevent.get('Object', 'Unknown Object'))
+                        except Exception:
+                            pass
+
+                    if debug_enabled:
+                        try:
+                            with open(debug_log, 'a', encoding='utf-8') as f:
+                                f.write("\n" + "-"*80 + "\n")
+                                f.write("Event: " + str(name) + "\n")
+                                f.write("Station: " + str(station.get('StationName', 'Unknown')) + "\n")
+                                f.write("\nAll station keys: " + str(sorted(station.keys())) + "\n")
+                                f.write("\nAll station data:\n")
+                                for key in sorted(station.keys()):
+                                    f.write("  " + str(key) + " = " + str(station[key]) + "\n")
+                                f.write("\nELEVATION FIELD CHECK:\n")
+                                if 'Elevation' in station:
+                                    f.write("  >>> FOUND 'Elevation': " + str(station['Elevation']) + " <<<\n")
+                                else:
+                                    f.write("  'Elevation' field NOT FOUND\n")
+                                if 'Altitude' in station:
+                                    f.write("  >>> FOUND 'Altitude': " + str(station['Altitude']) + " <<<\n")
+                                else:
+                                    f.write("  'Altitude' field NOT FOUND\n")
+                                if 'Height' in station:
+                                    f.write("  >>> FOUND 'Height': " + str(station['Height']) + " <<<\n")
+                                else:
+                                    f.write("  'Height' field NOT FOUND\n")
+                            print("DEBUG: Logged station data for: " + str(station.get('StationName', 'Unknown')))
+                        except Exception as e:
+                            print("DEBUG: Error writing station data: " + str(e))
                     
                     eventTime = station['EventTimeUtc']
                     eventUncertainty = station['ErrorInTimeSec']
@@ -217,6 +277,10 @@ class EventProcessor:
                         )
                     except urllib.error.HTTPError as e:
                         print(f"HTTP Error: {e.code} - {e.reason}")
+                        eventOccelmnt = None
+                    except urllib.error.URLError:
+                        eventOccelmnt = None
+                    except Exception:
                         eventOccelmnt = None
 
                     # Extract Occelmnt data with error handling
@@ -345,31 +409,52 @@ class EventProcessor:
                     extinction_mag = min(2, -0.5 + 0.5/math.cos((90-starAlt)*2*math.pi/360))
                     exposure = round(max(40, 40 * pow(2, round(combMag + extinction_mag - mag_ref + 0.5, 0)))/20)*20/1000.0
 
-                    # Perform geocode lookup for elevation and city/town
-                    # NOTE: This makes API calls which may slow down event downloads
-                    # Results are cached in the event data for future use
+                    # Use elevation from OW Cloud station fields.
+                    # Preferred order: Elevation, Altitude, Height.
                     elevation = 0.0
+                    raw_elevation = station.get('Elevation')
+                    if raw_elevation in (None, ""):
+                        raw_elevation = station.get('Altitude')
+                    if raw_elevation in (None, ""):
+                        raw_elevation = station.get('Height')
+
+                    try:
+                        if raw_elevation not in (None, ""):
+                            elevation = float(raw_elevation)
+                    except Exception:
+                        elevation = 0.0
+
+                    # Use cached geocoded location name (by lat/lon) or lookup if needed.
                     obs_location = ""
                     try:
-                        print("Performing geocode lookup for station: {}".format(stationName))
-                        
-                        # Lookup elevation
-                        elev_result = get_elevation_from_coordinates(latitude, longitude)
-                        if elev_result is not None:
-                            elevation = float(elev_result)
-                            print("  Elevation: {} meters".format(elevation))
+                        cache_key = (round(float(latitude), 6), round(float(longitude), 6))
+                        if cache_key in geocode_cache:
+                            cached_geo = geocode_cache.get(cache_key, {})
+                            obs_location = str(cached_geo.get('obs_location', '') or '')
                         else:
-                            print("  Elevation lookup failed, using 0.0")
-                        
-                        # Lookup observing location (city/town)
-                        loc_result = get_location_name_from_coordinates(latitude, longitude)
-                        if loc_result is not None:
-                            obs_location = str(loc_result)
-                            print("  Observing location: {}".format(obs_location))
-                        else:
-                            print("  Location lookup failed, using empty string")
+                            if debug_enabled:
+                                print("Performing location lookup for station: {}".format(stationName))
+
+                            # Lookup observing location (city/town)
+                            loc_result = get_location_name_from_coordinates(
+                                latitude,
+                                longitude,
+                                verbose=debug_enabled
+                            )
+                            if loc_result is not None:
+                                obs_location = str(loc_result)
+                                if debug_enabled:
+                                    print("  Observing location: {}".format(obs_location))
+                            else:
+                                if debug_enabled:
+                                    print("  Location lookup failed, using empty string")
+
+                            geocode_cache[cache_key] = {
+                                'obs_location': obs_location
+                            }
                     except Exception as ex:
-                        print("  Error during geocode lookup: {}".format(ex))
+                        if debug_enabled:
+                            print("  Error during location lookup: {}".format(ex))
                         # Keep default values (0.0 and empty string)
 
                     # Create dictionary of occultation events
@@ -414,32 +499,38 @@ class OccultationEvent:
     
     def _parse_event_data(self, data):
         """Parse event data from OW Cloud JSON format"""
-        # DEBUG: Log all OWC data fields to check for elevation
-        import os
-        module_dir = os.path.dirname(os.path.abspath(__file__))
-        debug_log = os.path.join(module_dir, "owc_data_debug.log")
+        debug_enabled = False
         try:
-            with open(debug_log, 'a', encoding='utf-8') as f:
-                f.write("\n" + "="*80 + "\n")
-                f.write("OWC Event Data Debug\n")
-                f.write("Available keys: " + str(sorted(data.keys())) + "\n")
-                f.write("\nAll data items:\n")
-                for key in sorted(data.keys()):
-                    f.write("  " + str(key) + " = " + str(data[key]) + "\n")
-                f.write("\nChecking for elevation fields:\n")
-                if 'elevation' in data:
-                    f.write("  FOUND 'elevation': " + str(data['elevation']) + "\n")
-                if 'altitude' in data:
-                    f.write("  FOUND 'altitude': " + str(data['altitude']) + "\n")
-                if 'height' in data:
-                    f.write("  FOUND 'height': " + str(data['height']) + "\n")
-                if 'station_elevation' in data:
-                    f.write("  FOUND 'station_elevation': " + str(data['station_elevation']) + "\n")
-                if 'observer_elevation' in data:
-                    f.write("  FOUND 'observer_elevation': " + str(data['observer_elevation']) + "\n")
-                f.write("="*80 + "\n")
-        except Exception as e:
-            pass  # Silently ignore debug logging errors
+            debug_enabled = bool(self.config.get_output_debug_logs())
+        except Exception:
+            debug_enabled = False
+
+        if debug_enabled:
+            import os
+            module_dir = os.path.dirname(os.path.abspath(__file__))
+            debug_log = os.path.join(module_dir, "owc_data_debug.log")
+            try:
+                with open(debug_log, 'a', encoding='utf-8') as f:
+                    f.write("\n" + "="*80 + "\n")
+                    f.write("OWC Event Data Debug\n")
+                    f.write("Available keys: " + str(sorted(data.keys())) + "\n")
+                    f.write("\nAll data items:\n")
+                    for key in sorted(data.keys()):
+                        f.write("  " + str(key) + " = " + str(data[key]) + "\n")
+                    f.write("\nChecking for elevation fields:\n")
+                    if 'elevation' in data:
+                        f.write("  FOUND 'elevation': " + str(data['elevation']) + "\n")
+                    if 'altitude' in data:
+                        f.write("  FOUND 'altitude': " + str(data['altitude']) + "\n")
+                    if 'height' in data:
+                        f.write("  FOUND 'height': " + str(data['height']) + "\n")
+                    if 'station_elevation' in data:
+                        f.write("  FOUND 'station_elevation': " + str(data['station_elevation']) + "\n")
+                    if 'observer_elevation' in data:
+                        f.write("  FOUND 'observer_elevation': " + str(data['observer_elevation']) + "\n")
+                    f.write("="*80 + "\n")
+            except Exception:
+                pass  # Silently ignore debug logging errors
         
         self.name = data.get('name', '')
         self.station_name = data.get('station_name', '')
@@ -894,11 +985,11 @@ class OccultationManager:
             return True
         return False
     
-    def download_events_from_cloud(self):
+    def download_events_from_cloud(self, progress_callback=None):
         """Download events from OW Cloud"""
         try:
             # This downloads, merges with existing, and saves to occultations.json
-            events_data = self.event_processor.update_ow_cloud_events()
+            events_data = self.event_processor.update_ow_cloud_events(progress_callback=progress_callback)
             if events_data:
                 # Load the merged file (occultations.json) instead of just the latest
                 # This ensures retention policy has been applied
@@ -907,11 +998,11 @@ class OccultationManager:
                     self.all_events = [OccultationEvent(event, self.config) for event in merged_events]
                     self.events = self.all_events[:]
                     self.sort_events()
-                    return len(self.events)
+                    return len(events_data)
             return 0
         except Exception as e:
             print(f"Error downloading events: {e}")
-            return -1
+            raise
     
     def sort_events(self):
         """Sort events by event time"""

@@ -1,0 +1,54 @@
+#IOTA-ES ASTEROIDAL OCCULTATION - REPORT FORM 2.03
+#Event
+#Occultation: POSITIVE
+#DATE: 25 August 2022 
+#PREDICTTIME: 25 Aug; 2022 20:03:31 UT
+#STAR: UCAC4 350-187717  
+#ASTEROID: Hildrun                 
+#Nr: 928
+#OBSERVER
+#Observer1: Wilhelm Herschel
+#Observer2:
+#moreObs:
+#E-mail: myemail@myprovider.de
+#Address: mystreet 5, 12345 MyCity
+#OBSERVING_STATION
+#NearestCity: Berlin
+#Countrycode: DE
+#Coordinates LAT +/-DD MM SS.S  LON +/-DDD MM SS.S
+#Latitude:  +52 58 48.5
+#Longitude: +013 22 13.7
+#Altitude:  37.4
+#Datum _blank=WGS84 N=NAD1927 E=ED1950 T=Tokyo G=GB1936 *=unspecified, or other
+#Datum:
+#Teleskop _=unstated 1=Refractor 2=Newtonian 3=SCT 4=Dobsonian 5=Binoculars 6=Other 7=None 8=eVscope 
+#Telescope: 3
+#Aperture in cm
+#Aperture: 36
+#FocalLength in cm
+#FocalLength: 277
+#ObservingMethod   _=unspecified a=Analogue & digital video b=Digital SLR-camera video c=Photometer d=Sequential images e=Drift scan f=Visual g=Other 
+#ObservingMethod: a		    
+#Observation
+#StartObs: 20:01:34.99
+#D D=Main Star d=second Star G=satellite main star g=satellite 2nd star N=ring M=non detection +time hh:mm:ss.s
+#D: D20:02:30.0
+#Acc_D: 0.5
+#R R=Main Star r=second Star B=satellite main star b=satellite 2nd star N=ring M=non detection +time hh:mm:ss.s
+#R: R20:02:34.0
+#Acc_R: 0.5
+#EndObs: 20:03:34.01
+#Duration: 4.0
+#Exp_Time: 1.0
+#Timesource  _=unspecified a=GPS b=NTP c=Telephone (fixed or mobile) d=Radio time signal e=Internal clock of recorder f=Stopwatch g=Other
+#Timesource: a		 
+#Camera: QHY174M GPS
+#Signal/Noise:
+#Weatherconditions
+#Wind: 0
+#Temperature: 22
+#Transparency 1=Clear 2=Fog 3=Thin cloud <2 [mag loss <2 mag.] 4=Thick cloud >2 [mag loss >2 mag. 5=Broken opaque cloud [that is, observed thru gaps in the cloud] 6=Star faint 7=By averted vision
+#Transparency: 1
+#Stability _=unstated 1=Steady 2=Slight flickering 3=Strong flickering 
+#Stability: 1
+#Comments: here only really important remarks
