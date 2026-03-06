@@ -492,17 +492,30 @@ class EventDetailsDialog(Form):
         self.add_detail_label(grp_position, "Altitude:", f"{self.event.star_alt:.1f}°", 300, 25)
         self.add_detail_label(grp_position, "Azimuth:", f"{self.event.star_az:.1f}°", 300, 50)
         
-        # Observer Location Group
+        # Station Location Group
         grp_location = GroupBox()
-        grp_location.Text = "Observer Location"
+        grp_location.Text = "Station Location"
         grp_location.Location = Point(int(10 * sf), y_pos)
-        grp_location.Size = Size(int(560 * sf), int(95 * sf))
+        grp_location.Size = Size(int(560 * sf), int(145 * sf))
         main_panel.Controls.Add(grp_location)
         
-        y_pos += int(105 * sf)
+        y_pos += int(155 * sf)
         
         self.add_detail_label(grp_location, "Latitude:", f"{self.event.latitude:.6f}°", 10, 25)
         self.add_detail_label(grp_location, "Longitude:", f"{self.event.longitude:.6f}°", 10, 50)
+        station_elevation = getattr(self.event, 'elevation', None)
+        if station_elevation is not None:
+            try:
+                station_elevation_text = f"{float(station_elevation):.1f} m"
+            except Exception:
+                station_elevation_text = str(station_elevation)
+        else:
+            station_elevation_text = "N/A"
+        self.add_detail_label(grp_location, "Elevation:", station_elevation_text, 10, 75)
+        station_location_text = getattr(self.event, 'obs_location', None)
+        if not station_location_text:
+            station_location_text = "N/A"
+        self.add_detail_label(grp_location, "Location:", station_location_text, 10, 100)
         
         # Technical Information Group
         grp_technical = GroupBox()
@@ -835,6 +848,15 @@ class ConfigurationDialog(Form):
 
     def open_templates_folder_click(self, sender, e):
         self._open_folder_in_explorer(self.config.get_templates_folder())
+
+    def open_debug_logs_folder_click(self, sender, e):
+        """Open folder containing debug log files."""
+        try:
+            module_dir = os.path.dirname(os.path.abspath(__file__))
+            self._open_folder_in_explorer(module_dir)
+        except Exception as ex:
+            MessageBox.Show(f"Could not open debug log folder: {ex}", "Error",
+                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
     
     def setup_recording_tab(self, tab):
         """Setup recording settings tab with DPI scaling"""
@@ -950,6 +972,23 @@ class ConfigurationDialog(Form):
         _autosize_button(btn_explain_display_utc, sf, height=int(22 * sf), min_width=int(70 * sf))
         btn_explain_display_utc.Click += self.explain_display_utc_click
         tab.Controls.Add(btn_explain_display_utc)
+
+        self.chk_output_debug_logs = CheckBox()
+        self.chk_output_debug_logs.Text = "Output Debug Logs"
+        self.chk_output_debug_logs.Location = Point(int(20 * sf), int(200 * sf))
+        self.chk_output_debug_logs.Size = Size(int(200 * sf), int(20 * sf))
+        tab.Controls.Add(self.chk_output_debug_logs)
+        self.tooltip.SetToolTip(self.chk_output_debug_logs, "Enable verbose debug console/file logging for OWC download and event parsing")
+
+        self.chk_output_debug_logs.Checked = self.config.get_output_debug_logs()
+        
+        btn_open_debug_logs = Button()
+        btn_open_debug_logs.Text = "Open Debug Logs Folder"
+        btn_open_debug_logs.Location = Point(int(230 * sf), int(198 * sf))
+        _autosize_button(btn_open_debug_logs, sf, height=int(22 * sf), min_width=int(165 * sf))
+        btn_open_debug_logs.Click += self.open_debug_logs_folder_click
+        tab.Controls.Add(btn_open_debug_logs)
+        self.tooltip.SetToolTip(btn_open_debug_logs, "Open folder containing owc_raw_download.log and owc_data_debug.log")
     
     def sync_mount_checked_changed(self, sender, e):
         """Handle sync mount checkbox change"""
@@ -1228,6 +1267,7 @@ class ConfigurationDialog(Form):
         self.txt_default_gain.Text = str(self.config.get_default_gain())
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
         self.display_utc.Checked = self.config.get_display_utc()
+        self.chk_output_debug_logs.Checked = self.config.get_output_debug_logs()
         self.txt_host.Text = self.config.get_host()
         self.txt_api_key.Text = self.config.get_api_key()
         
@@ -1270,6 +1310,7 @@ class ConfigurationDialog(Form):
             self.config.set_default_gain(int(self.txt_default_gain.Text))
             self.config.set_sync_mount(self.chk_sync_mount.Checked)
             self.config.set_display_utc(self.display_utc.Checked)
+            self.config.set_output_debug_logs(self.chk_output_debug_logs.Checked)
             self.config.set_host(self.txt_host.Text)
             self.config.set_api_key(self.txt_api_key.Text)
             
@@ -1415,6 +1456,7 @@ class ConfigurationDialog(Form):
                 self.config.set_default_gain(defaults.get('default_gain', 450))
                 self.config.set_sync_mount(defaults.get('sync_mount', True))
                 self.config.set_display_utc(defaults.get('display_utc', True))
+                self.config.set_output_debug_logs(defaults.get('output_debug_logs', False))
             elif tab_name == "Observer/Telescope":
                 self.config.set_observer_name(defaults.get('observer_name', ''))
                 self.config.set_observer_email(defaults.get('observer_email', ''))
@@ -1894,13 +1936,13 @@ class LocationConfirmDialog(Form):
     
     def lookup_location_click(self, sender, e):
         """Look up city/town name from coordinates using reverse geocoding"""
+        original_text = sender.Text
         try:
             # Get current lat/lon values
             latitude = float(self.txt_latitude.Text)
             longitude = float(self.txt_longitude.Text)
             
             # Show working message
-            original_text = sender.Text
             sender.Text = "Looking up..."
             sender.Enabled = False
             self.Refresh()
@@ -1909,7 +1951,7 @@ class LocationConfirmDialog(Form):
             from utils import get_location_name_from_coordinates
             
             # Lookup location name
-            location_name = get_location_name_from_coordinates(latitude, longitude)
+            location_name = get_location_name_from_coordinates(latitude, longitude, verbose=False)
             
             # Restore button
             sender.Text = original_text
@@ -1926,21 +1968,21 @@ class LocationConfirmDialog(Form):
                           "Invalid Coordinates", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             sender.Text = original_text
             sender.Enabled = True
-        except Exception as ex:
-            MessageBox.Show(f"Error during location lookup: {ex}", 
-                          "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        except Exception:
+            MessageBox.Show("No Internet Connection or location service unavailable.", 
+                          "Location Lookup Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             sender.Text = original_text
             sender.Enabled = True
     
     def lookup_elevation_click(self, sender, e):
         """Look up elevation from coordinates using online API"""
+        original_text = sender.Text
         try:
             # Get current lat/lon values
             latitude = float(self.txt_latitude.Text)
             longitude = float(self.txt_longitude.Text)
             
             # Show working message
-            original_text = sender.Text
             sender.Text = "Looking up..."
             sender.Enabled = False
             self.Refresh()
@@ -1949,7 +1991,7 @@ class LocationConfirmDialog(Form):
             from utils import get_elevation_from_coordinates
             
             # Lookup elevation
-            elevation = get_elevation_from_coordinates(latitude, longitude)
+            elevation = get_elevation_from_coordinates(latitude, longitude, verbose=False)
             
             # Restore button
             sender.Text = original_text
@@ -1966,9 +2008,9 @@ class LocationConfirmDialog(Form):
                           "Invalid Coordinates", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             sender.Text = original_text
             sender.Enabled = True
-        except Exception as ex:
-            MessageBox.Show(f"Error during elevation lookup: {ex}", 
-                          "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        except Exception:
+            MessageBox.Show("No Internet Connection or elevation service unavailable.", 
+                          "Elevation Lookup Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             sender.Text = original_text
             sender.Enabled = True
     

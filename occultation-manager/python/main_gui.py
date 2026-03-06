@@ -103,6 +103,7 @@ class OccultationManagerGUI(Form):
         self._current_sequence_path = None
         self._sequence_stopped_by_user = False  # Flag to prevent monitor from processing after manual stop
         self._sequence_context = None  # Track context: 'test_recording' or 'run_sequences'
+        self._download_events_in_progress = False
         
         self.setup_ui()
         self.load_initial_data()
@@ -837,6 +838,35 @@ class OccultationManagerGUI(Form):
         """Update the status bar"""
         self.lbl_status.Text = message
         Application.DoEvents()
+
+    def update_download_progress_safe(self, message, current_index=None, total_events=None):
+        """Thread-safe status bar update for download progress."""
+        try:
+            if self.IsDisposed:
+                return
+        except Exception:
+            pass
+
+        def apply_update():
+            try:
+                self.lbl_status.Text = message
+                if total_events is not None and total_events > 0 and current_index is not None:
+                    if current_index <= 0:
+                        self.lbl_event_count.Text = f"0/{total_events}"
+                    else:
+                        self.lbl_event_count.Text = f"{current_index}/{total_events}"
+                self.lbl_status.Update()
+                self.lbl_event_count.Update()
+            except Exception:
+                pass
+
+        if self.InvokeRequired:
+            try:
+                self.BeginInvoke(System.Action(apply_update))
+            except Exception:
+                pass
+        else:
+            apply_update()
     
     def populate_station_filter(self):
         """Populate station filter dropdown"""
@@ -872,21 +902,99 @@ class OccultationManagerGUI(Form):
     # Event Handlers
     def download_events_click(self, sender, e):
         """Handle download events button click"""
-        self.update_status("Downloading events from OW Cloud...")
-        try:
-            result = self.manager.download_events_from_cloud()
-            if result > 0:
-                self.refresh_display()
-                self.populate_station_filter()
-                self.update_status(f"Downloaded {result} events")
-            elif result == 0:
-                self.update_status("No events downloaded")
+        if self._download_events_in_progress:
+            self.update_status("Download already in progress...")
+            return
+
+        self._download_events_in_progress = True
+        self.UseWaitCursor = True
+        if sender is not None:
+            try:
+                sender.Enabled = False
+            except Exception:
+                pass
+
+        def finalize_download(sender_ref):
+            self._download_events_in_progress = False
+            self.UseWaitCursor = False
+            if sender_ref is not None:
+                try:
+                    sender_ref.Enabled = True
+                except Exception:
+                    pass
+
+        last_progress_message = [None]
+
+        def progress_callback(current_index, total_events, event_name):
+            if total_events and total_events > 0:
+                if current_index <= 0:
+                    message = f"Found {total_events} events to download"
+                else:
+                    message = f"Downloading {current_index} of {total_events}"
             else:
-                self.update_status("Error downloading events")
-        except Exception as ex:
-            self.update_status(f"Error downloading events: {ex}")
-            MessageBox.Show(f"Error downloading events: {ex}", "Download Error", 
-                          MessageBoxButtons.OK, MessageBoxIcon.Error)
+                message = "Downloading events from OW Cloud..."
+
+            if message == last_progress_message[0]:
+                return
+            last_progress_message[0] = message
+
+            self.update_download_progress_safe(message, current_index=current_index, total_events=total_events)
+
+        self.update_status("Downloading events from OW Cloud...")
+
+        def run_in_background():
+            try:
+                result = self.manager.download_events_from_cloud(progress_callback=progress_callback)
+
+                def on_complete():
+                    try:
+                        if result > 0:
+                            self.refresh_display()
+                            self.populate_station_filter()
+                            self.update_status(f"Downloaded {result} events")
+                        elif result == 0:
+                            self.update_status("No events downloaded")
+                        else:
+                            self.update_status("Error downloading events")
+                    finally:
+                        finalize_download(sender)
+
+                self.Invoke(System.Action(on_complete))
+            except Exception as ex:
+                error_message = str(ex)
+                error_message_lower = error_message.lower()
+                no_internet = (
+                    "connection error" in error_message_lower or
+                    "timed out" in error_message_lower or
+                    "name or service not known" in error_message_lower or
+                    "temporary failure" in error_message_lower or
+                    "no route" in error_message_lower or
+                    "network is unreachable" in error_message_lower or
+                    "getaddrinfo" in error_message_lower
+                )
+
+                def on_error():
+                    try:
+                        if no_internet:
+                            self.update_status("No internet connection - unable to reach OW Cloud")
+                            MessageBox.Show(
+                                "No Internet Connection\n\nUnable to connect to OW Cloud.\nPlease check your network connection and try again.",
+                                "No Internet Connection",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning
+                            )
+                        else:
+                            self.update_status(f"Error downloading events: {error_message}")
+                            MessageBox.Show(f"Error downloading events: {error_message}", "Download Error", 
+                                          MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    finally:
+                        finalize_download(sender)
+
+                self.Invoke(System.Action(on_error))
+
+        thread = threading.Thread(target=run_in_background)
+        thread.IsBackground = True
+        thread.start()
     
     def generate_dummy_events_click(self, sender, e):
         """Handle dummy events button click"""
@@ -1193,8 +1301,20 @@ class OccultationManagerGUI(Form):
     
     def update_status_safe(self, message):
         """Thread-safe status update"""
+        try:
+            if self.IsDisposed:
+                return
+        except Exception:
+            pass
+
         if self.InvokeRequired:
-            self.Invoke(System.Action[str](self.update_status), message)
+            try:
+                self.Invoke(System.Action(lambda: self.update_status(message)))
+            except Exception:
+                try:
+                    self.BeginInvoke(System.Action(lambda: self.update_status(message)))
+                except Exception:
+                    pass
         else:
             self.update_status(message)
 
@@ -2064,6 +2184,26 @@ class OccultationManagerGUI(Form):
             # Use AOTA Report data if AOTA.xml is not available
             if aota_report_data and not aota_event:
                 print("Using AOTA Report data (no AOTA.xml file provided)")
+
+            # If only AOTA.xml is available, convert selected event to report-style summary
+            # so Openize generators can populate D/R timing cells directly.
+            if aota_event and not aota_report_data:
+                aota_report_data = {
+                    'd_hours': str(aota_event.d_hours) if aota_event.d_hours is not None else '',
+                    'd_minutes': str(aota_event.d_minutes) if aota_event.d_minutes is not None else '',
+                    'd_seconds': aota_event.d_seconds_str if aota_event.d_seconds_str is not None else (
+                        str(aota_event.d_seconds) if aota_event.d_seconds is not None else ''
+                    ),
+                    'd_uncertainty': aota_event.d_error_str if aota_event.d_error_str is not None else aota_event.d_error,
+                    'r_hours': str(aota_event.r_hours) if aota_event.r_hours is not None else '',
+                    'r_minutes': str(aota_event.r_minutes) if aota_event.r_minutes is not None else '',
+                    'r_seconds': aota_event.r_seconds_str if aota_event.r_seconds_str is not None else (
+                        str(aota_event.r_seconds) if aota_event.r_seconds is not None else ''
+                    ),
+                    'r_uncertainty': aota_event.r_error_str if aota_event.r_error_str is not None else aota_event.r_error,
+                    'snr': None
+                }
+                print("Using AOTA XML event data for report timing fields")
             
             # Determine if AOTA XML was used (for OTE determination)
             aota_xml_used = bool(aota_event and not aota_report_data)

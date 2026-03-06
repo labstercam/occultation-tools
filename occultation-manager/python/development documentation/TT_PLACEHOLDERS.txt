@@ -81,19 +81,18 @@ Cell D42: {{COMMENTS}}                   (optional, any additional info)
 
 AOTA TIMING DATA (from AOTA analysis file):
 --------------------------------------------
-Cell G31: {{AOTA_D_HOURS}}               (Disappearance hours from AOTA)
-Cell I31: {{AOTA_D_MINUTES}}             (Disappearance minutes from AOTA)
-Cell K31: {{AOTA_D_SECONDS}}             (Disappearance seconds from AOTA)
-Cell M31: {{AOTA_D_ERROR}}               (Disappearance error/uncertainty from AOTA)
-Cell G37: {{AOTA_R_HOURS}}               (Reappearance hours from AOTA)
-Cell I37: {{AOTA_R_MINUTES}}             (Reappearance minutes from AOTA)
-Cell K37: {{AOTA_R_SECONDS}}             (Reappearance seconds from AOTA)
-Cell M37: {{AOTA_R_ERROR}}               (Reappearance error/uncertainty from AOTA)
+Cell F33: {{AOTA_D_HOURS}}               (Disappearance hours from AOTA)
+Cell H33: {{AOTA_D_MINUTES}}             (Disappearance minutes from AOTA)
+Cell J33: {{AOTA_D_SECONDS}}             (Disappearance seconds from AOTA)
+Cell M33: {{AOTA_D_ERROR}}               (Disappearance error/uncertainty from AOTA)
+Cell F35: {{AOTA_R_HOURS}}               (Reappearance hours from AOTA)
+Cell H35: {{AOTA_R_MINUTES}}             (Reappearance minutes from AOTA)
+Cell J35: {{AOTA_R_SECONDS}}             (Reappearance seconds from AOTA)
+Cell M35: {{AOTA_R_ERROR}}               (Reappearance error/uncertainty from AOTA)
 
 NOTES:
 ------
 - Use the EXACT placeholder text including curly braces
 - Placeholders are case-sensitive
-- Leave cells for minutes/seconds blank (E31:G31, I31, E37:G37, I37) - user fills these
-- Leave timing observation rows 32-36 completely blank - user fills from video analysis
+- Openize report generation writes these timing cells directly in code for active report workflows
 - Leave condition fields blank (F27, H27, P27, V27) - user fills

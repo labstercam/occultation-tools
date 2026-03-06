@@ -29,12 +29,12 @@ clr.AddReference("System.Drawing")
 import System.Drawing
 from System.Drawing import Image
 
-# Import our modules
-from config import ConfigManager
-from theme import ThemeManager
-from main_gui import OccultationManagerGUI
-from SharpCap.Interfaces import PlateSolvePurpose   
-from  SharpCap.Base import CoordinateParser, RADecPosition, Epoch
+# Lazy-loaded runtime symbols (imported on first button click)
+ConfigManager = None
+ThemeManager = None
+OccultationManagerGUI = None
+PlateSolvePurpose = None
+CoordinateParser = None
 
 
 
@@ -60,6 +60,7 @@ _app_instance = None
 def main():
     """Main entry point"""
     global _app_instance
+    global ConfigManager, ThemeManager, OccultationManagerGUI, PlateSolvePurpose, CoordinateParser
     
     # Single instance check - prevent multiple windows
     if _app_instance is not None:
@@ -83,6 +84,19 @@ def main():
             _app_instance = None
     
     # Create global instances
+    if ConfigManager is None or ThemeManager is None or OccultationManagerGUI is None:
+        from config import ConfigManager as _ConfigManager
+        from theme import ThemeManager as _ThemeManager
+        from main_gui import OccultationManagerGUI as _OccultationManagerGUI
+        from SharpCap.Interfaces import PlateSolvePurpose as _PlateSolvePurpose
+        from SharpCap.Base import CoordinateParser as _CoordinateParser
+
+        ConfigManager = _ConfigManager
+        ThemeManager = _ThemeManager
+        OccultationManagerGUI = _OccultationManagerGUI
+        PlateSolvePurpose = _PlateSolvePurpose
+        CoordinateParser = _CoordinateParser
+
     config = ConfigManager()
     theme_manager = ThemeManager()
 
@@ -90,7 +104,6 @@ def main():
         MessageBox.Show("SharpCap Version too old - use 4.1.13 or later", "Version Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         return
 
-    print(f"Configuration loaded from: {config.get_config_path()}")
     print(f"Working directory: {config.get_file_folder()}")
 
 

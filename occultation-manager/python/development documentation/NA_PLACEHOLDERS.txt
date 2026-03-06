@@ -84,14 +84,14 @@ Cell D44: {{COMMENT_LINE3}}            (Comment line 3 - "This report was pre-fi
 
 AOTA TIMING DATA (from AOTA analysis file):
 --------------------------------------------
-Cell N31: {{AOTA_D_HOURS}}             (Disappearance hours from AOTA)
-Cell P31: {{AOTA_D_MINUTES}}           (Disappearance minutes from AOTA)
-Cell R31: {{AOTA_D_SECONDS}}           (Disappearance seconds from AOTA)
-Cell T31: {{AOTA_D_ERROR}}             (Disappearance error/uncertainty from AOTA)
-Cell N37: {{AOTA_R_HOURS}}             (Reappearance hours from AOTA)
-Cell P37: {{AOTA_R_MINUTES}}           (Reappearance minutes from AOTA)
-Cell R37: {{AOTA_R_SECONDS}}           (Reappearance seconds from AOTA)
-Cell T37: {{AOTA_R_ERROR}}             (Reappearance error/uncertainty from AOTA)
+Cell F32: {{AOTA_D_HOURS}}             (Disappearance hours from AOTA)
+Cell H32: {{AOTA_D_MINUTES}}           (Disappearance minutes from AOTA)
+Cell J32: {{AOTA_D_SECONDS}}           (Disappearance seconds from AOTA)
+Cell M33: {{AOTA_D_ERROR}}             (Disappearance error/uncertainty from AOTA)
+Cell F36: {{AOTA_R_HOURS}}             (Reappearance hours from AOTA)
+Cell H36: {{AOTA_R_MINUTES}}           (Reappearance minutes from AOTA)
+Cell J36: {{AOTA_R_SECONDS}}           (Reappearance seconds from AOTA)
+Cell M35: {{AOTA_R_ERROR}}             (Reappearance error/uncertainty from AOTA)
 
 TOTAL: 53 placeholders
 

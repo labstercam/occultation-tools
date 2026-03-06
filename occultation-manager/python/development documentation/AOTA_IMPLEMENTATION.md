@@ -74,16 +74,20 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 {{AOTA_R_ERROR}}      - Reappearance uncertainty
 ```
 
-**Suggested Cell Mappings**:
-- N31, P31, R31, T31 for D times and error
-- N37, P37, R37, T37 for R times and error
+**Current Openize NA Cell Mappings**:
+- F32, H32, J32 for D time (hours, minutes, seconds)
+- M33 for D uncertainty
+- F36, H36, J36 for R time (hours, minutes, seconds)
+- M35 for R uncertainty
 
 ### 2. TT_PLACEHOLDERS.txt
 **Added same 8 AOTA placeholders**
 
-**Suggested Cell Mappings**:
-- G31, I31, K31, M31 for D times and error
-- G37, I37, K37, M37 for R times and error
+**Current Openize TT Cell Mappings**:
+- F33, H33, J33 for D time (hours, minutes, seconds)
+- M33 for D uncertainty
+- F35, H35, J35 for R time (hours, minutes, seconds)
+- M35 for R uncertainty
 
 ### 3. na_report_openize.py (North American Report Generator)
 **Added**:
@@ -225,29 +229,23 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 
 ## Template Updates Required (Historical Context)
 
-Original implementation notes below describe placeholder-based migration work. Current Openize report generation uses maintained template assets and integrated mapping logic in active generators.
+Original implementation notes below describe placeholder-based migration work. Current Openize report generation writes values directly to cells in code for active fields (no placeholder substitution for these timing writes).
 
-### North American Template
-Add to `NorthAmerica_AstReportForm_V5.6.12r.xlsx`:
+### North American Template (Current Openize writes)
 
-**Timing Section** (rows 31-37):
-- Cell N31: `{{AOTA_D_HOURS}}`
-- Cell P31: `{{AOTA_D_MINUTES}}`
-- Cell R31: `{{AOTA_D_SECONDS}}`
-- Cell T31: `{{AOTA_D_ERROR}}`
-- Cell N37: `{{AOTA_R_HOURS}}`
-- Cell P37: `{{AOTA_R_MINUTES}}`
-- Cell R37: `{{AOTA_R_SECONDS}}`
-- Cell T37: `{{AOTA_R_ERROR}}`
+**Timing Section**:
+- D time: F32 / H32 / J32
+- D uncertainty: M33
+- R time: F36 / H36 / J36
+- R uncertainty: M35
 
-### Trans-Tasman Template
-Add to `RASNZ_AstReporttForm_V4.1.2.G_locked.xlsx`:
+### Trans-Tasman Template (Current Openize writes)
 
-**Timing Section** (rows 31-37):
-- Cell G31: `{{AOTA_D_HOURS}}`
-- Cell I31: `{{AOTA_D_MINUTES}}`
-- Cell K31: `{{AOTA_D_SECONDS}}`
-- Cell M31: `{{AOTA_D_ERROR}}`
+**Timing Section**:
+- D time: F33 / H33 / J33
+- D uncertainty: M33
+- R time: F35 / H35 / J35
+- R uncertainty: M35
 - Cell G37: `{{AOTA_R_HOURS}}`
 - Cell I37: `{{AOTA_R_MINUTES}}`
 - Cell K37: `{{AOTA_R_SECONDS}}`
