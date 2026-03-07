@@ -437,7 +437,7 @@ class CameraManagerDialog(Form):
         self.combo_report_type.Location = Point(int(150 * sf), int(y_pos * sf))
         self.combo_report_type.Size = Size(int(260 * sf), int(20 * sf))
         self.combo_report_type.DropDownStyle = ComboBoxStyle.DropDownList
-        report_types = ["NA", "TT"]
+        report_types = ["NA", "TT", "SODIS"]
         for rt in report_types:
             self.combo_report_type.Items.Add(rt)
         self.combo_report_type.Text = "NA"
@@ -695,7 +695,7 @@ class CameraManagerDialog(Form):
                 "Watec 910HX",
                 "Other - List in Comments"
             ]
-        else:  # TT
+        elif report_type == "TT":
             # TT timing options
             timing_options = [
                 "GPS - time inserted",
@@ -722,6 +722,52 @@ class CameraManagerDialog(Form):
                 "Other - Specify in Comments"
             ]
             # TT detector options
+            detector_options = [
+                "Visual",
+                "Photometer",
+                "PC165-DNR",
+                "PC164C",
+                "PC164C-EX",
+                "Watec 120N",
+                "Watec 120N+",
+                "Watec 910HX",
+                "Watec 910BD",
+                "Watec 902H",
+                "Mintron 12v1C-EX",
+                "Mallincam",
+                "CCD",
+                "Samsung SBC-2000",
+                "KPC-350BH",
+                "LN-300-11673",
+                "Flea 3-03S1 with ADVS",
+                "Flea 3-03S3 with ADVS",
+                "Flea 3-28S4M with ADVS",
+                "Grasshopper Express with ADVS",
+                "G-Star",
+                "QHY 174GPS",
+                "Other - List in Comments"
+            ]
+        else:  # SODIS
+            # SODIS Timesource values mirror the IOTA-ES template legend
+            timing_options = [
+                "a - GPS",
+                "b - NTP",
+                "c - Telephone (fixed or mobile)",
+                "d - Radio time signal",
+                "e - Internal clock of recorder",
+                "f - Stopwatch",
+                "g - Other"
+            ]
+            # No dedicated timing-device field in SODIS text format; keep list simple
+            timing_device_options = [
+                "",
+                "GPS",
+                "Computer NTP",
+                "Stopwatch",
+                "Radio time signal",
+                "Other"
+            ]
+            # Keep detector list broad (shared camera inventory)
             detector_options = [
                 "Visual",
                 "Photometer",

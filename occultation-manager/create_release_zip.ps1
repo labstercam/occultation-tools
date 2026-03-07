@@ -71,6 +71,7 @@ $pythonFiles = @(
     "python\occult4_export.py",
     "python\report_generator_base.py",
     "python\sequence_runner.py",
+    "python\sodis_report_text.py",
     "python\tangra_dialogs.py",
     "python\templates.py",
     "python\theme.py",
@@ -91,7 +92,8 @@ $sequencerMasterFiles = @(
 # Report template masters
 $reportMasterFiles = @(
     "python\NorthAmerica_AstReportForm_V5.6.12r.xlsx",
-    "python\RASNZ_AstReporttForm_V4.1.2.G.xlsx"
+    "python\RASNZ_AstReporttForm_V4.1.2.G.xlsx",
+    "python\IOTA-ES_report.txt"
 )
 
 # App support files

@@ -98,7 +98,7 @@ class ComprehensiveReportDialog(Form):
         grp_report = GroupBox()
         grp_report.Text = "1. Report Format"
         grp_report.Location = Point(10, y_pos)
-        grp_report.Size = Size(940, 90)
+        grp_report.Size = Size(940, 115)
         main_panel.Controls.Add(grp_report)
         
         self.rb_na = RadioButton()
@@ -114,8 +114,15 @@ class ComprehensiveReportDialog(Form):
         self.rb_tt.Size = Size(280, 25)
         self.rb_tt.CheckedChanged += self.report_type_changed
         grp_report.Controls.Add(self.rb_tt)
+
+        self.rb_sodis = RadioButton()
+        self.rb_sodis.Text = "IOTA-ES / SODIS (Form 2.03)"
+        self.rb_sodis.Location = Point(20, 75)
+        self.rb_sodis.Size = Size(280, 25)
+        self.rb_sodis.CheckedChanged += self.report_type_changed
+        grp_report.Controls.Add(self.rb_sodis)
         
-        y_pos += 100
+        y_pos += 125
         
         # ===== SECTION 2: EQUIPMENT =====
         grp_equipment = GroupBox()
@@ -393,6 +400,8 @@ class ComprehensiveReportDialog(Form):
         last_report_type = self.config.get_last_report_type()
         if last_report_type == 'trans_tasman':
             self.rb_tt.Checked = True
+        elif last_report_type == 'sodis':
+            self.rb_sodis.Checked = True
         else:
             self.rb_na.Checked = True
         
@@ -441,6 +450,8 @@ class ComprehensiveReportDialog(Form):
             current_report_type = 'NA'
         elif self.rb_tt.Checked:
             current_report_type = 'TT'
+        elif self.rb_sodis.Checked:
+            current_report_type = 'SODIS'
         else:
             current_report_type = None  # No report type selected yet
         
@@ -730,7 +741,7 @@ class ComprehensiveReportDialog(Form):
     def update_button_state(self):
         """Update generate button state and status message"""
         # Check all requirements
-        has_report_type = self.rb_na.Checked or self.rb_tt.Checked
+        has_report_type = self.rb_na.Checked or self.rb_tt.Checked or self.rb_sodis.Checked
         
         # Check if equipment is configured (not just selected)
         telescopes = self.config.get_telescopes()
@@ -785,6 +796,8 @@ class ComprehensiveReportDialog(Form):
             self.report_type = 'north_america'
         elif self.rb_tt.Checked:
             self.report_type = 'trans_tasman'
+        elif self.rb_sodis.Checked:
+            self.report_type = 'sodis'
         
         # Save report type preference
         self.config.set_last_report_type(self.report_type)
@@ -798,6 +811,8 @@ class ComprehensiveReportDialog(Form):
             cameras = [c for c in all_cameras if c.get('report_type', 'NA') == 'NA']
         elif self.report_type == 'trans_tasman':
             cameras = [c for c in all_cameras if c.get('report_type', 'NA') == 'TT']
+        elif self.report_type == 'sodis':
+            cameras = [c for c in all_cameras if c.get('report_type', 'NA') == 'SODIS']
         else:
             cameras = all_cameras
         

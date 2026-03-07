@@ -1901,7 +1901,7 @@ class OccultationManagerGUI(Form):
         
         # Show warning about report generation being under development
         warning_result = MessageBox.Show(
-            "Report generation is still under development and has not been approved by the NA or TT reporting coordinators. Use with caution.\n\nDo you want to continue?",
+            "Report generation is still under development and has not been approved by the NA, TT, or SODIS reporting coordinators. Use with caution.\n\nDo you want to continue?",
             "Report Generation Warning",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning)
@@ -1976,6 +1976,12 @@ class OccultationManagerGUI(Form):
                     del sys.modules['tt_report_openize']
                 from tt_report_openize import TTReportGeneratorOpenize
                 report_generator = TTReportGeneratorOpenize(self.config)
+            elif report_type == 'sodis':
+                import sys
+                if 'sodis_report_text' in sys.modules:
+                    del sys.modules['sodis_report_text']
+                from sodis_report_text import SODISReportGeneratorText
+                report_generator = SODISReportGeneratorText(self.config)
             else:
                 MessageBox.Show(f"Report type '{report_type}' is not yet implemented.", 
                               "Not Implemented", MessageBoxButtons.OK, MessageBoxIcon.Information)
@@ -2283,7 +2289,12 @@ class OccultationManagerGUI(Form):
             else:
                 print(f"ERROR: Report generation failed (check log)")
                 self.update_status("Report generation failed")
-                MessageBox.Show("Report generation failed. Tip: Close the Excel file if it's already open.\n\nCheck the SharpCap console output for details.", 
+                if report_type == 'sodis':
+                    fail_msg = "Report generation failed.\n\nCheck the SharpCap console output for details."
+                else:
+                    fail_msg = "Report generation failed. Tip: Close the Excel file if it's already open.\n\nCheck the SharpCap console output for details."
+
+                MessageBox.Show(fail_msg,
                             "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         except Exception as ex:
             import traceback

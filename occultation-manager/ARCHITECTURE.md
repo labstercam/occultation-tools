@@ -410,7 +410,7 @@ Three specialized report generators create Excel-based observation reports by fi
 1. User selects event in grid
 2. Click "Generate Report"
 3. Comprehensive Report Dialog opens:
-   a. Select report type (NA or TT)
+    a. Select report type (NA, TT, or SODIS)
    b. Select equipment (telescope + camera)
    c. Choose observation type (Positive/Negative/Unsure)
    d. Set observing conditions (clouds, stability, other)
@@ -572,7 +572,7 @@ User → Run Sequences Button → main_gui.run_sequences_click_async()
 User → Selects event → Generate Report Button
     → comprehensive_report_dialog.ComprehensiveReportDialog opens
     → User selects:
-        - Report type (NA or TT)
+        - Report type (NA, TT, or SODIS)
         - Telescope and Camera
         - Observation type
         - Optional: Import AOTA or Tangra data

@@ -118,16 +118,17 @@ occultation-manager/
 - Sequences use calculated or custom exposure, gain, and duration values
 
 **Report Generation (Under Development)**
-- ⚠️ **Not Approved**: Report generation is still under development and has not been approved by North America or Trans-Tasman reporting coordinators
+- ⚠️ **Not Approved**: Report generation is still under development and has not been approved by North America, Trans-Tasman, or SODIS reporting coordinators
 - Single comprehensive dialog for workflow efficiency
 - Integrates AOTA timing data and Tangra CSV light curve analysis
 - ⚠️ **Tangra Light Curve Analysis Only**: GPS flash timing analysis functions exist in the toolkit but are not yet integrated into Occultation Manager
 - GPS flash timing analysis available as standalone tool for experts with custom Python code
-- Uses Openize SDK for direct Excel cell manipulation
+- Uses Openize SDK for direct Excel cell manipulation (NA/TT)
+- Supports SODIS/IOTA-ES plain-text report generation (Form 2.03)
 - Preserves Excel data validation and formulas
 - Automatic Occult 4 XML export with matching filename
 - Observing conditions capture (clouds, stability, other notes)
-- Supports North America (IOTA) and Trans-Tasman (RASNZ) formats
+- Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
 - Use with caution and verify all generated data before submission
 
 **Equipment Management**
@@ -504,10 +505,10 @@ This provides the best of both worlds: automated multi-sequence execution with f
 
 ## Report Generation (Under Development - Not Approved)
 
-⚠️ **CRITICAL WARNING**: Report generation is still under development and **has NOT been approved** by the North America or Trans-Tasman reporting coordinators. All generated reports must be carefully verified before submission to any reporting organization. Use with extreme caution.
+⚠️ **CRITICAL WARNING**: Report generation is still under development and **has NOT been approved** by the North America, Trans-Tasman, or SODIS reporting coordinators. All generated reports must be carefully verified before submission to any reporting organization. Use with extreme caution.
 
 Reports are generated using a streamlined single-dialog workflow that combines:
-- Report format selection (North America / Trans-Tasman)
+- Report format selection (North America / Trans-Tasman / SODIS)
 - Telescope and camera selection
 - Observation type (Positive / Negative / Unsure)
 - Observing conditions (clouds, stability, other notes)

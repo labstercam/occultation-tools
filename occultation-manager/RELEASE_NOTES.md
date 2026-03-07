@@ -11,6 +11,18 @@
 - Updated release packaging/version pointers (ZIP naming and instructions).
 - Release packaging now pre-seeds `data/templates` with sequencer master templates.
 
+### SODIS / IOTA-ES Report Support (MVP)
+
+- Added new report format option: `IOTA-ES / SODIS (Form 2.03)` in comprehensive report dialog
+- Added new report generator module: `sodis_report_text.py` (`SODISReportGeneratorText`)
+- Wired SODIS generation into main report flow (`report_type == 'sodis'`)
+- Added SODIS camera profile support in shared equipment dialog filtering
+- SODIS output uses installed template source under `resources/templates_master/reports`
+- SODIS filename format: `YYYYMMDD_asteroidNo_starCatalog_starNumber.txt`
+- SODIS focal length output derived from aperture × focal ratio (cm, rounded)
+- SODIS negative observations output `D: M` and `R: M`
+- Updated warning text to include NA, TT, and SODIS coordinator approval status
+
 ---
 
 ## Version 0.2.0-beta.2 (February 2026)
@@ -223,7 +235,7 @@ observations. These handle midnight, next-day events, and DST correctly.
 
 ### Report Generation (Under Development - Not Approved)
 
-⚠️ **CRITICAL WARNING**: Report generation is still under development and has **NOT** been approved by North America (IOTA) or Trans-Tasman (RASNZ) reporting coordinators. Use with extreme caution and verify all generated data before submission.
+⚠️ **CRITICAL WARNING**: Report generation is still under development and has **NOT** been approved by North America (IOTA), Trans-Tasman (RASNZ), or SODIS reporting coordinators. Use with extreme caution and verify all generated data before submission.
 
 #### Current Report Capabilities
 - Single comprehensive dialog for workflow efficiency
@@ -231,7 +243,7 @@ observations. These handle midnight, next-day events, and DST correctly.
 - Imports Tangra CSV light curve analysis
 - Automatic video format extraction from Tangra CSV files
 - Dynamic exposure/integration detection based on timing consistency
-- Supports North America (IOTA) and Trans-Tasman (RASNZ) formats
+- Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
 - Auto-fills observer, telescope, and camera information
 - Remembers previous settings for faster workflow
 
@@ -316,4 +328,4 @@ For issues, questions, or feature requests:
 ---
 
 *Release notes maintained by: Michael Camilleri*  
-*Last updated: January 24, 2026*
+*Last updated: March 7, 2026*
