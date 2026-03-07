@@ -1,6 +1,6 @@
 # occultation-tools
 
-![Version](https://img.shields.io/badge/version-0.2.0--beta.1-blue)
+![Version](https://img.shields.io/badge/version-0.2.0--beta.3-blue)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
 
 Tools for automating occultation observations and validating timing accuracy.
@@ -14,7 +14,7 @@ Repository housekeeping update: out-of-date code/files were briefly cleaned up (
 ### 1. Occultation Manager
 **SharpCap add-in for automated occultation workflow**
 
-Automates the complete occultation observation workflow: downloads personal observations from Occult Watcher Cloud, generates customizable SharpCap sequences, and produces pre-filled Excel reports with integrated timing data from Tangra analysis.
+Automates the complete occultation observation workflow: downloads personal observations from Occult Watcher Cloud, generates customizable SharpCap sequences, and produces pre-filled reports with integrated timing data from Tangra analysis.
 
 📖 **[Read Full Documentation](occultation-manager/ReadMe.md)**  
 📦 **[Download Latest Release](occultation-manager/)**  
@@ -25,6 +25,7 @@ Automates the complete occultation observation workflow: downloads personal obse
 - Generates customizable SharpCap sequences for automated recording
 - Observation preparation panel with GOTO, plate solve, and test recording
 - Report generation with Tangra CSV integration (experimental)
+- Supports NA (IOTA) and TT (RASNZ) Excel outputs plus SODIS (IOTA-ES Form 2.03) text output
 - Multiple telescope and camera configuration support
 
 ### 2. GPS Timing Analysis

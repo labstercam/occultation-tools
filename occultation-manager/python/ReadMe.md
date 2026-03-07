@@ -25,12 +25,13 @@ See [DUMMY_EVENTS_FEATURE.md](development documentation/DUMMY_EVENTS_FEATURE.md)
 
 ### Report Generation System
 
-⚠️ **Status**: Report generation is still under development and has NOT been approved by North America or Trans-Tasman reporting coordinators.
+⚠️ **Status**: Report generation is still under development and has NOT been approved by North America, Trans-Tasman, or SODIS reporting coordinators.
 
-The Occultation Manager includes comprehensive Excel report generation with integrated Tangra light curve analysis.
+The Occultation Manager includes comprehensive report generation (Excel for NA/TT and text for SODIS) with integrated Tangra light curve analysis.
 
 **Current Integration Status**:
 - ✅ **Tangra CSV light curve analysis**: Fully integrated for video format detection, exposure/integration mode, and frame timing
+- ✅ **SODIS / IOTA-ES report generation**: Integrated as `IOTA-ES / SODIS (Form 2.03)` in the comprehensive report workflow
 - ⚠️ **GPS flash timing analysis**: NOT YET INTEGRATED - Available in `gps-timing-analysis` toolkit as standalone tools for expert users with custom Python code
 - 📅 **Future Plans**: Integration of GPS flash timing analysis (1PPS detection, timestamp offset, rolling shutter characterization) into report workflow
 
@@ -184,9 +185,16 @@ Complete code snippets and implementation notes in `countdown python for sequenc
 - Openize-based cell population preserving Excel validation/formulas
 - **Video format and exposure/integration** sourced from Tangra CSV analysis
 
+**sodis_report_text.py** - SODIS / IOTA-ES (Form 2.03, Text)
+- Uses template: `IOTA-ES_report.txt`
+- Writes plain-text report with SODIS key order and naming
+- Template resolved from installed resources master reports folder
+- Filename format: `YYYYMMDD_asteroidNo_starCatalog_starNumber.txt`
+- Positive/Unsure uses AOTA D/R timings; Negative writes `D: M` and `R: M`
+
 **occult4_export.py** - Occult 4 XML Export (Version 2.15+)
 - Generates OBS.XML files compatible with Occult 4 software
-- Integrated into report workflow alongside NA and TT reports
+- Integrated into report workflow alongside NA, TT, and SODIS reports
 - Uses data already collected from AOTA reports and Tangra analysis
 - Exports single observation data in standardized XML format for IOTA
 

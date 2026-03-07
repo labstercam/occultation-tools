@@ -232,9 +232,9 @@ occultation-manager/
    - **UTC countdown functions** for reliable timing (24+ hour safe)
    
    ### Report Generation (Under Development - Not Approved)
-   ⚠️ **CRITICAL WARNING**: Report generation has **NOT** been approved by North America (IOTA) or Trans-Tasman (RASNZ) reporting coordinators. Verify all data before submission.
+   ⚠️ **CRITICAL WARNING**: Report generation has **NOT** been approved by North America (IOTA), Trans-Tasman (RASNZ), or SODIS reporting coordinators. Verify all data before submission.
    
-   - North America (IOTA) and Trans-Tasman (RASNZ) Excel formats
+   - North America (IOTA) and Trans-Tasman (RASNZ) Excel formats, plus SODIS (IOTA-ES) text format
    - AOTA timing data integration (D/R times)
    - Tangra CSV light curve analysis (fully integrated)
    - Automatic video format and exposure detection
