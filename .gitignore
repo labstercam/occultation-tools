@@ -46,6 +46,7 @@ Thumbs.db
 test_output/
 *.zip
 !create_release_zip.ps1
+occultation-manager/temp_release/
 
 # Config files with sensitive data (if any)
 # config_local.json
