@@ -3,8 +3,22 @@
 **Version 0.2.0-beta.3** - SharpCap add-in for automated occultation observations
 
 SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences.
+## Workflow
 
-Maintenance update: out-of-date code/files were briefly cleaned up (archived/removed where appropriate), and documentation was updated to match the current project state.
+1. **Download Events**: Sync with Occult Watcher Cloud to get your announced stations
+
+   
+3. **Prepare for Observation**: Use the Observation Preparation panel to set up for your event
+   - **Load Event**: Select an event from the grid to prepare
+   - **GOTO**: Automatically slew your mount to the event coordinates
+   - **Plate Solve**: Verify pointing and label the target star
+   - **Setup**: Configure SharpCap camera settings (exposure, coordinates)
+   - **Test Recording**: Make a short test recording to verify setup without disrupting your settings
+4. **Customize Settings**: Override calculated exposure, gain, or recording duration if needed
+5. **Generate Sequences**: Create customized SharpCap sequences for automated recording
+6. **Record Event**: Run the sequence to capture the occultation with full control
+7. **Analyze in Tangra**: Process video to generate light curve CSV and timing data
+8. **(Optional) Generate Reports**: Experimental feature for Excel reports - verify all data before submission
 
 ## 📦 Installation
 
@@ -144,21 +158,6 @@ occultation-manager/
 4. **Simplified Event Management**: No need for Occult Watcher Desktop for predictions
 5. **Multi-Event Sessions**: Generate sequences for entire night's observations
 6. **Safe Testing**: Test recordings preserve your camera settings automatically
-
-## Workflow
-
-1. **Download Events**: Sync with Occult Watcher Cloud to get your announced stations
-2. **Prepare for Observation**: Use the Observation Preparation panel to set up for your event
-   - **Load Event**: Select an event from the grid to prepare
-   - **GOTO**: Automatically slew your mount to the event coordinates
-   - **Plate Solve**: Verify pointing and label the target star
-   - **Setup**: Configure SharpCap camera settings (exposure, coordinates)
-   - **Test Recording**: Make a short test recording to verify setup without disrupting your settings
-3. **Customize Settings**: Override calculated exposure, gain, or recording duration if needed
-4. **Generate Sequences**: Create customized SharpCap sequences for automated recording
-5. **Record Event**: Run the sequence to capture the occultation with full control
-6. **Analyze in Tangra**: Process video to generate light curve CSV and timing data
-7. **(Optional) Generate Reports**: Experimental feature for Excel reports - verify all data before submission
 
 ## SharpCap Sequences - Your Recording Workflow
 
