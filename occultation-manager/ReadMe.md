@@ -2,23 +2,31 @@
 
 **Version 0.2.0-beta.3** - SharpCap add-in for automated occultation observations
 
-SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences.
+SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences. Sequences can be run interactively or unattended for fully automated recordings for an entire nights observations. The sequences can be run on remote PCs without internet connection for multiple station deployments.
+
+Occultation Manager generates reports for NA, TT and SODIS and Occult 4 XML, populating all event details, event D/R, and manages telescope, camera, station location and condition information from within the tool. No more copying and pasting from multiple different applications.
+
+The workflow can be as simple as announce stations in Occult Watcher Cloud, open Sharpcap Occultation Manager, press Download, then Create Sequences, then Run Sequences and an entire nights observations are set up and running!
+
 ## Workflow
 
-1. **Download Events**: Sync with Occult Watcher Cloud to get your announced stations
+1. **Download Events**: Sync with Occult Watcher Cloud to download your stations announced in OW Cloud or via OW Desktop
+<img width="1063" height="321" alt="image" src="https://github.com/user-attachments/assets/2630915b-d967-4a5c-910a-5b4bb6ef3b08" />
 
-   
-3. **Prepare for Observation**: Use the Observation Preparation panel to set up for your event
+2. **Prepare for Observation (optional)**: Use the Observation Preparation panel to set up for your event for either live or automated recording
    - **Load Event**: Select an event from the grid to prepare
    - **GOTO**: Automatically slew your mount to the event coordinates
    - **Plate Solve**: Verify pointing and label the target star
-   - **Setup**: Configure SharpCap camera settings (exposure, coordinates)
+   - **Setup**: Configure and SharpCap camera settings (exposure, coordinates)
    - **Test Recording**: Make a short test recording to verify setup without disrupting your settings
-4. **Customize Settings**: Override calculated exposure, gain, or recording duration if needed
-5. **Generate Sequences**: Create customized SharpCap sequences for automated recording
-6. **Record Event**: Run the sequence to capture the occultation with full control
-7. **Analyze in Tangra**: Process video to generate light curve CSV and timing data
-8. **(Optional) Generate Reports**: Experimental feature for Excel reports - verify all data before submission
+3. **Customize Settings (optional)**: Override calculated exposure, gain, or recording duration if needed
+4. **Generate Sequences**: Create customized SharpCap sequences for automated recording of single events or multiple events
+<img width="391" height="248" alt="image" src="https://github.com/user-attachments/assets/f503a43f-d610-46d1-a69a-a4895ca93c05" />
+
+6. **Run Sequences**: Run the sequence(s) to record the occultation from occultation-manager, or use the SharpCap Sequencer separately
+7. **Generate Reports**: Load Tangra and AOTA analysis and generate reports for North America, Australasia or SODIS reporting systems (working prototypes)
+<img width="494" height="407" alt="image" src="https://github.com/user-attachments/assets/6720113f-5cf5-4e08-a689-7588f370cdeb" />
+  
 
 ## 📦 Installation
 
