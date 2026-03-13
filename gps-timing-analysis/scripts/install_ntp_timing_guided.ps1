@@ -200,12 +200,21 @@ function Install-Exe {
         throw "$Label installer not found: $InstallerPath"
     }
 
+    $startArgs = @{
+        FilePath = $InstallerPath
+        PassThru = $true
+        Wait     = $true
+    }
+
     if ([string]::IsNullOrWhiteSpace($Arguments)) {
-        Write-WarnMsg "$Label silent arguments are empty; installer may be interactive."
+        Write-WarnMsg "$Label silent arguments are empty; starting installer without arguments (interactive mode)."
+    }
+    else {
+        $startArgs.ArgumentList = $Arguments
     }
 
     Write-Info "Starting installer: $Label"
-    $proc = Start-Process -FilePath $InstallerPath -ArgumentList $Arguments -PassThru -Wait
+    $proc = Start-Process @startArgs
     if ($proc.ExitCode -ne 0) {
         throw "$Label installer exited with code $($proc.ExitCode)"
     }
@@ -372,6 +381,156 @@ function Add-UniqueServers {
     return $result
 }
 
+function Get-ServerHostFromEntry {
+    param([string]$Entry)
+
+    if ([string]::IsNullOrWhiteSpace($Entry)) {
+        return ""
+    }
+
+    return ($Entry.Trim() -split '\s+')[0].ToLowerInvariant()
+}
+
+function Select-ServersFromListInteractive {
+    param(
+        [string]$Header,
+        [string]$Prompt,
+        [string[]]$Servers,
+        [int]$MaxCount
+    )
+
+    $choices = @($Servers | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+    if ($choices.Count -eq 0) {
+        return @()
+    }
+
+    while ($true) {
+        Write-Host $Header -ForegroundColor Cyan
+        for ($i = 0; $i -lt $choices.Count; $i++) {
+            Write-Host ("  {0}) {1}" -f ($i + 1), $choices[$i])
+        }
+
+        $raw = Read-Host ($Prompt + " Enter numbers separated by comma, or press Enter for 0")
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return @()
+        }
+
+        $parts = @($raw -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
+        if ($parts.Count -gt $MaxCount) {
+            Write-WarnMsg ("Please select up to {0} servers." -f $MaxCount)
+            continue
+        }
+
+        $selected = @()
+        $valid = $true
+        foreach ($p in $parts) {
+            if ($p -notmatch '^\d+$') {
+                $valid = $false
+                break
+            }
+
+            $idx = [int]$p
+            if ($idx -lt 1 -or $idx -gt $choices.Count) {
+                $valid = $false
+                break
+            }
+
+            $selected += $choices[$idx - 1]
+        }
+
+        if (-not $valid) {
+            Write-WarnMsg "One or more selections were invalid."
+            continue
+        }
+
+        return @($selected | Select-Object -Unique)
+    }
+}
+
+function Resolve-AuServersInteractive {
+    param([string]$ConfigPath)
+
+    $entry = Get-CountryConfigEntry -CountryCode "AU" -ConfigPath $ConfigPath
+    if ($null -eq $entry) {
+        throw "Country 'AU' not found in $ConfigPath"
+    }
+
+    $all = @($entry.servers)
+    $nmiAll = @($all | Where-Object {
+            $h = Get-ServerHostFromEntry -Entry $_
+            $h -match '(^|\.)nmi\.gov\.au$'
+        })
+
+    $eduAll = @($all | Where-Object {
+            $h = Get-ServerHostFromEntry -Entry $_
+            $h -match '\.edu\.au$'
+        })
+
+    $poolNumbered = @($all | Where-Object {
+            $h = Get-ServerHostFromEntry -Entry $_
+            $h -match '^[0-3]\.au\.pool\.ntp\.org$'
+        } | Select-Object -Unique)
+
+    if ($poolNumbered.Count -lt 4) {
+        $poolNumbered = @("0.au.pool.ntp.org iburst", "1.au.pool.ntp.org iburst", "2.au.pool.ntp.org iburst", "3.au.pool.ntp.org iburst")
+    }
+
+    $selected = @()
+    $nmiUsed = $false
+
+    Write-Info "Select the NTP servers to use. Where possible, choose servers that are near to you in the same or neighbouring city/state/territory."
+
+    $useNmi = Read-YesNo -Prompt "Do you want to use NTP servers from the National Measurement Institute (NMI)? These are the best servers and are traceable to UTC. However you will have to register your computer and use a static IP address (details will be provided)." -DefaultYes $true
+    if ($useNmi) {
+        $primaryNmi = @($nmiAll | Where-Object { (Get-ServerHostFromEntry -Entry $_) -eq 'ntp.nmi.gov.au' } | Select-Object -First 1)
+        if ($primaryNmi.Count -eq 0) {
+            $primaryNmi = @("ntp.nmi.gov.au iburst")
+        }
+
+        $selected = Add-UniqueServers -Base $selected -ToAdd $primaryNmi
+        $nmiUsed = $true
+
+        $remainingNmi = @($nmiAll | Where-Object { (Get-ServerHostFromEntry -Entry $_) -ne 'ntp.nmi.gov.au' } | Select-Object -Unique)
+        $chosenNmi = Select-ServersFromListInteractive -Header "Select 0, 1 or 2 NMI servers:" -Prompt "Select 0, 1 or 2 NMI servers. Choose ones nearest to your city/state/territory. If you choose 0 or 1 then additional servers will be added in the next steps." -Servers $remainingNmi -MaxCount 2
+        $selected = Add-UniqueServers -Base $selected -ToAdd $chosenNmi
+    }
+
+    $chosenEdu = Select-ServersFromListInteractive -Header "Select 0, 1 or 2 University servers:" -Prompt "Select 0, 1 or 2 University servers. Choose ones nearest to your city/state/territory. If you choose 0 or 1 then additional servers will be added in the next steps." -Servers $eduAll -MaxCount 2
+    $selected = Add-UniqueServers -Base $selected -ToAdd $chosenEdu
+
+    foreach ($pool in $poolNumbered) {
+        if ($selected.Count -ge 5) {
+            break
+        }
+        $selected = Add-UniqueServers -Base $selected -ToAdd @($pool)
+    }
+
+    if ($selected.Count -lt 5) {
+        Write-WarnMsg "Not enough numbered AU pool servers were available to reach 5 unique entries."
+    }
+
+    Write-Step "AU server selection summary"
+    for ($i = 0; $i -lt $selected.Count; $i++) {
+        Write-Host ("  {0}) {1}" -f ($i + 1), $selected[$i])
+    }
+
+    if ($nmiUsed) {
+        Write-WarnMsg "You must register to use NMI servers, and have a static IP address. To register, email time@measurement.gov.au. See https://www.industry.gov.au/national-measurement-institute/nmi-services/physical-measurement-services/time-and-frequency-services for more details."
+
+        if (Read-YesNo -Prompt "Do you want more information about using a static IP address for your PC?" -DefaultYes $false) {
+            Write-Host "Brief static IP guide for Windows 10/11:" -ForegroundColor Cyan
+            Write-Host "  1) Open Settings > Network and Internet > Advanced network settings."
+            Write-Host "  2) Open your active adapter (Ethernet/Wi-Fi) properties."
+            Write-Host "  3) Edit IP assignment, switch to Manual, and enable IPv4."
+            Write-Host "  4) Enter IP address, subnet mask, gateway, and DNS values from your network provider/admin."
+            Write-Host "  5) Save and verify internet access."
+            Write-Host "Guide: https://support.microsoft.com/windows/change-tcp-ip-settings"
+        }
+    }
+
+    return @($selected)
+}
+
 function Select-NationalServersInteractive {
     param([string[]]$Servers)
 
@@ -533,6 +692,10 @@ function Resolve-ServersForCountry {
 
         Write-Info "Country '$resolvedCode' is not defined in config; using national UTC/NTP inventory plus pool fallback."
         return Resolve-ServersForCountryViaNationalInventory -CountryCode $resolvedCode -NationalUtcPath $NationalUtcPath -PoolZonesPath $PoolZonesPath
+    }
+
+    if ($CountryCode -eq "AU") {
+        return Resolve-AuServersInteractive -ConfigPath $ConfigPath
     }
 
     return Get-CountryServers -CountryCode $CountryCode -ConfigPath $ConfigPath
@@ -1170,7 +1333,7 @@ catch {
 try {
     Assert-Admin
 
-    Write-Step "Step 1: Welcome"
+    Write-Step "Welcome to the NTP Installer"
     Write-Host "This guided installer can perform any or all of the following:" -ForegroundColor Cyan
     Write-Host " 1) Install Meinberg NTP and prepare logging"
     Write-Host " 2) Install NTP Time Server Monitor"
@@ -1190,15 +1353,18 @@ try {
         throw "Installer canceled by user at launch page."
     }
 
-    if (Confirm-Step -Title "Step 2: Install Meinberg NTP and prepare logging" -Details @(
+    if (Confirm-Step -Title "Step 1: Install Meinberg NTP and prepare logging" -Details @(
             "Downloads and installs Meinberg NTP.",
             "NTP internet server selection is done in a later step.",
+            "Install using default. Do not add any predefined servers. They will be added later in Step 4.",
             ("Installer URL: {0}" -f $meinbergInstallerUrl),
             ("Install root: {0}" -f $installRoot),
             ("Config file: {0}" -f $ntpConfPath),
             ("Log folder: {0}" -f $statsDir),
             ("Advanced (automatic if PPS is enabled): registry value {0}\\PPSProviders" -f $ppsRegistryPath)
         )) {
+
+        Write-WarnMsg "Install using default. Do not add any predefined servers. They will be added later in Step 4."
 
         $meinbergInstallerPath = Join-Path $downloadDir "meinberg_installer.exe"
         Invoke-InstallerDownload -Url $meinbergInstallerUrl -OutputPath $meinbergInstallerPath -Label "Meinberg NTP"
@@ -1214,7 +1380,7 @@ try {
         $restartRecommended = $true
     }
 
-    if (Confirm-Step -Title "Step 3: Install NTP Time Server Monitor" -Details @(
+    if (Confirm-Step -Title "Step 2: Install NTP Time Server Monitor" -Details @(
             "Downloads and installs NTP Time Server Monitor.",
             "Use this tool later to verify lock, offsets, and source selection.",
             ("Installer URL: {0}" -f $ntpMonitorInstallerUrl),
@@ -1226,7 +1392,7 @@ try {
         Install-Exe -InstallerPath $monitorInstallerPath -Arguments $ntpMonitorInstallerArgs -Label "NTP Time Server Monitor"
     }
 
-    if (Confirm-Step -Title "Step 4: Optional GPS/PPS source setup" -Details @(
+    if (Confirm-Step -Title "Step 3: Optional GPS/PPS source setup" -Details @(
             "Optionally auto-detect COM port with built-in detection.",
             "Can configure either PPS+NMEA (GPS PPS) or NMEA-only receiver mode.",
             "Writes GPS server/fudge lines to ntp.conf.",
@@ -1271,7 +1437,7 @@ try {
         $selectedGpsMode = Read-GpsModeInteractive -CurrentMode $selectedGpsMode
 
         if (-not (Test-Path -LiteralPath $ntpConfPath)) {
-            Write-WarnMsg "ntp.conf not found yet. GPS lines will be applied after step 6 completes."
+            Write-WarnMsg "ntp.conf not found yet. GPS lines will be applied after Step 4 completes."
         }
         else {
             Update-GpsLines -NtpConfPath $ntpConfPath -ComPort $selectedComPort -GpsMode $selectedGpsMode -NmeaOnly:$gpsNmeaOnly
@@ -1293,12 +1459,12 @@ try {
     }
 
     if ($gpsConfigured) {
-        Write-Step "Step 5: GPS reminder"
+        Write-Step "GPS reminder"
         Write-WarnMsg "GPS parameters may still require tuning for your hardware and serial settings."
         Write-Info "Test behavior in NTP Time Server Monitor and refer to project documentation when available."
     }
 
-    if (Confirm-Step -Title "Step 6: Configure internet NTP servers by country" -Details @(
+    if (Confirm-Step -Title "Step 4: Configure internet NTP servers by country" -Details @(
             "Uses guided installer built-in country logic.",
             "Country profiles in ntp-country-servers.json are curated.",
             "Other countries use pool logic and may include national UTC inventory data.",
