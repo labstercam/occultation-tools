@@ -3,11 +3,29 @@
 This guide describes automation options for NTP timing setup in this project.
 
 Recommended entrypoint for most users:
-- `scripts/install_ntp_timing_guided.ps1`
+- `install_ntp_timing_bootstrap.cmd`
+
+Beginner one-file option (recommended):
+- Download `install_ntp_timing_bootstrap.cmd`
+- Double-click it
+- Accept the UAC prompt
+- Follow the guided installer prompts
+
+The bootstrap launcher creates/updates a fixed install location at:
+- `C:\OccultationTools\gps-timing-analysis`
+and then starts the guided installer automatically.
 
 The guided installer walks through optional steps with `Install / Skip / Exit` choices and logs all actions.
 
 ## Guided installer (recommended)
+
+Preferred for low-skill users (no unzip/path setup needed):
+
+```cmd
+install_ntp_timing_bootstrap.cmd
+```
+
+Advanced/manual entrypoint:
 
 Run as Administrator:
 
@@ -21,6 +39,8 @@ If PowerShell windows flash open/close on your system, use the CMD launcher:
 ```cmd
 scripts\install_ntp_timing_guided.cmd
 ```
+
+The CMD launcher will prompt for Administrator rights automatically (UAC).
 
 What the guided installer covers:
 - launch page explaining the workflow and optional/manual install path

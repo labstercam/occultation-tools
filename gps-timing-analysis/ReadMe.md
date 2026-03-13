@@ -131,6 +131,7 @@ Related analysis code:
 - `examples/process loopstats.ipynb`
 
 Automation assets:
+- `install_ntp_timing_bootstrap.cmd` (recommended one-file installer)
 - `scripts/install_ntp_timing_guided.ps1`
 - `scripts/install_ntp_timing_guided.cmd`
 - `scripts/setup_ntp_timing.ps1` (legacy/testing)
@@ -141,6 +142,13 @@ Automation assets:
 - `resources/national_utc_ntp_servers.json`
 
 For most users, start with:
+- `install_ntp_timing_bootstrap.cmd`
+
+The bootstrap launcher downloads/updates required files into:
+- `C:\OccultationTools\gps-timing-analysis`
+then starts the guided installer automatically.
+
+Advanced/manual entrypoint:
 - `scripts/install_ntp_timing_guided.ps1`
 
 The guided installer provides an `Install / Skip / Exit` flow for each major setup stage and writes a transcript log under `gps-timing-analysis/logs/`.
@@ -149,6 +157,7 @@ Beginner tip: follow recommended defaults in the installer unless your hardware 
 Setup behavior note: server and logging updates are applied to managed `ntp.conf` sections, while other existing `ntp.conf` settings are preserved.
 Guided installer note: country/pool/national-server selection is handled directly inside `install_ntp_timing_guided.ps1`.
 Guided installer note: COM port detection is built in; `scripts/find_gps_com_port.ps1` remains available as a standalone utility.
+Guided installer note: `install_ntp_timing_guided.cmd` requests Administrator rights automatically (UAC prompt).
 
 GPS/PPS note:
 - after setting `PPSProviders`, restart the `NTP` service first,
