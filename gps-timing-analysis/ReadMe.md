@@ -132,7 +132,7 @@ Related analysis code:
 
 Automation assets:
 - `scripts/install_ntp_timing_guided.ps1`
-- `scripts/setup_ntp_timing.ps1`
+- `scripts/setup_ntp_timing.ps1` (legacy/testing)
 - `scripts/find_gps_com_port.ps1`
 - `config/ntp.conf.template`
 - `config/ntp-country-servers.json`
@@ -146,6 +146,8 @@ The guided installer provides an `Install / Skip / Exit` flow for each major set
 It also prompts to restart the NTP service when configuration changes are made, including if you exit early after changes.
 Beginner tip: follow recommended defaults in the installer unless your hardware documentation says otherwise.
 Setup behavior note: server and logging updates are applied to managed `ntp.conf` sections, while other existing `ntp.conf` settings are preserved.
+Guided installer note: country/pool/national-server selection is handled directly inside `install_ntp_timing_guided.ps1`.
+Guided installer note: COM port detection is built in; `scripts/find_gps_com_port.ps1` remains available as a standalone utility.
 
 GPS/PPS note:
 - after setting `PPSProviders`, restart the `NTP` service first,
@@ -169,5 +171,6 @@ Notes:
 - The previous `EU` entity entry has been removed.
 - Some entries include `usage_note` when public server usage has restrictions.
 - Setup runtime use: when `setup_ntp_timing.ps1` is run with `-Country Other` and the ccTLD is not in `config/ntp-country-servers.json`, this inventory is used to surface national-server metadata and optional national hostnames.
+- Setup runtime use: when `install_ntp_timing_guided.ps1` configures `-Country Other` and the ccTLD is not in `config/ntp-country-servers.json`, this inventory is used to surface national-server metadata and optional national hostnames.
 - Field conventions for `status`, `groups`, and `usage_note` are documented in `docs/ntp-country-server-requirements.md` under `national_utc_ntp_servers.json Field Reference`.
 

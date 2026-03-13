@@ -20,19 +20,20 @@ What the guided installer covers:
 - launch page explaining the workflow and optional/manual install path
 - optional Meinberg NTP install and logging setup
 - optional NTP Time Server Monitor install
-- optional GPS/PPS setup using `scripts/find_gps_com_port.ps1` (or manual COM entry)
+- optional GPS/PPS setup using built-in COM auto-detection (or manual COM entry)
 - GPS reminder note for hardware-specific tuning/testing
-- country-based NTP server setup using `scripts/setup_ntp_timing.ps1`
+- country-based NTP server setup using built-in guided-installer logic
 - country install summary, including national UTC metadata warnings for non-curated `Other` countries
 - prompts to restart NTP service when configuration changes are detected
 - if the installer exits early after making changes, warns and prompts for restart before exit
 - full transcript logging to `gps-timing-analysis/logs/`
 
-## Advanced script (direct)
+## Advanced script (legacy/testing)
 
-This section describes direct use of `scripts/setup_ntp_timing.ps1` for advanced or scripted runs.
+`scripts/setup_ntp_timing.ps1` is retained for legacy/testing workflows.
+For normal installs, use `scripts/install_ntp_timing_guided.ps1`.
 
-## What the script can automate
+## What the guided installer can automate
 
 - optional download and install of Meinberg NTP
 - optional download and install of NTP server monitor
@@ -79,7 +80,7 @@ For `AU`, interactive setup now prompts for:
 ## Files used
 
 - Guided installer: `gps-timing-analysis/scripts/install_ntp_timing_guided.ps1`
-- Script: `gps-timing-analysis/scripts/setup_ntp_timing.ps1`
+- Legacy/testing script: `gps-timing-analysis/scripts/setup_ntp_timing.ps1`
 - Country servers: `gps-timing-analysis/config/ntp-country-servers.json`
 - NTP Pool zones resource: `gps-timing-analysis/resources/ntp_pool_zones.json`
 - National UTC/NTP inventory resource: `gps-timing-analysis/resources/national_utc_ntp_servers.json`
@@ -88,11 +89,11 @@ For `AU`, interactive setup now prompts for:
 - Existing NZ reference: `gps-timing-analysis/config/NTP Server Config for NZ.txt`
 
 Resource notes:
-- `ntp-country-servers.json` drives generated `ntp.conf` server lines in the setup script.
+- `ntp-country-servers.json` drives generated `ntp.conf` server lines in the guided installer.
 - `ntp.conf` updates are marker-based for managed sections:
   - `# >>> NTP_GUIDED_MANAGED_SERVERS_START` ... `# <<< NTP_GUIDED_MANAGED_SERVERS_END`
   - `# >>> NTP_GUIDED_MANAGED_LOGGING_START` ... `# <<< NTP_GUIDED_MANAGED_LOGGING_END`
-  The setup script updates these managed server/logging blocks while preserving other existing `ntp.conf` settings.
+  The guided installer updates these managed server/logging blocks while preserving other existing `ntp.conf` settings.
 - `ntp_pool_zones.json` is used for `-Country Other` 2-letter country-code/region mapping.
 - `national_utc_ntp_servers.json` is consulted for `-Country Other` when the country code is not defined in `ntp-country-servers.json`.
   The script displays authority/status/source/note fields, offers up to two national servers, then adds NTP Pool country servers and conditionally regional pool fallback.
@@ -107,7 +108,7 @@ Set-Location C:\Users\AstroPC\Git\occultation-tools\gps-timing-analysis
 .\scripts\install_ntp_timing_guided.ps1
 ```
 
-Direct setup script (advanced):
+Direct setup script (legacy/testing):
 
 Open PowerShell as Administrator, then run:
 
@@ -125,7 +126,7 @@ $com = .\scripts\find_gps_com_port.ps1
   -NtpMonitorInstallerSilentArgs "<SILENT_ARGS>"
 ```
 
-## Dry run
+## Dry run (legacy/testing script)
 
 Use `-WhatIf` first to preview all changes:
 
