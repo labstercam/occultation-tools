@@ -11,6 +11,12 @@ Beginner one-file option (recommended):
 - Accept the UAC prompt
 - Follow the guided installer prompts
 
+If your Windows policy blocks `.cmd` launchers or they flash-close before showing a prompt, use the PowerShell bootstrap instead:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install_ntp_timing_bootstrap.ps1
+```
+
 The bootstrap launcher creates/updates a fixed install location at:
 - `C:\OccultationTools\gps-timing-analysis`
 and then starts the guided installer automatically.

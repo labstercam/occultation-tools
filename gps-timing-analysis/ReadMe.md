@@ -132,6 +132,7 @@ Related analysis code:
 
 Automation assets:
 - `install_ntp_timing_bootstrap.cmd` (recommended one-file installer)
+- `install_ntp_timing_bootstrap.ps1` (fallback if `.cmd` is blocked)
 - `scripts/install_ntp_timing_guided.ps1`
 - `scripts/install_ntp_timing_guided.cmd`
 - `scripts/setup_ntp_timing.ps1` (legacy/testing)
@@ -150,6 +151,12 @@ then starts the guided installer automatically.
 
 Advanced/manual entrypoint:
 - `scripts/install_ntp_timing_guided.ps1`
+
+If `.cmd` launchers are blocked on your Windows policy, run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install_ntp_timing_bootstrap.ps1
+```
 
 The guided installer provides an `Install / Skip / Exit` flow for each major setup stage and writes a transcript log under `gps-timing-analysis/logs/`.
 It also prompts to restart the NTP service when configuration changes are made, including if you exit early after changes.
