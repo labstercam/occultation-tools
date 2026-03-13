@@ -9,6 +9,25 @@ function Write-WarnMsg([string]$Message) { Write-Host "[WARN] $Message" -Foregro
 function Write-Ok([string]$Message) { Write-Host "[ OK ] $Message" -ForegroundColor Green }
 function Write-Step([string]$Message) { Write-Host "`n=== $Message ===" -ForegroundColor Green }
 
+function Wait-BeforeCloseIfNeeded {
+    # Keep standalone ConsoleHost windows open so users can read output/errors.
+    if ($Host.Name -ne 'ConsoleHost') {
+        return
+    }
+
+    # VS Code integrated terminals should not be blocked.
+    if ($env:TERM_PROGRAM -eq 'vscode') {
+        return
+    }
+
+    try {
+        [void](Read-Host "Press Enter to close")
+    }
+    catch {
+        # Ignore prompt failures during shutdown.
+    }
+}
+
 function Read-YesNo {
     param(
         [string]$Prompt,
@@ -1351,4 +1370,6 @@ finally {
     if ($transcriptStarted) {
         try { Stop-Transcript | Out-Null } catch {}
     }
+
+    Wait-BeforeCloseIfNeeded
 }
