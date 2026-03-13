@@ -447,6 +447,173 @@ function Select-ServersFromListInteractive {
     }
 }
 
+function Convert-PrefixLengthToSubnetMask {
+    param([int]$PrefixLength)
+
+    if ($PrefixLength -lt 0 -or $PrefixLength -gt 32) {
+        return ""
+    }
+
+    $remaining = $PrefixLength
+    $octets = @()
+    for ($i = 0; $i -lt 4; $i++) {
+        if ($remaining -ge 8) {
+            $octets += 255
+            $remaining -= 8
+            continue
+        }
+
+        if ($remaining -le 0) {
+            $octets += 0
+            continue
+        }
+
+        $octets += (256 - [math]::Pow(2, (8 - $remaining)))
+        $remaining = 0
+    }
+
+    return (($octets | ForEach-Object { [int]$_ }) -join '.')
+}
+
+function Get-ActiveIpv4Configuration {
+    $configs = @()
+    try {
+        $configs = @(
+            Get-NetIPConfiguration -ErrorAction Stop |
+                Where-Object { $null -ne $_.IPv4Address -and $null -ne $_.IPv4DefaultGateway }
+        )
+    }
+    catch {
+        return $null
+    }
+
+    if ($configs.Count -eq 0) {
+        return $null
+    }
+
+    $selected = @($configs | Where-Object { $null -ne $_.NetAdapter -and $_.NetAdapter.Status -eq 'Up' } | Select-Object -First 1)
+    if ($selected.Count -eq 0) {
+        $selected = @($configs | Select-Object -First 1)
+    }
+
+    $cfg = $selected[0]
+    $ipObj = @($cfg.IPv4Address | Select-Object -First 1)
+    $ip = if ($ipObj.Count -gt 0) { [string]$ipObj[0].IPAddress } else { "" }
+    $prefix = if ($ipObj.Count -gt 0) { [int]$ipObj[0].PrefixLength } else { 24 }
+    $gateway = ""
+    if ($null -ne $cfg.IPv4DefaultGateway) {
+        $gateway = [string]$cfg.IPv4DefaultGateway.NextHop
+    }
+
+    $dns = @()
+    if ($null -ne $cfg.DNSServer -and $null -ne $cfg.DNSServer.ServerAddresses) {
+        $dns = @($cfg.DNSServer.ServerAddresses | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' })
+    }
+
+    $dhcpState = "Unknown"
+    try {
+        $iface = Get-NetIPInterface -InterfaceIndex $cfg.InterfaceIndex -AddressFamily IPv4 -ErrorAction Stop
+        if ($iface.Dhcp -eq 'Enabled') { $dhcpState = "Enabled" }
+        elseif ($iface.Dhcp -eq 'Disabled') { $dhcpState = "Disabled" }
+    }
+    catch {
+        $dhcpState = "Unknown"
+    }
+
+    return [pscustomobject]@{
+        AdapterAlias = [string]$cfg.InterfaceAlias
+        IPAddress    = $ip
+        PrefixLength = $prefix
+        SubnetMask   = Convert-PrefixLengthToSubnetMask -PrefixLength $prefix
+        Gateway      = $gateway
+        DnsServers   = $dns
+        DhcpState    = $dhcpState
+    }
+}
+
+function Get-SuggestedStaticIpAddress {
+    param(
+        [string]$CurrentIp,
+        [string]$Gateway
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CurrentIp)) {
+        return ""
+    }
+
+    $parts = @($CurrentIp -split '\.')
+    if ($parts.Count -ne 4) {
+        return $CurrentIp
+    }
+
+    $octet = 0
+    if (-not [int]::TryParse($parts[3], [ref]$octet)) {
+        return $CurrentIp
+    }
+
+    $candidates = @($octet + 20, $octet + 30, $octet + 10)
+    foreach ($cand in $candidates) {
+        if ($cand -lt 2 -or $cand -gt 254) {
+            continue
+        }
+
+        $testIp = "{0}.{1}.{2}.{3}" -f $parts[0], $parts[1], $parts[2], $cand
+        if ($testIp -ne $Gateway -and $testIp -ne $CurrentIp) {
+            return $testIp
+        }
+    }
+
+    return $CurrentIp
+}
+
+function Show-StaticIpGuidance {
+    Write-Host "Brief static IP guide for Windows 10/11:" -ForegroundColor Cyan
+
+    $net = Get-ActiveIpv4Configuration
+    if ($null -ne $net -and -not [string]::IsNullOrWhiteSpace($net.IPAddress)) {
+        $suggestedIp = Get-SuggestedStaticIpAddress -CurrentIp $net.IPAddress -Gateway $net.Gateway
+
+        Write-Host ""
+        Write-Host "Detected current active network settings:" -ForegroundColor Cyan
+        Write-Host ("  Adapter: {0}" -f $net.AdapterAlias)
+        Write-Host ("  Current IPv4: {0}" -f $net.IPAddress)
+        Write-Host ("  Subnet mask: {0}" -f $net.SubnetMask)
+        Write-Host ("  Gateway: {0}" -f $net.Gateway)
+        if ($net.DnsServers.Count -gt 0) {
+            Write-Host ("  DNS: {0}" -f ($net.DnsServers -join ', '))
+        }
+        Write-Host ("  DHCP: {0}" -f $net.DhcpState)
+
+        Write-Host ""
+        Write-Host "Suggested static IPv4 values to enter:" -ForegroundColor Cyan
+        Write-Host ("  IP address: {0}" -f $suggestedIp)
+        Write-Host ("  Subnet mask: {0}" -f $net.SubnetMask)
+        Write-Host ("  Gateway: {0}" -f $net.Gateway)
+        if ($net.DnsServers.Count -gt 0) {
+            Write-Host ("  Preferred DNS: {0}" -f $net.DnsServers[0])
+            if ($net.DnsServers.Count -gt 1) {
+                Write-Host ("  Alternate DNS: {0}" -f $net.DnsServers[1])
+            }
+        }
+
+        Write-WarnMsg "Important: use an IP address outside your router DHCP range (or reserve this IP in the router) to avoid conflicts."
+    }
+    else {
+        Write-WarnMsg "Could not auto-detect current IPv4 settings."
+        Write-Host "Use your current IPv4, subnet mask, gateway, and DNS as a starting point, then choose a nearby unused IP." -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "How to enter on Windows 10/11:" -ForegroundColor Cyan
+    Write-Host "  1) Open Settings > Network and Internet > Advanced network settings."
+    Write-Host "  2) Open your active adapter (Ethernet/Wi-Fi) and choose View additional properties."
+    Write-Host "  3) Under IP assignment, click Edit."
+    Write-Host "  4) Select Manual, enable IPv4, and enter the suggested values."
+    Write-Host "  5) Save and confirm internet access still works."
+    Write-Host ""
+    Write-Host "Simple step-by-step guide: https://support.microsoft.com/windows/change-tcp-ip-settings"
+}
+
 function Resolve-AuServersInteractive {
     param([string]$ConfigPath)
 
@@ -478,9 +645,16 @@ function Resolve-AuServersInteractive {
     $selected = @()
     $nmiUsed = $false
 
-    Write-Info "Select the NTP servers to use. Where possible, choose servers that are near to you in the same or neighbouring city/state/territory."
+    Write-Info "Select the NTP servers to use."
+    Write-Host "Where possible, choose servers that are near to you." -ForegroundColor Cyan
+    Write-Host "Prefer servers in the same or neighbouring city/state/territory." -ForegroundColor Cyan
 
-    $useNmi = Read-YesNo -Prompt "Do you want to use NTP servers from the National Measurement Institute (NMI)? These are the best servers and are traceable to UTC. However you will have to register your computer and use a static IP address (details will be provided)." -DefaultYes $true
+    Write-Host "" 
+    Write-Host "Do you want to use NTP servers from the National Measurement Institute (NMI)?" -ForegroundColor Cyan
+    Write-Host "These are the best servers and are traceable to UTC." -ForegroundColor Cyan
+    Write-Host "However, you must register your computer and use a static IP address." -ForegroundColor Cyan
+    Write-Host "Details will be provided." -ForegroundColor Cyan
+    $useNmi = Read-YesNo -Prompt "Use NMI servers?" -DefaultYes $true
     if ($useNmi) {
         $primaryNmi = @($nmiAll | Where-Object { (Get-ServerHostFromEntry -Entry $_) -eq 'ntp.nmi.gov.au' } | Select-Object -First 1)
         if ($primaryNmi.Count -eq 0) {
@@ -491,11 +665,11 @@ function Resolve-AuServersInteractive {
         $nmiUsed = $true
 
         $remainingNmi = @($nmiAll | Where-Object { (Get-ServerHostFromEntry -Entry $_) -ne 'ntp.nmi.gov.au' } | Select-Object -Unique)
-        $chosenNmi = Select-ServersFromListInteractive -Header "Select 0, 1 or 2 NMI servers:" -Prompt "Select 0, 1 or 2 NMI servers. Choose ones nearest to your city/state/territory. If you choose 0 or 1 then additional servers will be added in the next steps." -Servers $remainingNmi -MaxCount 2
+        $chosenNmi = Select-ServersFromListInteractive -Header "Select 0, 1 or 2 NMI servers:`nChoose ones nearest to your city/state/territory.`nIf you choose 0 or 1, additional servers will be added in the next steps." -Prompt "Select NMI servers." -Servers $remainingNmi -MaxCount 2
         $selected = Add-UniqueServers -Base $selected -ToAdd $chosenNmi
     }
 
-    $chosenEdu = Select-ServersFromListInteractive -Header "Select 0, 1 or 2 University servers:" -Prompt "Select 0, 1 or 2 University servers. Choose ones nearest to your city/state/territory. If you choose 0 or 1 then additional servers will be added in the next steps." -Servers $eduAll -MaxCount 2
+    $chosenEdu = Select-ServersFromListInteractive -Header "Select 0, 1 or 2 University servers:`nChoose ones nearest to your city/state/territory.`nIf you choose 0 or 1, additional servers will be added in the next steps." -Prompt "Select University servers." -Servers $eduAll -MaxCount 2
     $selected = Add-UniqueServers -Base $selected -ToAdd $chosenEdu
 
     foreach ($pool in $poolNumbered) {
@@ -515,16 +689,13 @@ function Resolve-AuServersInteractive {
     }
 
     if ($nmiUsed) {
-        Write-WarnMsg "You must register to use NMI servers, and have a static IP address. To register, email time@measurement.gov.au. See https://www.industry.gov.au/national-measurement-institute/nmi-services/physical-measurement-services/time-and-frequency-services for more details."
+        Write-WarnMsg "You must register to use NMI servers, and have a static IP address."
+        Write-Host "To register, email time@measurement.gov.au" -ForegroundColor Yellow
+        Write-Host "More details:" -ForegroundColor Yellow
+        Write-Host "https://www.industry.gov.au/national-measurement-institute/nmi-services/physical-measurement-services/time-and-frequency-services" -ForegroundColor Yellow
 
         if (Read-YesNo -Prompt "Do you want more information about using a static IP address for your PC?" -DefaultYes $false) {
-            Write-Host "Brief static IP guide for Windows 10/11:" -ForegroundColor Cyan
-            Write-Host "  1) Open Settings > Network and Internet > Advanced network settings."
-            Write-Host "  2) Open your active adapter (Ethernet/Wi-Fi) properties."
-            Write-Host "  3) Edit IP assignment, switch to Manual, and enable IPv4."
-            Write-Host "  4) Enter IP address, subnet mask, gateway, and DNS values from your network provider/admin."
-            Write-Host "  5) Save and verify internet access."
-            Write-Host "Guide: https://support.microsoft.com/windows/change-tcp-ip-settings"
+            Show-StaticIpGuidance
         }
     }
 
