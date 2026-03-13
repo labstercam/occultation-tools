@@ -5,6 +5,14 @@ This guide describes automation options for NTP timing setup in this project.
 Recommended entrypoint for most users:
 - `install_ntp_timing_bootstrap.cmd`
 
+Official GitHub-first run command (PowerShell, recommended when you want the latest code from GitHub every time):
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $u="https://raw.githubusercontent.com/labstercam/occultation-tools/main/gps-timing-analysis/install_ntp_timing_bootstrap.ps1"; $p=Join-Path $env:TEMP "install_ntp_timing_bootstrap.ps1"; Invoke-WebRequest -UseBasicParsing -Uri $u -OutFile $p; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+```
+
+This command downloads the latest bootstrap from GitHub and then runs it.
+
 Beginner one-file option (recommended):
 - Download `install_ntp_timing_bootstrap.cmd`
 - Double-click it

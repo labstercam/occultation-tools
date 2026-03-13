@@ -781,7 +781,12 @@ function Resolve-ServersForOtherCountry {
     $servers = @($countryIndexed | ForEach-Object { "$_ iburst" })
 
     $region = $null
-    if ($null -ne $poolData.country_to_region) { $region = $poolData.country_to_region.$cc }
+    if ($null -ne $poolData.country_to_region) {
+        $regionProp = $poolData.country_to_region.PSObject.Properties[$cc]
+        if ($null -ne $regionProp) {
+            $region = [string]$regionProp.Value
+        }
+    }
     if ([string]::IsNullOrWhiteSpace([string]$region) -and $countryEntry.Count -gt 0) { $region = $countryEntry[0].region }
     if ([string]::IsNullOrWhiteSpace([string]$region)) { $region = Get-RegionPoolZoneForCountryCode -CountryCode $cc }
 

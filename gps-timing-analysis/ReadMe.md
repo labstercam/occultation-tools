@@ -145,6 +145,14 @@ Automation assets:
 For most users, start with:
 - `install_ntp_timing_bootstrap.cmd`
 
+Official GitHub-first run command (PowerShell):
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $u="https://raw.githubusercontent.com/labstercam/occultation-tools/main/gps-timing-analysis/install_ntp_timing_bootstrap.ps1"; $p=Join-Path $env:TEMP "install_ntp_timing_bootstrap.ps1"; Invoke-WebRequest -UseBasicParsing -Uri $u -OutFile $p; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+```
+
+Use this when you want to run directly from the latest GitHub `main` code.
+
 The bootstrap launcher downloads/updates required files into:
 - `C:\OccultationTools\gps-timing-analysis`
 then starts the guided installer automatically.
