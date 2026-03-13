@@ -823,20 +823,29 @@ function Resolve-ServersForCountryViaNationalInventory {
     $entry = if ($entryResult.Count -gt 0) { $entryResult[0] } else { $null }
 
     if ($null -ne $entry) {
-        Write-Info ("National UTC/NTP entry for '{0}': {1}" -f $CountryCode.ToUpperInvariant(), $entry.country_name)
-        Write-Host ("Authority: {0}" -f $entry.authority)
-        Write-Host ("Status: {0}" -f $entry.status)
-        if (-not [string]::IsNullOrWhiteSpace([string]$entry.usage_note)) {
-            Write-Host ("Note: {0}" -f $entry.usage_note)
+        $countryName = [string](Get-ComOptionalPropertyValue -Object $entry -Name "country_name" -Default $CountryCode.ToUpperInvariant())
+        $authority = [string](Get-ComOptionalPropertyValue -Object $entry -Name "authority" -Default "")
+        $status = [string](Get-ComOptionalPropertyValue -Object $entry -Name "status" -Default "")
+        $usageNote = [string](Get-ComOptionalPropertyValue -Object $entry -Name "usage_note" -Default "")
+
+        Write-Info ("National UTC/NTP entry for '{0}': {1}" -f $CountryCode.ToUpperInvariant(), $countryName)
+        if (-not [string]::IsNullOrWhiteSpace($authority)) {
+            Write-Host ("Authority: {0}" -f $authority)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($status)) {
+            Write-Host ("Status: {0}" -f $status)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($usageNote)) {
+            Write-Host ("Note: {0}" -f $usageNote)
         }
 
-        $urls = @($entry.source_urls)
+        $urls = @((Get-ComOptionalPropertyValue -Object $entry -Name "source_urls" -Default @()))
         if ($urls.Count -gt 0) {
             Write-Host "Source URLs:"
             foreach ($u in $urls) { Write-Host ("  - {0}" -f $u) }
         }
 
-        $nationalHosts = @($entry.ntp_servers | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $nationalHosts = @((Get-ComOptionalPropertyValue -Object $entry -Name "ntp_servers" -Default @()) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         if ($nationalHosts.Count -gt 0) {
             $chosenNational = Select-NationalServersInteractive -Servers $nationalHosts
             $selectedServers = Add-UniqueServers -Base $selectedServers -ToAdd (@($chosenNational | ForEach-Object { "$_ iburst" }))
