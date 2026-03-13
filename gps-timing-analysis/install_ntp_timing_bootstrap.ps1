@@ -31,6 +31,33 @@ function Write-BootstrapLog {
     }
 }
 
+function Invoke-DownloadWithFallback {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Urls,
+        [Parameter(Mandatory = $true)]
+        [string]$OutFile,
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $lastError = $null
+    foreach ($url in $Urls) {
+        try {
+            Write-BootstrapLog -Message ("download try {0}: {1}" -f $Label, $url)
+            Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $OutFile -ErrorAction Stop
+            Write-BootstrapLog -Message ("download ok {0}: {1}" -f $Label, $url)
+            return
+        }
+        catch {
+            $lastError = $_.Exception.Message
+            Write-BootstrapLog -Message ("download failed {0}: {1} :: {2}" -f $Label, $url, $lastError)
+        }
+    }
+
+    throw ("Failed to download {0}. Last error: {1}" -f $Label, $lastError)
+}
+
 $repoOwner = 'labstercam'
 $repoName = 'occultation-tools'
 $repoBranch = 'main'
@@ -114,10 +141,14 @@ try {
     Write-Host 'Downloading setup files...'
     foreach ($rel in $files) {
         $cacheBust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-        $src = "$baseUrl/$rel?ts=$cacheBust"
         $dst = Join-Path $installRoot ($rel -replace '/', '\\')
+        $srcRaw = "$baseUrl/$rel"
+        $srcRawCacheBust = "$srcRaw?ts=$cacheBust"
+        $srcGithubRaw = "https://github.com/$repoOwner/$repoName/raw/$repoBranch/$subdir/$rel"
+        $srcGithubRawCacheBust = "$srcGithubRaw?ts=$cacheBust"
+
         Write-Host "  $rel"
-        Invoke-WebRequest -UseBasicParsing -Uri $src -OutFile $dst
+        Invoke-DownloadWithFallback -Urls @($srcRawCacheBust, $srcRaw, $srcGithubRawCacheBust, $srcGithubRaw) -OutFile $dst -Label $rel
         Write-BootstrapLog -Message "downloaded $rel"
     }
 
