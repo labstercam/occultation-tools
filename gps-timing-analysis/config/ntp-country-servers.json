@@ -1,0 +1,57 @@
+{
+  "NZ": {
+    "description": "New Zealand profile with MSL Stratum 1 national standard pool plus InternetNZ ntp.net.nz city servers; apply MSL and InternetNZ usage policies",
+    "servers": [
+      "pool.msltime.measurement.govt.nz iburst",
+      "s1.ntp.net.nz iburst",
+      "s2.ntp.net.nz iburst",
+      "s3.ntp.net.nz iburst",
+      "s4.ntp.net.nz iburst"
+    ]
+  },
+  "AU": {
+    "description": "Australia profile with three tiers: NMI UTC(AUS) servers, university public NTP servers, and AU pool fallback (au.pool plus 0..3)",
+    "notes": [
+      "Tier order: NMI servers first, university servers second, au.pool fallback last (au.pool.ntp.org plus 0..3.au.pool.ntp.org).",
+      "University server AUP differs by provider and availability may vary.",
+      "Do not override default polling intervals for university servers.",
+      "Use iburst consistently for all server entries in this profile.",
+      "NMI restricted/traceable services may require registration and static IP."
+    ],
+    "servers": [
+      "ntp.nmi.gov.au iburst",
+      "ntp.melbourne.nmi.gov.au iburst",
+      "ntp.sydney.nmi.gov.au iburst",
+      "ntp.sydney2.nmi.gov.au iburst",
+      "ntp.perth.nmi.gov.au iburst",
+      "ntp.adelaide.nmi.gov.au iburst",
+      "ntp.brisbane.nmi.gov.au iburst",
+      "ntp.unimelb.edu.au iburst",
+      "ntp.anu.edu.au iburst",
+      "ntp.adelaide.edu.au iburst",
+      "ntp.utas.edu.au iburst",
+      "ntp.monash.edu.au iburst",
+      "ntp.curtin.edu.au iburst",
+      "au.pool.ntp.org iburst",
+      "0.au.pool.ntp.org iburst",
+      "1.au.pool.ntp.org iburst",
+      "2.au.pool.ntp.org iburst",
+      "3.au.pool.ntp.org iburst"
+    ]
+  },
+  "US": {
+    "description": "United States profile using mixed NIST site diversity plus US pool fallback",
+    "notes": [
+      "Includes two US pool servers as fallback for observers with weak NIST network paths; replace with better local servers after ntpq/loopstats review if needed."
+    ],
+    "servers": [
+      "time.nist.gov iburst",
+      "time-a-g.nist.gov iburst",
+      "time-b-g.nist.gov iburst",
+      "time-a-b.nist.gov iburst",
+      "time-a-wwv.nist.gov iburst",
+      "0.us.pool.ntp.org iburst",
+      "1.us.pool.ntp.org iburst"
+    ]
+  }
+}

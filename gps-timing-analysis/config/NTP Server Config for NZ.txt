@@ -1,0 +1,31 @@
+# NZ Measurement Standards Official NZ time server, traceable to UTC
+server pool.msltime.measurement.govt.nz iburst
+# Local pool servers in Auckland
+server s1.ntp.net.nz iburst
+server s2.ntp.net.nz iburst
+# Wellington Server
+server s3.ntp.net.nz iburst
+# Christchurch Server
+server s4.ntp.net.nz iburst
+
+# Optional NZ pool fallback examples (uncomment if you need extra diversity)
+# server 1.nz.pool.ntp.org iburst
+# server 2.nz.pool.ntp.org iburst
+
+
+# GPS PPS Configuration
+# GPS PPS device on COM1. Change the .1 to the number of the comm port the device is connected to. 
+server 127.127.20.1 mode 18 minpoll 3 maxpoll 1 prefer
+fudge 127.127.20.1 flag1 1 flag2 1
+
+
+# Enable stats logging if you forgot to set it up
+enable stats
+# Change the directory to suit your system
+statsdir "C:\NTP\etc\"
+statistics loopstats
+
+
+
+
+

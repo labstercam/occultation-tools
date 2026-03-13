@@ -65,3 +65,11 @@ These examples show the analysis workflow used by the Occultation Manager's `lig
 - Observation start/end times
 - Exposure duration
 - Camera acquisition delay corrections
+
+## New NTP and Camera Timing Documentation
+
+For end-to-end operational guidance, see:
+- `../docs/ntp-camera-timing-workflow.md`
+- `../docs/ntp-meinberg-setup.md`
+- `../docs/ntp-offset-monitoring.md`
+- `../docs/camera-acquisition-delay-estimation.md`

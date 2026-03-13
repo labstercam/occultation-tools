@@ -1,0 +1,484 @@
+{
+  "generated_at_utc": "2026-03-11T02:30:00Z",
+  "purpose": "Best-effort inventory of national UTC/NTP services for requested countries (G20, NZ, major European countries, and selected additional countries).",
+  "schema_notes": [
+    "status values: verified_public_hostname, official_service_no_public_hostname, candidate_hostname_unverified, no_public_server_found",
+    "candidate_hostname_unverified means the hostname is widely referenced but not confirmed from an authoritative page in this run.",
+    "official_service_no_public_hostname means an official authority page confirms service existence but no public hostname was extracted.",
+    "Second-pass verification performed on 2026-03-10 to reduce guessed hostnames where no authoritative hostname text was found.",
+    "Third-pass check on 2026-03-10 confirmed DNS resolution for remaining candidate hostnames, but authoritative page extraction remained incomplete for some services.",
+    "France note: BIPM is located in France and publishes UTC/TAI data products, while French legal-time NTP dissemination is operated by LNE-SYRTE / Observatoire de Paris."
+  ],
+  "entries": [
+    {
+      "country_code": "AU",
+      "country_name": "Australia",
+      "groups": ["G20"],
+      "authority": "National Measurement Institute (NMI)",
+      "utc_scale": "UTC(AUS)",
+      "ntp_servers": [],
+      "status": "official_service_no_public_hostname",
+      "source_urls": [
+        "https://www.industry.gov.au/national-measurement-institute/nmi-services/physical-measurement-services/time-and-frequency-services",
+        "https://www.industry.gov.au/sites/default/files/2019-11/nmi-using-ntp-for-traceable-time-and-frequency.pdf"
+      ]
+    },
+    {
+      "country_code": "NZ",
+      "country_name": "New Zealand",
+      "groups": ["Requested"],
+      "authority": "Measurement Standards Laboratory (MSL)",
+      "utc_scale": "UTC(MSL)",
+      "ntp_servers": ["pool.msltime.measurement.govt.nz"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.measurement.govt.nz/about-us/official-new-zealand-time/about-time"
+      ]
+    },
+    {
+      "country_code": "US",
+      "country_name": "United States",
+      "groups": ["G20"],
+      "authority": "NIST",
+      "utc_scale": "UTC(NIST)",
+      "ntp_servers": [
+        "time.nist.gov",
+        "time-a-g.nist.gov",
+        "time-b-g.nist.gov",
+        "time-c-g.nist.gov",
+        "time-d-g.nist.gov",
+        "time-a-b.nist.gov",
+        "time-b-b.nist.gov",
+        "time-c-b.nist.gov",
+        "time-a-wwv.nist.gov",
+        "time-b-wwv.nist.gov"
+      ],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.nist.gov/pml/time-and-frequency-division/time-distribution/internet-time-service-its",
+        "https://tf.nist.gov/tf-cgi/servers.cgi"
+      ]
+    },
+    {
+      "country_code": "JP",
+      "country_name": "Japan",
+      "groups": ["G20", "Requested"],
+      "authority": "NICT",
+      "utc_scale": "Japan Standard Time (JST)",
+      "ntp_servers": ["ntp.nict.jp"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.nict.go.jp/en/sts/ntp.html"
+      ]
+    },
+    {
+      "country_code": "KR",
+      "country_name": "Korea, Republic of",
+      "groups": ["G20", "Requested"],
+      "authority": "KRISS",
+      "utc_scale": "UTC(KRIS)",
+      "ntp_servers": ["time.kriss.re.kr"],
+      "status": "candidate_hostname_unverified",
+      "source_urls": [
+        "https://www.kriss.re.kr/eng/",
+        "https://time.kriss.re.kr/"
+      ]
+    },
+    {
+      "country_code": "UK",
+      "country_name": "United Kingdom",
+      "groups": ["G20", "MajorEurope", "Alias"],
+      "authority": "NPL",
+      "utc_scale": "UTC(NPL)",
+      "ntp_servers": ["ntp1.npl.co.uk", "ntp2.npl.co.uk"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.npl.co.uk/products-services/time-frequency/network-time-protocol",
+        "https://www.npl.co.uk/getattachment/7c097457-5a1f-436f-af7b-930634680c5d/its_user_guide.pdf?lang=en-US"
+      ]
+    },
+    {
+      "country_code": "FR",
+      "country_name": "France",
+      "groups": ["G20", "MajorEurope"],
+      "authority": "LNE-SYRTE / Observatoire de Paris",
+      "utc_scale": "UTC(OP)",
+      "ntp_servers": ["ntp.obspm.fr"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://observatoiredeparis.psl.eu/services-de-l-heure.html"
+      ]
+    },
+    {
+      "country_code": "DE",
+      "country_name": "Germany",
+      "groups": ["G20", "MajorEurope"],
+      "authority": "PTB",
+      "utc_scale": "UTC(PTB)",
+      "ntp_servers": ["ptbtime1.ptb.de", "ptbtime2.ptb.de", "ptbtime3.ptb.de", "ptbtime4.ptb.de"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.ptb.de/",
+        "https://ptbtime1.ptb.de/",
+        "https://ptbtime2.ptb.de/",
+        "https://ptbtime3.ptb.de/",
+        "https://ptbtime4.ptb.de/"
+      ]
+    },
+    {
+      "country_code": "IT",
+      "country_name": "Italy",
+      "groups": ["G20", "MajorEurope"],
+      "authority": "INRiM",
+      "utc_scale": "UTC(IT)",
+      "ntp_servers": ["ntp1.inrim.it", "ntp2.inrim.it", "time.inrim.it"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.inrim.it/",
+        "https://ntp1.inrim.it/",
+        "https://ntp2.inrim.it/",
+        "https://time.inrim.it/"
+      ]
+    },
+    {
+      "country_code": "CA",
+      "country_name": "Canada",
+      "groups": ["G20"],
+      "authority": "NRC Canada",
+      "utc_scale": "UTC(NRC)",
+      "ntp_servers": ["time.nrc.ca", "time.chu.nrc.ca"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://nrc.canada.ca/en/certifications-evaluations-standards/canadas-official-time",
+        "https://nrc.canada.ca/en/certifications-evaluations-standards/canadas-official-time/network-time-protocol-ntp"
+      ]
+    },
+    {
+      "country_code": "CN",
+      "country_name": "China",
+      "groups": ["G20"],
+      "authority": "National Time Service Center (NTSC)",
+      "utc_scale": "UTC(NTSC)",
+      "ntp_servers": ["ntp.ntsc.ac.cn"],
+      "status": "candidate_hostname_unverified",
+      "source_urls": [
+        "http://www.ntsc.ac.cn/",
+        "https://ntp.ntsc.ac.cn/"
+      ]
+    },
+    {
+      "country_code": "MX",
+      "country_name": "Mexico",
+      "groups": ["G20"],
+      "authority": "CENAM",
+      "utc_scale": "UTC(CNM)",
+      "ntp_servers": ["cronos.cenam.mx"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.cenam.mx/hora_oficial/default.aspx"
+      ]
+    },
+    {
+      "country_code": "AR",
+      "country_name": "Argentina",
+      "groups": ["G20"],
+      "authority": "Servicio de Hidrografia Naval (SHN)",
+      "utc_scale": "Unknown",
+      "ntp_servers": ["ntp2.hidro.gob.ar"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.hidro.gob.ar/"
+      ]
+    },
+    {
+      "country_code": "BR",
+      "country_name": "Brazil",
+      "groups": ["G20"],
+      "authority": "NTP.br",
+      "utc_scale": "UTC(BR)",
+      "ntp_servers": ["a.st1.ntp.br", "b.st1.ntp.br", "c.st1.ntp.br", "d.st1.ntp.br"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://ntp.br/"
+      ]
+    },
+    {
+      "country_code": "IN",
+      "country_name": "India",
+      "groups": ["G20"],
+      "authority": "NPL India",
+      "utc_scale": "UTC(NPLI)",
+      "ntp_servers": ["time.nplindia.org"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.nplindia.in/"
+      ]
+    },
+    {
+      "country_code": "ID",
+      "country_name": "Indonesia",
+      "groups": ["G20"],
+      "authority": "BMKG",
+      "utc_scale": "UTC(IDN)",
+      "ntp_servers": ["ntp.bmkg.go.id"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.bmkg.go.id/"
+      ]
+    },
+    {
+      "country_code": "RU",
+      "country_name": "Russia",
+      "groups": ["G20"],
+      "authority": "VNIIFTRI",
+      "utc_scale": "UTC(SU)",
+      "ntp_servers": ["ntp1.vniiftri.ru", "ntp2.vniiftri.ru", "ntp3.vniiftri.ru", "ntp4.vniiftri.ru", "vniiftri.khv.ru", "vniiftri2.khv.ru"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.vniiftri.ru/"
+      ]
+    },
+    {
+      "country_code": "SA",
+      "country_name": "Saudi Arabia",
+      "groups": ["G20"],
+      "authority": "SASO",
+      "utc_scale": "UTC(SA)",
+      "ntp_servers": ["time.saso.gov.sa"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.saso.gov.sa/"
+      ]
+    },
+    {
+      "country_code": "ZA",
+      "country_name": "South Africa",
+      "groups": ["G20"],
+      "authority": "National Metrology Institute of South Africa (NMISA)",
+      "utc_scale": "UTC(SA)",
+      "ntp_servers": ["time.nmisa.org"],
+      "status": "verified_public_hostname",
+      "usage_note": "Official server time.nmisa.org should only be used by NTP servers, not by personal computers.",
+      "source_urls": [
+        "https://www.nmisa.org/"
+      ]
+    },
+    {
+      "country_code": "TR",
+      "country_name": "Turkey",
+      "groups": ["G20"],
+      "authority": "TUBITAK UME (National Metrology Institute)",
+      "utc_scale": "UTC(TR)",
+      "ntp_servers": ["time.ume.tubitak.gov.tr"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://ume.tubitak.gov.tr/"
+      ]
+    },
+    {
+      "country_code": "ES",
+      "country_name": "Spain",
+      "groups": ["MajorEurope"],
+      "authority": "ROA / national time services",
+      "utc_scale": "UTC(ROA)",
+      "ntp_servers": ["hora.roa.es"],
+      "status": "candidate_hostname_unverified",
+      "source_urls": [
+        "https://www.roa.es/",
+        "https://hora.roa.es/"
+      ]
+    },
+    {
+      "country_code": "NL",
+      "country_name": "Netherlands",
+      "groups": ["MajorEurope"],
+      "authority": "VSL",
+      "utc_scale": "UTC(VSL)",
+      "ntp_servers": ["ntp.vsl.nl"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.vsl.nl/en/services/calibrations/time-and-frequency"
+      ]
+    },
+    {
+      "country_code": "CH",
+      "country_name": "Switzerland",
+      "groups": ["MajorEurope"],
+      "authority": "Federal Institute of Metrology (METAS)",
+      "utc_scale": "UTC(CH)",
+      "ntp_servers": ["ntp.metas.ch"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.metas.ch/"
+      ]
+    },
+    {
+      "country_code": "SE",
+      "country_name": "Sweden",
+      "groups": ["MajorEurope"],
+      "authority": "Swedish Post and Telecom Authority (PTS)",
+      "utc_scale": "UTC(SE)",
+      "ntp_servers": ["ntp.netnod.se"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.pts.se/"
+      ]
+    },
+    {
+      "country_code": "NO",
+      "country_name": "Norway",
+      "groups": ["MajorEurope"],
+      "authority": "Justervesenet (the Norwegian Metrology Service)",
+      "utc_scale": "UTC(NO)",
+      "ntp_servers": ["ntp.justervesenet.no"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.justervesenet.no/"
+      ]
+    },
+    {
+      "country_code": "PL",
+      "country_name": "Poland",
+      "groups": ["MajorEurope"],
+      "authority": "Central Office of Measures (Glowny Urzad Miar - GUM)",
+      "utc_scale": "UTC(PL)",
+      "ntp_servers": ["tempus1.gum.gov.pl", "tempus2.gum.gov.pl"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.gum.gov.pl/"
+      ]
+    },
+    {
+      "country_code": "BE",
+      "country_name": "Belgium",
+      "groups": ["MajorEurope"],
+      "authority": "Royal Observatory of Belgium (ROB)",
+      "utc_scale": "Unknown",
+      "ntp_servers": ["ntp1.om.be", "ntp2.om.be"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://betime.be/en/services/ntp-intro.php"
+      ]
+    },
+    {
+      "country_code": "AT",
+      "country_name": "Austria",
+      "groups": ["MajorEurope"],
+      "authority": "BEV (Bundesamt fur Eich- und Vermessungswesen - Federal Office of Metrology and Surveying)",
+      "utc_scale": "UTC(AT)",
+      "ntp_servers": ["bevtime1.metrologie.at", "bevtime2.metrologie.at", "time.metrologie.at"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.bev.gv.at/"
+      ]
+    },
+    {
+      "country_code": "DK",
+      "country_name": "Denmark",
+      "groups": ["MajorEurope"],
+      "authority": "Danish Fundamental Metrology (DFM) (Dansk Fundamental Metrologi A/S)",
+      "utc_scale": "UTC(DK)",
+      "ntp_servers": ["time.dfm.dk"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://dfm.dk/"
+      ]
+    },
+    {
+      "country_code": "FI",
+      "country_name": "Finland",
+      "groups": ["MajorEurope"],
+      "authority": "VTT MIKES (National Metrology Institute of Finland)",
+      "utc_scale": "UTC(FI)",
+      "ntp_servers": ["time.mikes.fi", "time1.mikes.fi", "time2.mikes.fi"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.vttresearch.com/en/services/metrology/mikes-metrology"
+      ]
+    },
+    {
+      "country_code": "IE",
+      "country_name": "Ireland",
+      "groups": ["MajorEurope"],
+      "authority": "National Standards Authority of Ireland's National Metrology Laboratory (NSAI NML)",
+      "utc_scale": "UTC(IE)",
+      "ntp_servers": ["ntp.nuigalway.ie"],
+      "status": "verified_public_hostname",
+      "usage_note": "ntp.nuigalway.ie is a University of Galway Stratum-1 server and is not the national timing service. NSAI NML operates the National Timing Grid (NTG), which is not generally accessible to the public.",
+      "source_urls": [
+        "https://www.universityofgalway.ie/",
+        "https://www.nsai.ie/"
+      ]
+    },
+    {
+      "country_code": "PT",
+      "country_name": "Portugal",
+      "groups": ["MajorEurope"],
+      "authority": "Instituto Superior Tecnico (ULisboa)",
+      "utc_scale": "UTC(PT)",
+      "ntp_servers": ["ntp1.tecnico.ulisboa.pt", "ntp2.tecnico.ulisboa.pt"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://tecnico.ulisboa.pt/"
+      ]
+    },
+    {
+      "country_code": "CZ",
+      "country_name": "Czechia",
+      "groups": ["MajorEurope"],
+      "authority": "Institute of Photonics and Electronics (UFE)",
+      "utc_scale": "Unknown",
+      "ntp_servers": [],
+      "status": "no_public_server_found",
+      "usage_note": "No publicly accessible national NTP server is available.",
+      "source_urls": []
+    },
+    {
+      "country_code": "CL",
+      "country_name": "Chile",
+      "groups": ["Additional"],
+      "authority": "Servicio Hidrografico y Oceanografico de la Armada (SHOA)",
+      "utc_scale": "UTC(CL)",
+      "ntp_servers": ["ntp.shoa.cl"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.shoa.cl/"
+      ]
+    },
+    {
+      "country_code": "IL",
+      "country_name": "Israel",
+      "groups": ["Additional"],
+      "authority": "Israel Internet Association (ISOC-IL) in collaboration with the National Physical Laboratory",
+      "utc_scale": "UTC(IL)",
+      "ntp_servers": ["timeserver.iix.net.il"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.isoc.org.il/"
+      ]
+    },
+    {
+      "country_code": "SG",
+      "country_name": "Singapore",
+      "groups": ["Additional"],
+      "authority": "National Metrology Centre (NMC)",
+      "utc_scale": "UTC(SG)",
+      "ntp_servers": ["nets.org.sg"],
+      "status": "verified_public_hostname",
+      "source_urls": [
+        "https://www.nmc.a-star.edu.sg/"
+      ]
+    },
+    {
+      "country_code": "AE",
+      "country_name": "United Arab Emirates",
+      "groups": ["Additional"],
+      "authority": "Emirates Metrology Institute (EMI)",
+      "utc_scale": "Unknown",
+      "ntp_servers": [],
+      "status": "no_public_server_found",
+      "usage_note": "No specific publicly accessible server.",
+      "source_urls": []
+    }
+  ]
+}

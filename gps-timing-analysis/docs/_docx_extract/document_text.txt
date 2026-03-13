@@ -1,0 +1,190 @@
+ Occultation Timing Using a GPS Disciplined PC
+`n Michael Camilleri - Trans Tasman Occultation Alliance (TTOA). March 2025.
+TOC \h \u \z \n \t "Heading 1,1,Heading 2,2,Heading 3,3,Heading 4,4,Heading 5,5,Heading 6,6," Introduction
+Windows PC Clock Discipline
+Camera Acquisition Delays
+Windows PC Processing Delays
+Dropped Frames
+Recording and Timing Workflow for a GPS Disciplined PC
+Setting Up GPS PPS Time Discipline for PC
+Navisys GPS USB receiver with Built In PPS
+DIY USB GPS Receiver With PPS
+Setting up the GPS Receiver on Windows PC
+Installing NTP
+Setting up the PPS driver DLL
+Setting up GPS PPS Time in NTP
+Enable NTP Logging
+Checking and Troubleshooting the NTP Setup
+Performance Monitoring
+Selecting Internet NTP Servers
+References
+`n Introduction
+T iming stellar occultation observations using a Windows PC clock disciplined using GPS time is described. GPS time can be used to discipline a PC clock to ~1 ms or better with very good stability and startup performance. Camera acquisition delays must be measured and applied for each observer’s system.
+When properly calibrated and implemented properly, a Windows PC disciplined by GPS time can be accurate enough for occultation observations. They are suitable for remote and unattended observations and can work with a wide range of cameras and recording systems.
+Instructions are provided for setting up GPS time sources with a PC. Protocols are described for measuring the camera acquisition delays using GPS flash timing and dealing with rolling shutter camera line delays.
+Pros:
+Timing accuracy of a few ms achievable with good setup and practice
+Can be used with any common CMOS astronomy camera
+Cheap option to add timing to an existing imaging setup
+Cheap option for multi-station setups
+Equipment and recording software (e.g. SharpCap) already familiar to imaging astronomers
+Cons:
+May require DIY build of GPS receiver
+Complex Windows setup for drivers and timing software (full instructions here)
+Calibration of cameras delays using GPS flash timing required
+Observer must manage and apply camera delays for every observation
+Not foolproof - timing can occasionally fail so user needs to take care
+Requires some care and skill to do properly
+My opinion is that the best options for occultation recordings are cameras with built in GPS such as Astrid, QHY174-GPS and the DVTI-CAM. If the price of these options is too high or you want the convenience of using your existing imaging camera then GPS disciplined PC timing is the most accurate and convenient method.
+Windows PC Clock Discipline
+Time on a Windows PC has limited accuracy with a default Windows OS installation synced using the default internet time service times.windows.com having an accuracy of around 1s or better, however the accuracy is nowhere near good enough for occultation timing. Much better accuracy can be achieved by disciplining the PC clock to an external time source. Several options that can be readily used with a Windows PC or other consumer level hardware to give more accurate time are:
+Network TIme Protocol (NTP) using internet time servers
+NMEA timestamps from GPS receivers
+Shelyak Time Box
+PPS signals from GPS receivers
+Local GPS NTP server
+Internet NTP and GPS NMEA timestamps do not discipline the PC time accurately enough and can have errors and drift of a few ms to tens of ms. They should always be used with GPS Flash Timing to measure the actual delay of each observation to give the most accurate times possible. Approximate corrections can be applied using the offsets as measured by the NTP software.
+The Shelyak TimeBox II is very easy to install and use (plug-and-play) and is available at modest cost (155 Euro + tax and freight) Shelyak Timebox II . Setup instructions and time discipline software are provided by Shelyak.
+PPS signals from GPS receivers require a cheap DIY build or specific receiver models from NaviSys (described later). Full instructions for building and setting up a GPS PPS receiver are provided. NTP software is used to discipline the time - see the section on Installing NTP.
+A local GPS NTP server can be a Raspberry PI DIY build and configuration or buying a more expensive commercial GPS NTP server. For example, the Time Machines TM1000A is a simple, low-cost GPS NTP server in a compact case that would be well suited to occultations. Time Machines NTP GPS Server . Cheap GPS NTP Servers from ebay or similar should be avoided. See the section on Installing NTP.
+Camera Acquisition Delays
+GPS time can discipline the PC time to ~1 ms accuracy or better, however there are still delays in camera acquisition that must be measured and corrected for. These delays vary by camera, and change with the camera settings, so delays MUST be measured and applied for each combination of settings used - for camera resolution, colour space, tilt, pan, binning, bit depth etc.
+GPS flash timing can be used to measure these delays. Refer to GPS Flash Timing for a full description of GPS flash timing. These methods need to be used to measure the camera acquisition delays for use with GPS PPS timing.
+If a Rolling Shutter camera is used then the line delays also need to be measured, as each line of the sensor is exposed and read out at a slightly later time. This can cause errors in timing of 5-20 ms for a small mono sensor, and larger errors for larger sensors if not corrected.
+To measure these line delays an additional procedure is introduced to the GPS flash timing methods. The same method of GPS flash timing is used, only the final analysis is adapted. Use the Line Delay Calculator Excel workbook to measure camera acquisition and line delays from a GPS flash timing recording processed using TANGRA - full instructions are in that workbook. By measuring the delays near the top and bottom of the frame the line delays and overall delay can be measured (figure 1). The workbook has a sheet to store the measured camera delays for various different camera settings and cameras, and can be used to calculate the line delay for a given Y line. Calculating the delay is as simple as identifying the Y-line for the occulted star at the event time and entering that into the calculator, then selecting the matching camera and camera settings (figure 2).
+Figure 1: Snapshot of Line Delay calculation for a rolling shutter camera
+`n Figure 2: Snapshot of calculation of time delays from reference measurements of two rolling shutter cameras with different settings
+`n For Global Shutter cameras use the same GPS flash timing measurement methods but you should get the same measured delays for top and bottom lines, so the ‘Per Line Delay’ will be 0.
+Windows PC Processing Delays
+Windows software applies a timestamp to a video or still frame after it arrives at the USB interface and is processed by the recording software. The time that it is actually processed varies and will depend on when Windows gives the camera the priority for USB traffic and CPU processing. Windows shares resources between processes and allocates priority and resources by itself - the user and software has only limited ability to influence this. The result is that the sequence of times when each frame is received has some jitter and occasionally has delays, and this may differ between PCs and could be influenced by the load on the PC. From PCs measured by the author, the jitter is typically <1 ms and there are occasional delays of a few ms and very occasionally > 10 ms. What typically happens is one frame timestamp is late (by, say, 5 ms) then the next timestamp is on time. After reviewing ~260 occultation recordings none had timestamp errors that would affect the event timing. Overall, 90 frames out of 499,000 frames (0.05%) had a timestamp that was late by more than 10% of the exposure time, and only six frames were later by more than one exposure which might indicate a dropped frame. So the incidence of such timestamp errors was very low as the exposure time was usually 40 ms or longer, which was ⅓ of the maximum frame rate for the system.
+The author has developed a timestamp checking spreadsheet which checks the timestamps for anomalies and provides corrected frame timestamps and the calculated frame rate suitable for use by AOTA to regenerate timestamps if there are problematic timestamp delays. Delay Calculator with Timestamp Checks
+Observers using PC timestamped recording should use this Excel workbook to check their recordings and gain an understanding of how their system performs. Ideally these checks would be done automatically by AOTA and PyOTE, however those existing checks are more suitable for the types of timestamp errors typical of analog video recordings and might not detect the types of timestamp delays that are typical of CMOS cameras.
+Dropped Frames
+Dropped Frames are a MAJOR issue to avoid and could make your recording unusable or difficult to recover. You can avoid dropped frames by setting the exposure time and camera settings appropriately. To determine the safe exposure, do a test in SharpCap with a very short exposure (say, 1 ms) and check the reported frame rate in the status bar at the bottom of the screen.
+`n This is showing 30.1 fps (frames per second) maximum frame rate, and might indicate a few dropped frames on your PC. So the minimum exposure time for this example is 1/30.1 =33 ms. However this risks dropped or late frames.
+STRONGLY RECOMMEND USING A FRAME RATE AT MOST ONE THIRD THE MAX FRAME RATE
+So for this example with a maximum frame rate of 30 fps, 10 fps is the recommended maximum frame rate to use, which corresponds to an exposure time of 1/10 s = 100 ms.
+If you need a shorter exposure time then alter the camera settings so that the maximum frame rate is larger. You can reduce the resolution, increase the binning or change the colour space (MONO8 is faster than MONO16 for example).
+You can also alter the SharpCap USB settings and frame rate maximum under Camera Controls for a higher priority which might give a faster maximum frame rate.
+Recording and Timing Workflow for a GPS Disciplined PC
+The general recording and timing workflow for using a GPS PPS receiver is described. It is also applicable to the Shelyak Timebox II and a GPS NTP server although some steps may not apply or may need to be altered slightly.
+Start up the PC and GPS at least 15 minutes before recording, or however long you know is required for stability for your system
+Restart the NTP service if necessary once the GPS has updated the leap second
+Check the GPS status from Meinberg NTP Time Server Monitor or the command line “ntpq -p” command. Ensure that the status has the “o” indicating GPS PPS is being used
+Check the offset - it should be << 1 ms for GPS PPS
+Set up your recording software to match the camera settings you have measured for camera delays
+Record
+Check the NTP status after recording and ensure GPS is still running and the time offset is still stable.
+Once the recording is done calculate the camera delay using the formula for the camera settings for the Y position of the target star at the time of the occultation (use the Excel Calculator). Apply this correction in TANGRA or PyMovie/PyOTE.
+Check the Windows timestamps for anomalies, late or dropped frames using Delay Calculator with Timestamp Checks .
+Known Issues
+GPS not having the leap second correction - ensure sufficient startup time
+GPS losing signal lock. This can be caused from interference from cameras or other equipment or the antenna sky view being blocked. Test out various placements of the GPS so you know where it works reliably.
+NTP syncing to the internet NTP servers, not the GPS PPS. If this happens the * will appear next to an internet NTP server, so it is NOT using the GPS PPS to calculate the PC time offset. See the example below. If the GPS PPS offset is still << 1 ms this means that the PC time is running close to the GPS PPS time and all is fine and you can use the PC timestamps as normal. If the GPS PPS offset is large this indicates the NTP service is preferring another time source and you may need to use the GPS PPS offset as a time adjustment - this would not really be necessary unless the GPS PPS offset was several ms. The reason for running both GPS PPS and NTP servers at the same time is to have an independent measure of time to ensure your GPS PPS is correct and to detect leap second issues and as a timing backup. You could disconnect the NTP servers if you are confident in your GPS PPS performance. Up to you, really.
+`n
+Setting Up GPS PPS Time Discipline for PC
+Instructions for setting up GPS PPS time discipline for a PC using a GPS USB receiver.
+There are only two options known for a USB GPS receiver with PPS - a simple DIY build or specific USB GPS Receiver models from Navisys described below.
+Navisys GPS USB receiver with Built In PPS
+There is only one company, Navisys, known to produce a GPS USB receiver that has PPS via the USB interface. The models are Navisys GR-601W, GR-701W and GR-8013W - note that the ‘W’ suffix indicates PPS via USB. These cost around $US50 + $US50 shipping but are only available directly from their online store in Taiwan, https://navisys.en.taiwantrade.com/ https://www.taiwantrade.com/products/detail.html?productid=771837 . A local Navisys dealer might be able to order one. These units should work as-is with no modification required. Installation and hardware/firmware configuration may be required to enable the PPS pulses. These units are currently the only known off-the-shelf solution for GPS PPS timing on a PC.
+You will have to figure out how to set this up yourself. Likely the same steps of identifying or setting the COM port and the Baud Rate/Bits per Second will be required. There might be an additional step using NAVISYS software to change a firmware setting to enable and configure the PPS pulse. You will want the PPS pulse to start on the UTC second with a Rising pulse.
+DIY USB GPS Receiver With PPS
+A simple DIY USB receiver with PPS can be constructed using a GPS receiver model and a TTL-USB Serial board. The most convenient package is for an Arduino module with pre-fitted pins as there is less soldering required (the antenna connection may still need to be soldered on). Search for Ublox Neo-6m Arduino or UBlox Neo-7m Arduino and a package that looks like below. Get one with a separate screw fixed antenna (the gold connector in the picture). You may need to buy the antenna separately - look for an active antenna with SMC male connector. A separate antenna is recommended as it is more sensitive and can be positioned away from the PC to avoid interference.
+`n The FT232RL FTDI 3.3 5V USB to TTL Serial Converter works well with Arduino devices. Available from Amazon or other electronics resellers.
+Building a GPS PPS source for use with Windows is a simple DIY build. If you do not have the skills or equipment to do this for yourself then a local ‘maker hub’ or community repair shop should be able to do it for you.
+Parts required are an Arduino GPS module, GPS antenna with SMC connector, a serial to TTL converter, USB cable Type A to Mini-B (must support data), GPIO female to female jumper connectors, plastic case and soldering iron. Total cost is ~$20-50 depending on the cost of parts. Steps:
+Solder the antenna connection to the GPS module (if not already soldered). It can be orientated in any direction, above or below the board, to suit your case.
+Cut and prepare one end of a GPIO cable for soldering. Solder into the DCD connection point on the serial to TTL connector.
+Use the GPIO connectors to connect GND-GND, VCC-VCC, RX to TX and TX to RX (these are crossed over) and PPS to DCD.
+Ensure the jumper pin on the serial converter is set to 5V (should already be set that way out of the package)
+Use a USB Mini-B data cable to connect to the PC or 5V USB power supply. If working the PPS LED indicator on the GPS module should light up and then flash once per second once it has GPS lock.
+Fit into the case. Try to give the cables strain relief so they do not get pulled out or damaged.
+Setting up the GPS Receiver on Windows PC
+Once the GPS USB receiver is constructed and operating you need to set it up under Windows.
+You will need to install the TTL-USB driver https://ftdichip.com/drivers/d2xx-drivers/ with link to D2XXX drivers https://ftdichip.com/wp-content/uploads/2021/08/CDM212364_Setup.zip .
+Plug the USB receiver into a USB port. If windows pops up a message saying something like “Installing serial device on COM3” then take note of the COM port number - this is the port that the device is installed under Windows. If you do not see a message then go into the Windows Device Manager (press the Windows Key, starting typing ‘Device’’and the Device Manager application should pop up - click to start it). Go down to the section “Ports (COM & LPT)” and it should be named “USB Serial Port (COMX)”, X being the COM port number. Make a note of this number
+`n
+Right click on the USB Serial Port and select “Properties”. The screen should have the Manufacturer: FTDI to ensure you have the correct device.
+Now select the Tab “Port Settings”. The only setting you might need to change is “Bits per second”. Recommend 9600, but this may need to be changed depending on your specific GPS receiver. This Bits per Second MUST match the baud rate as specified in the MODE command for the NTP driver (see later section on NTP server configuration)
+`n
+`n Installing NTP
+Install NTP if you are using a GPS PPS receiver or a GPS NTP Server. Do NOT install it with the Shelyak TImebox II.
+Open source NTP software is maintained by www.ntp.org . Meinberg provides a distribution for Windows with an installer and the PPS API DLL for an easy install. Meinberg NTP . Install the Meinberg NTP distribution with default settings. Also install the Meinberg NTP Monitor software. For NTP internet server time, configure servers from your regional server pool or for better NTP accuracy see ‘Selecting Internet NTP Servers’.
+Recommend to install to a folder such as C:/NTP or /Desktop/NTP, a location where you have full access privileges.
+Setting up the PPS driver DLL
+To use the PPS signals via USB, Windows needs to have the PPS loopback DLL configured. The dll itself should already be installed with the Meinberg NTP installation. You need to tell Windows where to find it. This is done by editing the Windows Registry. It is not difficult to do but you might prefer to ask a Windows expert to help. THere are two methods to do this - one using the Windows Command line, the other manually using the Windows Registry Editor interface.
+Method 1:
+Open the WIndows Explorer to browse files. Go to the folder where NTP is installed and find the file named “loopback-ppsapi-provider.dll”. It would usually be under the folder C:\Program Files (x86)\NTP\bin” but could be in a different location depending on where you installed NTP. Copy the folder path from the folder address. Edit this command so that it has the file path you copied .
+reg add HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTP /v PPSProviders /t REG_MULTI_SZ /d C:\Program Files (x86)\NTP\bin\ loopback-ppsapi-provider.dll /f
+Now copy that entire command (from reg add all the way to /f), paste it into a Command Prompt window and hit the enter key.
+To open a Command Prompt, press the Windows key then start typing “Command” until the “Command Prompt” program appears. Click on that and a Command Prompt window will appear, looking something like this
+`n
+Method 2:
+Manually created a new entry in the Windows Registry.
+Open the Registry Editor in Windows. Press the Windows key, then start typing ‘Registry Editor’ until the Registry Editor program pops up. Click on it to start. User Account Control may pop up a window asking if you want to make changes to the machine - select OK.
+It will look something like this:
+`n
+Now you need to find the right folder within the registry. So start manually clicking on the arrows to open up the folders and dig into the folder structure in this order
+HKEY_LOCAL_MACHINE `t SYSTEM `t CurrentControlSet `t Services
+It should look something like this.
+`n Under the Services folder there will be hundreds of services. Scroll down until you find NTP. You can press the “N” key to jump to the N’s. Select NTP. Should look something like this
+`n Now you will manually add the registry key. From the Edit menu select New then “String Value”. A new item named “New Value #1”will pop up. RIght click on this and select Rename. Name it “PPSProviders”. RIght click again and select Modify. Copy the path to the dll and paste it in here. Should be something like C:\NTP\bin\ loop back-ppsapi-provider.dll or C:\Program Files (x86)\NTP\bin\loopback-ppsapi-provider.dll depending on where the dll is stored in your files.
+Close the registry editor. You will need to restart the PC for the changes to come into effect.
+Websites with more detailed information
+https://kb.meinbergglobal.com/kb/time_sync/ntp/ntp_for_windows/using_pps_signals_on_windows#configuring_pps_support
+https://adventuresinprecision.space/howtos/configuring-ntp-and-pps-on-windows/#No_actual_serial_port
+`n Setting up GPS PPS Time in NTP
+Now you need to set up NTP to use the GPS USB PPS time source. To do this you need to edit the NTP configuration file. This can be done via the Meinberg NTP TIme Server Monitor program (recommended) or by directly editing the NTP configuration file under the \etc\ntp.conf folder of your NTP installation.
+Note that if your ntp.conf file is installed in a location that requires administrative privileges it will not allow you to edit the file. You will then need to change the file properties using Windows Explorer to allow any User to edit it.
+You will configure two time sources from the GPS , first a NMEA time source that gives approximate time, then enable it to use the PPS time source to give the precise start of the UTC second.
+Configuration for NMEA TIme Source - this step should not be required with PPS source
+Add the following text to the configuration file to use NMEA time sentences from a USB GPS receiver:
+# GPS NMEA device on COM1. Change the .1 to the number of the comm port the device is connected to.
+server 127.127.20.1 mode 18
+fudge 127.127.20.1 time2 0.08 stratum 3 refid NMEA
+`n mode 18 means to connect at 9600 baud rate and only use $GPGGA signals (which carry time information), ignoring other GPS signal types. Can also try mode 2 which uses 4800 baud rate (but you will need to change the baud rate of the GPS USB serial port within the Device Manager). The correct baud rate may differ between different GPS devices - try mode 34, 50, 66, 82 if you need to try other baud rates. Note that NMEA timing works better at LOWER baud rates and high rates can cause problems, so choose the lowest baud rate that works. It may take some trial and error to get it right.
+time2 0.08 is the time correction to apply to compensate for any NMEA sentence delay, with the 0.08 an 80 ms delay correction. This can be measured using GPS flash timing or roughly by comparing the offset to the other NTP servers . You don’t need to set it now, you can do it later. There will usually be a delay of 50-150 ms in the NMEA time through USB. This does not need to be highly accurate.
+refid is your own label.
+GPS NMEA time alone is NOT recommended as it can drift by 5-10 ms depending on the PC system - older and lower spec PCs tend to be less stable
+Configuration for GPS PPS time s ource
+Only if using a GPS device that has a PPS Serial to USB signal. Use this with the DIY GPS PPS receiver or NaviSys GPS PPS receiver.
+Configuration is straightforward. Add these lines to the configuration file:
+# GPS PPS device on COM1. Change the .1 to the number of the comm port the device is connected to.
+server 127.127.20.1 mode 18 minpoll 3 maxpoll 1 prefer
+fudge 127.127.20.1 flag1 1 flag2 1
+`n Change the “.1” to the COM port the GPS device is connected to. mode 18 is explained above. Ensure you use the same mode setting as the NMEA configuration above. minpoll 3 maxpoll 1 means to poll the GPS receiver at most every 8s (2^3) and no faster than every 1 s (2^1).
+flag1 1 means to use a PPS source using the DLL driver that you installed and created a Registry entry for. flag2 1 means to use the rising edge of the 1 PPS pulse
+Full details of the parameters are available here https://www.meinbergglobal.com/download/ntp/docs/html/drivers/driver20.html
+Enable NTP Logging
+NTP logging should be set up so that the performance can be monitored. Add these commands to the NTP configuration file.
+enable stats
+statsdir "C:\NTP\etc\"
+statistics loopstats
+`n Save the configuration file and Restart the NTP service.
+Note: Restarting the NTP service may be troublesome due to administrative privileges. You can restart, stop or start the NTP service using the Meinberg NTP Time Server Monitor program, under “NTP Service” tab. However, if it has been installed in a location requiring admin privileges it may throw an error or not actually work. If this is the case, instead go to the \bin folder of your NTP installation, find the restartntp batch file, right click on it and select “Send to “ ”Desktop (create shortcut)”to create a desktop shortcut. Find that on your desktop, right click on Properties, ensure you are in the “Shortcut” tab then press Advanced, and select “Run as Administrator”, then OK/OK and close. You can also change the icon for the icon in the \bin NTP folder. Now when you click on this shortcut from the Desktop it will restart NTP.
+Checking and Troubleshooting the NTP Setup
+Now run the Meinberg NTP Monitor and go to the Status screen. It should look something like figure 3. Remote is the server ID and will match your config file. If it is using the GPS PPS it will have ‘o’ next to the Remote server ID. Green means it is using the time to discipline the PC clock. The delay should be 0 or very small. The offset and jitter should be very small, ~1 ms or less.
+If you don’t have the ’o’ next to your PPS server that means it cannot find the PPS signal. If it is finding the NMEA time then it will have a + or - or * next to it and will show a ‘when’ value of 64 or less, a small delay and an offset of perhaps 50-150 ms (could be a few hundred ms). If this is the case it means it is finding the NMEA time OK. If it is not then there is a problem with the NTP configuration file, most likely an incorrect COM port or incorrect mode setting (baud rate) with your 127.127.22 server. If it is OK and not getting the PPS ’o’ then there could be a problem with the 127.127.20 server setting (most likely the mode setting) or a problem with the dll Registry setting or file path. It could be that the loopback dll is in a folder that requires admin privileges- you can put a copy in any other folder and change the Registry entry to match.
+Figure 3. Example of NTP TIme Server Monitor showing the status of a GPS PPS device.
+Assuming it is all running OK, your NTP status window will look something like figure 4 if you also have NTP internet servers connected (see next section for instructions on setting those up). Note that in this example the local PPS GPS has a very small offset (0.194 ms) but the offset for the other NTP internet servers are ~-3,000 ms (3 seconds). This is due to the GPS receiver not having the GPS time Leap Seconds updated. It takes at most 12.5 minutes for the GPS receiver to receive the updated GPS Leap Seconds, after which it will STEP reset the PC time and all the times will go back to a normal offset of some ms or tens of ms for the NTP internet servers.
+Figure 4. Example of NTP TIme Server Monitoring showing GPS PPS device and internet NTP servers
+`n Performance Monitoring
+If you have set up the NTP logs (which you really should do) you can monitor the timing performance of NTP and your PPS GPS device.
+On startup, the PPS GPS device will take up to 12.5 minutes to update the Leap Seconds. Your PC time will be out by a number of seconds until this occurs, then will reset. So until this happens your times are not accurate and should not be used. If you have internet NTP servers also connected you can see this due to the large offset of thousands of ms. However, if you only have your GPS PPS receiver connected there is NO WAY to to know if the leap second correction has been applied. So you must wait at least 12.5 minutes, after which the status monitoring graphs might (or might not) show a small blip as the time adjusts (it adjusts in one big STEP, not gradually).
+`n
+Figure 5. Example logging graphs. GPS PPS time via NTP usually maintains an offset of < 0.2 ms. Initial start with internet NTP only with max offset of 56 ms (out of the range on this graph). Once the GPS PPS was connected the time got to within 0.2 ms within a few minutes and was stable to < 0.5 ms.
+Selecting Internet NTP Servers
+Using Internet NTP server time is recommended as a backup and check for the GPS PPS timing. It requires an internet connection, either a local network or WIFI, or a mobile 4g or 5g hotspot. Note that you cannot do this with the Shelyak Timebox II.
+The default NTP installation will set the NTP servers to come from your regional pool and some international pools. Better NTP timing can be obtained by using servers closer to your site. Recommend using a server from your country’s National Standards Laboratory or similar, as that is the official standard time for your country and will have a high quality, reliable NTP server that is formally traceable to UTC. Search for the website for your country with the information on how to use and connect, and follow their terms and conditions. Some may require that you register or use a static IP address for your device. National NTP servers will likely be geo-locked to each country.
+In your NTP configuration file set up the first NTP server as your National NTP server.
+For the additional servers check https://www.ntppool.org/en/ for a list of servers in your country. The NTP Pool project has regional and country specific zones. Choosing a server pool from your country may be a good option. Some countries have other server pools for specific cities. An NTP server in or near your city will likely have a smaller delay and better time performance. Your internet provider or some local universities may also provide NTP servers.
+References
+Timing Accuracy Using GPS Flash Timing . Michael Camilleri. JOA2024-3. https://www.iota-es.de/JOA/JOA2024_3.pdf
+Detailed Instructions for GPS Flash Timing, with Delay Calculation workbooks: Camilleri, M. 2024. GPS flash timing to timestamp occultation recordings. Download from IOTA Group Files (member access only) GPS Flash Timing or from here for public access: GPS Flash Timing
+The Delay calculator for line delays is here Delay Calculator for Line Delays
+The Excel Delay calculator with timestamp checks is here Delay Calculator with Timestamp Checks
+Details of NTP and PPS setup on Windows
+https://kb.meinbergglobal.com/kb/time_sync/ntp/ntp_for_windows/using_pps_signals_on_windows#configuring_pps_support
+https://adventuresinprecision.space/howtos/configuring-ntp-and-pps-on-windows/#No_actual_serial_port
+`n
+`n 
