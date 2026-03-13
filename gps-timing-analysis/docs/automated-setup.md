@@ -16,6 +16,12 @@ Set-Location C:\Users\AstroPC\Git\occultation-tools\gps-timing-analysis
 .\scripts\install_ntp_timing_guided.ps1
 ```
 
+If PowerShell windows flash open/close on your system, use the CMD launcher:
+
+```cmd
+scripts\install_ntp_timing_guided.cmd
+```
+
 What the guided installer covers:
 - launch page explaining the workflow and optional/manual install path
 - optional Meinberg NTP install and logging setup
