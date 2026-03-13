@@ -891,6 +891,33 @@ function Resolve-ServersForCountry {
     return Get-CountryServers -CountryCode $CountryCode -ConfigPath $ConfigPath
 }
 
+function Show-InstalledServerList {
+    param(
+        [string[]]$Servers,
+        [string]$Country,
+        [string]$OtherCode
+    )
+
+    $label = if ($Country -eq "Other" -and -not [string]::IsNullOrWhiteSpace($OtherCode)) {
+        ("Other/{0}" -f $OtherCode.ToUpperInvariant())
+    }
+    else {
+        $Country
+    }
+
+    Write-Step ("Installed NTP servers ({0})" -f $label)
+
+    $list = @($Servers | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($list.Count -eq 0) {
+        Write-WarnMsg "No servers were selected in this run."
+        return
+    }
+
+    for ($i = 0; $i -lt $list.Count; $i++) {
+        Write-Host ("  {0}) {1}" -f ($i + 1), $list[$i])
+    }
+}
+
 function Update-NtpManagedSectionsFromTemplate {
     param(
         [string]$TemplatePath,
@@ -1308,16 +1335,24 @@ function Show-CountryInstallSummary {
     }
 
     $item = $entry[0]
+    $countryName = [string](Get-ComOptionalPropertyValue -Object $item -Name "country_name" -Default $cc.ToUpperInvariant())
+    $status = [string](Get-ComOptionalPropertyValue -Object $item -Name "status" -Default "")
+    $authority = [string](Get-ComOptionalPropertyValue -Object $item -Name "authority" -Default "")
+    $usageNote = [string](Get-ComOptionalPropertyValue -Object $item -Name "usage_note" -Default "")
     Write-WarnMsg "National standards servers have not been fully tested by this installer."
     Write-WarnMsg "These servers may be inaccessible, restricted, or require registration with the authority."
-    Write-Host ("Country     : {0}" -f $item.country_name)
-    Write-Host ("Status      : {0}" -f $item.status)
-    Write-Host ("Authority   : {0}" -f $item.authority)
-    if (-not [string]::IsNullOrWhiteSpace([string]$item.usage_note)) {
-        Write-Host ("Usage Note  : {0}" -f $item.usage_note)
+    Write-Host ("Country     : {0}" -f $countryName)
+    if (-not [string]::IsNullOrWhiteSpace($status)) {
+        Write-Host ("Status      : {0}" -f $status)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($authority)) {
+        Write-Host ("Authority   : {0}" -f $authority)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($usageNote)) {
+        Write-Host ("Usage Note  : {0}" -f $usageNote)
     }
 
-    $urls = @($item.source_urls)
+    $urls = @((Get-ComOptionalPropertyValue -Object $item -Name "source_urls" -Default @()))
     if ($urls.Count -gt 0) {
         Write-Host "Authority / Source URL(s):"
         foreach ($u in $urls) {
@@ -1671,6 +1706,7 @@ try {
 
         $servers = Resolve-ServersForCountry -CountryCode $selectedCountry -ConfigPath $countryConfigPath -NationalUtcPath $nationalUtcPath -PoolZonesPath $poolZonesPath -OtherCc $selectedOtherCode
         Update-NtpManagedSectionsFromTemplate -TemplatePath $templatePath -Servers $servers -Port $selectedComPort -Mode $selectedGpsMode -StatsFolder $statsDir -OutputPath $ntpConfPath
+        Show-InstalledServerList -Servers $servers -Country $selectedCountry -OtherCode $selectedOtherCode
         $restartRecommended = $true
 
         if (-not $gpsConfigured) {
