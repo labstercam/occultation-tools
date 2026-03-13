@@ -454,25 +454,16 @@ function Convert-PrefixLengthToSubnetMask {
         return ""
     }
 
-    $remaining = $PrefixLength
-    $octets = @()
-    for ($i = 0; $i -lt 4; $i++) {
-        if ($remaining -ge 8) {
-            $octets += 255
-            $remaining -= 8
-            continue
-        }
-
-        if ($remaining -le 0) {
-            $octets += 0
-            continue
-        }
-
-        $octets += (256 - [math]::Pow(2, (8 - $remaining)))
-        $remaining = 0
+    $mask = [uint32]0
+    for ($i = 0; $i -lt $PrefixLength; $i++) {
+        $mask = $mask -bor ([uint32]1 -shl (31 - $i))
     }
 
-    return (($octets | ForEach-Object { [int]$_ }) -join '.')
+    $o1 = ($mask -shr 24) -band 255
+    $o2 = ($mask -shr 16) -band 255
+    $o3 = ($mask -shr 8) -band 255
+    $o4 = $mask -band 255
+    return ("{0}.{1}.{2}.{3}" -f $o1, $o2, $o3, $o4)
 }
 
 function Get-ActiveIpv4Configuration {
@@ -537,81 +528,100 @@ function Get-SuggestedStaticIpAddress {
         [string]$Gateway
     )
 
-    if ([string]::IsNullOrWhiteSpace($CurrentIp)) {
-        return ""
-    }
-
-    $parts = @($CurrentIp -split '\.')
-    if ($parts.Count -ne 4) {
-        return $CurrentIp
-    }
-
-    $octet = 0
-    if (-not [int]::TryParse($parts[3], [ref]$octet)) {
-        return $CurrentIp
-    }
-
-    $candidates = @($octet + 20, $octet + 30, $octet + 10)
-    foreach ($cand in $candidates) {
-        if ($cand -lt 2 -or $cand -gt 254) {
-            continue
+    try {
+        if ([string]::IsNullOrWhiteSpace($CurrentIp)) {
+            return ""
         }
 
-        $testIp = "{0}.{1}.{2}.{3}" -f $parts[0], $parts[1], $parts[2], $cand
-        if ($testIp -ne $Gateway -and $testIp -ne $CurrentIp) {
-            return $testIp
+        $parts = @($CurrentIp -split '\.')
+        if ($parts.Count -ne 4) {
+            return $CurrentIp
         }
-    }
 
-    return $CurrentIp
-}
-
-function Show-StaticIpGuidance {
-    Write-Host "Brief static IP guide for Windows 10/11:" -ForegroundColor Cyan
-
-    $net = Get-ActiveIpv4Configuration
-    if ($null -ne $net -and -not [string]::IsNullOrWhiteSpace($net.IPAddress)) {
-        $suggestedIp = Get-SuggestedStaticIpAddress -CurrentIp $net.IPAddress -Gateway $net.Gateway
-
-        Write-Host ""
-        Write-Host "Detected current active network settings:" -ForegroundColor Cyan
-        Write-Host ("  Adapter: {0}" -f $net.AdapterAlias)
-        Write-Host ("  Current IPv4: {0}" -f $net.IPAddress)
-        Write-Host ("  Subnet mask: {0}" -f $net.SubnetMask)
-        Write-Host ("  Gateway: {0}" -f $net.Gateway)
-        if ($net.DnsServers.Count -gt 0) {
-            Write-Host ("  DNS: {0}" -f ($net.DnsServers -join ', '))
+        $lastOctetText = [string]$parts[3]
+        if ($lastOctetText -notmatch '^\d+$') {
+            return $CurrentIp
         }
-        Write-Host ("  DHCP: {0}" -f $net.DhcpState)
 
-        Write-Host ""
-        Write-Host "Suggested static IPv4 values to enter:" -ForegroundColor Cyan
-        Write-Host ("  IP address: {0}" -f $suggestedIp)
-        Write-Host ("  Subnet mask: {0}" -f $net.SubnetMask)
-        Write-Host ("  Gateway: {0}" -f $net.Gateway)
-        if ($net.DnsServers.Count -gt 0) {
-            Write-Host ("  Preferred DNS: {0}" -f $net.DnsServers[0])
-            if ($net.DnsServers.Count -gt 1) {
-                Write-Host ("  Alternate DNS: {0}" -f $net.DnsServers[1])
+        $octet = [int]$lastOctetText
+        if ($octet -lt 0 -or $octet -gt 255) {
+            return $CurrentIp
+        }
+
+        foreach ($delta in @(20, 30, 10)) {
+            $cand = $octet + [int]$delta
+            if ($cand -lt 2 -or $cand -gt 254) {
+                continue
+            }
+
+            $testIp = "{0}.{1}.{2}.{3}" -f $parts[0], $parts[1], $parts[2], $cand
+            if ($testIp -ne $Gateway -and $testIp -ne $CurrentIp) {
+                return $testIp
             }
         }
 
-        Write-WarnMsg "Important: use an IP address outside your router DHCP range (or reserve this IP in the router) to avoid conflicts."
+        return $CurrentIp
     }
-    else {
-        Write-WarnMsg "Could not auto-detect current IPv4 settings."
-        Write-Host "Use your current IPv4, subnet mask, gateway, and DNS as a starting point, then choose a nearby unused IP." -ForegroundColor Yellow
+    catch {
+        return $CurrentIp
     }
+}
 
-    Write-Host ""
-    Write-Host "How to enter on Windows 10/11:" -ForegroundColor Cyan
-    Write-Host "  1) Open Settings > Network and Internet > Advanced network settings."
-    Write-Host "  2) Open your active adapter (Ethernet/Wi-Fi) and choose View additional properties."
-    Write-Host "  3) Under IP assignment, click Edit."
-    Write-Host "  4) Select Manual, enable IPv4, and enter the suggested values."
-    Write-Host "  5) Save and confirm internet access still works."
-    Write-Host ""
-    Write-Host "Simple step-by-step guide: https://support.microsoft.com/windows/change-tcp-ip-settings"
+function Show-StaticIpGuidance {
+    try {
+        Write-Host "Brief static IP guide for Windows 10/11:" -ForegroundColor Cyan
+
+        $net = Get-ActiveIpv4Configuration
+        if ($null -ne $net -and -not [string]::IsNullOrWhiteSpace([string]$net.IPAddress)) {
+            $suggestedIp = Get-SuggestedStaticIpAddress -CurrentIp ([string]$net.IPAddress) -Gateway ([string]$net.Gateway)
+
+            Write-Host ""
+            Write-Host "Detected current active network settings:" -ForegroundColor Cyan
+            Write-Host ("  Adapter: {0}" -f [string]$net.AdapterAlias)
+            Write-Host ("  Current IPv4: {0}" -f [string]$net.IPAddress)
+            Write-Host ("  Subnet mask: {0}" -f [string]$net.SubnetMask)
+            Write-Host ("  Gateway: {0}" -f [string]$net.Gateway)
+
+            $dnsList = @($net.DnsServers)
+            if ($dnsList.Count -gt 0) {
+                Write-Host ("  DNS: {0}" -f ($dnsList -join ', '))
+            }
+            Write-Host ("  DHCP: {0}" -f [string]$net.DhcpState)
+
+            Write-Host ""
+            Write-Host "Suggested static IPv4 values to enter:" -ForegroundColor Cyan
+            Write-Host ("  IP address: {0}" -f $suggestedIp)
+            Write-Host ("  Subnet mask: {0}" -f [string]$net.SubnetMask)
+            Write-Host ("  Gateway: {0}" -f [string]$net.Gateway)
+            if ($dnsList.Count -gt 0) {
+                Write-Host ("  Preferred DNS: {0}" -f [string]$dnsList[0])
+                if ($dnsList.Count -gt 1) {
+                    Write-Host ("  Alternate DNS: {0}" -f [string]$dnsList[1])
+                }
+            }
+
+            Write-WarnMsg "Important: use an IP address outside your router DHCP range (or reserve this IP in the router) to avoid conflicts."
+        }
+        else {
+            Write-WarnMsg "Could not auto-detect current IPv4 settings."
+            Write-Host "Use your current IPv4, subnet mask, gateway, and DNS as a starting point, then choose a nearby unused IP." -ForegroundColor Yellow
+        }
+
+        Write-Host ""
+        Write-Host "How to enter on Windows 10/11:" -ForegroundColor Cyan
+        Write-Host "  1) Open Settings > Network and Internet > Advanced network settings."
+        Write-Host "  2) Open your active adapter (Ethernet/Wi-Fi) and choose View additional properties."
+        Write-Host "  3) Under IP assignment, click Edit."
+        Write-Host "  4) Select Manual, enable IPv4, and enter the suggested values."
+        Write-Host "  5) Save and confirm internet access still works."
+        Write-Host ""
+        Write-Host "Simple step-by-step guide: https://support.microsoft.com/windows/change-tcp-ip-settings"
+    }
+    catch {
+        Write-WarnMsg ("Static IP helper could not read network settings on this machine: {0}" -f $_.Exception.Message)
+        Write-Host "Use your current IPv4, subnet mask, gateway, and DNS values from Windows network adapter details." -ForegroundColor Yellow
+        Write-Host "Simple step-by-step guide: https://support.microsoft.com/windows/change-tcp-ip-settings" -ForegroundColor Yellow
+    }
 }
 
 function Resolve-AuServersInteractive {
