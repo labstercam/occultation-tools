@@ -773,7 +773,7 @@ function Resolve-ServersForOtherCountry {
         try { $listedActive = [int]$countryEntry[0].counts.listed_active } catch { $listedActive = $null }
     }
 
-    $countryIndexed = Get-IndexedPoolServers -PoolHostnames $countryPoolHostnames -MaxCount 3
+    $countryIndexed = @(Get-IndexedPoolServers -PoolHostnames $countryPoolHostnames -MaxCount 3)
     if ($countryIndexed.Count -lt 3) {
         $countryIndexed = @("0.$cc.pool.ntp.org", "1.$cc.pool.ntp.org", "2.$cc.pool.ntp.org")
     }
@@ -795,7 +795,7 @@ function Resolve-ServersForOtherCountry {
         $regionEntry = @($poolData.regions | Where-Object { $_.zone -eq $region } | Select-Object -First 1)
         $regionPoolHostnames = if ($regionEntry.Count -gt 0) { @($regionEntry[0].pool_hostnames) } else { @() }
 
-        $regionIndexed = Get-IndexedPoolServers -PoolHostnames $regionPoolHostnames -MaxCount 2
+        $regionIndexed = @(Get-IndexedPoolServers -PoolHostnames $regionPoolHostnames -MaxCount 2)
         if ($regionIndexed.Count -lt 2) {
             $regionIndexed = @("0.$region.pool.ntp.org", "1.$region.pool.ntp.org")
         }
