@@ -135,7 +135,7 @@ Automation assets:
 - `install_ntp_timing_bootstrap.ps1` (fallback if `.cmd` is blocked)
 - `scripts/install_ntp_timing_guided.ps1`
 - `scripts/install_ntp_timing_guided.cmd`
-- `scripts/setup_ntp_timing.ps1` (legacy/testing)
+- `scripts/legacy/setup_ntp_timing.ps1` (legacy/testing)
 - `scripts/find_gps_com_port.ps1`
 - `config/ntp.conf.template`
 - `config/ntp-country-servers.json`

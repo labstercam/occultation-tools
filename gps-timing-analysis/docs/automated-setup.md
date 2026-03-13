@@ -82,7 +82,7 @@ What the guided installer covers:
 
 ## Advanced script (legacy/testing)
 
-`scripts/setup_ntp_timing.ps1` is retained for legacy/testing workflows.
+`scripts/legacy/setup_ntp_timing.ps1` is retained for legacy/testing workflows.
 For normal installs, use `scripts/install_ntp_timing_guided.ps1`.
 
 ## What the guided installer can automate
@@ -134,7 +134,7 @@ For `AU`, interactive setup now prompts for:
 ## Files used
 
 - Guided installer: `gps-timing-analysis/scripts/install_ntp_timing_guided.ps1`
-- Legacy/testing script: `gps-timing-analysis/scripts/setup_ntp_timing.ps1`
+- Legacy/testing script: `gps-timing-analysis/scripts/legacy/setup_ntp_timing.ps1`
 - Country servers: `gps-timing-analysis/config/ntp-country-servers.json`
 - NTP Pool zones resource: `gps-timing-analysis/resources/ntp_pool_zones.json`
 - National UTC/NTP inventory resource: `gps-timing-analysis/resources/national_utc_ntp_servers.json`
@@ -172,7 +172,7 @@ Set-Location C:\Users\AstroPC\Git\occultation-tools\gps-timing-analysis
 # First identify the GPS/PPS COM port interactively.
 $com = .\scripts\find_gps_com_port.ps1
 
-.\scripts\setup_ntp_timing.ps1 \
+.\scripts\legacy\setup_ntp_timing.ps1 \
   -Country NZ \
   -ComPort $com \
   -GpsMode 18 \
@@ -185,7 +185,7 @@ $com = .\scripts\find_gps_com_port.ps1
 Use `-WhatIf` first to preview all changes:
 
 ```powershell
-.\scripts\setup_ntp_timing.ps1 -Country NZ -ComPort 1 -WhatIf
+.\scripts\legacy\setup_ntp_timing.ps1 -Country NZ -ComPort 1 -WhatIf
 ```
 
 ## Region prompt behavior
@@ -228,7 +228,7 @@ If one of those folders already exists, it is preferred.
 You can force a specific Program Files path with:
 
 ```powershell
-.\scripts\setup_ntp_timing.ps1 -Country NZ -ComPort 1 -NtpInstallRoot "C:\Program Files (x86)\NTP"
+.\scripts\legacy\setup_ntp_timing.ps1 -Country NZ -ComPort 1 -NtpInstallRoot "C:\Program Files (x86)\NTP"
 ```
 
 The script validates that `-NtpInstallRoot` is under Program Files.

@@ -9,6 +9,9 @@
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', 'Restart-NtpService', Justification = 'Function already supports ShouldProcess; diagnostic noise only.')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseApprovedVerbs', '', Justification = 'Legacy helper naming retained for readability and script compatibility; no runtime impact.')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Top-level script uses ShouldProcess; helper-level warnings are non-functional noise in this workflow.')]
+
+# LEGACY SCRIPT: retained for legacy/testing workflows only.
+# For normal installs, use scripts/install_ntp_timing_guided.ps1 (or root bootstrap launchers).
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [Parameter(Mandatory = $false)]
@@ -1023,7 +1026,7 @@ function Test-NtpValidation {
 Assert-Admin
 
 $scriptRoot = Split-Path -Parent $PSCommandPath
-$projectRoot = Split-Path -Parent $scriptRoot
+$projectRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
 $configPath = Join-Path $projectRoot "config\ntp-country-servers.json"
 $nationalUtcPath = Join-Path $projectRoot "resources\national_utc_ntp_servers.json"
 $poolZonesPath = Join-Path $projectRoot "resources\ntp_pool_zones.json"
