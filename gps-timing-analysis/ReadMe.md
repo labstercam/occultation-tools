@@ -153,6 +153,16 @@ Official GitHub-first run command (PowerShell):
 
 Use this when you want to run directly from the latest GitHub `main` code.
 
+Equivalent two-step PowerShell launch (recommended if troubleshooting):
+
+```powershell
+$bootstrap = Join-Path $env:TEMP 'install_ntp_timing_bootstrap.ps1'
+Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/labstercam/occultation-tools/main/gps-timing-analysis/install_ntp_timing_bootstrap.ps1' -OutFile $bootstrap
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrap
+```
+
+If execution policy blocks direct script invocation, do not run `& $bootstrap` directly; use `powershell.exe -ExecutionPolicy Bypass -File $bootstrap`.
+
 The bootstrap launcher downloads/updates required files into:
 - `C:\OccultationTools\gps-timing-analysis`
 then starts the guided installer automatically.

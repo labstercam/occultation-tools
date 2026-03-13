@@ -13,6 +13,14 @@ Official GitHub-first run command (PowerShell, recommended when you want the lat
 
 This command downloads the latest bootstrap from GitHub and then runs it.
 
+Equivalent two-step PowerShell command sequence (easier to troubleshoot):
+
+```powershell
+$bootstrap = Join-Path $env:TEMP 'install_ntp_timing_bootstrap.ps1'
+Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/labstercam/occultation-tools/main/gps-timing-analysis/install_ntp_timing_bootstrap.ps1' -OutFile $bootstrap
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrap
+```
+
 Beginner one-file option (recommended):
 - Download `install_ntp_timing_bootstrap.cmd`
 - Double-click it
@@ -24,6 +32,10 @@ If your Windows policy blocks `.cmd` launchers or they flash-close before showin
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install_ntp_timing_bootstrap.ps1
 ```
+
+Important:
+- Do not run `& $bootstrap` directly in a session with restrictive execution policy.
+- Run with `powershell.exe -ExecutionPolicy Bypass -File ...` as shown above.
 
 The bootstrap launcher creates/updates a fixed install location at:
 - `C:\OccultationTools\gps-timing-analysis`
@@ -86,10 +98,12 @@ For normal installs, use `scripts/install_ntp_timing_guided.ps1`.
 - verify downloaded Meinberg NTP installer using SHA256
 
 For `AU`, interactive setup now prompts for:
-- whether to include National Standards (NMI) servers (recommended),
-- NMI source type: public endpoint vs city-specific servers,
-- confirmation that city-specific mode requires registration and static IP,
-- up to two city-specific servers (nearest cities recommended).
+- whether to include National Standards (NMI) servers,
+- auto-add of `ntp.nmi.gov.au` when NMI is selected,
+- up to 0-2 additional NMI servers,
+- up to 0-2 university `.edu.au` servers,
+- automatic fill from numbered `0..3.au.pool.ntp.org` servers to reach 5 total,
+- static-IP guidance (including detected local IPv4/gateway/DNS suggestions) when NMI is selected.
 
 ## Upstream download sources
 
