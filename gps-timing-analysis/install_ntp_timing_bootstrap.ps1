@@ -14,16 +14,47 @@ function Wait-BeforeCloseIfNeeded {
     }
 }
 
+function Write-BootstrapLog {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message
+    )
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($script:bootstrapLog)) {
+            return
+        }
+        Add-Content -Path $script:bootstrapLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message"
+    }
+    catch {
+        # Intentionally ignore logging failures so setup can continue.
+    }
+}
+
 $repoOwner = 'labstercam'
 $repoName = 'occultation-tools'
 $repoBranch = 'main'
 $subdir = 'gps-timing-analysis'
-$installRoot = Join-Path $env:SystemDrive 'OccultationTools\gps-timing-analysis'
+$systemDrive = $env:SystemDrive
+if ([string]::IsNullOrWhiteSpace($systemDrive)) {
+    $systemDrive = 'C:'
+}
+
+$installRoot = Join-Path $systemDrive 'OccultationTools\gps-timing-analysis'
 $baseUrl = "https://raw.githubusercontent.com/$repoOwner/$repoName/$repoBranch/$subdir"
-$bootstrapLog = Join-Path $env:TEMP 'occultation_bootstrap_ps.log'
+
+$tempRoot = $env:TEMP
+if ([string]::IsNullOrWhiteSpace($tempRoot)) {
+    $tempRoot = [System.IO.Path]::GetTempPath()
+}
+if ([string]::IsNullOrWhiteSpace($tempRoot)) {
+    $tempRoot = $installRoot
+}
+
+$bootstrapLog = Join-Path $tempRoot 'occultation_bootstrap_ps.log'
 
 try {
-    Add-Content -Path $bootstrapLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] bootstrap launch: $PSCommandPath"
+    Write-BootstrapLog -Message "bootstrap launch: $PSCommandPath"
 
     $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     $isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -86,7 +117,7 @@ try {
         $dst = Join-Path $installRoot ($rel -replace '/', '\\')
         Write-Host "  $rel"
         Invoke-WebRequest -UseBasicParsing -Uri $src -OutFile $dst
-        Add-Content -Path $bootstrapLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] downloaded $rel"
+        Write-BootstrapLog -Message "downloaded $rel"
     }
 
     $guided = Join-Path $installRoot 'scripts\install_ntp_timing_guided.ps1'
@@ -107,7 +138,7 @@ catch {
     Write-Host ''
     Write-Host ('[ERROR] ' + $_.Exception.Message)
     Write-Host ('Diagnostic log: ' + $bootstrapLog)
-    Add-Content -Path $bootstrapLog -Value "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] error: $($_.Exception.Message)"
+    Write-BootstrapLog -Message ("error: " + $_.Exception.Message)
     Wait-BeforeCloseIfNeeded
     exit 1
 }
