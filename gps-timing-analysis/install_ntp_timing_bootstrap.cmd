@@ -1,12 +1,17 @@
 @echo off
 setlocal
 
+set "NO_PAUSE=0"
 set "REPO_OWNER=labstercam"
 set "REPO_NAME=occultation-tools"
 set "REPO_BRANCH=main"
 set "SUBDIR=gps-timing-analysis"
 set "INSTALL_ROOT=%SystemDrive%\OccultationTools\gps-timing-analysis"
-set "ELEVATED_FLAG=%~1"
+set "ELEVATED_FLAG="
+
+if /I "%~1"=="--elevated" set "ELEVATED_FLAG=--elevated"
+if /I "%~1"=="--no-pause" set "NO_PAUSE=1"
+if /I "%~2"=="--no-pause" set "NO_PAUSE=1"
 
 set "BASE_URL=https://raw.githubusercontent.com/%REPO_OWNER%/%REPO_NAME%/%REPO_BRANCH%/%SUBDIR%"
 
@@ -20,7 +25,8 @@ echo.
 choice /C YN /N /M "Continue? [Y/N]: "
 if errorlevel 2 (
 	echo Cancelled.
-	exit /b 0
+	set "EXIT_CODE=0"
+	goto :finish
 )
 
 rem Ensure admin context; if not elevated, relaunch this CMD via UAC once.
@@ -29,13 +35,14 @@ if not "%ERRORLEVEL%"=="0" (
 	if /I "%ELEVATED_FLAG%"=="--elevated" (
 		echo [ERROR] Could not obtain Administrator rights.
 		echo Please right-click this file and choose "Run as administrator".
-		pause
-		exit /b 1
+		set "EXIT_CODE=1"
+		goto :finish
 	)
 
 	echo Requesting Administrator rights...
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -Verb RunAs -FilePath '%ComSpec%' -ArgumentList '/c """%~f0"" --elevated'"
-	exit /b %ERRORLEVEL%
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -Verb RunAs -FilePath '%~f0' -ArgumentList '--elevated'"
+	set "EXIT_CODE=%ERRORLEVEL%"
+	goto :finish
 )
 
 call :EnsureDir "%INSTALL_ROOT%"
@@ -69,17 +76,16 @@ if not "%EXIT_CODE%"=="0" (
 	echo [ERROR] Guided installer exited with code %EXIT_CODE%.
 	echo Logs are under:
 	echo   %INSTALL_ROOT%\logs
-	pause
 )
 
-exit /b %EXIT_CODE%
+goto :finish
 
 :download_fail
 echo.
 echo [ERROR] Download failed. Check internet access and try again.
 echo If GitHub is blocked on your network, download the full project ZIP instead.
-pause
-exit /b 1
+set "EXIT_CODE=1"
+goto :finish
 
 :EnsureDir
 if not exist "%~1" mkdir "%~1"
@@ -96,3 +102,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreferen
 if not "%ERRORLEVEL%"=="0" exit /b 1
 
 exit /b 0
+
+:finish
+if "%EXIT_CODE%"=="" set "EXIT_CODE=0"
+if not "%NO_PAUSE%"=="1" (
+	echo.
+	echo Press any key to close this window...
+	pause >nul
+)
+exit /b %EXIT_CODE%
