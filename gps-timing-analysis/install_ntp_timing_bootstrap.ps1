@@ -113,7 +113,8 @@ try {
     Write-Host ''
     Write-Host 'Downloading setup files...'
     foreach ($rel in $files) {
-        $src = "$baseUrl/$rel"
+        $cacheBust = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $src = "$baseUrl/$rel?ts=$cacheBust"
         $dst = Join-Path $installRoot ($rel -replace '/', '\\')
         Write-Host "  $rel"
         Invoke-WebRequest -UseBasicParsing -Uri $src -OutFile $dst

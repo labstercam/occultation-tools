@@ -116,7 +116,7 @@ exit /b 0
 :Download
 set "REL=%~1"
 set "REL_WIN=%REL:/=\%"
-set "SRC=%BASE_URL%/%REL%"
+set "SRC=%BASE_URL%/%REL%?ts=%RANDOM%%RANDOM%"
 set "DST=%INSTALL_ROOT%\%REL_WIN%"
 
 echo   %REL%
