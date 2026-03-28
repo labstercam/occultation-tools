@@ -1,0 +1,2502 @@
+"""
+GPS LED Line Delay Calibration for SharpCap
+Measures rolling shutter line delays using GPS timing LED
+
+This module captures frames from multiple 10x10 pixel apertures distributed across the
+frame height, analyzes GPS PPS flashes, and calculates rolling shutter line delays with
+linear regression.
+
+Features:
+- Multiple 10x10 pixel apertures distributed across frame height (every 100 pixels)
+- Automatically accounts for ROI and binning settings
+- Correct binning handling: camera reports unbinned ROI, frame data is binned
+- GPS PPS flash detection and timing analysis
+- Quality filtering to remove transition frames (outliers)
+- Linear regression for line delay calculation with R-squared fit quality
+- TANGRA CSV export for external analysis
+
+Usage:
+    From SharpCap IronPython Console:
+    execfile(r"C:\path\to\occultation-manager\python\led_line_delay_calibration.py")
+    
+    Then click "Start Calibration" in the GUI
+
+Technical Implementation:
+    Camera API (SharpCap):
+        - camera.ROI: Returns Rectangle (X=Pan, Y=Tilt, Width/Height in binned pixels)
+        - camera.Controls.Resolution.Value: May report unbinned ROI dimensions
+        - camera.ROI.Width/Height: Actual binned frame data dimensions
+        - Binning: camera.Controls.FindByName("Binning").Value (e.g., "2x2")
+    
+    Frame Timestamps:
+        - Live: BufferFrame.Info.EndTimeStamp → converted to mid-frame (subtract exposure/2)
+        - ADV: AdvFrameInfo.UtcMidExposureTime → already mid-frame timestamp
+        - Processing: calculate_delays_iron() adds exposure/2 to get end-frame timing
+        - Consistent with tested original light_curves.py algorithm
+    
+    ADV File Integration:
+        - Uses .NET AdvLib through IronPython CLR
+        - AdvFile2 class for file I/O
+        - Extracts frame pixels, timestamps, and exposure metadata
+        - Converts .NET DateTime to Python datetime for compatibility
+
+Author: Michael Camilleri / Development Team
+Date: February 2026
+Version: 3.0.0 - Production release with ADV replay support
+"""
+
+# System imports (IronPython compatible)
+import time
+import math
+import os
+import sys
+from datetime import datetime, timedelta
+
+# Add script directory to sys.path for imports (needed when using execfile())
+# This allows importing adv_helper.py from the same directory
+try:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # __file__ not defined (happens with execfile() in IronPython)
+    # Use current working directory as fallback
+    script_dir = os.path.abspath(os.getcwd())
+
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+    print("Added to Python path: " + script_dir)
+
+# .NET/CLR imports for SharpCap
+import clr
+clr.AddReference("System.Windows.Forms")
+clr.AddReference("System.Drawing")
+clr.AddReference("OxyPlot")
+clr.AddReference("OxyPlot.WindowsForms")
+
+from System.Windows.Forms import *
+from System.Drawing import *
+from System.Threading import Thread, ApartmentState, ParameterizedThreadStart
+import OxyPlot
+import OxyPlot.WindowsForms
+import OxyPlot.Series
+import OxyPlot.Axes
+
+# ADV file support (optional)
+try:
+    import adv_helper
+    ADV_AVAILABLE = adv_helper.is_advlib_available()
+    if ADV_AVAILABLE:
+        print("ADV support is AVAILABLE - ADV file replay mode enabled")
+    else:
+        print("ADV support not available - AdvLib DLLs could not be loaded")
+        print("  Check SharpCap log for AdvLib loading errors from adv_helper.py")
+except Exception as e:
+    ADV_AVAILABLE = False
+    print("ADV support not available - could not import adv_helper.py")
+    print("  Error: " + str(e))
+    print("  Script directory: " + script_dir)
+    import traceback
+    traceback.print_exc()
+
+
+
+
+# =============================================================================
+# PHASE 1: FRAME CAPTURE SYSTEM
+# =============================================================================
+
+class FrameCaptureHandler:
+    """Handles frame capture and aperture measurements for line delay calibration
+    
+    This class manages the frame capture event handler and records light intensity
+    measurements from multiple apertures distributed across the frame height.
+    """
+    
+    def __init__(self):
+        """Initialize the frame capture handler"""
+        self.capturing = False
+        self.apertures = []  # List of (y_position, Rectangle) tuples
+        self.measurements = {}  # Dictionary: y_position -> list of measurements
+        self.timestamps = []
+        self.frame_numbers = []
+        self.frame_width = 0
+        self.frame_height = 0
+        self.unbinned_frame_height = 0  # Physical sensor lines for rolling shutter calc
+        self.binning = 1
+        self.frame_count = 0  # Counter to verify frames are being captured
+        
+    def framehandler(self, sender, args):
+        """Frame capture event handler - called for each camera frame
+        
+        Measures mean light intensity in all apertures across the frame.
+        Stores measurements, timestamps, and frame numbers.
+        
+        Args:
+            sender: Event sender (camera)
+            args: Frame event arguments containing frame data
+        """
+        if not self.capturing:
+            return
+        
+        self.frame_count += 1
+        
+        # Print confirmation on first frame
+        if self.frame_count == 1:
+            print("First frame received - capture working!")
+            print("  Frame dimensions: {0}x{1} pixels (from camera.ROI)".format(
+                self.frame_width, self.frame_height))
+            print("  Converting EndTimeStamp to mid-frame (subtracting {0} ms)".format(
+                getattr(self, 'exposure_ms', 0.0) / 2.0))
+        
+        try:
+            # Measure all apertures
+            for y_pos, rect in self.apertures:
+                cutout = args.Frame.CutROI(rect)
+                stat = cutout.GetStats()
+                mean_val = stat.Item1  # Mean value
+                cutout.Release()
+                
+                # Store measurement for this aperture
+                self.measurements[y_pos].append(mean_val)
+            
+            # Store timestamp - using SharpCap's frame timestamp (end of exposure)
+            # Access FrameInfo via args.Frame.Info property
+            net_timestamp = args.Frame.Info.EndTimeStamp
+            
+            # Convert .NET DateTime to Python datetime
+            timestamp_end = datetime(
+                net_timestamp.Year,
+                net_timestamp.Month,
+                net_timestamp.Day,
+                net_timestamp.Hour,
+                net_timestamp.Minute,
+                net_timestamp.Second,
+                net_timestamp.Millisecond * 1000  # Convert milliseconds to microseconds
+            )
+            
+            # Convert end-frame timestamp to mid-frame to match ADV workflow and original light_curves.py
+            # This ensures consistent behavior where calculate_delays_iron() expects mid-frame timestamps
+            exposure_ms = getattr(self, 'exposure_ms', 50.0)  # Will be set before capture starts
+            timestamp = timestamp_end - timedelta(milliseconds=exposure_ms / 2.0)
+            self.timestamps.append(timestamp)
+            
+            # Print first timestamp for verification
+            if self.frame_count == 1:
+                print("  First frame timestamp (mid-frame): {0}".format(timestamp.strftime("%Y%m%d %H:%M:%S.%f")[:-3]))
+            
+            # Store frame number
+            self.frame_numbers.append(len(self.frame_numbers))
+            
+            # Print progress every 20 frames
+            if len(self.frame_numbers) % 20 == 0:
+                print("Captured {0} frames...".format(len(self.frame_numbers)))
+            
+        except Exception as ex:
+            # Log errors for debugging but don't disrupt capture
+            print("Frame handler error: {0}".format(str(ex)))
+            import traceback
+            traceback.print_exc()
+    
+    def setup_apertures(self, frame_width, frame_height, aperture_size=10, spacing=100):
+        """Setup multiple measurement apertures distributed across frame height
+        
+        Creates fixed-size square apertures at regular intervals from top to bottom of frame.
+        Automatically accounts for ROI and binning via camera.Controls.Resolution.Value.
+        
+        Args:
+            frame_width: Width of camera frame in pixels (from Controls.Resolution.Value, accounts for ROI/binning)
+            frame_height: Height of camera frame in pixels (from Controls.Resolution.Value, accounts for ROI/binning)
+            aperture_size: Size of square aperture in pixels (default 10x10)
+            spacing: Vertical spacing between apertures in pixels (default 100)
+        
+        Sets:
+            self.apertures: List of (y_center, Rectangle) tuples for all apertures
+            self.measurements: Initialized dictionary for each aperture
+        """
+        # Validate frame dimensions
+        if frame_width < aperture_size or frame_height < aperture_size:
+            raise Exception(
+                "Frame too small for aperture.\n" +
+                "Frame: {0}x{1}, Aperture: {2}x{2}".format(
+                    frame_width, frame_height, aperture_size))
+        
+        self.frame_width = frame_width
+        self.frame_height = frame_height
+        self.apertures = []
+        self.measurements = {}
+        
+        # Fixed aperture dimensions (square)
+        aperture_width = aperture_size
+        aperture_height = aperture_size
+        
+        # Center horizontal position
+        x_center = int(frame_width * 0.5 - aperture_width * 0.5)
+        
+        # Create apertures from top to bottom at regular intervals
+        # Ensure we always include top (Y=0) and bottom (Y=height-aperture_size) positions
+        y_positions = []
+        
+        # Start at top
+        y_positions.append(0)
+        
+        # Add middle positions at spacing intervals
+        y = spacing
+        while y < (frame_height - aperture_height - spacing // 2):
+            y_positions.append(y)
+            y += spacing
+        
+        # End at bottom
+        y_bottom = frame_height - aperture_height
+        if y_positions[-1] != y_bottom:
+            y_positions.append(y_bottom)
+        
+        # Create Rectangle objects and initialize measurement storage
+        for y_top in y_positions:
+            rect = Rectangle(x_center, y_top, aperture_width, aperture_height)
+            y_center = y_top + aperture_height // 2
+            self.apertures.append((y_center, rect))
+            self.measurements[y_center] = []
+        
+        print("Multiple apertures configured (ROI-aware):")
+        print("  Frame: {0}x{1} pixels".format(frame_width, frame_height))
+        print("  Aperture count: {0}".format(len(self.apertures)))
+        print("  Aperture size: {0}x{1} pixels".format(aperture_width, aperture_height))
+        print("  Y positions: {0}".format([y for y, _ in self.apertures]))
+    
+    def setup_single_aperture(self, frame_width, frame_height, y_center, aperture_size=10):
+        """Setup a single measurement aperture at specified Y position
+        
+        Used for long-term stability testing with single aperture.
+        
+        Args:
+            frame_width: Width of camera frame in pixels
+            frame_height: Height of camera frame in pixels
+            y_center: Y center position for aperture
+            aperture_size: Size of square aperture in pixels (default 10x10)
+        
+        Sets:
+            self.apertures: List with single (y_center, Rectangle) tuple
+            self.measurements: Initialized dictionary for the aperture
+        """
+        self.frame_width = frame_width
+        self.frame_height = frame_height
+        self.apertures = []
+        self.measurements = {}
+        
+        # Center horizontal position
+        x_center = int(frame_width * 0.5 - aperture_size * 0.5)
+        y_top = int(y_center - aperture_size * 0.5)
+        
+        # Create single aperture
+        rect = Rectangle(x_center, y_top, aperture_size, aperture_size)
+        self.apertures.append((y_center, rect))
+        self.measurements[y_center] = []
+        
+        print("Single aperture configured:")
+        print("  Frame: {0}x{1} pixels".format(frame_width, frame_height))
+        print("  Aperture: {0}x{1} at ({2}, {3})".format(
+            aperture_size, aperture_size, x_center, y_center))
+    
+    def start_capture(self, camera):
+        """Start capturing frames from the camera
+        
+        Args:
+            camera: SharpCap camera object
+        """
+        self.capturing = True
+        camera.FrameCaptured += self.framehandler
+        print("Frame capture started - event handler attached")
+    
+    def stop_capture(self, camera):
+        """Stop capturing frames from the camera
+        
+        Args:
+            camera: SharpCap camera object
+        """
+        self.capturing = False
+        camera.FrameCaptured -= self.framehandler
+        print("Frame capture stopped - captured {0} frames".format(len(self.frame_numbers)))
+    
+    def reset(self):
+        """Reset all captured data"""
+        for y_pos in self.measurements.keys():
+            self.measurements[y_pos] = []
+        self.timestamps = []
+        self.frame_numbers = []
+        self.frame_count = 0
+        print("Capture data reset")
+
+
+# =============================================================================
+# PHASE 2: DATA FORMAT CONVERSION
+# =============================================================================
+
+def create_tangra_object(measurements, timestamps, frame_numbers, y_position, 
+                        aperture_name, exposure_ms):
+    """Convert measurements to tangra_object format compatible with light_curves.py
+    
+    Creates a dictionary structure that matches the output of read_tangra_csv()
+    so that existing GPS flash analysis functions can be used without modification.
+    
+    Args:
+        measurements: List of mean intensity values
+        timestamps: List of datetime objects for each frame
+        frame_numbers: List of frame numbers
+        y_position: Y coordinate of aperture center in frame
+        aperture_name: Name of aperture ('top' or 'bottom')
+        exposure_ms: Exposure time in milliseconds
+        
+    Returns:
+        Dictionary matching tangra_object structure from read_tangra_csv()
+    """
+    light_curve = []
+    
+    for frame_no, timestamp, signal in zip(frame_numbers, timestamps, measurements):
+        light_curve.append({
+            'frameno': frame_no,
+            'time_ut': timestamp,
+            'signal_1': signal
+        })
+    
+    tangra_obj = {
+        'file_read_from': 'LED_Calibration_{0}'.format(aperture_name),
+        'filename_from_tangra': 'LED_Calibration_{0}'.format(aperture_name),
+        'light_curve': light_curve,
+        'column_names': ['frameno', 'time_ut', 'signal_1'],
+        'signal_1': measurements,  # Add direct access to signal data
+        'timestamp': timestamps,   # Add direct access to timestamps
+        'exposure_ms': exposure_ms,
+        'acquisition_delay': None,
+        'y_position': y_position,  # Store Y position for later use
+        'aperture_name': aperture_name,
+        'details': {},
+        'apertures': []
+    }
+    
+    print("Created tangra object for {0}: {1} frames, signal range {2:.1f}-{3:.1f}".format(
+        aperture_name, len(light_curve), min(measurements), max(measurements)))
+    return tangra_obj
+
+
+def save_tangra_csv(aperture_measurements, timestamps, frame_numbers, 
+                   aperture_y_positions, exposure_ms, filename, camera_info):
+    """Save aperture measurements in TANGRA CSV format
+    
+    Generates a CSV file compatible with TANGRA photometry software format.
+    Exports 4 apertures: top 2 and bottom 2 from the aperture list.
+    Background values are set to 0 (not used for GPS timing analysis).
+    
+    Args:
+        aperture_measurements: Dictionary {y_position: [measurements]} for all apertures
+        timestamps: List of datetime objects for each frame
+        frame_numbers: List of frame numbers
+        aperture_y_positions: List of Y positions for all apertures (sorted top to bottom)
+        exposure_ms: Exposure time in milliseconds
+        filename: Output CSV filename (e.g., 'LED_Calibration_2024-01-15.csv')
+        camera_info: Dictionary with camera info (name, resolution, adv_filename (optional))
+        
+    Returns:
+        Full path to saved CSV file
+    """
+    import os
+    from datetime import datetime as dt
+    
+    # Get measurements for top 2 and bottom 2 apertures
+    top1_y = aperture_y_positions[0]
+    top2_y = aperture_y_positions[1] if len(aperture_y_positions) > 1 else aperture_y_positions[0]
+    bottom2_y = aperture_y_positions[-2] if len(aperture_y_positions) > 1 else aperture_y_positions[-1]
+    bottom1_y = aperture_y_positions[-1]
+    
+    top1_measurements = aperture_measurements[top1_y]
+    top2_measurements = aperture_measurements[top2_y]
+    bottom2_measurements = aperture_measurements[bottom2_y]
+    bottom1_measurements = aperture_measurements[bottom1_y]
+    
+    # Parse camera info
+    resolution_str = camera_info.get('resolution', '640x480')
+    width, height = resolution_str.split('x')
+    frame_width = camera_info.get('width', int(width))
+    frame_height = int(height)
+    camera_name = camera_info.get('name', 'Camera')
+    
+    # Measurement aperture size (10x10 rectangle)
+    aperture_size = 10
+    aperture_half = aperture_size / 2.0
+    
+    # Calculate centered X coordinate
+    x_center = frame_width * 0.5
+    
+    # Build CSV content as list of lines (comma-separated for TANGRA format)
+    csv_lines = []
+    
+    # ===== TOP FILE HEADER (Lines 1-4) =====
+    # Line 1: Tangra version
+    csv_lines.append("Tangra v3.7.0.5")
+    
+    # Line 2: Measurement count
+    csv_lines.append("Measurments of 4 objects")
+    
+    # Line 3: Original filename
+    if camera_info.get('adv_filename'):
+        # Use actual ADV filename if available
+        original_filename = camera_info.get('adv_filename')
+    else:
+        # Generate filename for live capture
+        timestamp_str = dt.utcnow().strftime("%Y-%m-%d")
+        time_str = dt.utcnow().strftime("%H_%M_%SZ")
+        original_filename = "D:\\SharpCap Captures\\LED_Calibration\\{0}\\Light\\{1}_.adv".format(timestamp_str, time_str)
+    csv_lines.append(original_filename)
+    
+    # Line 4: Video format info
+    csv_lines.append("Asteroidal Video (ADV2.16), Time: Timestamp Saving During Recording")
+    
+    # Lines 5-6: Empty
+    csv_lines.append("")
+    csv_lines.append("")
+    
+    # ===== CAMERA/RECORDING BLOCK (Lines 7-8) =====
+    # Line 7: Camera/recording parameters header (comma + space separator)
+    camera_header = "Reversed Gamma, Colour, Measured Band, Integration, Digital Filter, Signal Method, Background Method, Instrumental Delay Corrections, Camera, AAV Integration, First Frame, Last Frame, Reversed Camera Response, Video File Format, Acquisition Delay (ms)"
+    csv_lines.append(camera_header)
+    
+    # Line 8: Camera/recording parameters data (comma separator, no spaces)
+    first_frame = frame_numbers[0] if frame_numbers else 1
+    last_frame = frame_numbers[-1] if frame_numbers else len(frame_numbers)
+    camera_data = "1.00,no,Red,no,NoFilter,AperturePhotometry,AverageBackground,Not Required,{0},,{1},{2},,ADV,0.0".format(
+        camera_name, first_frame, last_frame)
+    csv_lines.append(camera_data)
+    csv_lines.append("")  # Line 9: Empty
+    
+    # ===== OBJECT/APERTURES BLOCK (Lines 10-14) =====
+    # Line 10: Aperture details header (comma + space separator)
+    aperture_header = "Object, Type, Aperture, Tolerance, FWHM, Measured, StartingX, StartingY, Fixed"
+    csv_lines.append(aperture_header)
+    
+    # Lines 11-14: 4 apertures (comma separator, no spaces)
+    # For GPS flash, use the center of the measurement rectangle as the aperture position
+    # Aperture value is half the measurement rectangle size (5.0 for 10x10 rectangle)
+    # FWHM is also half the measurement rectangle size
+    # Starting X/Y is the center of the rectangle
+    # All apertures are along the vertical center line
+    
+    # Aperture 1: Top aperture (first)
+    csv_lines.append("1,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(top1_y)))
+    
+    # Aperture 2: Second from top
+    csv_lines.append("2,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(top2_y)))
+    
+    # Aperture 3: Second from bottom
+    csv_lines.append("3,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(bottom2_y)))
+    
+    # Aperture 4: Bottom aperture (last)
+    csv_lines.append("4,GPSFlash,{0:.2f},,{1:.2f},yes,{2:.1f},{3:.1f},yes".format(
+        aperture_half, aperture_half, x_center, float(bottom1_y)))
+    
+    # Lines 15-16: Blank
+    csv_lines.append("")
+    csv_lines.append("")
+    
+    # ===== DATA BLOCK (Lines 17+) =====
+    # Line 17: Data header (comma separator, space before " Background")
+    data_header = "FrameNo,Time (UT),Signal (1), Background (1),Signal (2), Background (2),Signal (3), Background (3),Signal (4), Background (4)"
+    csv_lines.append(data_header)
+    
+    # Lines 18+: Light curve data (comma separator, no spaces)
+    for i, (frame_no, timestamp) in enumerate(zip(frame_numbers, timestamps)):
+        time_str = "[{0}]".format(timestamp.strftime("%H:%M:%S.%f")[:-3])  # Truncate to 3 decimal places
+        
+        # Get signals for all 4 apertures (integers, 0 dp)
+        signal1 = int(round(top1_measurements[i]))
+        signal2 = int(round(top2_measurements[i]))
+        signal3 = int(round(bottom2_measurements[i]))
+        signal4 = int(round(bottom1_measurements[i]))
+        
+        # Background set to 0 (not used for GPS timing analysis)
+        bg1 = 0
+        bg2 = 0
+        bg3 = 0
+        bg4 = 0
+        
+        # Format data line (comma-separated)
+        data_line = "{0},{1},{2},{3},{4},{5},{6},{7},{8},{9}".format(
+            frame_no, time_str,
+            signal1, bg1, signal2, bg2, signal3, bg3, signal4, bg4
+        )
+        csv_lines.append(data_line)
+    
+    # Write to file
+    with open(filename, 'w') as f:
+        for line in csv_lines:
+            f.write(line + '\n')
+    
+    # Print to console
+    print("\n" + "="*60)
+    print("TANGRA CSV File Saved: {0}".format(filename))
+    print("="*60)
+    print("First 20 lines:")
+    print("-"*60)
+    for i, line in enumerate(csv_lines[:20]):
+        print(line)
+    print("-"*60)
+    print("... ({0} data rows total)".format(len(frame_numbers)))
+    print("="*60 + "\n")
+    
+    return os.path.abspath(filename)
+
+
+# =============================================================================
+# PHASE 3: GPS FLASH ANALYSIS FUNCTIONS
+# =============================================================================
+# These functions are adapted from gps-timing-analysis/python/light_curves.py
+# Simplified to remove pandas/numpy dependencies for IronPython compatibility
+
+def invert_measurements(measurements, auto_detect_max=True, max_value=None):
+    """Invert signal measurements for inverted GPS PPS patterns
+    
+    Converts 100ms OFF, 900ms ON pattern to 100ms ON, 900ms OFF pattern
+    by subtracting all values from the maximum.
+    
+    Args:
+        measurements: Dictionary {y_position: [measurement_list]}
+        auto_detect_max: If True, find max from data; if False, use max_value
+        max_value: Explicit max value to use for inversion
+        
+    Returns:
+        Dictionary with inverted measurements (same structure)
+    """
+    inverted = {}
+    
+    # Determine max value for inversion
+    if auto_detect_max or max_value is None:
+        # Find maximum across all apertures
+        all_values = []
+        for y_pos in measurements:
+            all_values.extend(measurements[y_pos])
+        max_val = max(all_values)
+    else:
+        max_val = max_value
+    
+    print("Inverting signals using max value: {0:.1f}".format(max_val))
+    
+    # Invert each aperture's measurements
+    for y_pos in measurements:
+        inverted[y_pos] = [max_val - val for val in measurements[y_pos]]
+    
+    return inverted
+
+
+def analyse_gps_flash_iron(tangra_object, col='signal_1', exposure_ms=50, 
+                           flash_ms=100, background=None):
+    """Analyze a light curve for GPS flashes and calculate time offsets
+    
+    This is an IronPython-compatible version of analyse_gps_flash() from light_curves.py.
+    Processes the light curve to identify GPS flash peaks and prepare for delay calculation.
+    
+    Args:
+        tangra_object: Tangra object with 'light_curve' list of dicts
+        col: Name of column with signal data (default 'signal_1')
+        exposure_ms: Exposure time in milliseconds
+        flash_ms: GPS flash duration in milliseconds
+        background: If specified, use as background level; otherwise calculated automatically
+        
+    Returns:
+        List of dicts with GPS flash analysis results including peak_no for each frame
+    """
+    lcv = tangra_object['light_curve']
+    
+    # Safety check for empty light curve
+    if not lcv or len(lcv) == 0:
+        print("Error: Empty light curve provided")
+        return []
+    
+    # Extract signal values
+    signals = [row[col] for row in lcv]
+    
+    # Calculate background if not provided
+    if background is None:
+        # Use percentile based on exposure/flash ratio
+        # Frames WITHOUT flashes should be most common
+        sorted_signals = sorted(signals)
+        percentile_index = int(len(sorted_signals) * (100.0 - (exposure_ms/flash_ms + 1.0)/(1000.0/flash_ms)*100.0) / 100.0)
+        background = sorted_signals[min(percentile_index, len(sorted_signals)-1)]
+    
+    # Calculate average background from frames below threshold
+    background_signals = [s for s in signals if s <= background]
+    avg_background = sum(background_signals) / len(background_signals) if background_signals else background
+    
+    # Identify flash frames (signal above background)
+    flash_frames = []
+    for i, row in enumerate(lcv):
+        signal = row[col]
+        is_flash = signal > background
+        signal_flash = (signal - avg_background) if is_flash else 0.0
+        
+        flash_frames.append({
+            'frameno': row['frameno'],
+            'time_ut': row['time_ut'],
+            col: signal,
+            'background_flag': 0.0 if is_flash else 1.0,
+            'signal_flash': signal_flash,
+            'avg_background': avg_background
+        })
+    
+    # Label each GPS flash peak with a sequence number
+    # A peak is a contiguous group of frames with signal above background
+    peak_no = 0
+    in_peak = False
+    
+    for row in flash_frames:
+        if row['signal_flash'] > 0:
+            if not in_peak:
+                peak_no += 1
+                in_peak = True
+            row['peak_no'] = peak_no
+        else:
+            in_peak = False
+            row['peak_no'] = 0
+    
+    print("Found {0} GPS flash peaks".format(peak_no))
+    return flash_frames
+
+
+def calculate_delays_iron(lcv, peak_no, exposure_ms, flash_ms, y, y_lines):
+    """Calculate delay between timestamps and GPS PPS flash for a single peak
+    
+    This is an IronPython-compatible version of calculate_delays() from light_curves.py.
+    Matches the original tested algorithm exactly.
+    
+    Args:
+        lcv: Light curve list of dicts from analyse_gps_flash_iron()
+        peak_no: Peak number to analyze (from peak_no field)
+        exposure_ms: Exposure time in milliseconds
+        flash_ms: GPS flash duration in milliseconds
+        y: Y coordinate in frame (for rolling shutter calculations)
+        y_lines: Total number of lines in frame
+        
+    Returns:
+        Dictionary with time offset calculation results
+    """
+    # Get frames for this peak only
+    peak_frames = [row for row in lcv if row['peak_no'] == peak_no]
+    
+    if not peak_frames:
+        return None
+    
+    # Total flux during the signal (background already removed)
+    total_flux = sum(row['signal_flash'] for row in peak_frames)
+    
+    if total_flux == 0:
+        return None
+    
+    # Flux in the first frame of the signal
+    flux1 = peak_frames[0]['signal_flash']
+    
+    # Fraction of total flux in first frame gives fraction of flash_ms time in first frame
+    frac_flux_frame1 = flux1 / total_flux
+    pps_ms_in_frame1 = frac_flux_frame1 * flash_ms
+    
+    # Get the frame timestamp - MID exposure time (matches original light_curves.py)
+    # Both live capture and ADV now provide mid-frame timestamps
+    frame1_mid = peak_frames[0]['time_ut']
+    
+    # Calculate the end time of the first frame
+    # Original light_curves.py: "Just add half exposure to get end frame"
+    rolling_shutter_y_offset = exposure_ms / 2.0
+    frame1_end = frame1_mid + timedelta(milliseconds=rolling_shutter_y_offset)
+    
+    # The actual UT of the PPS flash (assumes timestamps accurate to <<1s)
+    total_seconds = (frame1_end - datetime(1900, 1, 1)).total_seconds()
+    pps_actual_seconds = round(total_seconds)
+    pps_actual_time = datetime(1900, 1, 1) + timedelta(seconds=pps_actual_seconds)
+    
+    # The actual time of the end of the frame (pps_ms_in_frame1 after the PPS)
+    frame1_end_actual = pps_actual_time + timedelta(milliseconds=pps_ms_in_frame1)
+    
+    # Time offset is the difference
+    time_offset = (frame1_end - frame1_end_actual).total_seconds() * 1000.0
+    
+    result = {
+        'peak_no': peak_no,
+        'n_frames': len(peak_frames),
+        'y': y,
+        'y_lines': y_lines,
+        'y_time_offset': rolling_shutter_y_offset,
+        'total_flux': total_flux,
+        'flux1': flux1,
+        'frac_flux_frame1': frac_flux_frame1,
+        'pps_ms_in_frame1': pps_ms_in_frame1,
+        'frame1_mid': frame1_mid,
+        'frame1_end': frame1_end,
+        'pps_actual_time': pps_actual_time,
+        'frame1_end_actual': frame1_end_actual,
+        'time_offset': time_offset
+    }
+    
+    return result
+
+
+def analyze_aperture_delays(tangra_obj, exposure_ms, flash_ms=100):
+    """Analyze GPS flashes in an aperture light curve and calculate all delays
+    
+    Args:
+        tangra_obj: Tangra object with light curve data
+        exposure_ms: Exposure time in milliseconds
+        flash_ms: GPS flash duration in milliseconds (default 100ms)
+        
+    Returns:
+        List of delay measurement dicts with y_position and time_offset
+    """
+    aperture_name = tangra_obj.get('aperture_name', 'unknown')
+    print("\nAnalyzing aperture: {0}".format(aperture_name))
+    
+    # Process light curve to find GPS flashes
+    lcv = analyse_gps_flash_iron(
+        tangra_obj,
+        col='signal_1',
+        exposure_ms=exposure_ms,
+        flash_ms=flash_ms
+    )
+    
+    # Get unique peak numbers (each peak = one GPS PPS flash)
+    peak_numbers = set(row['peak_no'] for row in lcv if row['peak_no'] > 0)
+    
+    if not peak_numbers:
+        print("Warning: No GPS flashes detected in {0} aperture".format(tangra_obj['aperture_name']))
+        return []
+    
+    # Calculate delays for each peak
+    delays = []
+    y_position = tangra_obj['y_position']
+    y_lines = tangra_obj.get('frame_height', 1000)  # Default if not set
+    
+    print("  y_position={0}, frame_height={1}, binning={2}".format(
+        y_position, y_lines, tangra_obj.get('binning', '?')))
+    
+    for peak_no in peak_numbers:
+        delay_result = calculate_delays_iron(
+            lcv,
+            peak_no,
+            exposure_ms=exposure_ms,
+            flash_ms=flash_ms,
+            y=y_position,
+            y_lines=y_lines
+        )
+        
+        if delay_result:
+            delays.append({
+                'peak_no': peak_no,
+                'y': y_position,
+                'time_offset': delay_result['time_offset'],
+                'frac_flux_frame1': delay_result['frac_flux_frame1'],
+                'total_flux': delay_result['total_flux'],
+                'aperture': tangra_obj['aperture_name'],
+                'n_frames': delay_result['n_frames']
+            })
+    
+    print("Calculated {0} delays for {1} aperture".format(len(delays), tangra_obj['aperture_name']))
+    return delays
+
+
+def filter_flash_measurements(all_delays, min_frac_flux=0.1, max_frac_flux=0.9,
+                              min_offset=-80, max_offset=80):
+    """Filter out poor quality GPS flash measurements
+    
+    Removes transition frames where the flash is mostly in one frame (too dim or too bright),
+    which can lead to inaccurate timing measurements. Based on analysis methods from
+    Jupyter notebook examples.
+    
+    Args:
+        all_delays: List of delay measurement dicts
+        min_frac_flux: Minimum fraction of flux in first frame (default 0.1)
+        max_frac_flux: Maximum fraction of flux in first frame (default 0.9)
+        min_offset: Minimum acceptable time offset in ms (default -80)
+        max_offset: Maximum acceptable time offset in ms (default 80)
+        
+    Returns:
+        Filtered list of delay measurements and statistics dict
+    """
+    if not all_delays:
+        return [], {'total': 0, 'filtered': 0, 'kept': 0}
+    
+    total_count = len(all_delays)
+    
+    # Apply filters
+    filtered = []
+    for d in all_delays:
+        # Check fraction of flux in first frame
+        frac = d.get('frac_flux_frame1', 0.5)
+        if frac < min_frac_flux or frac > max_frac_flux:
+            continue
+        
+        # Check time offset is reasonable
+        offset = d.get('time_offset', 0)
+        if offset < min_offset or offset > max_offset:
+            continue
+        
+        filtered.append(d)
+    
+    kept_count = len(filtered)
+    removed_count = total_count - kept_count
+    
+    stats = {
+        'total': total_count,
+        'filtered': removed_count,
+        'kept': kept_count
+    }
+    
+    print("Flash filtering: {0} total, {1} kept, {2} removed as outliers".format(
+        total_count, kept_count, removed_count))
+    
+    if kept_count < 2:
+        print("Warning: Only {0} measurements remain after filtering - need at least 2".format(kept_count))
+    
+    return filtered, stats
+
+
+# =============================================================================
+# PHASE 4: LINE DELAY REGRESSION
+# =============================================================================
+
+def fit_line_delays(all_delays):
+    """Fit linear model to line delays: time_offset = slope * y + intercept
+    
+    Uses simple least-squares linear regression (IronPython compatible, no sklearn).
+    
+    Args:
+        all_delays: List of dicts with 'y' (y position) and 'time_offset' (ms) keys
+        
+    Returns:
+        Dictionary with:
+            - slope: ms per line (should be positive for rolling shutter)
+            - intercept: offset at y=0 in ms
+            - r_squared: R-squared goodness of fit
+            - n_measurements: number of data points
+            - description: Human-readable result string
+        Or None if insufficient data
+    """
+    if len(all_delays) < 2:
+        print("Error: Need at least 2 measurements for linear fit")
+        return None
+    
+    # Extract x (y positions) and y (time offsets)
+    y_positions = [float(d['y']) for d in all_delays]
+    time_offsets = [float(d['time_offset']) for d in all_delays]
+    
+    n = len(y_positions)
+    
+    # Calculate sums for linear regression
+    sum_x = sum(y_positions)
+    sum_y = sum(time_offsets)
+    sum_xx = sum(x*x for x in y_positions)
+    sum_xy = sum(x*y for x, y in zip(y_positions, time_offsets))
+    
+    # Calculate slope and intercept
+    # slope = (n*sum_xy - sum_x*sum_y) / (n*sum_xx - sum_x*sum_x)
+    # intercept = (sum_y - slope*sum_x) / n
+    denominator = n * sum_xx - sum_x * sum_x
+    
+    if abs(denominator) < 1e-10:
+        print("Error: Cannot fit line (singular matrix)")
+        return None
+    
+    slope = (n * sum_xy - sum_x * sum_y) / denominator
+    intercept = (sum_y - slope * sum_x) / n
+    
+    # Calculate R-squared
+    mean_y = sum_y / n
+    ss_tot = sum((y - mean_y)**2 for y in time_offsets)
+    ss_res = sum((y - (slope * x + intercept))**2 
+                 for x, y in zip(y_positions, time_offsets))
+    r_squared = 1.0 - (ss_res / ss_tot) if abs(ss_tot) > 1e-10 else 0.0
+    
+    result = {
+        'slope': slope,
+        'intercept': intercept,
+        'r_squared': r_squared,
+        'n_measurements': n,
+        'description': 'Line delay: {0:.6f} ms/line, Offset: {1:.3f} ms'.format(slope, intercept)
+    }
+    
+    print(result['description'])
+    print('R-squared: {0:.4f}'.format(r_squared))
+    
+    return result
+
+
+# =============================================================================
+# PHASE 5: VISUALIZATION
+# =============================================================================
+
+def create_line_delay_plot(all_delays, fit_result):
+    """Create OxyPlot scatter plot with fitted line
+    
+    Args:
+        all_delays: List of dicts with 'y' and 'time_offset' keys
+        fit_result: Dictionary from fit_line_delays() with slope and intercept
+        
+    Returns:
+        OxyPlot.PlotModel ready to display
+    """
+    # Create plot model
+    plot_model = OxyPlot.PlotModel()
+    plot_model.Title = 'GPS LED Line Delay Calibration'
+    
+    # Add subtitle with equation and quality assessment if fit_result available
+    if fit_result:
+        slope = fit_result['slope']
+        intercept = fit_result['intercept']
+        r_squared = fit_result['r_squared']
+        # Format: "Line delay of intercept + slope x Y ms, R² = value" (3 sig figs)
+        sign = '+' if slope >= 0 else '-'
+        subtitle = 'Line delay of {0:.3g} {1} {2:.3g} x Y ms, R\u00b2 = {3:.3f}'.format(
+            intercept, sign, abs(slope), r_squared)
+        
+        # Add quality indicator to subtitle
+        if r_squared >= 0.98:
+            subtitle += ' - Excellent'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Green
+        elif r_squared >= 0.96:
+            subtitle += ' - Good'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Green
+        elif r_squared >= 0.9:
+            subtitle += ' - Poor - REDO'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Red
+        else:
+            subtitle += ' - Failed - REDO'
+            plot_model.SubtitleColor = OxyPlot.OxyColors.Red
+        
+        plot_model.Subtitle = subtitle
+    
+    # Create scatter series for measurements
+    scatter_series = OxyPlot.Series.ScatterSeries()
+    scatter_series.MarkerType = OxyPlot.MarkerType.Circle
+    scatter_series.MarkerSize = 5
+    scatter_series.MarkerFill = OxyPlot.OxyColors.Blue
+    
+    for d in all_delays:
+        scatter_point = OxyPlot.Series.ScatterPoint(float(d['y']), float(d['time_offset']))
+        scatter_series.Points.Add(scatter_point)
+    
+    # Create line series for fitted line
+    if fit_result:
+        line_series = OxyPlot.Series.LineSeries()
+        line_series.LineStyle = OxyPlot.LineStyle.Solid
+        line_series.Color = OxyPlot.OxyColors.Red
+        line_series.StrokeThickness = 2
+        
+        # Get y range for line
+        y_min = min(float(d['y']) for d in all_delays)
+        y_max = max(float(d['y']) for d in all_delays)
+        
+        # Add points for fitted line
+        line_series.Points.Add(OxyPlot.DataPoint(
+            y_min,
+            fit_result['slope'] * y_min + fit_result['intercept']
+        ))
+        line_series.Points.Add(OxyPlot.DataPoint(
+            y_max,
+            fit_result['slope'] * y_max + fit_result['intercept']
+        ))
+        
+        plot_model.Series.Add(line_series)
+    
+    plot_model.Series.Add(scatter_series)
+    
+    # Set axis labels
+    x_axis = OxyPlot.Axes.LinearAxis()
+    x_axis.Position = OxyPlot.Axes.AxisPosition.Bottom
+    x_axis.Title = 'Y Position (pixels)'
+    plot_model.Axes.Add(x_axis)
+    
+    y_axis = OxyPlot.Axes.LinearAxis()
+    y_axis.Position = OxyPlot.Axes.AxisPosition.Left
+    y_axis.Title = 'Time Offset (ms)'
+    plot_model.Axes.Add(y_axis)
+    
+    return plot_model
+
+
+# =============================================================================
+# PHASE 6 & 7: GUI INTERFACE AND MAIN CALIBRATION LOGIC
+# =============================================================================
+
+class LEDLineDelayCalibrationForm(Form):
+    """Windows Forms GUI for LED line delay calibration"""
+    
+    def __init__(self):
+        """Initialize the calibration form"""
+        self.capture_handler = FrameCaptureHandler()
+        self.stop_requested = False
+        self.InitializeComponent()
+        # Force handle creation to avoid invoke errors from background threads
+        handle = self.Handle
+        
+    def SafeInvoke(self, action):
+        """Safely invoke action on UI thread, handling handle creation issues"""
+        try:
+            if self.IsHandleCreated:
+                self.Invoke(action)
+            else:
+                # Force handle creation if needed
+                handle = self.Handle
+                self.Invoke(action)
+        except Exception as ex:
+            # Fallback: try direct execution if invoke fails
+            try:
+                action()
+            except:
+                print("Warning: Could not update UI: " + str(ex))
+    
+    def set_and_refresh_plot(self, plot_view, plot_model):
+        """Set plot model and force refresh"""
+        plot_view.Model = plot_model
+        plot_view.InvalidatePlot(True)
+        
+    def InitializeComponent(self):
+        """Setup GUI components"""
+        self.Text = "GPS LED Line Delay Calibration"
+        self.ClientSize = Size(720, 880)
+        self.TopMost = True
+        self.FormBorderStyle = FormBorderStyle.FixedDialog
+        self.MaximizeBox = False
+        
+        # Create tab control
+        self.tab_control = TabControl()
+        self.tab_control.Location = Point(10, 10)
+        self.tab_control.Size = Size(700, 860)
+        
+        # Create tabs
+        self.tab_calibration = TabPage()
+        self.tab_calibration.Text = "Line Delay Calibration"
+        self.tab_calibration.Size = Size(692, 534)
+        
+        self.tab_stability = TabPage()
+        self.tab_stability.Text = "Long Term Timing Stability"
+        self.tab_stability.Size = Size(692, 534)
+        
+        self.tab_control.TabPages.Add(self.tab_calibration)
+        self.tab_control.TabPages.Add(self.tab_stability)
+        self.Controls.Add(self.tab_control)
+        
+        # === LINE DELAY CALIBRATION TAB ===
+        
+        # Capture mode selection (moved to top)
+        self.label_mode = Label()
+        self.label_mode.Text = "Calibration Mode:"
+        self.label_mode.Location = Point(20, 20)
+        self.label_mode.AutoSize = True
+        
+        self.radio_live = RadioButton()
+        self.radio_live.Text = "Live Capture"
+        self.radio_live.Location = Point(140, 18)
+        self.radio_live.AutoSize = True
+        self.radio_live.Checked = True
+        self.radio_live.CheckedChanged += self.on_mode_changed
+        
+        self.radio_adv = RadioButton()
+        self.radio_adv.Text = "Use ADV File"
+        self.radio_adv.Location = Point(260, 18)
+        self.radio_adv.AutoSize = True
+        self.radio_adv.Enabled = ADV_AVAILABLE
+        self.radio_adv.CheckedChanged += self.on_mode_changed
+        if not ADV_AVAILABLE:
+            self.radio_adv.Text = "Use ADV File (not available)"
+        
+        # Duration setting
+        self.label_duration = Label()
+        self.label_duration.Text = "Capture Duration (seconds):"
+        self.label_duration.Location = Point(20, 50)
+        self.label_duration.AutoSize = True
+        
+        self.textbox_duration = TextBox()
+        self.textbox_duration.Text = "30"
+        self.textbox_duration.Location = Point(210, 48)
+        self.textbox_duration.Width = 60
+        
+        # Flash duration setting
+        self.label_flash = Label()
+        self.label_flash.Text = "GPS Flash Duration (ms):"
+        self.label_flash.Location = Point(300, 50)
+        self.label_flash.AutoSize = True
+        
+        self.textbox_flash = TextBox()
+        self.textbox_flash.Text = "100"
+        self.textbox_flash.Location = Point(480, 48)
+        self.textbox_flash.Width = 60
+        
+        # Invert signal checkbox
+        self.checkbox_invert = CheckBox()
+        self.checkbox_invert.Text = "Invert Signal (for inverted PPS)"
+        self.checkbox_invert.Location = Point(560, 48)
+        self.checkbox_invert.Width = 120
+        self.checkbox_invert.AutoSize = True
+        self.checkbox_invert.CheckedChanged += self.on_invert_changed
+        
+        # Start button
+        self.button_start = Button()
+        self.button_start.Text = "Start Calibration"
+        self.button_start.Location = Point(20, 80)
+        self.button_start.Size = Size(120, 30)
+        self.button_start.Click += self.start_calibration
+        
+        # Stop button
+        self.button_stop = Button()
+        self.button_stop.Text = "Stop"
+        self.button_stop.Location = Point(160, 80)
+        self.button_stop.Size = Size(80, 30)
+        self.button_stop.Enabled = False
+        self.button_stop.Click += self.stop_calibration
+        
+        # Status label
+        self.label_status = Label()
+        self.label_status.Text = "Ready"
+        self.label_status.Location = Point(260, 88)
+        self.label_status.AutoSize = True
+        self.label_status.Font = Font(self.label_status.Font.FontFamily, 9, FontStyle.Bold)
+        
+        # Results text box
+        self.label_results = Label()
+        self.label_results.Text = "Results:"
+        self.label_results.Location = Point(20, 120)
+        self.label_results.AutoSize = True
+        
+        self.textbox_results = TextBox()
+        self.textbox_results.Location = Point(20, 140)
+        self.textbox_results.Size = Size(660, 100)
+        self.textbox_results.Multiline = True
+        self.textbox_results.ReadOnly = True
+        self.textbox_results.ScrollBars = ScrollBars.Vertical
+        
+        # Plot view
+        self.plot_view = OxyPlot.WindowsForms.PlotView()
+        self.plot_view.Location = Point(20, 250)
+        self.plot_view.Size = Size(660, 260)
+        
+        # Close button
+        self.button_close = Button()
+        self.button_close.Text = "Close"
+        self.button_close.Location = Point(600, 520)
+        self.button_close.Size = Size(80, 25)
+        self.button_close.Click += self.close_form
+        
+        # Add controls to calibration tab
+        self.tab_calibration.Controls.Add(self.label_duration)
+        self.tab_calibration.Controls.Add(self.textbox_duration)
+        self.tab_calibration.Controls.Add(self.label_flash)
+        self.tab_calibration.Controls.Add(self.textbox_flash)
+        self.tab_calibration.Controls.Add(self.checkbox_invert)
+        self.tab_calibration.Controls.Add(self.label_mode)
+        self.tab_calibration.Controls.Add(self.radio_live)
+        self.tab_calibration.Controls.Add(self.radio_adv)
+        self.tab_calibration.Controls.Add(self.button_start)
+        self.tab_calibration.Controls.Add(self.button_stop)
+        self.tab_calibration.Controls.Add(self.label_status)
+        self.tab_calibration.Controls.Add(self.label_results)
+        self.tab_calibration.Controls.Add(self.textbox_results)
+        self.tab_calibration.Controls.Add(self.plot_view)
+        self.tab_calibration.Controls.Add(self.button_close)
+        
+        # === LONG TERM TIMING STABILITY TAB ===
+        
+        # Capture Duration
+        self.label_stab_duration = Label()
+        self.label_stab_duration.Text = "Capture Duration (seconds):"
+        self.label_stab_duration.Location = Point(20, 20)
+        self.label_stab_duration.AutoSize = True
+        
+        self.textbox_stab_duration = TextBox()
+        self.textbox_stab_duration.Text = "30"
+        self.textbox_stab_duration.Location = Point(210, 18)
+        self.textbox_stab_duration.Width = 60
+        
+        # Test Duration
+        self.label_test_duration = Label()
+        self.label_test_duration.Text = "Test Duration (HH:MM):"
+        self.label_test_duration.Location = Point(300, 20)
+        self.label_test_duration.AutoSize = True
+        
+        self.textbox_test_duration = TextBox()
+        self.textbox_test_duration.Text = "01:00"
+        self.textbox_test_duration.Location = Point(460, 18)
+        self.textbox_test_duration.Width = 60
+        
+        # GPS Flash Duration
+        self.label_stab_flash = Label()
+        self.label_stab_flash.Text = "GPS Flash Duration (ms):"
+        self.label_stab_flash.Location = Point(20, 50)
+        self.label_stab_flash.AutoSize = True
+        
+        self.textbox_stab_flash = TextBox()
+        self.textbox_stab_flash.Text = "100"
+        self.textbox_stab_flash.Location = Point(210, 48)
+        self.textbox_stab_flash.Width = 60
+        
+        # Invert checkbox
+        self.checkbox_stab_invert = CheckBox()
+        self.checkbox_stab_invert.Text = "Invert Signal (for inverted PPS)"
+        self.checkbox_stab_invert.Location = Point(300, 48)
+        self.checkbox_stab_invert.AutoSize = True
+        self.checkbox_stab_invert.CheckedChanged += self.on_stab_invert_changed
+        
+        # Start button
+        self.button_stab_start = Button()
+        self.button_stab_start.Text = "Start Stability Test"
+        self.button_stab_start.Location = Point(20, 80)
+        self.button_stab_start.Size = Size(140, 30)
+        self.button_stab_start.Click += self.start_stability_test
+        
+        # Stop button
+        self.button_stab_stop = Button()
+        self.button_stab_stop.Text = "Stop"
+        self.button_stab_stop.Location = Point(180, 80)
+        self.button_stab_stop.Size = Size(80, 30)
+        self.button_stab_stop.Enabled = False
+        self.button_stab_stop.Click += self.stop_stability_test
+        
+        # Status label
+        self.label_stab_status = Label()
+        self.label_stab_status.Text = "Ready"
+        self.label_stab_status.Location = Point(280, 88)
+        self.label_stab_status.AutoSize = True
+        self.label_stab_status.Font = Font(self.label_stab_status.Font.FontFamily, 9, FontStyle.Bold)
+        
+        # Statistics text box
+        self.label_stab_stats = Label()
+        self.label_stab_stats.Text = "Statistics:"
+        self.label_stab_stats.Location = Point(20, 120)
+        self.label_stab_stats.AutoSize = True
+        
+        self.textbox_stab_stats = TextBox()
+        self.textbox_stab_stats.Location = Point(20, 140)
+        self.textbox_stab_stats.Size = Size(660, 80)
+        self.textbox_stab_stats.Multiline = True
+        self.textbox_stab_stats.ReadOnly = True
+        self.textbox_stab_stats.ScrollBars = ScrollBars.Vertical
+        
+        # Time series plot
+        self.plot_stab_timeseries = OxyPlot.WindowsForms.PlotView()
+        self.plot_stab_timeseries.Location = Point(20, 230)
+        self.plot_stab_timeseries.Size = Size(660, 200)
+        
+        # Histogram plot
+        self.plot_stab_histogram = OxyPlot.WindowsForms.PlotView()
+        self.plot_stab_histogram.Location = Point(20, 440)
+        self.plot_stab_histogram.Size = Size(660, 380)
+        
+        # Add controls to stability tab
+        self.tab_stability.Controls.Add(self.label_stab_duration)
+        self.tab_stability.Controls.Add(self.textbox_stab_duration)
+        self.tab_stability.Controls.Add(self.label_test_duration)
+        self.tab_stability.Controls.Add(self.textbox_test_duration)
+        self.tab_stability.Controls.Add(self.label_stab_flash)
+        self.tab_stability.Controls.Add(self.textbox_stab_flash)
+        self.tab_stability.Controls.Add(self.checkbox_stab_invert)
+        self.tab_stability.Controls.Add(self.button_stab_start)
+        self.tab_stability.Controls.Add(self.button_stab_stop)
+        self.tab_stability.Controls.Add(self.label_stab_status)
+        self.tab_stability.Controls.Add(self.label_stab_stats)
+        self.tab_stability.Controls.Add(self.textbox_stab_stats)
+        self.tab_stability.Controls.Add(self.plot_stab_timeseries)
+        self.tab_stability.Controls.Add(self.plot_stab_histogram)
+    
+    def on_mode_changed(self, sender, event):
+        """Handle mode selection change - update UI based on selected mode"""
+        if self.radio_adv.Checked:
+            # ADV mode selected
+            self.button_start.Text = "Load ADV File"
+            self.textbox_duration.Enabled = False
+            self.label_duration.Enabled = False
+            # Note: Stop button not functional in ADV mode (file processing can't be interrupted)
+        else:
+            # Live capture mode selected
+            self.button_start.Text = "Start Calibration"
+            self.textbox_duration.Enabled = True
+            self.label_duration.Enabled = True
+    
+    def on_invert_changed(self, sender, event):
+        """Handle invert checkbox change - show warning when enabled"""
+        if self.checkbox_invert.Checked:
+            # Show warning message
+            result = MessageBox.Show(
+                "Invert can be used for an LED that is ON for 900 ms and OFF for 100 ms. "
+                "The built in LED on an Arduino module does this, as do some GPS receivers. "
+                "It is better to use a proper GPS flasher, but acceptable calibration is "
+                "possible with an inverted flash.",
+                "Inverted PPS Signal Warning",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Warning
+            )
+            
+            # If user cancels, uncheck the box
+            if result == DialogResult.Cancel:
+                self.checkbox_invert.Checked = False
+        
+    def start_calibration(self, sender, event):
+        """Start LED line delay calibration in separate thread"""
+        # Check camera connection (only required for Live Capture mode)
+        use_adv = self.radio_adv.Checked
+        if not use_adv and SharpCap.SelectedCamera is None:
+            MessageBox.Show(
+                "No camera is connected.\n\nPlease connect a camera before running Live Capture calibration.",
+                "Camera Connection Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+            return
+        
+        # Disable start button, enable stop (though stop doesn't work for ADV processing)
+        self.button_start.Enabled = False
+        self.button_stop.Enabled = True
+        self.label_status.Text = "Starting..."
+        self.label_status.ForeColor = Color.Orange
+        
+        # Run calibration in separate thread to avoid blocking UI
+        thread = Thread(ParameterizedThreadStart(self.run_calibration_thread))
+        thread.SetApartmentState(ApartmentState.STA)
+        thread.Start(self)
+        
+    def run_calibration_thread(self, form):
+        """Main calibration workflow - runs in separate thread"""
+        try:
+            # Get parameters with validation
+            try:
+                duration = float(form.textbox_duration.Text)
+                flash_ms = float(form.textbox_flash.Text)
+            except ValueError:
+                raise Exception("Invalid input: Duration and Flash Duration must be numeric values")
+            
+            # Validate parameter ranges
+            if flash_ms <= 0 or flash_ms > 1000:
+                raise Exception("GPS Flash Duration must be between 0 and 1000 ms")
+            
+            use_adv = form.radio_adv.Checked
+            
+            # Branch based on capture mode
+            if use_adv:
+                # ADV file loading workflow (camera not required, duration not used)
+                form.run_adv_workflow(flash_ms, None)
+            else:
+                # Live capture workflow (requires camera and duration)
+                if duration <= 0 or duration > 300:
+                    raise Exception("Capture Duration must be between 0 and 300 seconds")
+                camera = SharpCap.SelectedCamera
+                form.run_live_workflow(duration, flash_ms, camera)
+                
+        except Exception as e:
+            error_msg = "Calibration failed:\n" + str(e)
+            print(error_msg)
+            form.SafeInvoke(lambda: MessageBox.Show(error_msg, "Calibration Error", MessageBoxButtons.OK, MessageBoxIcon.Error))
+        finally:
+            # Re-enable start button
+            form.SafeInvoke(lambda: setattr(form.button_start, 'Enabled', True))
+            form.SafeInvoke(lambda: setattr(form.button_stop, 'Enabled', False))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Ready'))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Black))
+    
+    def run_live_workflow(self, duration, flash_ms, camera):
+        """Run calibration using live frame capture (original method)"""
+        try:
+            # 1. Setup apertures
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Setting up apertures...'))
+            
+            # Get exposure and binning info
+            exposure_ms = camera.Controls.Exposure.ExposureMs
+            
+            # Detect binning factor (for information/validation)
+            binning = 1
+            try:
+                binning_control = camera.Controls.FindByName("Binning")
+                if binning_control:
+                    binning_value = binning_control.Value
+                    # Parse binning value (could be "1x1", "2x2", etc.)
+                    if "x" in str(binning_value):
+                        binning = int(str(binning_value).split("x")[0])
+                    else:
+                        binning = int(binning_value)
+                    print("Detected binning: {0}x{0}".format(binning))
+            except:
+                print("Could not detect binning, assuming 1x1")
+            
+            # Get actual frame dimensions from camera ROI (already in binned pixels)
+            roi = camera.ROI
+            estimated_width = roi.Width
+            estimated_height = roi.Height
+            
+            print("Camera ROI dimensions: {0}x{1} pixels (binned)".format(estimated_width, estimated_height))
+            print("Will verify with actual captured frame dimensions...")
+            
+            self.capture_handler.reset()
+            # Setup apertures using estimated dimensions (will be validated below)
+            self.capture_handler.setup_apertures(estimated_width, estimated_height)
+            
+            # Store frame dimensions in binned pixels (for rolling shutter delay calculations)
+            self.capture_handler.frame_height = int(estimated_height)
+            self.capture_handler.frame_width = int(estimated_width)
+            self.capture_handler.binning = binning
+            # Store exposure for timestamp conversion in frame handler
+            self.capture_handler.exposure_ms = exposure_ms
+            
+            # 2. Start frame capture
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Capturing frames...'))
+            self.capture_handler.start_capture(camera)
+            
+            # Give camera time to start delivering frames
+            time.sleep(0.5)
+            
+            # Wait for first frame to verify capture is working
+            max_wait = 30  # Max 30 iterations = ~3 seconds
+            for i in range(max_wait):
+                if self.capture_handler.frame_count > 0:
+                    break
+                time.sleep(0.1)
+            
+            if self.capture_handler.frame_count == 0:
+                raise Exception("No frames captured - camera not delivering frame data")
+            
+            # Frame dimensions are already set correctly from camera.ROI
+            # (which provides binned pixel dimensions directly)
+            print("Frame capture confirmed - using ROI dimensions: {0}x{1} pixels".format(
+                estimated_width, estimated_height))
+            self.capture_handler.binning = binning
+            
+            # 3. Wait for capture duration
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 
+                       'Capturing... ({0}s remaining)'.format(int(duration))))
+            
+            # Count down the duration
+            for remaining in range(int(duration), 0, -1):
+                if remaining % 5 == 0 or remaining <= 3:
+                    self.SafeInvoke(lambda r=remaining: setattr(self.label_status, 'Text', 
+                               'Capturing... ({0}s remaining)'.format(r)))
+                time.sleep(1)
+            
+            # 4. Stop frame capture
+            self.capture_handler.stop_capture(camera)
+            
+            # Check if we captured any frames
+            n_frames = len(self.capture_handler.frame_numbers)
+            print("Captured {0} frames total".format(n_frames))
+            
+            if n_frames == 0:
+                error_msg = "No frames were captured.\n\n"
+                error_msg += "Please ensure:\n"
+                error_msg += "1. Camera is in Live mode (preview running)\n"
+                error_msg += "2. Camera is delivering frames\n"
+                error_msg += "3. Exposure time is not too long"
+                raise Exception(error_msg)
+            
+            # 5. Create tangra objects for all apertures
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Processing data...'))
+            
+            # Apply signal inversion if requested
+            if self.checkbox_invert.Checked:
+                print("\nApplying signal inversion...")
+                self.capture_handler.measurements = invert_measurements(
+                    self.capture_handler.measurements,
+                    auto_detect_max=True
+                )
+            
+            tangra_objects = []
+            aperture_y_positions = sorted(self.capture_handler.measurements.keys())
+            
+            for y_pos in aperture_y_positions:
+                measurements = self.capture_handler.measurements[y_pos]
+                aperture_name = 'aperture_y{0}'.format(y_pos)
+                
+                # For live capture: use actual captured frame pixel coordinates
+                # y_pos and frame_height are in actual frame pixels (the pixel grid of captured frames)
+                # Line delays are calculated per pixel in the frame coordinate system
+                
+                tangra_obj = create_tangra_object(
+                    measurements,
+                    self.capture_handler.timestamps,
+                    self.capture_handler.frame_numbers,
+                    y_pos,  # Y coordinate in frame pixels
+                    aperture_name,
+                    exposure_ms
+                )
+                # Store frame height in actual frame pixels for rolling shutter calculations
+                tangra_obj['frame_height'] = self.capture_handler.frame_height
+                tangra_obj['binned_y_pos'] = y_pos  # Keep position for reference
+                tangra_obj['binning'] = self.capture_handler.binning  # For information only
+                tangra_objects.append(tangra_obj)
+            
+            print("Created {0} tangra objects for {1} apertures".format(
+                len(tangra_objects), len(aperture_y_positions)))
+            print("  Live capture: frame_height={0} pixels, frame_width={1} pixels".format(
+                self.capture_handler.frame_height, self.capture_handler.frame_width))
+            print("  (Line delays calculated per pixel in actual frame coordinate system)")
+            
+            from datetime import datetime as dt
+            import os
+            
+            # Use Documents folder as save location
+            try:
+                # Try to get Documents folder from environment
+                documents_folder = os.path.expanduser("~\\Documents")
+                if not os.path.exists(documents_folder):
+                    # Fallback to user's home directory
+                    documents_folder = os.path.expanduser("~")
+            except:
+                # Last resort: use temp directory
+                import tempfile
+                documents_folder = tempfile.gettempdir()
+            
+            timestamp_str = dt.utcnow().strftime("%Y%m%d_%H%M%S")
+            csv_filename = os.path.join(documents_folder, "LED_Calibration_{0}.csv".format(timestamp_str))
+            
+            # Get camera info including ROI
+            camera_info = {
+                'name': camera.DeviceName if hasattr(camera, 'DeviceName') else 'Camera',
+                'resolution': '{0}x{1}'.format(roi.Width, roi.Height),
+                'width': roi.Width,
+                'roi_x': roi.X,
+                'roi_y': roi.Y
+            }
+            
+            # Save CSV with top 2 and bottom 2 aperture data
+            csv_path = None
+            try:
+                csv_path = save_tangra_csv(
+                    self.capture_handler.measurements,
+                    self.capture_handler.timestamps,
+                    self.capture_handler.frame_numbers,
+                    aperture_y_positions,
+                    exposure_ms,
+                    csv_filename,
+                    camera_info
+                )
+                print("TANGRA CSV saved to: {0}".format(csv_path))
+            except Exception as csv_ex:
+                print("Warning: Could not save TANGRA CSV file: {0}".format(str(csv_ex)))
+                print("Continuing with analysis...")
+            
+            # 6. Analyze GPS flashes in all apertures
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Analyzing GPS flashes...'))
+            
+            all_delays = []
+            aperture_flash_counts = {}
+            
+            for tangra_obj in tangra_objects:
+                aperture_delays = analyze_aperture_delays(tangra_obj, exposure_ms, flash_ms)
+                all_delays.extend(aperture_delays)
+                aperture_flash_counts[tangra_obj['y_position']] = len(aperture_delays)
+            
+            print("Total GPS flash measurements across all apertures: {0}".format(len(all_delays)))
+            for y_pos, count in sorted(aperture_flash_counts.items()):
+                print("  Y={0}: {1} flashes".format(y_pos, count))
+            
+            # 7. Filter and fit
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Filtering and fitting...'))
+            
+            if len(all_delays) < 2:
+                raise Exception(
+                    "Not enough GPS flashes detected. Need at least 2.\n\n" +
+                    "Total measurements: {0}\n\n".format(len(all_delays)) +
+                    "Make sure GPS LED is flashing and visible in frame."
+                )
+            
+            # Filter out poor quality measurements (transition frames)
+            all_delays_filtered, filter_stats = filter_flash_measurements(all_delays)
+            
+            if len(all_delays_filtered) < 2:
+                raise Exception(
+                    "Not enough quality measurements after filtering.\\n\\n" +
+                    "Total measurements: {0}\\n".format(filter_stats['total']) +
+                    "Kept: {0}, Filtered out: {1}\\n\\n".format(
+                        filter_stats['kept'], filter_stats['filtered']) +
+                    "Try capturing for longer or check GPS LED visibility."
+                )
+            
+            # Fit linear model
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Calculating line delays...'))
+            fit_result = fit_line_delays(all_delays_filtered)
+            
+            if not fit_result:
+                raise Exception("Linear fit failed. Please check data and try again.")
+            
+            # 8. Display results
+            self.SafeInvoke(lambda: self.display_results(
+                all_delays_filtered, fit_result, tangra_objects, 
+                aperture_y_positions, self.capture_handler.frame_height, 
+                self.capture_handler.binning, filter_stats, csv_path
+            ))
+            
+            # 9. Success
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Calibration complete'))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Green))
+        
+        except Exception as ex:
+            # Handle errors
+            error_msg = "Error occurred:\n" + str(ex)
+            self.SafeInvoke(lambda: setattr(self.textbox_results, 'Text', error_msg))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Error'))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Red))
+            print("Calibration error: " + str(ex))
+        
+        finally:
+            # Re-enable buttons
+            self.SafeInvoke(lambda: setattr(self.button_start, 'Enabled', True))
+            self.SafeInvoke(lambda: setattr(self.button_stop, 'Enabled', False))
+    
+    def run_adv_workflow(self, flash_ms, camera):
+        """Run calibration using ADV file loading and replay
+        
+        Args:
+            flash_ms: GPS flash duration in milliseconds
+            camera: Camera object (not used, kept for signature consistency)
+        """
+        import adv_helper
+        
+        # Go straight to file selection dialog (skip the informational prompt)
+        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Select ADV file...'))
+        
+        # Prompt user to browse for ADV file
+        dialog = OpenFileDialog()
+        dialog.Title = "Select ADV file for calibration"
+        dialog.Filter = "ADV files (*.adv)|*.adv|All files (*.*)|*.*"
+        
+        # Try common SharpCap capture locations as initial directory
+        default_paths = [
+            os.path.join(os.path.expanduser('~'), 'Documents', 'SharpCap Captures'),
+            os.path.join(os.path.expanduser('~'), 'Videos', 'SharpCap'),
+            os.path.join(os.path.expanduser('~'), 'Documents')
+        ]
+        
+        for base_path in default_paths:
+            if os.path.exists(base_path):
+                dialog.InitialDirectory = base_path
+                break
+        
+        adv_file_path = None
+        adv_file_name = None
+        
+        if dialog.ShowDialog() == DialogResult.OK:
+            adv_file_path = os.path.dirname(dialog.FileName)
+            adv_file_name = os.path.basename(dialog.FileName)
+            print("User selected: " + dialog.FileName)
+        else:
+            # User cancelled file selection - exit gracefully
+            print("ADV file selection cancelled by user")
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Cancelled'))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Gray))
+            return  # Exit gracefully without error
+        
+        # Process ADV file
+        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Processing ADV file...'))
+        
+        try:
+            adv_file = adv_helper.open_adv(adv_file_path, adv_file_name, verbose=True)
+        except Exception as e:
+            raise Exception("Failed to open ADV file: " + str(e))
+        
+        try:
+            # Get file information
+            frame_count = adv_file.MainSteamInfo.FrameCount
+            frame_width = adv_file.Width
+            frame_height = adv_file.Height
+            
+            print("ADV file: {0} frames, {1}x{2}".format(frame_count, frame_width, frame_height))
+            print("Using ADV frame dimensions directly (no scaling applied)")
+            print("ADV timestamps will be used as mid-frame (matching original light_curves.py behavior)")
+            
+            # Get exposure from ADV file
+            exposure_ms = adv_helper.get_frame_exposure_ms(adv_file, 0)
+            if exposure_ms is None:
+                print("WARNING: Could not read exposure from ADV file")
+                # Use a default value if exposure not available
+                exposure_ms = 40.0
+                print("Using default exposure: {0} ms".format(exposure_ms))
+            else:
+                print("ADV file exposure: {0:.2f} ms (from file metadata)".format(exposure_ms))
+            
+            # Setup apertures using actual ADV frame dimensions
+            self.capture_handler.reset()
+            self.capture_handler.setup_apertures(frame_width, frame_height)
+            self.capture_handler.frame_width = frame_width
+            self.capture_handler.frame_height = frame_height
+            # Binning not relevant for ADV playback - dimensions are already actual frame size
+            self.capture_handler.binning = 1
+            
+            # Process frames from ADV file
+            self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 
+                       'Reading {0} frames from ADV...'.format(frame_count)))
+            
+            for frame_no in range(frame_count):
+                if frame_no % 100 == 0:
+                    self.SafeInvoke(lambda fn=frame_no: setattr(self.label_status, 'Text', 
+                               'Processing frame {0}/{1}...'.format(fn, frame_count)))
+                
+                # Read frame and get timestamp from frame info
+                # This matches the original light_curves.py behavior:
+                # It reads StartOfExposure timestamp and adds Shutter/2 for mid-frame
+                pixels, frame_info = adv_helper.read_adv_frame(adv_file, frame_no)
+                if pixels is None:
+                    continue
+                
+                # Get timestamp from frame info (already read with pixels)
+                # Use the cached frame_info to avoid reading the frame twice
+                timestamp = adv_helper.get_frame_info_timestamp(adv_file, frame_no)
+                
+                # Measure each aperture
+                for y_pos, aperture_rect in self.capture_handler.apertures:
+                    mean_value = adv_helper.get_aperture_mean(pixels, frame_width, frame_height, aperture_rect)
+                    self.capture_handler.measurements[y_pos].append(mean_value)
+                
+                # Store timestamps and frame numbers
+                self.capture_handler.timestamps.append(timestamp)
+                self.capture_handler.frame_numbers.append(frame_no)
+            
+            print("Processed {0} frames from ADV file".format(frame_count))
+            
+            # Verify timestamp intervals
+            if len(self.capture_handler.timestamps) >= 2:
+                deltas = []
+                for i in range(min(10, len(self.capture_handler.timestamps) - 1)):
+                    delta = (self.capture_handler.timestamps[i+1] - self.capture_handler.timestamps[i]).total_seconds() * 1000.0
+                    deltas.append(delta)
+                print("  Frame intervals (first 10, ms): {0}".format(["{0:.1f}".format(d) for d in deltas]))
+                print("  Average frame interval: {0:.2f} ms (expected ~{1:.2f} ms)".format(
+                    sum(deltas) / len(deltas), exposure_ms))
+            
+            if self.capture_handler.apertures:
+                print("  Apertures: {0}".format(len(self.capture_handler.apertures)))
+                y_pos, _ = self.capture_handler.apertures[0]
+                measurements = self.capture_handler.measurements[y_pos]
+                print("  Aperture Y={0} measurements:".format(y_pos))
+                print("    Count: {0}".format(len(measurements)))
+                if len(measurements) >= 10:
+                    print("    First 10: {0}".format(["{0:.1f}".format(m) for m in measurements[:10]]))
+                    print("    Min: {0:.1f}, Max: {1:.1f}, Mean: {2:.1f}".format(
+                        min(measurements), max(measurements), sum(measurements) / len(measurements)))
+            print("")
+            
+        finally:
+            adv_file.Close()
+        
+        # Continue with analysis (same as live capture from step 5 onwards)
+        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Creating TANGRA objects...'))
+        
+        # Apply signal inversion if requested
+        if self.checkbox_invert.Checked:
+            print("\nApplying signal inversion...")
+            self.capture_handler.measurements = invert_measurements(
+                self.capture_handler.measurements,
+                auto_detect_max=True
+            )
+        
+        # Create TANGRA objects and analyze
+        tangra_objects = []
+        aperture_y_positions = sorted(self.capture_handler.measurements.keys())
+        
+        for y_pos in aperture_y_positions:
+            measurements = self.capture_handler.measurements[y_pos]
+            aperture_name = 'aperture_y{0}'.format(y_pos)
+            
+            # For ADV files: use actual frame pixel coordinates directly
+            # y_pos and frame_height are in actual frame pixels (the pixel grid of the recorded frames)
+            # Line delays are calculated per pixel in the frame coordinate system
+            
+            tangra_obj = create_tangra_object(
+                measurements,
+                self.capture_handler.timestamps,
+                self.capture_handler.frame_numbers,
+                y_pos,  # Y coordinate in frame pixels
+                aperture_name,
+                exposure_ms
+            )
+            # Store frame height in actual frame pixels for rolling shutter calculations
+            tangra_obj['frame_height'] = self.capture_handler.frame_height
+            tangra_obj['binned_y_pos'] = y_pos  # Keep position for reference
+            tangra_obj['binning'] = self.capture_handler.binning  # For information only
+            tangra_objects.append(tangra_obj)
+        
+        print("Created {0} tangra objects for {1} apertures".format(
+            len(tangra_objects), len(aperture_y_positions)))
+        print("  ADV file: frame_height={0} pixels, frame_width={1} pixels".format(
+            self.capture_handler.frame_height, self.capture_handler.frame_width))
+        print("  (Line delays calculated per pixel in actual frame coordinate system)")
+        
+        # Generate CSV filename based on ADV filename
+        # Save in same directory as ADV file, or fallback to Documents
+        csv_basename = adv_file_name.replace('.adv', '_line_delay.csv')
+        
+        # Try to save in ADV file directory first (best - keeps files together)
+        csv_filename = os.path.join(adv_file_path, csv_basename)
+        
+        # Check if ADV directory is writable, otherwise use fallback
+        try:
+            # Test if directory is writable
+            test_file = os.path.join(adv_file_path, '.write_test')
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+        except:
+            # ADV directory not writable, use fallback
+            print("ADV directory not writable, using Documents folder for CSV")
+            try:
+                documents_folder = os.path.expanduser("~\\Documents")
+                if not os.path.exists(documents_folder):
+                    documents_folder = os.path.expanduser("~")
+            except:
+                import tempfile
+                documents_folder = tempfile.gettempdir()
+            csv_filename = os.path.join(documents_folder, csv_basename)
+        
+        # Camera info for CSV - extract from ADV filename if possible
+        camera_info = {
+            'name': adv_file_name.split('_')[0] if '_' in adv_file_name else 'Camera',
+            'resolution': '{0}x{1}'.format(frame_width, frame_height),
+            'width': frame_width
+        }
+        
+        # Save CSV
+        csv_path = None
+        try:
+            csv_path = save_tangra_csv(
+                self.capture_handler.measurements,
+                self.capture_handler.timestamps,
+                self.capture_handler.frame_numbers,
+                aperture_y_positions,
+                exposure_ms,
+                csv_filename,
+                camera_info
+            )
+            print("TANGRA CSV saved to: {0}".format(csv_path))
+        except Exception as csv_ex:
+            print("Warning: Could not save TANGRA CSV file: {0}".format(str(csv_ex)))
+        
+        # Analyze GPS flashes
+        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Analyzing GPS flashes...'))
+        
+        all_delays = []
+        aperture_flash_counts = {}
+        
+        for tangra_obj in tangra_objects:
+            aperture_delays = analyze_aperture_delays(tangra_obj, exposure_ms, flash_ms)
+            all_delays.extend(aperture_delays)
+            aperture_flash_counts[tangra_obj['y_position']] = len(aperture_delays)
+        
+        print("Total GPS flash measurements: {0}".format(len(all_delays)))
+        for y_pos, count in sorted(aperture_flash_counts.items()):
+            print("  Y={0}: {1} flashes detected".format(y_pos, count))
+        
+        if len(all_delays) == 0:
+            error_msg = "No GPS flashes detected in any aperture.\n\n"
+            error_msg += "Possible causes:\n"
+            error_msg += "1. GPS LED was not enabled during recording\n"
+            error_msg += "2. Flash duration setting is incorrect\n"
+            error_msg += "3. Insufficient exposure time to detect flashes\n\n"
+            error_msg += "Please ensure GPS LED is enabled and flashing before recording."
+            raise Exception(error_msg)
+        
+        # Filter and fit
+        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Fitting line delay model...'))
+        
+        all_delays_filtered, filter_stats = filter_flash_measurements(all_delays)
+        
+        if len(all_delays_filtered) < 5:
+            raise Exception("Insufficient measurements after filtering ({0} remaining)".format(len(all_delays_filtered)))
+        
+        fit_result = fit_line_delays(all_delays_filtered)
+        
+        if not fit_result:
+            raise Exception("Linear fit failed. Please check data and try again.")
+        
+        # Display results
+        self.SafeInvoke(lambda: self.display_results(
+            all_delays_filtered, fit_result, tangra_objects, 
+            aperture_y_positions, self.capture_handler.frame_height, 
+            self.capture_handler.binning, filter_stats, csv_path
+        ))
+        
+        # Success
+        self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Calibration complete'))
+        self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Green))
+    
+    def display_results(self, all_delays, fit_result, tangra_objects,
+                       aperture_y_positions, frame_height, binning, 
+                       filter_stats=None, csv_path=None):
+        """Display calibration results in GUI"""
+        import os
+        
+        # Build results text (use \r\n for Windows TextBox control)
+        results_text = "LED Line Delay Calibration Results\r\n"
+        results_text += "=" * 50 + "\r\n\r\n"
+        
+        # Show line delay equation prominently at top (3 sig figs)
+        slope = fit_result['slope']
+        intercept = fit_result['intercept']
+        r_squared = fit_result['r_squared']
+        sign = '+' if slope >= 0 else '-'
+        results_text += "Line delay of {0:.3g} {1} {2:.3g} x Y ms, R\u00b2 = {3:.3f}\r\n".format(
+            intercept, sign, abs(slope), r_squared)
+        
+        # Add quality assessment based on R²
+        if r_squared >= 0.98:
+            results_text += "Excellent calibration fit.\r\n\r\n"
+        elif r_squared >= 0.96:
+            results_text += "Good calibration fit, but could be better. Check the flash brightness is not too high or low and is evenly illuminated.\r\n\r\n"
+        elif r_squared >= 0.9:
+            results_text += "Poor calibration fit. Please redo with better flash illumination.\r\n\r\n"
+        else:
+            results_text += "Very poor or failed calibration. Please redo with better flash illumination.\r\n\r\n"
+        
+        # Show CSV file path if available
+        if csv_path:
+            results_text += "TANGRA CSV saved: {0}\r\n".format(os.path.basename(csv_path))
+            results_text += "Full path: {0}\r\n\r\n".format(csv_path)
+        
+        results_text += "Binning: {0}x{0}\r\n".format(binning)
+        results_text += "Apertures measured: {0}\r\n".format(len(aperture_y_positions))
+        results_text += "  Y positions (binned): {0}\r\n".format(aperture_y_positions)
+        results_text += "Measurements captured: {0}\r\n".format(
+            filter_stats['total'] if filter_stats else len(all_delays))
+        
+        # Show filtering results if available
+        if filter_stats:
+            results_text += "\r\nQuality filtering:\r\n"
+            results_text += "  Kept: {0} good measurements\r\n".format(filter_stats['kept'])
+            results_text += "  Filtered out: {0} outliers/transition frames\r\n".format(
+                filter_stats['filtered'])
+        
+        # Calculate rolling shutter time (time for full frame)
+        # Slope is in ms per binned pixel (frame coordinates)
+        rolling_shutter_time = fit_result['slope'] * frame_height
+        results_text += "\r\nRolling shutter time (full frame): {0:.3g} ms\r\n".format(rolling_shutter_time)
+        results_text += "  (Based on {0} frame lines at {1}x{1} binning)\r\n".format(frame_height, binning)
+        
+        # Calculate line rate
+        if abs(fit_result['slope']) > 1e-10:
+            line_rate = 1.0 / fit_result['slope']  # lines per ms
+            results_text += "Line readout rate: {0:.3g} lines/ms\r\n".format(line_rate)
+        
+        self.textbox_results.Text = results_text
+        
+        # Create and display plot
+        plot_model = create_line_delay_plot(all_delays, fit_result)
+        self.plot_view.Model = plot_model
+    
+    def stop_calibration(self, sender, event):
+        """Stop ongoing calibration"""
+        try:
+            if self.capture_handler.capturing:
+                camera = SharpCap.SelectedCamera
+                if camera:
+                    self.capture_handler.stop_capture(camera)
+            
+            self.label_status.Text = "Stopped by user"
+            self.label_status.ForeColor = Color.Orange
+            self.button_start.Enabled = True
+            self.button_stop.Enabled = False
+        except Exception as ex:
+            print("Error in stop_calibration: " + str(ex))
+    
+    def close_form(self, sender, event):
+        """Close the form"""
+        try:
+            # Make sure capture is stopped
+            if self.capture_handler.capturing:
+                camera = SharpCap.SelectedCamera
+                if camera:
+                    self.capture_handler.stop_capture(camera)
+            
+            self.Close()
+        except Exception as ex:
+            print("Error in close_form: " + str(ex))
+            self.Close()  # Close anyway
+
+    # === LONG TERM TIMING STABILITY METHODS ===
+    
+    def on_stab_invert_changed(self, sender, event):
+        """Handle stability invert checkbox change - show warning when enabled"""
+        if self.checkbox_stab_invert.Checked:
+            # Show warning message
+            result = MessageBox.Show(
+                "Invert can be used for an LED that is ON for 900 ms and OFF for 100 ms. "
+                "The built in LED on an Arduino module does this, as do some GPS receivers. "
+                "It is better to use a proper GPS flasher, but acceptable calibration is "
+                "possible with an inverted flash.",
+                "Inverted PPS Signal Warning",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Warning
+            )
+            
+            # If user cancels, uncheck the box
+            if result == DialogResult.Cancel:
+                self.checkbox_stab_invert.Checked = False
+    
+    def start_stability_test(self, sender, event):
+        """Start long-term timing stability test"""
+        # Check camera connection
+        if SharpCap.SelectedCamera is None:
+            MessageBox.Show(
+                "No camera is connected.\n\nPlease connect a camera before running the stability test.",
+                "Camera Connection Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+            return
+        
+        # Validate test duration format
+        test_duration_str = self.textbox_test_duration.Text.strip()
+        try:
+            parts = test_duration_str.split(':')
+            if len(parts) != 2:
+                raise ValueError("Invalid format")
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            if hours < 0 or minutes < 0 or minutes >= 60:
+                raise ValueError("Invalid time values")
+        except:
+            MessageBox.Show(
+                "Invalid Test Duration format.\n\nPlease use HH:MM format (e.g., 01:30 for 1 hour 30 minutes).",
+                "Input Validation Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+            return
+        
+        # Disable start button, enable stop
+        self.button_stab_start.Enabled = False
+        self.button_stab_stop.Enabled = True
+        
+        # Start test in background thread
+        import threading
+        test_thread = threading.Thread(target=self.run_stability_test_thread)
+        test_thread.daemon = True
+        test_thread.start()
+    
+    def stop_stability_test(self, sender, event):
+        """Stop the stability test"""
+        try:
+            self.stop_requested = True
+            self.SafeInvoke(lambda: setattr(self.label_stab_status, 'Text', 'Stopping...'))
+        except Exception as ex:
+            print("Error in stop_stability_test: " + str(ex))
+    
+    def run_stability_test_thread(self):
+        """Background thread for long-term stability testing"""
+        try:
+            camera = SharpCap.SelectedCamera
+            if camera is None:
+                self.SafeInvoke(lambda: MessageBox.Show(
+                    "Camera disconnected during test.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                ))
+                return
+            
+            # Get test parameters
+            capture_duration = float(self.textbox_stab_duration.Text)
+            flash_ms = float(self.textbox_stab_flash.Text)
+            test_duration_str = self.textbox_test_duration.Text.strip()
+            parts = test_duration_str.split(':')
+            test_duration_seconds = int(parts[0]) * 3600 + int(parts[1]) * 60
+            do_invert = self.checkbox_stab_invert.Checked
+            
+            self.stop_requested = False
+            
+            # Storage for all flash delays across all capture periods
+            all_delays = []
+            all_timestamps = []
+            
+            start_time = datetime.utcnow()
+            elapsed_time = 0
+            cycle_count = 0
+            
+            self.SafeInvoke(lambda: setattr(self.label_stab_status, 'Text', 
+                'Starting stability test...'))
+            
+            while elapsed_time < test_duration_seconds and not self.stop_requested:
+                cycle_count += 1
+                remaining_time = test_duration_seconds - elapsed_time
+                remaining_str = "{0:02d}:{1:02d}:{2:02d}".format(
+                    int(remaining_time // 3600),
+                    int((remaining_time % 3600) // 60),
+                    int(remaining_time % 60)
+                )
+                
+                self.SafeInvoke(lambda rs=remaining_str: setattr(self.label_stab_status, 'Text',
+                    'Cycle {0} - Remaining: {1}'.format(cycle_count, rs)))
+                
+                # Perform one capture cycle (returns list of (delay, pps_time) tuples)
+                cycle_results = self.do_stability_capture_cycle(
+                    camera, capture_duration, flash_ms, do_invert)
+                
+                if cycle_results:
+                    # Add delays and their actual UTC timestamps
+                    for delay, pps_time in cycle_results:
+                        all_delays.append(delay)
+                        all_timestamps.append(pps_time)
+                    
+                    # Update plots and statistics
+                    self.update_stability_display(all_delays, all_timestamps, start_time)
+                
+                # Update elapsed time
+                elapsed_time = (datetime.utcnow() - start_time).total_seconds()
+            
+            # Test complete
+            self.SafeInvoke(lambda: setattr(self.label_stab_status, 'Text',
+                'Test complete - {0} flashes recorded'.format(len(all_delays))))
+            
+        except Exception as ex:
+            error_msg = "Stability test error: " + str(ex)
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            self.SafeInvoke(lambda msg=error_msg: setattr(self.label_stab_status, 'Text', msg))
+        
+        finally:
+            # Re-enable start button, disable stop
+            self.SafeInvoke(lambda: setattr(self.button_stab_start, 'Enabled', True))
+            self.SafeInvoke(lambda: setattr(self.button_stab_stop, 'Enabled', False))
+    
+    def do_stability_capture_cycle(self, camera, duration, flash_ms, do_invert):
+        """Perform one capture cycle and return valid flash delays with timestamps
+        
+        Returns:
+            List of (time_offset, pps_actual_time) tuples for valid GPS flashes
+        """
+        try:
+            # Get camera parameters
+            roi = camera.ROI
+            exposure_ms = camera.Controls.Exposure.ExposureMs
+            
+            # Setup single aperture in middle of frame
+            self.capture_handler = FrameCaptureHandler()
+            frame_width = roi.Width
+            frame_height = roi.Height
+            
+            print("Stability test parameters:")
+            print("  Exposure: {0} ms".format(exposure_ms))
+            print("  Frame dimensions: {0}x{1}".format(frame_width, frame_height))
+            
+            # Single aperture at vertical center
+            aperture_size = 10
+            y_center = frame_height // 2
+            self.capture_handler.setup_single_aperture(frame_width, frame_height, y_center, aperture_size)
+            
+            # Store exposure for timestamp conversion in frame handler (CRITICAL!)
+            # Without this, framehandler defaults to 50ms which causes wrong mid-frame timestamps
+            self.capture_handler.exposure_ms = exposure_ms
+            
+            # Start capture
+            self.capture_handler.start_capture(camera)
+            time.sleep(0.5)
+            
+            # Wait for capture duration
+            time.sleep(duration)
+            
+            # Stop capture
+            self.capture_handler.stop_capture(camera)
+            
+            # Apply inversion if requested
+            if do_invert:
+                self.capture_handler.measurements = invert_measurements(
+                    self.capture_handler.measurements,
+                    auto_detect_max=True
+                )
+            
+            # Process the data
+            measurements = self.capture_handler.measurements[y_center]
+            timestamps = self.capture_handler.timestamps
+            frame_numbers = self.capture_handler.frame_numbers
+            
+            if len(measurements) == 0:
+                return []
+            
+            # Create tangra object
+            tangra_obj = create_tangra_object(
+                measurements, timestamps, frame_numbers,
+                y_center, 'stability_aperture', exposure_ms
+            )
+            tangra_obj['frame_height'] = frame_height
+            
+            # Analyze GPS flashes
+            lcv = analyse_gps_flash_iron(
+                tangra_obj, col='signal_1',
+                exposure_ms=exposure_ms,
+                flash_ms=flash_ms,
+                background=None
+            )
+            
+            # Calculate delays for each valid flash
+            results = []
+            peak_numbers = set([row['peak_no'] for row in lcv if row['peak_no'] > 0])
+            
+            for peak_no in peak_numbers:
+                result = calculate_delays_iron(
+                    lcv, peak_no, exposure_ms, flash_ms,
+                    y_center, frame_height
+                )
+                
+                if result:
+                    time_offset = result['time_offset']
+                    n_frames = result['n_frames']
+                    pps_actual_time = result['pps_actual_time']
+                    frac_flux_frame1 = result['frac_flux_frame1']
+                    
+                    # Debug output for first flash
+                    if len(results) == 0:
+                        print("  First flash: offset={0:.3f}ms, UTC={1}, n_frames={2}, flux_frac={3:.3f}".format(
+                            time_offset, pps_actual_time.strftime("%H:%M:%S"), n_frames, frac_flux_frame1))
+                    
+                    # Quality filtering like line delay calibration:
+                    # - Reject transition frames (too dim or too bright)
+                    # - Reject if too few/many frames or extreme offset values
+                    if (2 <= n_frames <= 4 and 
+                        -80 < time_offset < 80 and
+                        0.1 < frac_flux_frame1 < 0.9):
+                        results.append((time_offset, pps_actual_time))
+            
+            return results
+            
+        except Exception as ex:
+            print("Stability cycle error: " + str(ex))
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    def update_stability_display(self, all_delays, all_timestamps, start_time):
+        """Update plots and statistics for stability test"""
+        try:
+            if len(all_delays) == 0:
+                return
+            
+            n_total = len(all_delays)
+            
+            # Remove outliers (3% tails = 1.5% each end) for statistics
+            sorted_delays = sorted(all_delays)
+            if n_total >= 20:  # Only remove outliers if we have enough data
+                trim_count = max(1, int(n_total * 0.015))  # 1.5% from each end
+                filtered_delays = sorted_delays[trim_count:-trim_count]
+                n_filtered = len(filtered_delays)
+                print("Statistics: removed {0} outliers ({1:.1f}%), using {2} measurements".format(
+                    2*trim_count, 100.0*2*trim_count/n_total, n_filtered))
+            else:
+                filtered_delays = sorted_delays
+                n_filtered = n_total
+            
+            # Calculate statistics on filtered data
+            n = len(filtered_delays)
+            mean_delay = sum(filtered_delays) / n
+            median_delay = filtered_delays[n // 2] if n % 2 == 1 else (filtered_delays[n//2-1] + filtered_delays[n//2]) / 2.0
+            min_delay = filtered_delays[0]
+            max_delay = filtered_delays[-1]
+            
+            # Calculate 95% CI using sample statistics with t-distribution
+            # Use sample variance (divide by n-1) for unbiased estimator
+            if n > 1:
+                variance = sum((x - mean_delay) ** 2 for x in filtered_delays) / (n - 1)
+                std_delay = math.sqrt(variance)
+                
+                # Use t-distribution for sample CI (more accurate for smaller samples)
+                # For large n (>30), t ≈ 1.96, but we'll use a simple approximation
+                # t-critical values: n=30->2.04, n=60->2.00, n=120->1.98, n=inf->1.96
+                if n >= 120:
+                    t_critical = 1.98
+                elif n >= 60:
+                    t_critical = 2.00
+                elif n >= 30:
+                    t_critical = 2.04
+                else:
+                    t_critical = 2.09  # Conservative for smaller samples
+                
+                # 95% CI for the mean
+                ci_95_mean = t_critical * std_delay / math.sqrt(n)
+                
+                # 95% prediction interval for individual measurements (±2 std for ~95%)
+                prediction_interval = 2.0 * std_delay
+            else:
+                std_delay = 0.0
+                ci_95_mean = 0.0
+                prediction_interval = 0.0
+            
+            # Update statistics text
+            if n_filtered < n_total:
+                stats_text = "Total Flashes: {0} ({1} after removing {2} outliers)\r\n".format(n_total, n_filtered, n_total - n_filtered)
+            else:
+                stats_text = "Total Flashes: {0}\r\n".format(n)
+            stats_text += "Mean: {0:.3f} ms (95% CI: ± {1:.3f} ms)\r\n".format(mean_delay, ci_95_mean)
+            stats_text += "Median: {0:.3f} ms\r\n".format(median_delay)
+            stats_text += "Range: {0:.3f} to {1:.3f} ms\r\n".format(min_delay, max_delay)
+            stats_text += "Std Dev: {0:.3f} ms (95% of data within ± {1:.3f} ms)".format(std_delay, prediction_interval)
+            
+            self.SafeInvoke(lambda txt=stats_text: setattr(self.textbox_stab_stats, 'Text', txt))
+            
+            # Create time series plot - show ALL measurements
+            timeseries_plot = self.create_timeseries_plot(all_delays, all_timestamps, start_time)
+            self.SafeInvoke(lambda p=timeseries_plot: self.set_and_refresh_plot(self.plot_stab_timeseries, p))
+            
+            # Create histogram - use filtered data (outliers removed)
+            histogram_plot = self.create_histogram_plot(filtered_delays, mean_delay, ci_95_mean)
+            self.SafeInvoke(lambda p=histogram_plot: self.set_and_refresh_plot(self.plot_stab_histogram, p))
+            
+        except Exception as ex:
+            print("Error updating stability display: " + str(ex))
+            import traceback
+            traceback.print_exc()
+    
+    def create_timeseries_plot(self, delays, timestamps, start_time):
+        """Create time series plot of GPS flash delays"""
+        plot_model = OxyPlot.PlotModel()
+        plot_model.Title = "GPS Flash Timing Delays Over Time"
+        
+        # Create scatter series
+        scatter_series = OxyPlot.Series.ScatterSeries()
+        scatter_series.MarkerType = OxyPlot.MarkerType.Circle
+        scatter_series.MarkerSize = 3
+        scatter_series.MarkerFill = OxyPlot.OxyColors.Blue
+        
+        # Use elapsed seconds from test start based on actual PPS time
+        if timestamps:
+            for i, (delay, timestamp) in enumerate(zip(delays, timestamps)):
+                elapsed_seconds = (timestamp - start_time).total_seconds()
+                scatter_series.Points.Add(OxyPlot.Series.ScatterPoint(elapsed_seconds, delay))
+        
+        plot_model.Series.Add(scatter_series)
+        
+        # Configure axes
+        x_axis = OxyPlot.Axes.LinearAxis()
+        x_axis.Position = OxyPlot.Axes.AxisPosition.Bottom
+        x_axis.Title = 'Elapsed Time (seconds)'
+        plot_model.Axes.Add(x_axis)
+        
+        y_axis = OxyPlot.Axes.LinearAxis()
+        y_axis.Position = OxyPlot.Axes.AxisPosition.Left
+        y_axis.Title = 'Time Offset (ms)'
+        
+        # Make Y-axis range 3x larger than data range for better visibility
+        if delays:
+            min_delay = min(delays)
+            max_delay = max(delays)
+            data_range = max_delay - min_delay
+            if data_range > 0:
+                center = (min_delay + max_delay) / 2.0
+                expanded_range = data_range * 1.5  # 3x total (1.5x padding on each side)
+                y_axis.Minimum = center - expanded_range
+                y_axis.Maximum = center + expanded_range
+            else:
+                # Single value - show ±5ms range
+                y_axis.Minimum = min_delay - 5.0
+                y_axis.Maximum = max_delay + 5.0
+        
+        plot_model.Axes.Add(y_axis)
+        
+        return plot_model
+    
+    def create_histogram_plot(self, delays, mean_delay, ci_95_mean):
+        """Create histogram of GPS flash delays with annotations"""
+        plot_model = OxyPlot.PlotModel()
+        plot_model.Title = "Distribution of GPS Flash Timing Delays (outliers removed)"
+        
+        # Create histogram with 1 ms bins
+        bin_width = 1.0
+        min_val = min(delays)
+        max_val = max(delays)
+        
+        # Determine bin edges
+        bin_start = math.floor(min_val / bin_width) * bin_width
+        bin_end = math.ceil(max_val / bin_width) * bin_width
+        num_bins = int((bin_end - bin_start) / bin_width)
+        
+        # Ensure at least 1 bin for single-value datasets
+        if num_bins == 0:
+            num_bins = 1
+            bin_end = bin_start + bin_width
+        
+        # Count frequencies
+        bins = [0] * num_bins
+        for delay in delays:
+            bin_index = int((delay - bin_start) / bin_width)
+            if 0 <= bin_index < num_bins:
+                bins[bin_index] += 1
+        
+        # Create histogram using RectangleAnnotations (ColumnSeries not available)
+        max_count = max(bins) if bins else 1
+        
+        for i, count in enumerate(bins):
+            if count > 0:  # Only draw bars with data
+                bin_left = bin_start + i * bin_width
+                bin_right = bin_start + (i + 1) * bin_width
+                
+                # Create filled rectangle for each bar
+                rect = OxyPlot.Annotations.RectangleAnnotation()
+                rect.MinimumX = bin_left
+                rect.MaximumX = bin_right
+                rect.MinimumY = 0
+                rect.MaximumY = count
+                rect.Fill = OxyPlot.OxyColors.SteelBlue
+                rect.Stroke = OxyPlot.OxyColors.Black
+                rect.StrokeThickness = 1
+                
+                plot_model.Annotations.Add(rect)
+        
+        print("Histogram: {0} bins, {1} total points, max count={2}".format(num_bins, len(delays), max_count))
+        
+        # Add mean line annotation
+        mean_line = OxyPlot.Annotations.LineAnnotation()
+        mean_line.Type = OxyPlot.Annotations.LineAnnotationType.Vertical
+        mean_line.X = mean_delay
+        mean_line.Color = OxyPlot.OxyColors.Red
+        mean_line.LineStyle = OxyPlot.LineStyle.Dash
+        mean_line.Text = "Mean: {0:.2f} ms".format(mean_delay)
+        plot_model.Annotations.Add(mean_line)
+        
+        # Configure axes with 1ms margins on data range
+        x_axis = OxyPlot.Axes.LinearAxis()
+        x_axis.Position = OxyPlot.Axes.AxisPosition.Bottom
+        x_axis.Title = 'Time Offset (ms)'
+        x_axis.Minimum = min(delays) - 1.0  # 1ms left margin
+        x_axis.Maximum = max(delays) + 1.0  # 1ms right margin
+        plot_model.Axes.Add(x_axis)
+        
+        y_axis = OxyPlot.Axes.LinearAxis()
+        y_axis.Position = OxyPlot.Axes.AxisPosition.Left
+        y_axis.Title = 'Frequency'
+        plot_model.Axes.Add(y_axis)
+        
+        # Add subtitle with 95% CI for the mean
+        plot_model.Subtitle = "95% CI (mean): ± {0:.3f} ms".format(ci_95_mean)
+        
+        return plot_model
+
+
+
+# =============================================================================
+# MAIN ENTRY POINT
+# =============================================================================
+
+# Create and show the form when script is run
+if __name__ == '__main__' or True:  # True ensures it runs when execfile'd
+    print("")
+    print("=" * 60)
+    print("GPS LED Line Delay Calibration")
+    print("Version 3.0.0")
+    print("=" * 60)
+    print("")
+    
+    # Check if SharpCap is available
+    try:
+        if SharpCap is None:
+            print("ERROR: SharpCap not available.")
+            print("This script must be run from SharpCap IronPython Console.")
+        else:
+            print("SharpCap detected: " + SharpCap.AppName)
+            print("Creating calibration form...")
+            
+            # Create and show the form
+            form = LEDLineDelayCalibrationForm()
+            form.StartPosition = FormStartPosition.CenterScreen
+            form.Show()
+            
+            print("Calibration form displayed.")
+            print("Click 'Start Calibration' to begin.")
+            print("")
+    except:
+        print("ERROR: Could not access SharpCap.")
+        print("Make sure you are running this from SharpCap IronPython Console.")

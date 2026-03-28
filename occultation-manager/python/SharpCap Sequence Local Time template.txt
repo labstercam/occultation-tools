@@ -52,7 +52,7 @@ SEQUENCE
 
 # Display a notification until the GOTO time
     SHOW NOTIFICATION "Waiting for GOTO {object_name} at {goto_time_local} " COLOUR Green DURATION 10000
-    WAIT UNTIL LLOCALTIME "{goto_time_local}"
+    WAIT UNTIL LOCALTIME "{goto_time_local}"
     CLEAR NOTIFICATION
 
     # GOTO and PLATESOLVE. If an error it should run SUB safe_finish to move the mount to its defined safe position
@@ -68,7 +68,6 @@ SEQUENCE
             END RETRY ERRORS
         END SET
     END IGNORE ERRORS
-END IF
 
 # Setup for the event
     TARGETNAME "{object_name}"

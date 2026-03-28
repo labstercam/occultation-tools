@@ -65,7 +65,7 @@ Generate an `IOTA-ES` text report file from existing report workflow with requir
 - [x] Additional observer fields (`Observer2`, `moreObs`) and weather details (`Wind`, `Temperature`) if not available.
 
 ## 9) Validation checklist before merge
-- [ ] Generate one positive SODIS file and compare line-by-line against `IOTA-ES_report.txt` structure.
-- [ ] Generate one negative SODIS file and verify `D: M` / `R: M` behavior.
-- [ ] Confirm no regressions in existing NA/TT report generation paths.
+- [x] Generate one positive SODIS file and compare line-by-line against `IOTA-ES_report.txt` structure.
+- [x] Generate one negative SODIS file and verify `D: M` / `R: M` behavior.
+- [x] Confirm no regressions in existing NA/TT report generation paths.
 - [x] Confirm output file is created in reports folder and status messaging remains clean.
