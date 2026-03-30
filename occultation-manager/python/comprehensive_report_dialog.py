@@ -70,7 +70,7 @@ class ComprehensiveReportDialog(Form):
     def setup_ui(self):
         """Setup user interface"""
         self.Text = "Generate Report"
-        self.Size = Size(1000, 820)  # Increased from 720 to 820 for Conditions section
+        self.Size = Size(1000, 820)
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -79,7 +79,7 @@ class ComprehensiveReportDialog(Form):
         # Main scroll panel
         main_panel = Panel()
         main_panel.Location = Point(10, 10)
-        main_panel.Size = Size(970, 725)  # Increased from 625 to 725 for Conditions section
+        main_panel.Size = Size(970, 725)
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
         
@@ -317,7 +317,7 @@ class ComprehensiveReportDialog(Form):
         self.report_preview_label.Size = Size(305, 40)
         self.report_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.report_preview_label)
-        
+
         y_pos += 250
         
         # ===== SECTION 5: CONDITIONS =====
@@ -372,14 +372,14 @@ class ComprehensiveReportDialog(Form):
         # ===== BOTTOM BUTTONS =====
         self.status_label = Label()
         self.status_label.Text = "Please complete all sections above"
-        self.status_label.Location = Point(20, 755)  # Moved down to 755
+        self.status_label.Location = Point(20, 755)
         self.status_label.Size = Size(700, 20)
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
         
         self.btn_generate = Button()
         self.btn_generate.Text = "Generate Report"
-        self.btn_generate.Location = Point(750, 750)  # Moved down to 750
+        self.btn_generate.Location = Point(750, 750)
         self.btn_generate.Size = Size(140, 35)
         self.btn_generate.Enabled = False
         self.btn_generate.Click += self.generate_click
@@ -388,7 +388,7 @@ class ComprehensiveReportDialog(Form):
         
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
-        btn_cancel.Location = Point(900, 750)  # Moved down to 750
+        btn_cancel.Location = Point(900, 750)
         btn_cancel.Size = Size(80, 35)
         btn_cancel.Click += self.cancel_click
         self.Controls.Add(btn_cancel)
@@ -907,3 +907,4 @@ class ComprehensiveReportDialog(Form):
     
     def get_other_conditions(self):
         return self.other_conditions
+

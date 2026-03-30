@@ -52,6 +52,7 @@ SEQUENCE GENERATION WORKFLOW
 
 REPORT GENERATION WORKFLOW
     Generate Report -> LocationConfirmDialog -> ComprehensiveReportDialog
+    LocationConfirmDialog: Step 1 confirm location, optional Step 2 NTP analysis
     ComprehensiveReportDialog: report format, equipment, observation type,
     AOTA/Tangra import, optional AOTA event selection, and generate report
 
@@ -409,21 +410,26 @@ Three specialized report generators create Excel-based observation reports by fi
 ```
 1. User selects event in grid
 2. Click "Generate Report"
-3. Comprehensive Report Dialog opens:
-    a. Select report type (NA, TT, or SODIS)
-   b. Select equipment (telescope + camera)
-   c. Choose observation type (Positive/Negative/Unsure)
-   d. Set observing conditions (clouds, stability, other)
-   e. Optional: Import Tangra light curve data
-   f. Optional: Import AOTA timing/SNR data
-4. Generator uses Openize SDK to:
+3. LocationConfirmDialog opens:
+    a. Confirm observer location
+    b. Optional: Step 2 NTP timing analysis
+        - Analyze NTP from selected NTP stats folder
+        - Open full NTP analyzer window (non-blocking)
+4. Comprehensive Report Dialog opens:
+     a. Select report type (NA, TT, or SODIS)
+     b. Select equipment (telescope + camera)
+     c. Choose observation type (Positive/Negative/Unsure)
+     d. Set observing conditions (clouds, stability, other)
+     e. Optional: Import Tangra light curve data
+     f. Optional: Import AOTA timing/SNR data
+5. Generator uses Openize SDK to:
    a. Load Excel template workbook
    b. Access Data worksheet directly
    c. Set cell values via PutValue() API
    d. Save populated workbook
-5. Saves to `data/reports/`
-6. Generates matching Occult 4 XML file
-7. Opens report in Excel
+6. Saves to `data/reports/`
+7. Generates matching Occult 4 XML file
+8. Opens report in Excel
 ```
 
 **Data Sources:**
@@ -433,6 +439,7 @@ Three specialized report generators create Excel-based observation reports by fi
 - Conditions: User-selected clouds, stability, other conditions
 - Timing/SNR: From AOTA Report Parser (optional)
 - Light curve: From Tangra CSV files (optional)
+- Optional NTP timing context: From `gps-timing-analysis/python/ntp_analysis_core.py` and related resources
 
 **Technical Implementation:**
 - Uses Openize.OpenXML-SDK .NET library via IronPython CLR

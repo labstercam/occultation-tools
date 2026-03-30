@@ -447,7 +447,8 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
             if _is_blank(value):
                 return None
             try:
-                return int(str(value).strip())
+                text = str(value).strip().lstrip("'")
+                return int(text)
             except Exception:
                 return None
 
@@ -456,7 +457,8 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
                 return None
             try:
                 # Ensure numeric write to Excel with sensible precision
-                return round(float(str(value).strip()), 3)
+                text = str(value).strip().lstrip("'")
+                return round(float(text), 3)
             except Exception:
                 return None
         

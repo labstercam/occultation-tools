@@ -34,6 +34,24 @@ from help import HelpManager
 from dummy_event_generator import DummyEventGeneratorDialog, DummyEventGenerator
 # na_report import moved to lazy load in generate_report_click() to avoid crashes
 
+
+# Phase 2 NTP integration paths and import wiring.
+_NTP_PYTHON = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "gps-timing-analysis", "python")
+)
+_NTP_RESOURCES = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "gps-timing-analysis", "resources")
+)
+if _NTP_PYTHON not in sys.path:
+    sys.path.insert(0, _NTP_PYTHON)
+
+_NTP_IMPORT_ERROR = None
+try:
+    import ntp_analysis_core as ntp
+except Exception as _ntp_ex:
+    ntp = None
+    _NTP_IMPORT_ERROR = str(_ntp_ex)
+
 class OccultationManagerGUI(Form):
     """Enhanced main GUI window for occultation management with all requested features"""
     
@@ -104,6 +122,22 @@ class OccultationManagerGUI(Form):
         self._sequence_stopped_by_user = False  # Flag to prevent monitor from processing after manual stop
         self._sequence_context = None  # Track context: 'test_recording' or 'run_sequences'
         self._download_events_in_progress = False
+
+        # Phase 2 NTP integration state.
+        self._ntp_module = ntp
+        self._ntp_known_servers = []
+        self._ntp_resources_path = _NTP_RESOURCES
+        self._ntp_init_error = None
+        if self._ntp_module is not None:
+            try:
+                known_servers_path = os.path.join(self._ntp_resources_path, "national_utc_ntp_servers.json")
+                cache_path = os.path.join(self._ntp_resources_path, "ip_location_cache.json")
+                self._ntp_known_servers = self._ntp_module.load_known_servers(known_servers_path)
+                self._ntp_module._load_ip_location_cache(cache_path)
+            except Exception as ex:
+                self._ntp_init_error = str(ex)
+        elif _NTP_IMPORT_ERROR:
+            self._ntp_init_error = _NTP_IMPORT_ERROR
         
         self.setup_ui()
         self.load_initial_data()
@@ -1913,10 +1947,17 @@ class OccultationManagerGUI(Form):
         # Generate report
         try:
             print(f"\n=== Generating report for {event.get_asteroid_display_name()} ===")
+
+            ntp_context = {
+                'module': self._ntp_module,
+                'known_servers': self._ntp_known_servers,
+                'resources_path': self._ntp_resources_path,
+                'import_error': self._ntp_init_error,
+            }
             
             # Show location confirmation dialog FIRST (before comprehensive dialog)
             from gui_dialogs import LocationConfirmDialog
-            location_dialog = LocationConfirmDialog(event, self.theme_manager)
+            location_dialog = LocationConfirmDialog(event, self.theme_manager, ntp_context=ntp_context)
             if location_dialog.ShowDialog() != DialogResult.OK:
                 print("User cancelled location confirmation")
                 self.update_status("Report generation cancelled")
@@ -1930,6 +1971,11 @@ class OccultationManagerGUI(Form):
             event.longitude = location['longitude']
             event.elevation = location['elevation']
             event.obs_location = location['obs_location']
+
+            # Optional Step 2 NTP outputs from location dialog.
+            event.ntp_loopstats_path = location_dialog.get_ntp_loopstats_path()
+            event.ntp_peerstats_path = location_dialog.get_ntp_peerstats_path()
+            event.ntp_analysis_result = location_dialog.get_ntp_analysis_result()
             
             # Show COMPREHENSIVE REPORT DIALOG - combines everything!
             from comprehensive_report_dialog import ComprehensiveReportDialog

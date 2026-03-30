@@ -24,7 +24,7 @@ The workflow can be as simple as announce stations in Occult Watcher Cloud, open
 <img width="391" height="248" alt="image" src="https://github.com/user-attachments/assets/f503a43f-d610-46d1-a69a-a4895ca93c05" />
 
 6. **Run Sequences**: Run the sequence(s) to record the occultation from occultation-manager, or use the SharpCap Sequencer separately
-7. **Generate Reports**: Load Tangra and AOTA analysis and generate reports for North America, Australasia or SODIS reporting systems (working prototypes)
+7. **Generate Reports**: Confirm observer location, optionally run NTP analysis, then load Tangra/AOTA analysis and generate reports for North America, Australasia or SODIS reporting systems (working prototypes)
 <img width="494" height="407" alt="image" src="https://github.com/user-attachments/assets/6720113f-5cf5-4e08-a689-7588f370cdeb" />
   
 
@@ -142,6 +142,12 @@ occultation-manager/
 **Report Generation (Under Development)**
 - ⚠️ **Not Approved**: Report generation is still under development and has not been approved by North America, Trans-Tasman, or SODIS reporting coordinators
 - Single comprehensive dialog for workflow efficiency
+- Report flow now includes **Confirm Observer Location** with optional **Step 2 NTP timing analysis**
+- Optional NTP actions:
+   - **Open NTP Analyser** (non-blocking, separate analyzer window)
+   - **Analyze NTP** (quick in-flow offset/uncertainty estimate)
+- NTP quick analysis uses a single NTP stats folder input, auto-selects loopstats/peerstats for the event date/time, and remembers the last selected folder
+- Shared NTP resources are loaded from `gps-timing-analysis/resources/` (including `national_utc_ntp_servers.json` and `ip_location_cache.json`)
 - Integrates AOTA timing data and Tangra CSV light curve analysis
 - ⚠️ **Tangra Light Curve Analysis Only**: GPS flash timing analysis functions exist in the toolkit but are not yet integrated into Occultation Manager
 - GPS flash timing analysis available as standalone tool for experts with custom Python code

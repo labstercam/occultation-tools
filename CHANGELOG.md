@@ -7,11 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Occultation Manager report workflow now includes an optional NTP timing analysis step in `LocationConfirmDialog` before opening the comprehensive report dialog.
+- Added folder-based NTP dataset selection/persistence for integrated report-time analysis.
+
+### Changed
+- Occult OBS.XML export now writes `D`/`R` times in consistent zero-padded format: `hh mm ss.ss`.
+
+### Fixed
+- Fixed NTP analyzer startup/runtime NameErrors caused by underscore-prefixed helper resolution in `analyze_ntp_timing_accuracy.py`.
+- Fixed NTP analyzer window activation so opening/reopening brings the analyzer in front of Occultation Manager dialogs.
+- Fixed TT report `D`/`R` Excel writes to use numeric values (hours/minutes as integers, seconds as numeric) instead of text-prefixed values.
+- Hardened NA report `D`/`R` numeric conversion to handle apostrophe-prefixed source values.
+
 ### Maintenance
 - Brief cleanup pass completed to archive or remove out-of-date code/files.
 
 ### Documentation
 - Documentation refreshed for current structure and release-facing guidance.
+- Updated NTP workflow documentation in `occultation-manager/ReadMe.md`, `occultation-manager/ARCHITECTURE.md`, and top-level `README.md`.
 
 ## [0.2.0-beta.3] - 2026-03
 

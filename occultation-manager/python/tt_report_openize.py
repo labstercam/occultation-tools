@@ -462,6 +462,46 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         """
         if not aota_report_summary:
             return
+
+        def _is_blank(value):
+            return value is None or (isinstance(value, str) and value.strip() == "")
+
+        def _normalize_hms(hours, minutes, seconds):
+            # Handle accidental combined format in seconds slot: "HH MM SS.s"
+            if _is_blank(hours) and _is_blank(minutes) and isinstance(seconds, str):
+                sec_text = seconds.strip()
+                parts = sec_text.split()
+                if len(parts) == 3:
+                    return parts[0], parts[1], parts[2]
+
+            # Handle accidental combined format in hours slot: "HH MM SS.s"
+            if isinstance(hours, str):
+                hour_text = hours.strip()
+                parts = hour_text.split()
+                if len(parts) == 3 and _is_blank(minutes) and _is_blank(seconds):
+                    return parts[0], parts[1], parts[2]
+
+            return hours, minutes, seconds
+
+        def _to_int_or_none(value):
+            if _is_blank(value):
+                return None
+            try:
+                # Excel text prefixes like '\'' should not flow into numeric fields.
+                text = str(value).strip().lstrip("'")
+                return int(text)
+            except Exception:
+                return None
+
+        def _to_seconds_float_or_none(value):
+            if _is_blank(value):
+                return None
+            try:
+                # Excel text prefixes like '\'' should not flow into numeric fields.
+                text = str(value).strip().lstrip("'")
+                return round(float(text), 3)
+            except Exception:
+                return None
         
         # Disappearance (D) times - F, H, J columns for hours, minutes, seconds:
         # Cell F33: AOTA_D_HOURS
@@ -471,11 +511,19 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         d_hours = aota_report_summary.get('d_hours')
         d_minutes = aota_report_summary.get('d_minutes')
         d_seconds = aota_report_summary.get('d_seconds')
-        
-        if d_hours is not None and d_minutes is not None and d_seconds is not None:
-            self._set_cell(worksheet, "F33", d_hours)
-            self._set_cell(worksheet, "H33", d_minutes)
-            self._set_cell(worksheet, "J33", d_seconds)
+        d_hours, d_minutes, d_seconds = _normalize_hms(d_hours, d_minutes, d_seconds)
+
+        d_hours_num = _to_int_or_none(d_hours)
+        d_minutes_num = _to_int_or_none(d_minutes)
+        d_seconds_num = _to_seconds_float_or_none(d_seconds)
+
+        if d_hours_num is not None or d_minutes_num is not None or d_seconds_num is not None:
+            if d_hours_num is not None:
+                self._set_cell(worksheet, "F33", d_hours_num)
+            if d_minutes_num is not None:
+                self._set_cell(worksheet, "H33", d_minutes_num)
+            if d_seconds_num is not None:
+                self._set_cell(worksheet, "J33", d_seconds_num)
             
             d_uncertainty = aota_report_summary.get('d_uncertainty')
             if d_uncertainty is not None:
@@ -492,11 +540,19 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         r_hours = aota_report_summary.get('r_hours')
         r_minutes = aota_report_summary.get('r_minutes')
         r_seconds = aota_report_summary.get('r_seconds')
-        
-        if r_hours is not None and r_minutes is not None and r_seconds is not None:
-            self._set_cell(worksheet, "F35", r_hours)
-            self._set_cell(worksheet, "H35", r_minutes)
-            self._set_cell(worksheet, "J35", r_seconds)
+        r_hours, r_minutes, r_seconds = _normalize_hms(r_hours, r_minutes, r_seconds)
+
+        r_hours_num = _to_int_or_none(r_hours)
+        r_minutes_num = _to_int_or_none(r_minutes)
+        r_seconds_num = _to_seconds_float_or_none(r_seconds)
+
+        if r_hours_num is not None or r_minutes_num is not None or r_seconds_num is not None:
+            if r_hours_num is not None:
+                self._set_cell(worksheet, "F35", r_hours_num)
+            if r_minutes_num is not None:
+                self._set_cell(worksheet, "H35", r_minutes_num)
+            if r_seconds_num is not None:
+                self._set_cell(worksheet, "J35", r_seconds_num)
             
             r_uncertainty = aota_report_summary.get('r_uncertainty')
             if r_uncertainty is not None:

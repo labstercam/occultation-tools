@@ -25,6 +25,7 @@ Automates the complete occultation observation workflow: downloads personal obse
 - Generates customizable SharpCap sequences for automated recording
 - Observation preparation panel with GOTO, plate solve, and test recording
 - Report generation with Tangra CSV integration (experimental)
+- Optional NTP timing analysis step during report generation (folder-based NTP dataset selection)
 - Supports NA (IOTA) and TT (RASNZ) Excel outputs plus SODIS (IOTA-ES Form 2.03) text output
 - Multiple telescope and camera configuration support
 
@@ -46,7 +47,7 @@ Validates camera timestamp accuracy using GPS flash timing analysis. Essential f
 
 The tools work together:
 - **GPS Timing Analysis**: Validates camera timestamp accuracy
-- **Occultation Manager**: Uses Tangra CSV files to auto-populate reports with timing data
+- **Occultation Manager**: Uses Tangra CSV files to auto-populate reports with timing data and can launch the NTP timing analyzer from the report flow
 
 ---
 

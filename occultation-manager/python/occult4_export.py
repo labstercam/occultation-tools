@@ -821,21 +821,16 @@ class Occult4Exporter:
     
     def _get_d_time(self, tangra_data, aota_report_data, event):
         """Get disappearance time from available data sources"""
+        def _format_hms(hours, minutes, seconds):
+            # OBS format requires zero-padded hh mm ss.ss
+            return f'{int(hours):02d} {int(minutes):02d} {float(seconds):05.2f}'
+
         # Try AOTA report data first (has d_hours, d_minutes, d_seconds)
         if aota_report_data and 'd_hours' in aota_report_data:
             hours = int(aota_report_data.get('d_hours', 0))
             minutes = int(aota_report_data.get('d_minutes', 0))
             seconds = float(aota_report_data.get('d_seconds', 0.0))
-            # Occult 4 format: H M SS.S - no leading space, single space between parts
-            # Format seconds with appropriate decimal places (remove trailing zeros)
-            seconds_str = f'{seconds:.2f}'.rstrip('0').rstrip('.')
-            # Ensure at least one decimal place, handle 0 case
-            if '.' not in seconds_str or seconds_str == '':
-                if seconds_str == '':
-                    seconds_str = '0.0'
-                else:
-                    seconds_str += '.0'
-            return f'{hours:d} {minutes:d} {seconds_str}'
+            return _format_hms(hours, minutes, seconds)
         
         # Tangra data doesn't have d_time - skip it
         # Note: Tangra CSV only has observation start/end times, not event times
@@ -844,33 +839,22 @@ class Occult4Exporter:
         if hasattr(event, 'event_datetime') and event.event_datetime:
             dt = event.event_datetime
             seconds_with_fraction = dt.second + dt.microsecond / 1000000.0
-            seconds_str = f'{seconds_with_fraction:.2f}'.rstrip('0').rstrip('.')
-            if '.' not in seconds_str or seconds_str == '':
-                if seconds_str == '':
-                    seconds_str = '0.0'
-                else:
-                    seconds_str += '.0'
-            return f'{dt.hour:d} {dt.minute:d} {seconds_str}'
+            return _format_hms(dt.hour, dt.minute, seconds_with_fraction)
         
-        return '0 0 0.0'
+        return '00 00 00.00'
     
     def _get_r_time(self, tangra_data, aota_report_data, event):
         """Get reappearance time from available data sources"""
+        def _format_hms(hours, minutes, seconds):
+            # OBS format requires zero-padded hh mm ss.ss
+            return f'{int(hours):02d} {int(minutes):02d} {float(seconds):05.2f}'
+
         # Try AOTA report data first (has r_hours, r_minutes, r_seconds)
         if aota_report_data and 'r_hours' in aota_report_data:
             hours = int(aota_report_data.get('r_hours', 0))
             minutes = int(aota_report_data.get('r_minutes', 0))
             seconds = float(aota_report_data.get('r_seconds', 0.0))
-            # Occult 4 format: H M SS.S - no leading space, single space between parts
-            # Format seconds with appropriate decimal places (remove trailing zeros)
-            seconds_str = f'{seconds:.2f}'.rstrip('0').rstrip('.')
-            # Ensure at least one decimal place, handle 0 case
-            if '.' not in seconds_str or seconds_str == '':
-                if seconds_str == '':
-                    seconds_str = '0.0'
-                else:
-                    seconds_str += '.0'
-            return f'{hours:d} {minutes:d} {seconds_str}'
+            return _format_hms(hours, minutes, seconds)
         
         # Tangra data doesn't have r_time - skip it
         # Note: Tangra CSV only has observation start/end times, not event times
@@ -879,15 +863,9 @@ class Occult4Exporter:
         if hasattr(event, 'event_datetime') and event.event_datetime and hasattr(event, 'event_duration'):
             dt = event.event_datetime + timedelta(seconds=event.event_duration)
             seconds_with_fraction = dt.second + dt.microsecond / 1000000.0
-            seconds_str = f'{seconds_with_fraction:.2f}'.rstrip('0').rstrip('.')
-            if '.' not in seconds_str or seconds_str == '':
-                if seconds_str == '':
-                    seconds_str = '0.0'
-                else:
-                    seconds_str += '.0'
-            return f'{dt.hour:d} {dt.minute:d} {seconds_str}'
+            return _format_hms(dt.hour, dt.minute, seconds_with_fraction)
         
-        return '0 0 0.0'
+        return '00 00 00.00'
     
     def _format_time_hms(self, time_value):
         """Format time value to hh mm ss.ss format"""

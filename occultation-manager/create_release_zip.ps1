@@ -15,6 +15,11 @@ $tempDir = "temp_release"
 $targetDir = "$tempDir\occultation-manager"
 $targetPrefix = $targetDir + "\"
 
+# Sibling toolkit packaged for integrated NTP timing analysis
+$gpsSourceRoot = "..\gps-timing-analysis"
+$gpsTargetDir = "$tempDir\gps-timing-analysis"
+$gpsTargetPrefix = $gpsTargetDir + "\"
+
 if (Test-Path $tempDir) {
     Remove-Item $tempDir -Recurse -Force
 }
@@ -34,6 +39,13 @@ $dataTemplatesDir = "$dataDir\templates"
 $dataSequencesDir = "$dataDir\sequences"
 $dataReportsDir = "$dataDir\reports"
 
+# gps-timing-analysis release structure (sibling to occultation-manager)
+$gpsPythonDir = "$gpsTargetDir\python"
+$gpsResourcesDir = "$gpsTargetDir\resources"
+$gpsScriptsDir = "$gpsTargetDir\scripts"
+$gpsConfigDir = "$gpsTargetDir\config"
+$gpsLogsDir = "$gpsTargetDir\logs"
+
 Write-Host "Creating folder structure..." -ForegroundColor Cyan
 @(
     $appDir,
@@ -44,10 +56,21 @@ Write-Host "Creating folder structure..." -ForegroundColor Cyan
     $dataEventsDir,
     $dataTemplatesDir,
     $dataSequencesDir,
-    $dataReportsDir
+    $dataReportsDir,
+    $gpsPythonDir,
+    $gpsResourcesDir,
+    $gpsScriptsDir,
+    $gpsConfigDir,
+    $gpsLogsDir
 ) | ForEach-Object {
     New-Item -ItemType Directory -Path $_ -Force | Out-Null
-    Write-Host ("  Created: " + $_.Replace($targetPrefix, '')) -ForegroundColor Gray
+    $rel = $_
+    if ($rel.StartsWith($targetPrefix)) {
+        $rel = $rel.Replace($targetPrefix, '')
+    } elseif ($rel.StartsWith($gpsTargetPrefix)) {
+        $rel = $rel.Replace($gpsTargetPrefix, 'gps-timing-analysis\\')
+    }
+    Write-Host ("  Created: " + $rel) -ForegroundColor Gray
 }
 
 # Files to package into app/
@@ -110,6 +133,38 @@ $appLibFiles = @(
     "python\lib\README.md"
 )
 
+# NTP toolkit files to package into sibling gps-timing-analysis/
+$gpsRootFiles = @(
+    "ReadMe.md",
+    "requirements.txt",
+    "install_ntp_timing_bootstrap.cmd",
+    "install_ntp_timing_bootstrap.ps1"
+)
+
+$gpsPythonFiles = @(
+    "python\analyze_ntp_timing_accuracy.py",
+    "python\ntp_analysis_core.py",
+    "python\ntp_analysis.py",
+    "python\ReadMe.md"
+)
+
+$gpsResourceFiles = @(
+    "resources\national_utc_ntp_servers.json",
+    "resources\ntp_pool_zones.json"
+)
+
+$gpsScriptFiles = @(
+    "scripts\find_gps_com_port.ps1",
+    "scripts\install_ntp_timing_guided.cmd",
+    "scripts\install_ntp_timing_guided.ps1"
+)
+
+$gpsConfigFiles = @(
+    "config\NTP Server Config for NZ.txt",
+    "config\ntp-country-servers.json",
+    "config\ntp.conf.template"
+)
+
 function Copy-ExistingFile {
     param(
         [string]$Source,
@@ -162,6 +217,44 @@ foreach ($file in $reportMasterFiles) {
     Copy-ExistingFile -Source $file -Destination $dest
 }
 
+Write-Host "`nCopying gps-timing-analysis root files..." -ForegroundColor Cyan
+foreach ($file in $gpsRootFiles) {
+    $source = Join-Path $gpsSourceRoot $file
+    $dest = Join-Path $gpsTargetDir (Split-Path $file -Leaf)
+    Copy-ExistingFile -Source $source -Destination $dest
+}
+
+Write-Host "`nCopying gps-timing-analysis python files..." -ForegroundColor Cyan
+foreach ($file in $gpsPythonFiles) {
+    $source = Join-Path $gpsSourceRoot $file
+    $dest = Join-Path $gpsPythonDir (Split-Path $file -Leaf)
+    Copy-ExistingFile -Source $source -Destination $dest
+}
+
+Write-Host "`nCopying gps-timing-analysis resources..." -ForegroundColor Cyan
+foreach ($file in $gpsResourceFiles) {
+    $source = Join-Path $gpsSourceRoot $file
+    $dest = Join-Path $gpsResourcesDir (Split-Path $file -Leaf)
+    Copy-ExistingFile -Source $source -Destination $dest
+}
+
+Write-Host "`nCopying gps-timing-analysis scripts..." -ForegroundColor Cyan
+foreach ($file in $gpsScriptFiles) {
+    $source = Join-Path $gpsSourceRoot $file
+    $dest = Join-Path $gpsScriptsDir (Split-Path $file -Leaf)
+    Copy-ExistingFile -Source $source -Destination $dest
+}
+
+Write-Host "`nCopying gps-timing-analysis config files..." -ForegroundColor Cyan
+foreach ($file in $gpsConfigFiles) {
+    $source = Join-Path $gpsSourceRoot $file
+    $dest = Join-Path $gpsConfigDir (Split-Path $file -Leaf)
+    Copy-ExistingFile -Source $source -Destination $dest
+}
+
+# Ensure cache file path exists for runtime updates by ntp_analysis_core.
+Set-Content -Path "$gpsResourcesDir\ip_location_cache.json" -Value "{}" -Encoding UTF8
+
 # Root docs
 Write-Host "`nCopying top-level docs..." -ForegroundColor Cyan
 @("ReadMe.md", "RELEASE_NOTES.md", "RELEASE_INSTRUCTIONS.md") | ForEach-Object {
@@ -197,6 +290,7 @@ if (Test-Path $zipPath) {
     Write-Host "  occultation-manager/resources/templates_master/sequencer" -ForegroundColor Gray
     Write-Host "  occultation-manager/resources/templates_master/reports" -ForegroundColor Gray
     Write-Host "  occultation-manager/data/{config,events,templates,sequences,reports}" -ForegroundColor Gray
+    Write-Host "  gps-timing-analysis/{python,resources,scripts,config,logs}" -ForegroundColor Gray
 } else {
     Write-Host "`nERROR: Failed to create zip file" -ForegroundColor Red
 }
