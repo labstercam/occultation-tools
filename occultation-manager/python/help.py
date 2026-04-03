@@ -151,6 +151,11 @@ class HelpDialog(Form):
         template_node.Tag = "template_modification"
         self.tree_topics.Nodes.Add(template_node)
         
+        # Timing & Calibration Tools
+        timing_node = TreeNode("Timing & Calibration Tools")
+        timing_node.Tag = "timing_tools"
+        self.tree_topics.Nodes.Add(timing_node)
+        
         # Expand top-level nodes
         for node in self.tree_topics.Nodes:
             node.Expand()
@@ -192,7 +197,8 @@ class HelpDialog(Form):
         content_map = {
             "quickstart": self.get_quickstart_content().replace('\n','\r\n'),
             "workflow": self.get_workflow_content().replace('\n','\r\n'),
-            "template_modification": self.get_template_modification_content().replace('\n','\r\n')
+            "template_modification": self.get_template_modification_content().replace('\n','\r\n'),
+            "timing_tools": self.get_timing_tools_content().replace('\n','\r\n')
         }
         
         return content_map.get(topic, "Help content not found for this topic.")
@@ -206,7 +212,7 @@ Installation and first-time setup for Occultation Manager.
 
 INSTALLATION
 ------------
-1. Download occultation-manager-v0.2.0-beta.4.zip from GitHub
+1. Download occultation-manager-v0.2.0-beta.5.zip from GitHub
 2. Extract to a folder with read/write access
    ⚠️ AVOID Program Files - Windows may restrict write access
    ✅ RECOMMENDED: Documents\\SharpCap\\occultation-manager
@@ -495,7 +501,7 @@ KEY POINTS
 • Test Recording button for safe testing
 • Observation Preparation for manual control
 • Report generation is under development and NOT APPROVED - verify all data carefully
-• Tangra light curve analysis is integrated; GPS flash timing analysis not yet integrated
+• Tangra light curve analysis is integrated; see Tools menu for camera timing and calibration tools
 • Templates can be customized to match your equipment
 • Automate as much or as little as you need"""
 
@@ -852,6 +858,100 @@ COMMON CUSTOMIZATIONS
 
 Every setup is different - customize templates to match your 
 specific equipment, site conditions, and workflow preferences."""
+
+    def get_timing_tools_content(self):
+        return """TIMING & CALIBRATION TOOLS
+===========================
+
+Four tools are available under the Tools menu for camera timing calibration
+and NTP/GPS clock verification.
+
+CAMERA TIMING SETUP  (Tools → Camera Timing Setup)
+---------------------------------------------------
+Measures the rolling-shutter line delay of your camera using GPS-timed LED
+flashes.  This is the primary calibration tool — it captures frames from two
+apertures (top and bottom of the frame), detects GPS PPS flashes, and fits a
+linear model to calculate the time delay per sensor line.
+
+Use this tool when:
+• Setting up a new camera for occultation recording
+• Changing ROI, binning, or frame rate significantly
+• You have a GPS timing LED (e.g. IOTA GPS Timing Device)
+
+Workflow:
+1. Connect your GPS timing LED to the serial port
+2. Open Tools → Camera Timing Setup in SharpCap
+3. Point camera at LED through two apertures (top and bottom of frame)
+4. Click Start Calibration and wait for data collection to complete
+5. Review the fit results (R², per-line delay, line-0 delay)
+6. Click Save Calibration to Camera to store results in the camera profile
+
+APPROXIMATE DELAYS (no GPS required):
+If you do not have a GPS flasher, use the "Approximate Delays" button in the
+Camera Timing Setup window.  This method:
+• Sets the camera to 1 ms exposure and measures the actual frame rate
+• Asks you to enter an estimated minimum delay (2 ms is a reasonable default)
+• Calculates per-line and line-0 delays from the measured frame rate and ROI height
+• Stores results as a synthetic calibration (R² shown as N/A)
+These values are approximate but usable when GPS timing is unavailable.
+
+CAMERA DELAY CALCULATOR  (Tools → Camera Delay Calculator)
+-----------------------------------------------------------
+Calculates the rolling-shutter acquisition delay for a specific star Y pixel
+position using previously saved calibration data.
+
+Use this tool when:
+• Preparing a timing submission for a recorded occultation
+• You need the per-event mid-line delay for Tangra or ROTE
+
+Workflow:
+1. Open Tools → Camera Delay Calculator
+2. Select the camera from the drop-down
+3. The grid shows all saved calibration runs for that camera
+4. Select the calibration run that matches your recording settings
+   (area, binning, gain, exposure)
+5. Enter the star's Y pixel position
+6. The tool calculates and displays the acquisition delay
+7. Click Copy to Clipboard (TANGRA format) to copy the delay value
+
+NTP CLOCK ACCURACY  (Tools → NTP Clock Accuracy)
+-------------------------------------------------
+Analyses NTP loopstats log files to show how accurately the computer clock
+is tracking UTC.  Use this after an observing session to verify that your
+clock was within acceptable limits during the recording.
+
+Workflow:
+1. Open Tools → NTP Clock Accuracy
+2. Browse to your NTP loopstats file (typically in C:\\NTP\\logs\\)
+3. Set the date/time range for the recording period
+4. Click Analyse to plot clock offset vs time
+5. Review offset statistics; offset should stay within ±5 ms for occultation timing
+
+GPS vs NTP TESTING  (Tools → GPS vs NTP Testing)
+-------------------------------------------------
+Compares GPS PPS timestamps against the NTP-disciplined system clock to
+verify that NTP is correctly locked to GPS.  Use this tool when commissioning
+a new GPS/NTP timing setup or investigating timing discrepancies.
+
+Workflow:
+1. Connect your GPS device and ensure NTP is running
+2. Open Tools → GPS vs NTP Testing
+3. Select the GPS serial port and log file locations
+4. Click Start to begin comparison logging
+5. Review the offset plot; offsets should be consistently < 1 ms
+
+CALIBRATION DATA STORAGE
+-------------------------
+Calibration results are stored in the camera profile inside
+data/config/occultation_config.json.  Each saved calibration records:
+• Camera name and area (ROI)
+• Binning, gain, and exposure at time of calibration
+• Per-line delay (ms/line) and line-0 delay (ms)
+• R² of fit (or N/A for approximate results)
+• Date/time and optional label/notes
+
+Multiple calibration runs can be stored per camera — the Camera Delay
+Calculator lets you select which run to use for a given observation."""
     
 
 class HelpManager:

@@ -102,6 +102,20 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Config import for Occultation Manager integration (graceful fallback when not available)
+try:
+    import config as _om_config
+    _OM_CONFIG_AVAILABLE = True
+    print("Occultation Manager config available - Save to Camera feature enabled")
+except Exception:
+    _om_config = None
+    _OM_CONFIG_AVAILABLE = False
+
+# SharpCap global — provided by SharpCap's IronPython console; None when run standalone
+try:
+    _ = SharpCap
+except NameError:
+    SharpCap = None
 
 
 
@@ -1208,11 +1222,423 @@ class SimpleXlsxWriter:
 # PHASE 6 & 7: GUI INTERFACE AND MAIN CALIBRATION LOGIC
 # =============================================================================
 
+class _MinDelayDialog(Form):
+    """Simple modal dialog prompting the user to enter a minimum line delay value."""
+
+    def __init__(self, hint_text=''):
+        self.min_delay_ms = None
+        self.Text = "Enter Minimum Delay"
+        self.ClientSize = Size(420, 160)
+        self.FormBorderStyle = FormBorderStyle.FixedDialog
+        self.MaximizeBox = False
+        self.MinimizeBox = False
+        self.StartPosition = FormStartPosition.CenterParent
+        self.TopMost = True
+
+        lbl = Label()
+        lbl.Text = "Minimum delay (ms):"
+        lbl.Location = Point(20, 20)
+        lbl.AutoSize = True
+        self.Controls.Add(lbl)
+
+        self._txt = TextBox()
+        self._txt.Text = "2.0"
+        self._txt.Location = Point(160, 17)
+        self._txt.Width = 80
+        self.Controls.Add(self._txt)
+
+        hint = Label()
+        hint.Text = hint_text
+        hint.Location = Point(20, 55)
+        hint.Size = Size(380, 40)
+        hint.ForeColor = Color.Gray
+        self.Controls.Add(hint)
+
+        btn_ok = Button()
+        btn_ok.Text = "OK"
+        btn_ok.Location = Point(230, 110)
+        btn_ok.Size = Size(75, 27)
+        btn_ok.Click += self._ok_click
+        self.Controls.Add(btn_ok)
+        self.AcceptButton = btn_ok
+
+        btn_cancel = Button()
+        btn_cancel.Text = "Cancel"
+        btn_cancel.Location = Point(320, 110)
+        btn_cancel.Size = Size(75, 27)
+        btn_cancel.Click += self._cancel_click
+        self.Controls.Add(btn_cancel)
+        self.CancelButton = btn_cancel
+
+    def _ok_click(self, sender, event):
+        try:
+            self.min_delay_ms = float(self._txt.Text)
+        except ValueError:
+            MessageBox.Show("Please enter a numeric value.", "Invalid Input",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        self.DialogResult = DialogResult.OK
+
+    def _cancel_click(self, sender, event):
+        self.DialogResult = DialogResult.Cancel
+
+
+class SaveCalibrationDialog(Form):
+    """Dialog to save a line delay calibration result to Occultation Manager config."""
+
+    def __init__(self, fit_result, capture_settings, preselect_camera_id=None, config=None):
+        self._fit_result = fit_result
+        self._capture_settings = dict(capture_settings) if capture_settings else {}
+        self._config = config   # may be None; _load_cameras creates one if so
+        self._camera_ids = []
+        self._preselect_camera_id = preselect_camera_id
+        self.InitializeComponent()
+        self._load_cameras()
+
+    def InitializeComponent(self):
+        self.Text = "Save Calibration to Camera"
+        self.ClientSize = Size(480, 425)
+        self.FormBorderStyle = FormBorderStyle.FixedDialog
+        self.MaximizeBox = False
+        self.MinimizeBox = False
+        self.TopMost = True
+
+        s  = self._fit_result
+        cs = self._capture_settings
+        slope     = s.get('slope', 0.0)
+        intercept = s.get('intercept', 0.0)
+        r2        = s.get('r_squared', 0.0)
+        rowh = 28
+
+        # --- Calibration Result section ---
+        lbl_title = Label()
+        lbl_title.Text = "Calibration Result"
+        lbl_title.Font = Font(lbl_title.Font.FontFamily, 9, FontStyle.Bold)
+        lbl_title.Location = Point(20, 12)
+        lbl_title.AutoSize = True
+
+        lbl_result = Label()
+        r2_str = "{0:.4f}".format(r2) if r2 is not None else "N/A"
+        lbl_result.Text = "Per Line Delay: {0:.3f} ms/line    Line 0 Delay: {1:.3f} ms    R\u00b2 = {2}".format(
+            slope, intercept, r2_str)
+        lbl_result.Location = Point(20, 35)
+        lbl_result.Size = Size(440, 18)
+        lbl_result.ForeColor = Color.DarkBlue
+
+        # --- Camera & Label section ---
+        y = 68
+        lbl_cam = Label()
+        lbl_cam.Text = "Camera:"
+        lbl_cam.Location = Point(20, y + 3)
+        lbl_cam.AutoSize = True
+
+        self._combo_camera = ComboBox()
+        self._combo_camera.Location = Point(130, y)
+        self._combo_camera.Size = Size(310, 22)
+        self._combo_camera.DropDownStyle = ComboBoxStyle.DropDownList
+
+        y += rowh
+        lbl_label = Label()
+        lbl_label.Text = "Label:"
+        lbl_label.Location = Point(20, y + 3)
+        lbl_label.AutoSize = True
+
+        self._txt_label = TextBox()
+        self._txt_label.Location = Point(130, y)
+        self._txt_label.Size = Size(50, 22)
+
+        lbl_label_hint = Label()
+        lbl_label_hint.Text = "(e.g. A, B, C\u2026)"
+        lbl_label_hint.Location = Point(188, y + 3)
+        lbl_label_hint.AutoSize = True
+        lbl_label_hint.ForeColor = Color.Gray
+
+        # --- Camera Settings section ---
+        y += rowh + 4
+        lbl_settings_title = Label()
+        lbl_settings_title.Text = "Camera Settings (auto-populated; edit if needed)"
+        lbl_settings_title.Location = Point(20, y)
+        lbl_settings_title.Size = Size(440, 16)
+        lbl_settings_title.ForeColor = Color.DimGray
+
+        y += 22
+        lbl_cam_name = Label()
+        lbl_cam_name.Text = "Camera Name:"
+        lbl_cam_name.Location = Point(20, y + 3)
+        lbl_cam_name.AutoSize = True
+
+        self._txt_camera_name = TextBox()
+        self._txt_camera_name.Location = Point(130, y)
+        self._txt_camera_name.Size = Size(320, 22)
+        self._txt_camera_name.Text = str(cs.get('camera_name', ''))
+
+        y += rowh
+        lbl_pc = Label()
+        lbl_pc.Text = "PC Name:"
+        lbl_pc.Location = Point(20, y + 3)
+        lbl_pc.AutoSize = True
+
+        self._txt_pc_name = TextBox()
+        self._txt_pc_name.Location = Point(130, y)
+        self._txt_pc_name.Size = Size(320, 22)
+        self._txt_pc_name.Text = str(cs.get('pc_name', ''))
+
+        y += rowh
+        lbl_area = Label()
+        lbl_area.Text = "Camera Area:"
+        lbl_area.Location = Point(20, y + 3)
+        lbl_area.AutoSize = True
+
+        self._txt_camera_area = TextBox()
+        self._txt_camera_area.Location = Point(130, y)
+        self._txt_camera_area.Size = Size(100, 22)
+        self._txt_camera_area.Text = str(cs.get('camera_area', ''))
+
+        lbl_bin = Label()
+        lbl_bin.Text = "Binning:"
+        lbl_bin.Location = Point(240, y + 3)
+        lbl_bin.AutoSize = True
+
+        self._txt_binning = TextBox()
+        self._txt_binning.Location = Point(300, y)
+        self._txt_binning.Size = Size(80, 22)
+        self._txt_binning.Text = str(cs.get('binning', ''))
+
+        y += rowh
+        lbl_tilt = Label()
+        lbl_tilt.Text = "Tilt (ROI Y):"
+        lbl_tilt.Location = Point(20, y + 3)
+        lbl_tilt.AutoSize = True
+
+        self._txt_tilt = TextBox()
+        self._txt_tilt.Location = Point(130, y)
+        self._txt_tilt.Size = Size(80, 22)
+        self._txt_tilt.Text = str(cs.get('tilt', ''))
+
+        lbl_pan = Label()
+        lbl_pan.Text = "Pan (ROI X):"
+        lbl_pan.Location = Point(220, y + 3)
+        lbl_pan.AutoSize = True
+
+        self._txt_pan = TextBox()
+        self._txt_pan.Location = Point(310, y)
+        self._txt_pan.Size = Size(80, 22)
+        self._txt_pan.Text = str(cs.get('pan', ''))
+
+        y += rowh
+        lbl_cs = Label()
+        lbl_cs.Text = "Colour Space:"
+        lbl_cs.Location = Point(20, y + 3)
+        lbl_cs.AutoSize = True
+
+        self._txt_colour_space = TextBox()
+        self._txt_colour_space.Location = Point(130, y)
+        self._txt_colour_space.Size = Size(100, 22)
+        self._txt_colour_space.Text = str(cs.get('colour_space', ''))
+
+        lbl_ff = Label()
+        lbl_ff.Text = "File Format:"
+        lbl_ff.Location = Point(240, y + 3)
+        lbl_ff.AutoSize = True
+
+        self._txt_file_format = TextBox()
+        self._txt_file_format.Location = Point(310, y)
+        self._txt_file_format.Size = Size(80, 22)
+        self._txt_file_format.Text = str(cs.get('file_format', ''))
+
+        y += rowh
+        lbl_exp = Label()
+        lbl_exp.Text = "Exposure (ms):"
+        lbl_exp.Location = Point(20, y + 3)
+        lbl_exp.AutoSize = True
+
+        self._txt_exposure = TextBox()
+        self._txt_exposure.Location = Point(130, y)
+        self._txt_exposure.Size = Size(80, 22)
+        self._txt_exposure.Text = str(cs.get('exposure_ms', ''))
+
+        lbl_gain = Label()
+        lbl_gain.Text = "Gain:"
+        lbl_gain.Location = Point(220, y + 3)
+        lbl_gain.AutoSize = True
+
+        self._txt_gain = TextBox()
+        self._txt_gain.Location = Point(265, y)
+        self._txt_gain.Size = Size(90, 22)
+        self._txt_gain.Text = str(cs.get('gain', ''))
+
+        y += rowh + 4
+        lbl_notes = Label()
+        lbl_notes.Text = "Notes:"
+        lbl_notes.Location = Point(20, y + 3)
+        lbl_notes.AutoSize = True
+
+        self._txt_notes = TextBox()
+        self._txt_notes.Location = Point(130, y)
+        self._txt_notes.Size = Size(320, 50)
+        self._txt_notes.Multiline = True
+        self._txt_notes.ScrollBars = ScrollBars.Vertical
+
+        y += 58
+        self._btn_save = Button()
+        self._btn_save.Text = "Save"
+        self._btn_save.Location = Point(270, y)
+        self._btn_save.Size = Size(85, 27)
+        self._btn_save.Click += self._save_click
+
+        btn_cancel = Button()
+        btn_cancel.Text = "Cancel"
+        btn_cancel.Location = Point(368, y)
+        btn_cancel.Size = Size(85, 27)
+        btn_cancel.Click += self._cancel_click
+
+        for ctrl in [
+            lbl_title, lbl_result,
+            lbl_cam, self._combo_camera,
+            lbl_label, self._txt_label, lbl_label_hint,
+            lbl_settings_title,
+            lbl_cam_name, self._txt_camera_name,
+            lbl_pc, self._txt_pc_name,
+            lbl_area, self._txt_camera_area,
+            lbl_bin, self._txt_binning,
+            lbl_tilt, self._txt_tilt,
+            lbl_pan, self._txt_pan,
+            lbl_cs, self._txt_colour_space,
+            lbl_ff, self._txt_file_format,
+            lbl_exp, self._txt_exposure,
+            lbl_gain, self._txt_gain,
+            lbl_notes, self._txt_notes,
+            self._btn_save, btn_cancel,
+        ]:
+            self.Controls.Add(ctrl)
+
+    def _load_cameras(self):
+        """Populate the camera dropdown from Occultation Manager config."""
+        self._combo_camera.Items.Clear()
+        if not _OM_CONFIG_AVAILABLE:
+            self._combo_camera.Items.Add(
+                '(Config not available \u2014 run from Occultation Manager)')
+            self._combo_camera.SelectedIndex = 0
+            self._combo_camera.Enabled = False
+            self._btn_save.Enabled = False
+            return
+        try:
+            if self._config is None:
+                self._config = _om_config.ConfigManager()
+            cameras = self._config.get_cameras()
+            if not cameras:
+                self._combo_camera.Items.Add(
+                    '(No cameras configured \u2014 add a camera in Occultation Manager first)')
+                self._combo_camera.SelectedIndex = 0
+                self._combo_camera.Enabled = False
+                self._btn_save.Enabled = False
+            else:
+                self._camera_ids = [cam['id'] for cam in cameras]
+                for cam in cameras:
+                    self._combo_camera.Items.Add(cam['name'])
+                if self._preselect_camera_id:
+                    try:
+                        idx = self._camera_ids.index(self._preselect_camera_id)
+                        self._combo_camera.SelectedIndex = idx
+                    except ValueError:
+                        self._combo_camera.SelectedIndex = 0
+                else:
+                    self._combo_camera.SelectedIndex = 0
+        except Exception as ex:
+            self._combo_camera.Items.Add('(Config error: ' + str(ex) + ')')
+            self._combo_camera.SelectedIndex = 0
+            self._combo_camera.Enabled = False
+            self._btn_save.Enabled = False
+            self._config = None
+
+    def _save_click(self, sender, event):
+        """Validate inputs and write the calibration run to config."""
+        if self._config is None:
+            MessageBox.Show(
+                "Occultation Manager config is not available.",
+                "Save Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+            return
+
+        label = self._txt_label.Text.strip()
+        if not label:
+            MessageBox.Show(
+                "Please enter a label (e.g. A, B, C).",
+                "Label Required",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
+            self._txt_label.Focus()
+            return
+
+        idx = self._combo_camera.SelectedIndex
+        if idx < 0 or idx >= len(self._camera_ids):
+            MessageBox.Show(
+                "Please select a camera.",
+                "Camera Required",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
+            return
+        camera_id = self._camera_ids[idx]
+
+        def try_int(text):
+            try:
+                return int(text.strip())
+            except Exception:
+                return None
+
+        def try_float(text):
+            try:
+                return float(text.strip())
+            except Exception:
+                return None
+
+        from datetime import datetime as _dt
+        run_dict = {
+            'camera_id':      camera_id,
+            'label':          label,
+            'run_datetime':   _dt.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'camera_name':    self._txt_camera_name.Text.strip(),
+            'pc_name':        self._txt_pc_name.Text.strip(),
+            'camera_area':    self._txt_camera_area.Text.strip(),
+            'binning':        self._txt_binning.Text.strip(),
+            'tilt':           try_int(self._txt_tilt.Text),
+            'pan':            try_int(self._txt_pan.Text),
+            'colour_space':   self._txt_colour_space.Text.strip(),
+            'file_format':    self._txt_file_format.Text.strip(),
+            'exposure_ms':    try_float(self._txt_exposure.Text),
+            'gain':           self._txt_gain.Text.strip(),
+            'per_line_delay': round(self._fit_result['slope'], 6),
+            'line_0_delay':   round(self._fit_result['intercept'], 6),
+            'notes':          self._txt_notes.Text.strip(),
+        }
+        try:
+            self._config.add_line_delay_calibration(run_dict)
+            self.DialogResult = DialogResult.OK
+            self.Close()
+        except Exception as ex:
+            MessageBox.Show(
+                "Save failed:\n" + str(ex),
+                "Save Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+
+    def _cancel_click(self, sender, event):
+        self.DialogResult = DialogResult.Cancel
+        self.Close()
+
+
 class LEDLineDelayCalibrationForm(Form):
     """Windows Forms GUI for LED line delay calibration"""
     
-    def __init__(self):
+    def __init__(self, sharpcap=None, config=None):
         """Initialize the calibration form"""
+        self._sharpcap = sharpcap
+        self._config = config
         self.capture_handler = FrameCaptureHandler()
         self.stop_requested = False
         # Stability test result storage (for save / re-save)
@@ -1222,6 +1648,10 @@ class LEDLineDelayCalibrationForm(Form):
         self._stab_camera_settings = {}
         self._stab_stats_text = ''
         self._stab_last_save_folder = None
+        # Calibration tab result storage (for Save Result to Camera)
+        self._calib_fit_result = None
+        self._calib_capture_settings = {}
+        self._calib_saved = False
         self.InitializeComponent()
         # Force handle creation to avoid invoke errors from background threads
         handle = self.Handle
@@ -1249,7 +1679,7 @@ class LEDLineDelayCalibrationForm(Form):
         
     def InitializeComponent(self):
         """Setup GUI components"""
-        self.Text = "GPS LED Line Delay Calibration"
+        self.Text = "Camera Timing Setup"
         self.ClientSize = Size(720, 880)
         self.TopMost = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog
@@ -1373,7 +1803,30 @@ class LEDLineDelayCalibrationForm(Form):
         self.button_close.Location = Point(600, 520)
         self.button_close.Size = Size(80, 25)
         self.button_close.Click += self.close_form
-        
+
+        # Save Result to Camera button (enabled only after a successful calibration)
+        self.button_save_calibration = Button()
+        self.button_save_calibration.Text = "Save Result to Camera..."
+        self.button_save_calibration.Location = Point(440, 520)
+        self.button_save_calibration.Size = Size(150, 25)
+        self.button_save_calibration.Enabled = False
+        self.button_save_calibration.Click += self.save_calibration_click
+
+        # Approximate Delays button (no GPS flasher required)
+        self.label_approx_delays = Label()
+        self.label_approx_delays.Text = "Alternative if no GPS flasher available"
+        self.label_approx_delays.Location = Point(20, 500)
+        self.label_approx_delays.AutoSize = True
+        self.label_approx_delays.ForeColor = Color.Black
+        self.label_approx_delays.Font = Font(self.label_approx_delays.Font.FontFamily,
+                                             self.label_approx_delays.Font.Size, FontStyle.Bold)
+
+        self.button_approx_delays = Button()
+        self.button_approx_delays.Text = "Approximate Delays"
+        self.button_approx_delays.Location = Point(20, 520)
+        self.button_approx_delays.Size = Size(175, 25)
+        self.button_approx_delays.Click += self.approximate_delays_click
+
         # Add controls to calibration tab
         self.tab_calibration.Controls.Add(self.label_duration)
         self.tab_calibration.Controls.Add(self.textbox_duration)
@@ -1389,6 +1842,9 @@ class LEDLineDelayCalibrationForm(Form):
         self.tab_calibration.Controls.Add(self.label_results)
         self.tab_calibration.Controls.Add(self.textbox_results)
         self.tab_calibration.Controls.Add(self.plot_view)
+        self.tab_calibration.Controls.Add(self.button_save_calibration)
+        self.tab_calibration.Controls.Add(self.button_approx_delays)
+        self.tab_calibration.Controls.Add(self.label_approx_delays)
         self.tab_calibration.Controls.Add(self.button_close)
         
         # === LONG TERM TIMING STABILITY TAB ===
@@ -1555,7 +2011,7 @@ class LEDLineDelayCalibrationForm(Form):
         """Start LED line delay calibration in separate thread"""
         # Check camera connection (only required for Live Capture mode)
         use_adv = self.radio_adv.Checked
-        if not use_adv and SharpCap.SelectedCamera is None:
+        if not use_adv and (self._sharpcap is None or self._sharpcap.SelectedCamera is None):
             MessageBox.Show(
                 "No camera is connected.\n\nPlease connect a camera before running Live Capture calibration.",
                 "Camera Connection Error",
@@ -1564,6 +2020,12 @@ class LEDLineDelayCalibrationForm(Form):
             )
             return
         
+        # Reset previous calibration result and disable Save button for new run
+        self._calib_fit_result = None
+        self._calib_saved = False
+        if hasattr(self, 'button_save_calibration'):
+            self.button_save_calibration.Enabled = False
+
         # Disable start button, enable stop (though stop doesn't work for ADV processing)
         self.button_start.Enabled = False
         self.button_stop.Enabled = True
@@ -1599,7 +2061,7 @@ class LEDLineDelayCalibrationForm(Form):
                 # Live capture workflow (requires camera and duration)
                 if duration <= 0 or duration > 300:
                     raise Exception("Capture Duration must be between 0 and 300 seconds")
-                camera = SharpCap.SelectedCamera
+                camera = form._sharpcap.SelectedCamera if form._sharpcap else None
                 form.run_live_workflow(duration, flash_ms, camera)
                 
         except Exception as e:
@@ -1834,7 +2296,11 @@ class LEDLineDelayCalibrationForm(Form):
             
             if not fit_result:
                 raise Exception("Linear fit failed. Please check data and try again.")
-            
+
+            # Store calibration result for "Save Result to Camera" feature
+            self._calib_fit_result = fit_result
+            self._calib_capture_settings = self._collect_calibration_settings(camera)
+
             # 8. Display results
             self.SafeInvoke(lambda: self.display_results(
                 all_delays_filtered, fit_result, tangra_objects, 
@@ -2122,7 +2588,12 @@ class LEDLineDelayCalibrationForm(Form):
         
         if not fit_result:
             raise Exception("Linear fit failed. Please check data and try again.")
-        
+
+        # Store calibration result for "Save Result to Camera" feature
+        self._calib_fit_result = fit_result
+        self._calib_capture_settings = self._collect_calibration_settings_from_adv(
+            adv_file_name, frame_width, frame_height, exposure_ms)
+
         # Display results
         self.SafeInvoke(lambda: self.display_results(
             all_delays_filtered, fit_result, tangra_objects, 
@@ -2196,12 +2667,16 @@ class LEDLineDelayCalibrationForm(Form):
         # Create and display plot
         plot_model = create_line_delay_plot(all_delays, fit_result)
         self.plot_view.Model = plot_model
-    
+
+        # Enable the Save button now that a valid result is available
+        if hasattr(self, 'button_save_calibration'):
+            self.button_save_calibration.Enabled = True
+
     def stop_calibration(self, sender, event):
         """Stop ongoing calibration"""
         try:
             if self.capture_handler.capturing:
-                camera = SharpCap.SelectedCamera
+                camera = self._sharpcap.SelectedCamera if self._sharpcap else None
                 if camera:
                     self.capture_handler.stop_capture(camera)
             
@@ -2217,7 +2692,7 @@ class LEDLineDelayCalibrationForm(Form):
         try:
             # Make sure capture is stopped
             if self.capture_handler.capturing:
-                camera = SharpCap.SelectedCamera
+                camera = self._sharpcap.SelectedCamera if self._sharpcap else None
                 if camera:
                     self.capture_handler.stop_capture(camera)
             
@@ -2225,6 +2700,196 @@ class LEDLineDelayCalibrationForm(Form):
         except Exception as ex:
             print("Error in close_form: " + str(ex))
             self.Close()  # Close anyway
+
+    def approximate_delays_click(self, sender, event):
+        """Start the approximate delays measurement in a background thread."""
+        if self._sharpcap is None or self._sharpcap.SelectedCamera is None:
+            MessageBox.Show(
+                "No camera is connected.\n\nPlease connect a camera before using Approximate Delays.",
+                "Camera Not Connected",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
+            return
+        self.button_approx_delays.Enabled = False
+        self.button_start.Enabled = False
+        thread = Thread(ParameterizedThreadStart(self._run_approximate_delays_thread))
+        thread.SetApartmentState(ApartmentState.STA)
+        thread.Start(self)
+
+    def _run_approximate_delays_thread(self, form):
+        """Background thread: measure frame rate then compute approximate line delays."""
+        try:
+            camera = form._sharpcap.SelectedCamera
+            if camera is None:
+                form.SafeInvoke(lambda: MessageBox.Show(
+                    "Camera disconnected.",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                ))
+                return
+
+            # Save current exposure and set to 1 ms
+            try:
+                original_exposure = camera.Controls.Exposure.ExposureMs
+            except Exception:
+                original_exposure = None
+            measurements = []
+            try:
+                try:
+                    camera.Controls.Exposure.ExposureMs = 1.0
+                except Exception as ex:
+                    form.SafeInvoke(lambda: MessageBox.Show(
+                        "Could not set exposure to 1 ms:\n" + str(ex),
+                        "Warning",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    ))
+
+                # Wait 10 s for frame rate to stabilise
+                for i in range(10, 0, -1):
+                    msg = "Waiting for camera to stabilise: {0}s...".format(i)
+                    form.SafeInvoke(lambda m=msg: setattr(form.label_status, 'Text', m))
+                    form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Orange))
+                    time.sleep(1)
+
+                # Take 10 frame-rate measurements, one per second
+                for i in range(1, 11):
+                    msg = "Measuring frame rate: {0}/10...".format(i)
+                    form.SafeInvoke(lambda m=msg: setattr(form.label_status, 'Text', m))
+                    try:
+                        fps = float(camera.CurrentFrameRate)
+                        if fps > 0:
+                            measurements.append(fps)
+                    except Exception:
+                        pass
+                    time.sleep(1)
+            finally:
+                # Always restore original exposure after measurements
+                if original_exposure is not None:
+                    try:
+                        camera.Controls.Exposure.ExposureMs = original_exposure
+                    except Exception:
+                        pass
+
+            if not measurements:
+                form.SafeInvoke(lambda: MessageBox.Show(
+                    "Could not obtain any frame rate readings from the camera.",
+                    "Measurement Failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                ))
+                return
+
+            avg_fps = sum(measurements) / len(measurements)
+
+            # Collect ROI height for line 0 delay calculation
+            try:
+                roi_height = int(camera.ROI.Height)
+            except Exception:
+                roi_height = 0
+
+            # Per line delay: time per frame divided by number of lines (negative = rolling shutter)
+            if roi_height > 0:
+                per_line_delay = -(1.0 / avg_fps) / roi_height * 1000.0
+            else:
+                per_line_delay = 0.0
+
+            result_text = (
+                "Frame rate measurements: " + ", ".join("{0:.2f}".format(f) for f in measurements) + "\r\n"
+                "Average frame rate: {0:.3f} fps\r\n"
+                "Per line delay: {1:.6f} ms/line\r\n"
+                "ROI height: {2} lines\r\n"
+            ).format(avg_fps, per_line_delay, roi_height)
+            form.SafeInvoke(lambda: setattr(form.textbox_results, 'Text', result_text))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Enter minimum delay...'))
+
+            # Prompt for minimum delay on UI thread
+            min_delay_holder = [None]
+            def ask_min_delay():
+                hint = (
+                    "2 ms is reasonable for a small ROI (< 1000\u00d71000) "
+                    "with a mono planetary camera."
+                )
+                dlg = _MinDelayDialog(hint)
+                dlg.StartPosition = FormStartPosition.CenterParent
+                if dlg.ShowDialog(form) == DialogResult.OK:
+                    min_delay_holder[0] = dlg.min_delay_ms
+            form.SafeInvoke(ask_min_delay)
+
+            min_delay = min_delay_holder[0]
+            if min_delay is None:
+                form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Cancelled'))
+                form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Gray))
+                return
+
+            # line_0_delay = min_delay + roi_height * (-1) * per_line_delay
+            line_0_delay = min_delay + roi_height * (-1.0) * per_line_delay
+
+            # Build a synthetic fit_result matching the existing schema
+            fit_result = {
+                'slope': per_line_delay,
+                'intercept': line_0_delay,
+                'r_squared': None,
+                'n_measurements': len(measurements),
+                'description': (
+                    'Approximate: {0:.6f} ms/line, Offset: {1:.3f} ms '
+                    '(avg {2:.2f} fps, {3} samples)'
+                ).format(per_line_delay, line_0_delay, avg_fps, len(measurements)),
+            }
+
+            capture_settings = form._collect_calibration_settings(camera)
+
+            form._calib_fit_result = fit_result
+            form._calib_capture_settings = capture_settings
+            form._calib_saved = False
+
+            summary = result_text + (
+                "Min delay entered: {0:.3f} ms\r\n"
+                "Line 0 delay: {1:.3f} ms\r\n"
+            ).format(min_delay, line_0_delay)
+            form.SafeInvoke(lambda: setattr(form.textbox_results, 'Text', summary))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Approximate delays ready'))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Green))
+            if hasattr(form, 'button_save_calibration'):
+                form.SafeInvoke(lambda: setattr(form.button_save_calibration, 'Enabled', True))
+
+        except Exception as ex:
+            err = str(ex)
+            form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Error'))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Red))
+            form.SafeInvoke(lambda: MessageBox.Show(
+                "Approximate delays failed:\n" + err,
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            ))
+        finally:
+            form.SafeInvoke(lambda: setattr(form.button_approx_delays, 'Enabled', True))
+            form.SafeInvoke(lambda: setattr(form.button_start, 'Enabled', True))
+
+    def save_calibration_click(self, sender, event):
+        """Open the Save Result to Camera dialog."""
+        if self._calib_fit_result is None:
+            MessageBox.Show(
+                "No calibration result to save.\n\nRun a calibration first.",
+                "No Result",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            )
+            return
+        dlg = SaveCalibrationDialog(self._calib_fit_result, self._calib_capture_settings,
+                                    config=self._config)
+        dlg.StartPosition = FormStartPosition.CenterParent
+        if dlg.ShowDialog(self) == DialogResult.OK:
+            self._calib_saved = True
+            MessageBox.Show(
+                "Calibration result saved successfully.",
+                "Saved",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            )
 
     # === LONG TERM TIMING STABILITY METHODS ===
     
@@ -2249,7 +2914,7 @@ class LEDLineDelayCalibrationForm(Form):
     def start_stability_test(self, sender, event):
         """Start long-term timing stability test"""
         # Check camera connection
-        if SharpCap.SelectedCamera is None:
+        if self._sharpcap is None or self._sharpcap.SelectedCamera is None:
             MessageBox.Show(
                 "No camera is connected.\n\nPlease connect a camera before running the stability test.",
                 "Camera Connection Error",
@@ -2304,7 +2969,7 @@ class LEDLineDelayCalibrationForm(Form):
         camera_settings = {}
 
         try:
-            camera = SharpCap.SelectedCamera
+            camera = self._sharpcap.SelectedCamera if self._sharpcap else None
             if camera is None:
                 self.SafeInvoke(lambda: MessageBox.Show(
                     "Camera disconnected during test.",
@@ -2788,6 +3453,105 @@ class LEDLineDelayCalibrationForm(Form):
         if 'USB Bandwidth' not in settings:
             settings['USB Bandwidth'] = 'N/A'
 
+        return settings
+
+    def _collect_calibration_settings(self, camera):
+        """Collect camera settings for calibration storage (compact field names for config).
+
+        Returns a dict with keys matching the line_delay_calibrations schema.
+        Uses broad exception handling because available controls differ by camera model.
+        """
+        settings = {}
+
+        def try_get(func, default=''):
+            try:
+                val = func()
+                return val if val is not None else default
+            except Exception:
+                return default
+
+        settings['camera_name'] = try_get(lambda: str(camera.DeviceName))
+
+        try:
+            import System
+            settings['pc_name'] = str(System.Environment.MachineName)
+        except Exception:
+            settings['pc_name'] = ''
+
+        try:
+            roi = camera.ROI
+            settings['camera_area'] = '{0}x{1}'.format(roi.Width, roi.Height)
+            settings['tilt'] = int(roi.Y)
+            settings['pan'] = int(roi.X)
+        except Exception:
+            settings['camera_area'] = ''
+            settings['tilt'] = ''
+            settings['pan'] = ''
+
+        settings['exposure_ms'] = try_get(
+            lambda: round(float(camera.Controls.Exposure.ExposureMs), 3))
+
+        try:
+            ctrl = camera.Controls.FindByName('Gain')
+            settings['gain'] = str(ctrl.Value) if ctrl else ''
+        except Exception:
+            settings['gain'] = ''
+
+        try:
+            ctrl = camera.Controls.FindByName('Binning')
+            settings['binning'] = str(ctrl.Value) if ctrl else ''
+        except Exception:
+            settings['binning'] = ''
+
+        for name in ('ColourSpace', 'ColorSpace', 'Colour Space', 'Color Space'):
+            try:
+                ctrl = camera.Controls.FindByName(name)
+                if ctrl is not None:
+                    settings['colour_space'] = str(ctrl.Value)
+                    break
+            except Exception:
+                pass
+        if 'colour_space' not in settings:
+            settings['colour_space'] = ''
+
+        for name in ('OutputFormat', 'FileFormat', 'Output Format', 'File Format'):
+            try:
+                ctrl = camera.Controls.FindByName(name)
+                if ctrl is not None:
+                    settings['file_format'] = str(ctrl.Value)
+                    break
+            except Exception:
+                pass
+        if 'file_format' not in settings:
+            settings['file_format'] = ''
+
+        return settings
+
+    def _collect_calibration_settings_from_adv(self, adv_file_name, frame_width,
+                                                frame_height, exposure_ms):
+        """Collect calibration settings when working from an ADV file.
+
+        Fields not available in the ADV header (tilt, pan, colour_space, gain)
+        are left as empty strings so the user can fill them in the save dialog.
+        """
+        settings = {}
+        # Camera name: best-effort from ADV filename; user can correct in the save dialog
+        settings['camera_name'] = os.path.splitext(adv_file_name)[0]
+
+        try:
+            import System
+            settings['pc_name'] = str(System.Environment.MachineName)
+        except Exception:
+            settings['pc_name'] = ''
+
+        settings['camera_area'] = '{0}x{1}'.format(frame_width, frame_height)
+        settings['binning'] = '1'   # ADV frames are always actual pixel dimensions
+        settings['tilt'] = ''       # Not stored in ADV header
+        settings['pan'] = ''        # Not stored in ADV header
+        settings['colour_space'] = ''
+        settings['file_format'] = 'ADV'
+        settings['exposure_ms'] = round(float(exposure_ms), 3) if exposure_ms else ''
+        settings['gain'] = ''
         return settings
 
     def _compute_histogram_bins(self, delays, bin_width=0.25):

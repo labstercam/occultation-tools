@@ -52,6 +52,7 @@ class ConfigManager:
             'cameras': [],  # List of camera configurations
             'active_telescope_id': None,  # ID of currently selected telescope
             'active_camera_id': None,  # ID of currently selected camera
+            'line_delay_calibrations': [],  # List of GPS line delay calibration runs
             
             # Report generation preferences
             'last_report_type': 'north_america',  # 'north_america' or 'trans_tasman'
@@ -664,13 +665,97 @@ class ConfigManager:
         cameras = self.get_cameras()
         cameras = [c for c in cameras if c.get('id') != camera_id]
         self.config['cameras'] = cameras
-        
+
         # Clear active if deleting the active camera
         if self.config.get('active_camera_id') == camera_id:
             self.config['active_camera_id'] = cameras[0]['id'] if cameras else None
-        
+
         return True
-    
+
+    # ========== Line Delay Calibration Management ==========
+    #
+    # Each calibration run dict contains:
+    #   id              - UUID string (auto-generated)
+    #   camera_id       - Foreign key to the cameras list
+    #   label           - User-assigned letter string, e.g. 'A', 'B', 'C'
+    #   run_datetime    - ISO-8601 UTC string of when the run was recorded
+    #   camera_name     - Camera model name string
+    #   pc_name         - Computer name string
+    #   camera_area     - Frame size string, e.g. '816x822' (binned pixels)
+    #   binning         - Binning string, e.g. '1', '2'
+    #   tilt            - ROI Y offset integer (unbinned pixels)
+    #   pan             - ROI X offset integer (unbinned pixels)
+    #   colour_space    - e.g. 'RAW16'
+    #   file_format     - e.g. 'ADV'
+    #   exposure_ms     - Exposure in ms (float)
+    #   gain            - Gain value (float)
+    #   per_line_delay  - ms/line to 3 dp (float)
+    #   line_0_delay    - ms (float)
+    #   notes           - Optional free-text string
+
+    def get_line_delay_calibrations(self, camera_id=None):
+        """Return all line delay calibration runs, optionally filtered by camera_id."""
+        runs = self.config.get('line_delay_calibrations', [])
+        if camera_id is not None:
+            runs = [r for r in runs if r.get('camera_id') == camera_id]
+        return runs
+
+    def get_line_delay_calibration_by_id(self, run_id):
+        """Return a single calibration run by its UUID, or None."""
+        for run in self.config.get('line_delay_calibrations', []):
+            if run.get('id') == run_id:
+                return run
+        return None
+
+    def add_line_delay_calibration(self, run_dict):
+        """Append a new calibration run and save config.
+
+        run_dict must contain at minimum: camera_id, label, per_line_delay,
+        line_0_delay.  A UUID 'id' is generated automatically if not present.
+        Returns the run id.
+        """
+        import uuid
+        runs = self.config.get('line_delay_calibrations', [])
+        if 'id' not in run_dict or not run_dict['id']:
+            run_dict = dict(run_dict)  # avoid mutating caller's dict
+            run_dict['id'] = str(uuid.uuid4())
+        runs.append(run_dict)
+        self.config['line_delay_calibrations'] = runs
+        self.save_config()
+        return run_dict['id']
+
+    def update_line_delay_calibration(self, run_id, updates):
+        """Patch fields on an existing calibration run and save config.
+
+        Only the keys present in 'updates' are changed; the 'id' and
+        'camera_id' keys are protected and cannot be overwritten.
+        Returns True if the run was found and updated, False otherwise.
+        """
+        runs = self.config.get('line_delay_calibrations', [])
+        for run in runs:
+            if run.get('id') == run_id:
+                for key, value in updates.items():
+                    if key not in ('id', 'camera_id'):
+                        run[key] = value
+                self.config['line_delay_calibrations'] = runs
+                self.save_config()
+                return True
+        return False
+
+    def delete_line_delay_calibration(self, run_id):
+        """Remove a calibration run by id and save config.
+
+        Returns True if the run was found and deleted, False otherwise.
+        """
+        runs = self.config.get('line_delay_calibrations', [])
+        original_count = len(runs)
+        runs = [r for r in runs if r.get('id') != run_id]
+        if len(runs) == original_count:
+            return False
+        self.config['line_delay_calibrations'] = runs
+        self.save_config()
+        return True
+
     def set_active_camera(self, camera_id):
         """Set the active camera"""
         if self.get_camera_by_id(camera_id):

@@ -497,7 +497,7 @@ class GPSPPSComparisonForm(Form):
         # -------------------------------------------------------------------
         # Form chrome
         # -------------------------------------------------------------------
-        self.Text = "GPS PPS Comparison Analysis"
+        self.Text = "GPS vs NTP Testing"
         self.Size = Size(1600, 960)
         self.MinimumSize = Size(1100, 700)
         self.StartPosition = FormStartPosition.CenterScreen

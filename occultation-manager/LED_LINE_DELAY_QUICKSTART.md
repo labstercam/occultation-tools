@@ -4,14 +4,47 @@
 
 The GPS LED Line Delay Calibration tool measures rolling shutter line delays using GPS timing LED flashes. It captures frames from two apertures (top and bottom of frame), analyzes GPS PPS flashes, and calculates the time delay per sensor line using linear regression.
 
-## Installation
+---
+
+## Integrated Workflow (Occultation Manager)
+
+When running inside Occultation Manager, the full calibration workflow is integrated — no separate scripts needed.
+
+### Run a Calibration from Camera Manager
+
+1. Open **Tools → Manage Cameras** and select your camera
+2. Click **Run New Calibration** — the GPS Flash Calibration form opens with your camera pre-selected
+3. Run the calibration (see [Running Calibration](#running-calibration) below)
+4. When the result appears, click **Save Result to Camera** to store it
+5. If you close the form without saving, Occultation Manager will offer to save automatically
+
+### Manage Stored Calibrations
+
+1. Open **Tools → Manage Cameras** and select your camera
+2. Click **Calibrations...** to open the Calibration Manager
+3. The table shows all stored runs for that camera with full metadata
+4. Edit the **Label** column (A, B, C…) to identify settings combinations
+5. Edit the **Notes** column for free-text annotation
+6. Use the **Delete** button to remove obsolete runs (with confirmation)
+
+### Calculate Acquisition Delay
+
+1. Open **Tools → Line Delay Calculator**
+2. Select your **Camera** and the appropriate **Calibration** (by label and mode)
+3. Enter the **Y pixel** position of the occulted star (from TANGRA — fractional values accepted)
+4. The acquisition delay is calculated live: `per_line_delay × Y + line_0_delay = delay ms`
+5. Click **Copy** to copy the result (3 d.p., no unit) to the clipboard for TANGRA
+
+---
+
+## Standalone Usage
+
+### Installation
 
 **No installation needed!** The tool is a single Python file located at:
 ```
 gps-timing-analysis/python/led_line_delay_calibration.py
 ```
-
-## Usage
 
 ### From SharpCap IronPython Console:
 

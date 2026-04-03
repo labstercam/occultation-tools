@@ -1,5 +1,56 @@
 # Occultation Manager - Release Notes
 
+## Version 0.2.0-beta.5 (April 2026)
+
+**Line Delay Calibration Integration**
+
+### GPS Flash Line Delay Calibration — Integrated Workflow (New)
+
+The GPS flash line delay calibration tool is now fully integrated into the Occultation Manager
+workflow. Previously available only as a standalone script from `gps-timing-analysis`, it can
+now be launched, calibrated, and have results saved directly within the Occultation Manager.
+
+**Camera Manager integration** (`Tools → Manage Cameras`):
+- **Calibrations...** button: opens the Calibration Manager showing all stored calibration
+  runs for the selected camera — view, label (A, B, C…), edit notes, and delete runs inline
+- **Run New Calibration** button: launches the Camera Timing Setup form with the current
+  camera pre-selected; on close, if a result was produced but not saved, offers to save it
+  with the camera pre-selected in the Save dialog
+
+**Camera Timing Setup form** (`Tools → Camera Timing Setup`):
+- New **Save Calibration to Camera** button appears after a successful calibration run
+- Saves the result (per-line delay, line 0 delay) to the camera profile in
+  `occultation_config.json` with full capture metadata (camera area, binning, tilt, pan,
+  colour space, file format, exposure ms, gain)
+- Each run carries a user-assignable letter label (A, B, C…) for identifying distinct
+  camera settings combinations; multiple labelled calibrations per camera are supported
+- **Approximate Delays** button: when no GPS flasher is available, measures frame rate at
+  1 ms exposure and derives per-line and line-0 delays from the ROI height and a
+  user-supplied minimum delay estimate
+
+**New: Camera Delay Calculator** (`Tools → Camera Delay Calculator`):
+- Select camera and labelled calibration from dropdowns
+- Enter Y pixel position of the occulted star (accepts fractional pixels from TANGRA)
+- Live calculation: `per_line_delay × Y + line_0_delay = acquisition delay (ms)` with
+  formula breakdown shown in gray below the result
+- One-click **Copy** button writes the delay (3 d.p., no unit suffix) to the clipboard
+  in the format expected by TANGRA
+- **Manage Calibrations…** button opens Calibration Manager for the selected camera inline
+
+**Calibration data store:**
+- All runs stored in `occultation_config.json` under `line_delay_calibrations`
+- Full camera settings recorded per run for mode identification
+- New CRUD methods on `ConfigManager`: `get_line_delay_calibrations(camera_id=None)`,
+  `get_line_delay_calibration_by_id`, `add_line_delay_calibration`,
+  `update_line_delay_calibration`, `delete_line_delay_calibration`
+
+### Other Improvements
+
+- Updated release-facing documentation and version references for Beta.5.
+- Updated release packaging/version pointers (ZIP naming and instructions).
+
+---
+
 ## Version 0.2.0-beta.4 (April 2026)
 
 **NTP Timing Integration, GPS PPS Comparison Tool, and Chart Improvements**
