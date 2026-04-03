@@ -69,12 +69,17 @@ if script_dir not in sys.path:
 import clr
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("System.Drawing")
+clr.AddReference("System.IO.Compression")
 clr.AddReference("OxyPlot")
 clr.AddReference("OxyPlot.WindowsForms")
 
 from System.Windows.Forms import *
 from System.Drawing import *
 from System.Threading import Thread, ApartmentState, ParameterizedThreadStart
+import System.Drawing.Imaging
+import System.IO
+import System.IO.Compression
+import System.Text
 import OxyPlot
 import OxyPlot.WindowsForms
 import OxyPlot.Series
@@ -1019,6 +1024,187 @@ def create_line_delay_plot(all_delays, fit_result):
 
 
 # =============================================================================
+# XLSX WRITER (Stability Test output)
+# =============================================================================
+
+class SimpleXlsxWriter:
+    """Minimal XLSX writer using System.IO.Compression (IronPython compatible).
+
+    Creates a workbook with multiple sheets containing string or numeric cells.
+    Usage:
+        SimpleXlsxWriter().save(filepath, [('Sheet1', rows1), ('Sheet2', rows2)])
+    where rows is a list of lists: [[val, val, ...], ...]
+    Values may be str, int, float, or None.
+    """
+
+    def _col_letter(self, col_idx):
+        """Convert 0-based column index to Excel column letter (A, B, ..., Z, AA ...)"""
+        result = ''
+        n = col_idx
+        while True:
+            result = chr(ord('A') + (n % 26)) + result
+            n = n // 26 - 1
+            if n < 0:
+                break
+        return result
+
+    def _cell_ref(self, col_idx, row_num):
+        """Return Excel cell reference like 'A1' (row_num is 1-based)"""
+        return self._col_letter(col_idx) + str(row_num)
+
+    def _escape(self, text):
+        """Escape XML special characters"""
+        s = str(text) if text is not None else ''
+        s = s.replace('&', '&amp;')
+        s = s.replace('<', '&lt;')
+        s = s.replace('>', '&gt;')
+        s = s.replace('"', '&quot;')
+        return s
+
+    def _build_worksheet(self, rows):
+        """Build worksheet XML from a list of rows (list of lists)"""
+        rows_xml = []
+        for row_num, row_data in enumerate(rows, start=1):
+            cells = []
+            for col_idx, value in enumerate(row_data):
+                ref = self._cell_ref(col_idx, row_num)
+                if value is None:
+                    cells.append('<c r="{0}" t="inlineStr"><is><t></t></is></c>'.format(ref))
+                elif isinstance(value, bool):
+                    cells.append('<c r="{0}" t="inlineStr"><is><t>{1}</t></is></c>'.format(
+                        ref, self._escape(str(value))))
+                elif isinstance(value, (int, float)):
+                    if value != value:  # NaN check
+                        cells.append('<c r="{0}" t="inlineStr"><is><t>NaN</t></is></c>'.format(ref))
+                    else:
+                        cells.append('<c r="{0}"><v>{1}</v></c>'.format(ref, value))
+                else:
+                    cells.append('<c r="{0}" t="inlineStr"><is><t>{1}</t></is></c>'.format(
+                        ref, self._escape(str(value))))
+            if cells:
+                rows_xml.append('<row r="{0}">{1}</row>'.format(row_num, ''.join(cells)))
+        return (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            '<sheetData>'
+            + ''.join(rows_xml) +
+            '</sheetData>'
+            '</worksheet>'
+        )
+
+    def _write_entry(self, archive, path, content):
+        """Write a UTF-8 string as an entry in the ZIP archive"""
+        entry = archive.CreateEntry(path)
+        entry_stream = entry.Open()
+        try:
+            data = System.Text.Encoding.UTF8.GetBytes(content)
+            entry_stream.Write(data, 0, data.Length)
+        finally:
+            entry_stream.Close()
+
+    def save(self, filepath, sheets):
+        """Write an XLSX file.
+
+        filepath: full path to .xlsx file to create
+        sheets:   list of (sheet_name, rows) tuples
+        """
+        num_sheets = len(sheets)
+
+        # [Content_Types].xml
+        ws_overrides = ''.join(
+            '<Override PartName="/xl/worksheets/sheet{0}.xml"'
+            ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'.format(i + 1)
+            for i in range(num_sheets)
+        )
+        content_types_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/xl/workbook.xml"'
+            ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            + ws_overrides +
+            '<Override PartName="/xl/styles.xml"'
+            ' ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            '</Types>'
+        )
+
+        # _rels/.rels
+        root_rels_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1"'
+            ' Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"'
+            ' Target="xl/workbook.xml"/>'
+            '</Relationships>'
+        )
+
+        # xl/workbook.xml
+        sheet_tags = ''.join(
+            '<sheet name="{0}" sheetId="{1}" r:id="rId{1}"/>'.format(self._escape(name), i + 1)
+            for i, (name, _) in enumerate(sheets)
+        )
+        workbook_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+            ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<sheets>' + sheet_tags + '</sheets>'
+            '</workbook>'
+        )
+
+        # xl/_rels/workbook.xml.rels
+        ws_rels = ''.join(
+            '<Relationship Id="rId{0}"'
+            ' Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"'
+            ' Target="worksheets/sheet{0}.xml"/>'.format(i + 1)
+            for i in range(num_sheets)
+        )
+        styles_rel_id = num_sheets + 1
+        wb_rels_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            + ws_rels +
+            '<Relationship Id="rId{0}"'
+            ' Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"'
+            ' Target="styles.xml"/>'.format(styles_rel_id) +
+            '</Relationships>'
+        )
+
+        # xl/styles.xml (minimal valid)
+        styles_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            '<fonts count="1"><font><name val="Calibri"/><sz val="11"/></font></fonts>'
+            '<fills count="2">'
+            '<fill><patternFill patternType="none"/></fill>'
+            '<fill><patternFill patternType="gray125"/></fill>'
+            '</fills>'
+            '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+            '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
+            '</styleSheet>'
+        )
+
+        file_stream = System.IO.File.Create(filepath)
+        try:
+            archive = System.IO.Compression.ZipArchive(
+                file_stream, System.IO.Compression.ZipArchiveMode.Create, True)
+            try:
+                self._write_entry(archive, '[Content_Types].xml', content_types_xml)
+                self._write_entry(archive, '_rels/.rels', root_rels_xml)
+                self._write_entry(archive, 'xl/workbook.xml', workbook_xml)
+                self._write_entry(archive, 'xl/_rels/workbook.xml.rels', wb_rels_xml)
+                self._write_entry(archive, 'xl/styles.xml', styles_xml)
+                for i, (name, rows) in enumerate(sheets):
+                    ws_xml = self._build_worksheet(rows)
+                    self._write_entry(archive, 'xl/worksheets/sheet{0}.xml'.format(i + 1), ws_xml)
+            finally:
+                archive.Dispose()
+        finally:
+            file_stream.Close()
+
+
+# =============================================================================
 # PHASE 6 & 7: GUI INTERFACE AND MAIN CALIBRATION LOGIC
 # =============================================================================
 
@@ -1029,6 +1215,13 @@ class LEDLineDelayCalibrationForm(Form):
         """Initialize the calibration form"""
         self.capture_handler = FrameCaptureHandler()
         self.stop_requested = False
+        # Stability test result storage (for save / re-save)
+        self._stab_run_start = None
+        self._stab_delays = []
+        self._stab_timestamps = []
+        self._stab_camera_settings = {}
+        self._stab_stats_text = ''
+        self._stab_last_save_folder = None
         self.InitializeComponent()
         # Force handle creation to avoid invoke errors from background threads
         handle = self.Handle
@@ -1254,7 +1447,29 @@ class LEDLineDelayCalibrationForm(Form):
         self.button_stab_stop.Size = Size(80, 30)
         self.button_stab_stop.Enabled = False
         self.button_stab_stop.Click += self.stop_stability_test
-        
+
+        # Save Results button
+        self.button_stab_save = Button()
+        self.button_stab_save.Text = "Save Results"
+        self.button_stab_save.Location = Point(540, 80)
+        self.button_stab_save.Size = Size(135, 30)
+        self.button_stab_save.Enabled = False
+        self.button_stab_save.Click += self.save_stability_results_click
+
+        # Save path label (same Y as Statistics: label) and Open Folder button
+        self.label_stab_saved_path = Label()
+        self.label_stab_saved_path.Location = Point(100, 122)
+        self.label_stab_saved_path.Size = Size(430, 18)
+        self.label_stab_saved_path.AutoEllipsis = True
+        self.label_stab_saved_path.Text = ''
+
+        self.button_stab_open_folder = Button()
+        self.button_stab_open_folder.Text = "Open Output Folder"
+        self.button_stab_open_folder.Location = Point(538, 115)
+        self.button_stab_open_folder.Size = Size(140, 28)
+        self.button_stab_open_folder.Enabled = False
+        self.button_stab_open_folder.Click += self.open_save_folder_click
+
         # Status label
         self.label_stab_status = Label()
         self.label_stab_status.Text = "Ready"
@@ -1300,6 +1515,9 @@ class LEDLineDelayCalibrationForm(Form):
         self.tab_stability.Controls.Add(self.textbox_stab_stats)
         self.tab_stability.Controls.Add(self.plot_stab_timeseries)
         self.tab_stability.Controls.Add(self.plot_stab_histogram)
+        self.tab_stability.Controls.Add(self.button_stab_save)
+        self.tab_stability.Controls.Add(self.label_stab_saved_path)
+        self.tab_stability.Controls.Add(self.button_stab_open_folder)
     
     def on_mode_changed(self, sender, event):
         """Handle mode selection change - update UI based on selected mode"""
@@ -2079,6 +2297,12 @@ class LEDLineDelayCalibrationForm(Form):
     
     def run_stability_test_thread(self):
         """Background thread for long-term stability testing"""
+        # Declare accumulators before try so finally can always reference them
+        all_delays = []
+        all_timestamps = []
+        start_time = datetime.utcnow()
+        camera_settings = {}
+
         try:
             camera = SharpCap.SelectedCamera
             if camera is None:
@@ -2089,7 +2313,10 @@ class LEDLineDelayCalibrationForm(Form):
                     MessageBoxIcon.Error
                 ))
                 return
-            
+
+            # Collect camera settings while camera is definitely available
+            camera_settings = self._get_camera_settings(camera)
+
             # Get test parameters
             capture_duration = float(self.textbox_stab_duration.Text)
             flash_ms = float(self.textbox_stab_flash.Text)
@@ -2097,14 +2324,9 @@ class LEDLineDelayCalibrationForm(Form):
             parts = test_duration_str.split(':')
             test_duration_seconds = int(parts[0]) * 3600 + int(parts[1]) * 60
             do_invert = self.checkbox_stab_invert.Checked
-            
+
             self.stop_requested = False
-            
-            # Storage for all flash delays across all capture periods
-            all_delays = []
-            all_timestamps = []
-            
-            start_time = datetime.utcnow()
+
             elapsed_time = 0
             cycle_count = 0
             
@@ -2154,6 +2376,21 @@ class LEDLineDelayCalibrationForm(Form):
             # Re-enable start button, disable stop
             self.SafeInvoke(lambda: setattr(self.button_stab_start, 'Enabled', True))
             self.SafeInvoke(lambda: setattr(self.button_stab_stop, 'Enabled', False))
+
+            # Store results and trigger save (even if test was stopped mid-run)
+            if all_delays:
+                self._stab_run_start = start_time
+                self._stab_delays = all_delays[:]
+                self._stab_timestamps = all_timestamps[:]
+                self._stab_camera_settings = camera_settings
+                # _stab_stats_text is already updated live by update_stability_display
+                self.SafeInvoke(lambda: setattr(self.button_stab_save, 'Enabled', True))
+
+                # Auto-save to disk
+                self.save_stability_results(
+                    start_time, camera_settings, all_delays, all_timestamps,
+                    self._stab_stats_text,
+                )
     
     def do_stability_capture_cycle(self, camera, duration, flash_ms, do_invert):
         """Perform one capture cycle and return valid flash delays with timestamps
@@ -2326,6 +2563,7 @@ class LEDLineDelayCalibrationForm(Form):
             stats_text += "Range: {0:.3f} to {1:.3f} ms\r\n".format(min_delay, max_delay)
             stats_text += "Std Dev: {0:.3f} ms (95% of data within ± {1:.3f} ms)".format(std_delay, prediction_interval)
             
+            self._stab_stats_text = stats_text  # cache for auto-save
             self.SafeInvoke(lambda txt=stats_text: setattr(self.textbox_stab_stats, 'Text', txt))
             
             # Create time series plot - show ALL measurements
@@ -2447,17 +2685,20 @@ class LEDLineDelayCalibrationForm(Form):
         mean_line.Text = "Mean: {0:.2f} ms".format(mean_delay)
         plot_model.Annotations.Add(mean_line)
         
-        # Configure axes with 1ms margins on data range
+        # Configure axes — explicit ranges derived from current data so they
+        # always cover the full histogram regardless of when the chart is refreshed.
         x_axis = OxyPlot.Axes.LinearAxis()
         x_axis.Position = OxyPlot.Axes.AxisPosition.Bottom
         x_axis.Title = 'Time Offset (ms)'
-        x_axis.Minimum = min(delays) - 1.0  # 1ms left margin
-        x_axis.Maximum = max(delays) + 1.0  # 1ms right margin
+        x_axis.Minimum = bin_start - bin_width * 0.5   # half-bin margin left of first bar
+        x_axis.Maximum = bin_end   + bin_width * 0.5   # half-bin margin right of last bar
         plot_model.Axes.Add(x_axis)
-        
+
         y_axis = OxyPlot.Axes.LinearAxis()
         y_axis.Position = OxyPlot.Axes.AxisPosition.Left
         y_axis.Title = 'Frequency'
+        y_axis.Minimum = 0
+        y_axis.Maximum = max_count * 1.15 + 1   # 15% headroom above tallest bar
         plot_model.Axes.Add(y_axis)
         
         # Add subtitle with 95% CI for the mean
@@ -2465,6 +2706,261 @@ class LEDLineDelayCalibrationForm(Form):
         
         return plot_model
 
+
+    # === STABILITY TEST SAVE METHODS ===
+
+    def _get_stability_data_folder(self):
+        """Return the base folder for stability test outputs (gps-timing-analysis/data/stability-test)"""
+        parent = os.path.dirname(script_dir)  # one level above python/
+        return os.path.join(parent, 'data', 'stability-test')
+
+    def _get_camera_settings(self, camera):
+        """Collect camera settings from the SharpCap camera object into a dict.
+
+        Uses broad exception handling because available controls differ by camera model.
+        """
+        settings = {}
+
+        def try_get(key, func):
+            try:
+                val = func()
+                settings[key] = val if val is not None else 'N/A'
+            except Exception:
+                settings[key] = 'N/A'
+
+        try_get('Camera', lambda: str(camera.DeviceName))
+
+        try:
+            roi = camera.ROI
+            settings['Pan (ROI X)'] = int(roi.X)
+            settings['Tilt (ROI Y)'] = int(roi.Y)
+            settings['Frame Width (px)'] = int(roi.Width)
+            settings['Frame Height (px)'] = int(roi.Height)
+        except Exception:
+            for k in ('Pan (ROI X)', 'Tilt (ROI Y)', 'Frame Width (px)', 'Frame Height (px)'):
+                settings[k] = 'N/A'
+
+        try_get('Exposure (ms)', lambda: float(camera.Controls.Exposure.ExposureMs))
+
+        try:
+            ctrl = camera.Controls.FindByName("Gain")
+            settings['Gain'] = ctrl.Value if ctrl else 'N/A'
+        except Exception:
+            settings['Gain'] = 'N/A'
+
+        try:
+            ctrl = camera.Controls.FindByName("Binning")
+            settings['Binning'] = ctrl.Value if ctrl else 'N/A'
+        except Exception:
+            settings['Binning'] = 'N/A'
+
+        for name in ('ColourSpace', 'ColorSpace', 'Colour Space', 'Color Space'):
+            try:
+                ctrl = camera.Controls.FindByName(name)
+                if ctrl is not None:
+                    settings['Colour Space'] = ctrl.Value
+                    break
+            except Exception:
+                pass
+        if 'Colour Space' not in settings:
+            settings['Colour Space'] = 'N/A'
+
+        for name in ('OutputFormat', 'FileFormat', 'Output Format', 'File Format'):
+            try:
+                ctrl = camera.Controls.FindByName(name)
+                if ctrl is not None:
+                    settings['File Format'] = ctrl.Value
+                    break
+            except Exception:
+                pass
+        if 'File Format' not in settings:
+            settings['File Format'] = 'N/A'
+
+        for name in ('USBBandwidth', 'USB Bandwidth', 'USBTraffic', 'USB Traffic', 'USB Speed',
+                     'USBSpeed', 'USBFS'):
+            try:
+                ctrl = camera.Controls.FindByName(name)
+                if ctrl is not None:
+                    settings['USB Bandwidth'] = ctrl.Value
+                    break
+            except Exception:
+                pass
+        if 'USB Bandwidth' not in settings:
+            settings['USB Bandwidth'] = 'N/A'
+
+        return settings
+
+    def _compute_histogram_bins(self, delays, bin_width=0.25):
+        """Compute a histogram with the given bin width.
+
+        Bins are aligned so edges are multiples of bin_width.
+        Returns list of (bin_center, count) tuples for every bin from min to max.
+        """
+        if not delays:
+            return []
+        min_val = min(delays)
+        max_val = max(delays)
+        bin_start = math.floor(min_val / bin_width) * bin_width
+        bin_end   = math.ceil(max_val / bin_width) * bin_width
+        num_bins  = int(round((bin_end - bin_start) / bin_width))
+        if num_bins == 0:
+            num_bins = 1
+        counts = [0] * num_bins
+        for d in delays:
+            idx = int((d - bin_start) / bin_width)
+            if idx < 0:
+                idx = 0
+            elif idx >= num_bins:
+                idx = num_bins - 1
+            counts[idx] += 1
+        result = []
+        for i in range(num_bins):
+            center = round(bin_start + (i + 0.5) * bin_width, 6)
+            result.append((center, counts[i]))
+        return result
+
+    def _save_chart_png_sync(self, plot_view, filepath):
+        """Render a PlotView to a PNG file.  Must be called on the UI thread."""
+        try:
+            width  = plot_view.Width  if plot_view.Width  > 0 else 660
+            height = plot_view.Height if plot_view.Height > 0 else 250
+            bmp = Bitmap(width, height)
+            plot_view.DrawToBitmap(bmp, Rectangle(0, 0, width, height))
+            bmp.Save(filepath, System.Drawing.Imaging.ImageFormat.Png)
+            bmp.Dispose()
+            print("Saved chart PNG: " + filepath)
+        except Exception as ex:
+            print("PNG save error ({0}): {1}".format(filepath, str(ex)))
+
+    def _save_stability_excel(self, filepath, run_start_time, camera_settings,
+                              stats_text, all_delays, all_timestamps):
+        """Write stability test results to a 3-sheet XLSX file."""
+
+        # --- Sheet 1: Summary ---
+        summary_rows = [
+            ['GPS LED Line Delay Calibration - Long Term Timing Stability Test'],
+            [],
+            ['Run Started (UTC)', run_start_time.strftime('%Y-%m-%d %H:%M:%S')],
+            ['Run Ended   (UTC)', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')],
+            ['Total Flashes Recorded', len(all_delays)],
+            [],
+            ['CAMERA SETTINGS'],
+            ['Setting', 'Value'],
+        ]
+        for key, value in camera_settings.items():
+            summary_rows.append([key, value])
+        summary_rows.append([])
+        summary_rows.append(['TEST STATISTICS'])
+        for line in stats_text.replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+            line = line.strip()
+            if line:
+                summary_rows.append([line])
+
+        # --- Sheet 2: Histogram (0.25 ms bins, centered on mid-bin) ---
+        bin_data = self._compute_histogram_bins(all_delays, bin_width=0.25)
+        histogram_rows = [['Bin Center (ms)', 'Count']]
+        for center, count in bin_data:
+            histogram_rows.append([center, count])
+
+        # --- Sheet 3: Time Series ---
+        ts_rows = [['Measurement #', 'UTC Timestamp', 'Measured Delay (ms)']]
+        for i, (delay, ts) in enumerate(zip(all_delays, all_timestamps), start=1):
+            ts_str = ts.strftime('%Y-%m-%d %H:%M:%S.%f') if ts else ''
+            ts_rows.append([i, ts_str, round(delay, 6)])
+
+        writer = SimpleXlsxWriter()
+        writer.save(filepath, [
+            ('Summary',     summary_rows),
+            ('Histogram',   histogram_rows),
+            ('Time Series', ts_rows),
+        ])
+        print("Saved Excel: " + filepath)
+
+    def save_stability_results(self, run_start_time, camera_settings,
+                               all_delays, all_timestamps, stats_text):
+        """Save PNGs and Excel for a completed stability test run.
+
+        Creates a timestamped sub-folder under gps-timing-analysis/data/stability-test/.
+        Returns the folder path on success, or None on failure.
+        """
+        try:
+            base_folder = self._get_stability_data_folder()
+            run_folder = os.path.join(base_folder, run_start_time.strftime('%Y%m%d_%H%M%S'))
+            if not os.path.exists(run_folder):
+                os.makedirs(run_folder)
+
+            print("Saving stability results to: " + run_folder)
+
+            # Chart PNGs must be rendered on the UI thread
+            ts_png   = os.path.join(run_folder, 'timeseries.png')
+            hist_png = os.path.join(run_folder, 'histogram.png')
+            self.SafeInvoke(lambda p=self.plot_stab_timeseries, f=ts_png:
+                            self._save_chart_png_sync(p, f))
+            self.SafeInvoke(lambda p=self.plot_stab_histogram, f=hist_png:
+                            self._save_chart_png_sync(p, f))
+
+            # Excel workbook
+            excel_path = os.path.join(run_folder, 'stability_results.xlsx')
+            self._save_stability_excel(excel_path, run_start_time, camera_settings,
+                                       stats_text, all_delays, all_timestamps)
+
+            msg = 'Saved to: ' + run_folder
+            print(msg)
+            self._stab_last_save_folder = run_folder
+            self.SafeInvoke(lambda m=msg: setattr(self.label_stab_saved_path, 'Text', m))
+            self.SafeInvoke(lambda: setattr(self.button_stab_open_folder, 'Enabled', True))
+            return run_folder
+
+        except Exception as ex:
+            err = 'Save error: ' + str(ex)
+            print(err)
+            import traceback
+            traceback.print_exc()
+            self.SafeInvoke(lambda e=err: setattr(self.label_stab_saved_path, 'Text', e))
+            return None
+
+    def save_stability_results_click(self, sender, event):
+        """Handle Save Results button click — re-saves the most recent run."""
+        if not self._stab_delays:
+            MessageBox.Show(
+                "No stability test results to save.\n\nRun a stability test first.",
+                "No Results",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            )
+            return
+        import threading
+        t = threading.Thread(target=lambda: self.save_stability_results(
+            self._stab_run_start,
+            self._stab_camera_settings,
+            self._stab_delays[:],
+            self._stab_timestamps[:],
+            self._stab_stats_text,
+        ))
+        t.daemon = True
+        t.start()
+
+    def open_save_folder_click(self, sender, event):
+        """Open the last stability test output folder in Windows Explorer."""
+        folder = self._stab_last_save_folder
+        if not folder or not os.path.exists(folder):
+            MessageBox.Show(
+                "Output folder not found.\n\n" + (folder or '(none)'),
+                "Folder Not Found",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
+            return
+        try:
+            import System.Diagnostics
+            System.Diagnostics.Process.Start("explorer.exe", folder)
+        except Exception as ex:
+            MessageBox.Show(
+                "Could not open folder:\n" + str(ex),
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
 
 
 # =============================================================================
