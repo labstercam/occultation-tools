@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.4
+# Release Package Instructions - v0.2.0-beta.5
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -17,7 +17,7 @@ This script automatically:
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
 - Pre-seeds `data/templates/` with working copies of the sequencer master templates
 - Seeds/creates data folders under `data/{config,events,templates,sequences,reports}/`
-- Generates `occultation-manager-v0.2.0-beta.4.zip`
+- Generates `occultation-manager-v0.2.0-beta.5.zip`
 
 ### Manual File List (if needed)
 
@@ -36,7 +36,9 @@ If you need to create the package manually, include these files from `occultatio
 - gui_components.py
 - gui_dialogs.py
 - help.py
+- led_line_delay_calibration.py
 - light_curves_iron.py
+- line_delay_dialogs.py
 - main.py
 - main_gui.py
 - na_report_openize.py
@@ -117,7 +119,7 @@ occultation-manager/
 │   ├── sequences/
 │   └── reports/
 ├── ReadMe.md                                      <-- User documentation
-├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.4 features
+├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.5 features
 └── RELEASE_INSTRUCTIONS.md
 ```
 
@@ -131,31 +133,29 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.2.0-beta.4`
+   - Tag: `v0.2.0-beta.5`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.4 - NTP Integration and GPS PPS Comparison`
+   - Release title: `Occultation Manager v0.2.0-beta.5 - Line Delay Calibration Integration`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.4 - NTP Integration and GPS PPS Comparison
+   # Occultation Manager v0.2.0-beta.5 - Line Delay Calibration Integration
    
-   **NTP timing integration, GPS PPS comparison tool, and chart improvements** for SharpCap.
+   **Line delay calibration integrated into Occultation Manager** — save, manage, and calculate rolling-shutter acquisition delays from within the app.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
 
    ## 🧹 Maintenance
 
-   - Bug fixes from user testing reports.
-   - Improvements based on user feedback.
-   - Refreshed documentation and version references for Beta.4.
-   - Release ZIP now uses `System.IO.Compression.ZipArchive` eliminating file-in-use packaging errors.
+   - Updated release-facing documentation and version references for Beta.5.
+   - Updated release packaging/version pointers (ZIP naming and instructions).
    
    ## 📦 Installation
    
-   **Download:** [occultation-manager-v0.2.0-beta.4.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip)
+   **Download:** [occultation-manager-v0.2.0-beta.5.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip)
    
    ### Quick Start:
    1. Download and extract the ZIP file to a location with read/write access
@@ -182,22 +182,26 @@ occultation-manager/
    
    See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
    
-   ## ✨ What's New in Beta.4
+   ## ✨ What's New in Beta.5
    
-   ### GPS PPS Comparison (New Tool — Tools → GPS PPS Comparison)
-   - Measures how accurately each internet NTP server tracks true UTC using the GPS PPS refclock as ground truth
-   - Preflight dialog: GPS candidate scan, noselect interval coverage display, traffic-light status indicator
-   - UTC Error chart, Delay chart, Selected-Peer + OLS drift trend chart
-   - k=2 expanded uncertainty, drift report (ms/hr and ppm), text report, JSON export
+   ### Line Delay Calibration — Fully Integrated Workflow
    
-   ### NTP Timing Integration into Report Flow
-   - Confirm Observer Location step now offers optional in-flow NTP offset/uncertainty estimate
-   - Open NTP Analyser available non-blocking alongside the report dialog
+   The GPS flash line delay calibration tool is now fully integrated into Occultation Manager.
    
-   ### Chart Improvements (NTP and GPS PPS Tools)
-   - X-axis now visible: data-constrained bounds with span-based tick intervals
-   - Y-axis tick density capped at 9 gridlines for all charts
-   - Series drawing clipped to plot rectangle; WinForms AutoSize fix eliminates axis-label clipping
+   **Camera Manager** (`Tools → Manage Cameras`):
+   - **Calibrations...** button: view, label, edit notes, and delete stored calibration runs per camera
+   - **Run New Calibration** button: launch GPS Flash Calibration with the selected camera pre-selected; offered save on close if result was not yet saved
+   
+   **Camera Timing Setup** (`Tools → Camera Timing Setup`):
+   - New **Save Calibration to Camera** button after a successful run
+   - Saves per-line delay, line 0 delay, and all capture metadata to the camera profile
+   - **Approximate Delays** button for use when no GPS flasher is available
+   
+   **Camera Delay Calculator** (`Tools → Camera Delay Calculator`) — *new tool*:
+   - Select camera and labelled calibration (A, B, C…)
+   - Enter Y pixel position of the occulted star
+   - Live calculation: `per_line_delay × Y + line_0_delay = delay ms`
+   - One-click **Copy** to clipboard in TANGRA format
    
    ## 🎯 Key Features
    
@@ -235,7 +239,7 @@ occultation-manager/
    - AOTA timing data integration (D/R times)
    - Tangra CSV light curve analysis (fully integrated)
    - Automatic video format and exposure detection
-   - GPS flash timing analysis (not yet integrated - available as standalone tool)
+   - GPS flash timing analysis available via Tools → Camera Timing Setup
    
    ### Equipment Management
    - Multiple telescope and camera configurations
@@ -275,10 +279,10 @@ occultation-manager/
    ```
 
 5. **Upload ZIP file:**
-   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.4.zip`
+   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.5.zip`
    - Drag and drop ZIP to "Attach binaries" section in GitHub release
    - GitHub does **not** auto-update markdown links in release notes; paste this URL manually in the notes:
-     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip`
+     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip`
 
 6. **Set release options:**
    - ✅ Check "Set as a pre-release" (this is a beta version)
@@ -288,7 +292,7 @@ occultation-manager/
 ### After Publishing
 
 The release will be available at:
-- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.4`
+- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.5`
 - Latest release: `https://github.com/labstercam/occultation-tools/releases/latest`
 
 ## Version Control Best Practices
@@ -311,14 +315,14 @@ The release will be available at:
 3. **Commit all changes**:
    ```bash
    git add .
-   git commit -m "Release v0.2.0-beta.4"
+   git commit -m "Release v0.2.0-beta.5"
    git push
    ```
 
 4. **Create and push tag**:
    ```bash
-   git tag v0.2.0-beta.4
-   git push origin v0.2.0-beta.4
+   git tag v0.2.0-beta.5
+   git push origin v0.2.0-beta.5
    ```
 
 ### After Release
@@ -327,7 +331,7 @@ The release will be available at:
 2. **Test installation** from GitHub release ZIP
 3. **Update documentation** if any installation issues found
 - Direct link: `https://github.com/labstercam/occultation-tools/releases/latest`
-- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip`
+- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip`
 
 Update README.md with this download link.
 
@@ -426,7 +430,7 @@ Before creating the release, verify:
 - [ ] About dialog shows correct information
 
 ### Documentation
-- [ ] README.md up to date with v0.2.0-beta.4 features
+- [ ] README.md up to date with v0.2.0-beta.5 features
 - [ ] RELEASE_NOTES.md reflects current functionality
 - [ ] Installation instructions clear and accurate
 - [ ] Configuration steps documented

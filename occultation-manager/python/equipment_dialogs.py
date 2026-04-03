@@ -349,9 +349,10 @@ class TelescopeManagerDialog(Form):
 class CameraManagerDialog(Form):
     """Dialog for managing multiple camera configurations"""
     
-    def __init__(self, config, theme_manager=None):
+    def __init__(self, config, theme_manager=None, sharpcap=None):
         self.config = config
         self.theme_manager = theme_manager
+        self.sharpcap = sharpcap
         self.selected_camera_id = None
         self.camera_map = {}  # Map list index to camera dict
         
@@ -591,7 +592,26 @@ class CameraManagerDialog(Form):
         self.btn_delete.Click += self.delete_camera
         self.btn_delete.Enabled = False
         details_group.Controls.Add(self.btn_delete)
-        
+
+        y_pos += 40
+
+        # Line Delay Calibration buttons (second row)
+        self.btn_calibrations = Button()
+        self.btn_calibrations.Text = "Calibrations..."
+        self.btn_calibrations.Location = Point(int(15 * sf), int(y_pos * sf))
+        self.btn_calibrations.Size = Size(int(190 * sf), int(30 * sf))
+        self.btn_calibrations.Click += self.show_calibrations
+        self.btn_calibrations.Enabled = False
+        details_group.Controls.Add(self.btn_calibrations)
+
+        self.btn_run_calibration = Button()
+        self.btn_run_calibration.Text = "Run New Calibration"
+        self.btn_run_calibration.Location = Point(int(215 * sf), int(y_pos * sf))
+        self.btn_run_calibration.Size = Size(int(200 * sf), int(30 * sf))
+        self.btn_run_calibration.Click += self.run_new_calibration
+        self.btn_run_calibration.Enabled = False
+        details_group.Controls.Add(self.btn_run_calibration)
+
         # Close button (positioned under camera list)
         btn_close = Button()
         btn_close.Text = "Close"
@@ -881,6 +901,8 @@ class CameraManagerDialog(Form):
             self.btn_update.Enabled = True
             self.btn_delete.Enabled = True
             self.btn_set_active.Enabled = True
+            self.btn_calibrations.Enabled = True
+            self.btn_run_calibration.Enabled = True
             
             # Show active indicator
             active_camera = self.config.get_active_camera()
@@ -904,6 +926,8 @@ class CameraManagerDialog(Form):
         self.btn_update.Enabled = False
         self.btn_delete.Enabled = False
         self.btn_set_active.Enabled = False
+        self.btn_calibrations.Enabled = False
+        self.btn_run_calibration.Enabled = False
         self.lbl_active.Visible = False
         self.selected_camera_id = None
     
@@ -1012,6 +1036,67 @@ class CameraManagerDialog(Form):
         """Close the dialog"""
         self.DialogResult = DialogResult.OK
         self.Close()
+
+    def show_calibrations(self, sender, e):
+        """Open LineDelayCalibrationManagerDialog filtered to the selected camera."""
+        if not self.selected_camera_id:
+            return
+        camera = self.camera_map.get(self.lst_cameras.SelectedIndex)
+        cam_name = camera.get('name', '') if camera else ''
+        try:
+            import line_delay_dialogs
+            dlg = line_delay_dialogs.LineDelayCalibrationManagerDialog(
+                self.config,
+                camera_id=self.selected_camera_id,
+                camera_name=cam_name
+            )
+            dlg.ShowDialog(self)
+        except Exception as ex:
+            MessageBox.Show(
+                'Could not open calibrations:\n' + str(ex),
+                'Error',
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+
+    def run_new_calibration(self, sender, e):
+        """Launch LEDLineDelayCalibrationForm; offer to save the result on close."""
+        if not self.selected_camera_id:
+            return
+        try:
+            import led_line_delay_calibration as _ld
+            form = _ld.LEDLineDelayCalibrationForm(sharpcap=self.sharpcap, config=self.config)
+            form.StartPosition = FormStartPosition.CenterScreen
+            form.ShowDialog(self)
+            # If a calibration was completed but not yet saved, offer to save it
+            result_ready = getattr(form, '_calib_fit_result', None) is not None
+            already_saved = getattr(form, '_calib_saved', False)
+            if result_ready and not already_saved:
+                camera = self.camera_map.get(self.lst_cameras.SelectedIndex)
+                cam_name = camera.get('name', '') if camera else ''
+                ans = MessageBox.Show(
+                    'A calibration result is available but has not been saved.\n\n'
+                    'Save it to camera "' + cam_name + '" now?',
+                    'Save Calibration?',
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                )
+                if ans == DialogResult.Yes:
+                    dlg = _ld.SaveCalibrationDialog(
+                        form._calib_fit_result,
+                        form._calib_capture_settings,
+                        preselect_camera_id=self.selected_camera_id,
+                        config=self.config
+                    )
+                    dlg.StartPosition = FormStartPosition.CenterParent
+                    dlg.ShowDialog(self)
+        except Exception as ex:
+            MessageBox.Show(
+                'Could not launch calibration form:\n' + str(ex),
+                'Error',
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
 
 
 class EquipmentSelectionDialog(Form):

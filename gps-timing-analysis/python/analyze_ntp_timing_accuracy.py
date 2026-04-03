@@ -161,7 +161,7 @@ def get_server_color(server_address, server_to_color):
 
 class AnalyzerForm(Form):
     def __init__(self):
-        self.Text = "NTP Timing Accuracy Analyzer"
+        self.Text = "NTP Clock Accuracy"
         self.Size = Size(1600, 960)
         self.MinimumSize = Size(1100, 700)
         self.StartPosition = FormStartPosition.CenterScreen

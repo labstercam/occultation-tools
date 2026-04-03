@@ -614,9 +614,11 @@ class OccultationManagerGUI(Form):
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Manage Cameras", None, self.show_camera_manager_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Template Manager", None, self.show_template_manager_click))
-        menu_tools.DropDownItems.Add(ToolStripMenuItem("NTP Timing Analysis", None, self.open_ntp_timing_analysis_click))
-        menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS Flash Calibration", None, self.open_gps_flash_calibration_click))
-        menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS PPS Comparison", None, self.open_gps_pps_comparison_click))
+        menu_tools.DropDownItems.Add(ToolStripSeparator())
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Camera Timing Setup", None, self.open_gps_flash_calibration_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Camera Delay Calculator", None, self.open_line_delay_calculator_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("NTP Clock Accuracy", None, self.open_ntp_timing_analysis_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS vs NTP Testing", None, self.open_gps_pps_comparison_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Night Mode", None, self.toggle_night_mode_click))
         menu_bar.Items.Add(menu_tools)
@@ -2990,7 +2992,7 @@ class OccultationManagerGUI(Form):
             try:
                 if not self._ntp_gui_form.IsDisposed:
                     self._activate_tool_form(self._ntp_gui_form)
-                    self.update_status("NTP Timing Analysis already open")
+                    self.update_status("NTP Clock Accuracy already open")
                     return
             except Exception:
                 pass
@@ -3012,11 +3014,11 @@ class OccultationManagerGUI(Form):
             except Exception:
                 self._ntp_gui_form.Show()
             self._activate_tool_form(self._ntp_gui_form)
-            self.update_status("Opened NTP Timing Analysis")
+            self.update_status("Opened NTP Clock Accuracy")
         except Exception as ex:
             MessageBox.Show(
-                "Could not open the NTP Timing Analysis window:\n\n{0}".format(str(ex)),
-                "NTP Timing Analysis Error",
+                "Could not open the NTP Clock Accuracy window:\n\n{0}".format(str(ex)),
+                "NTP Clock Accuracy Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error,
             )
@@ -3027,7 +3029,7 @@ class OccultationManagerGUI(Form):
             try:
                 if not self._gps_flash_form.IsDisposed:
                     self._activate_tool_form(self._gps_flash_form)
-                    self.update_status("GPS Flash Calibration already open")
+                    self.update_status("Camera Timing Setup already open")
                     return
             except Exception:
                 pass
@@ -3058,12 +3060,12 @@ class OccultationManagerGUI(Form):
                 if existing_form is not None and not existing_form.IsDisposed:
                     self._gps_flash_form = existing_form
                     self._activate_tool_form(self._gps_flash_form)
-                    self.update_status("Opened GPS Flash Calibration")
+                    self.update_status("Opened Camera Timing Setup")
                     return
             except Exception:
                 pass
 
-            self._gps_flash_form = gps_cal.LEDLineDelayCalibrationForm()
+            self._gps_flash_form = gps_cal.LEDLineDelayCalibrationForm(sharpcap=self.sharpcap, config=self.config)
             try:
                 self._gps_flash_form.StartPosition = FormStartPosition.CenterScreen
             except Exception:
@@ -3074,11 +3076,11 @@ class OccultationManagerGUI(Form):
             except Exception:
                 self._gps_flash_form.Show()
             self._activate_tool_form(self._gps_flash_form)
-            self.update_status("Opened GPS Flash Calibration")
+            self.update_status("Opened Camera Timing Setup")
         except Exception as ex:
             MessageBox.Show(
-                "Could not open the GPS Flash Calibration window.\n\n{0}".format(str(ex)),
-                "GPS Flash Calibration Error",
+                "Could not open the Camera Timing Setup window.\n\n{0}".format(str(ex)),
+                "Camera Timing Setup Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error,
             )
@@ -3089,7 +3091,7 @@ class OccultationManagerGUI(Form):
             try:
                 if not self._gps_pps_comp_form.IsDisposed:
                     self._activate_tool_form(self._gps_pps_comp_form)
-                    self.update_status("GPS PPS Comparison already open")
+                    self.update_status("GPS vs NTP Testing already open")
                     return
             except Exception:
                 pass
@@ -3114,11 +3116,11 @@ class OccultationManagerGUI(Form):
             except Exception:
                 self._gps_pps_comp_form.Show()
             self._activate_tool_form(self._gps_pps_comp_form)
-            self.update_status("Opened GPS PPS Comparison")
+            self.update_status("Opened GPS vs NTP Testing")
         except Exception as ex:
             MessageBox.Show(
-                "Could not open the GPS PPS Comparison window.\n\n{0}".format(str(ex)),
-                "GPS PPS Comparison Error",
+                "Could not open the GPS vs NTP Testing window.\n\n{0}".format(str(ex)),
+                "GPS vs NTP Testing Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error,
             )
@@ -3139,8 +3141,22 @@ class OccultationManagerGUI(Form):
     def show_camera_manager_click(self, sender, e):
         """Show camera manager dialog"""
         from equipment_dialogs import CameraManagerDialog
-        camera_dialog = CameraManagerDialog(self.config, self.theme_manager)
+        camera_dialog = CameraManagerDialog(self.config, self.theme_manager, sharpcap=self.sharpcap)
         camera_dialog.ShowDialog(self)
+
+    def open_line_delay_calculator_click(self, sender, e):
+        """Open the Camera Delay Calculator dialog."""
+        try:
+            import line_delay_dialogs
+            dlg = line_delay_dialogs.LineDelayCalculatorDialog(self.config)
+            dlg.ShowDialog(self)
+        except Exception as ex:
+            MessageBox.Show(
+                "Could not open the Camera Delay Calculator.\n\n{0}".format(str(ex)),
+                "Camera Delay Calculator Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error,
+            )
     
     def show_template_manager_click(self, sender, e):
         """Show template manager"""

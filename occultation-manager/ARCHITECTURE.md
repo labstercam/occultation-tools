@@ -11,7 +11,7 @@ Occultation Manager is a Windows desktop application that automates the workflow
 - OccultWatcher Cloud (OWCloud) REST API for event data
 - Excel/XML for report generation
 
-**Total Code Size:** ~15,575 lines of Python across 24 top-level modules
+**Total Code Size:** ~16,400 lines of Python across 26 top-level modules
 
 ---
 
@@ -137,8 +137,18 @@ BACKEND ARCHITECTURE
 
 **Tools**
 - Configuration
+- *(separator)*
 - Manage Telescopes
 - Manage Cameras
+- *(separator)*
+- Template Manager
+- *(separator)*
+- Camera Timing Setup
+- Camera Delay Calculator
+- NTP Clock Accuracy
+- GPS vs NTP Testing
+- *(separator)*
+- Night Mode
 
 **Help**
 - User Guide
@@ -175,14 +185,17 @@ Bottom Panel:
 - `TemplateSelectionDialog` - Choose sequence countdown template
 - `LocationConfirmDialog` - Confirm observation location on download
 
-#### Equipment Dialogs (`equipment_dialogs.py` - 1,157 lines)
+#### Equipment Dialogs (`equipment_dialogs.py` - 1,200+ lines)
 **Key Dialogs:**
 - `TelescopeManagerDialog` - Add/edit telescope configurations
-- `CameraManagerDialog` - Add/edit camera configurations  
+- `CameraManagerDialog` - Add/edit camera configurations; includes **Calibrations...** button (opens `LineDelayCalibrationManagerDialog` for the selected camera) and **Run New Calibration** button (launches `LEDLineDelayCalibrationForm` with the camera pre-selected; offers to save the result on close)
 - `EquipmentSelectionDialog` - Select active telescope and camera
 
-#### GUI Components (`gui_components.py` - 274 lines)
-**Key Components:**
+#### Line Delay Dialogs (`line_delay_dialogs.py` - new)
+**Key Dialogs:**
+- `LineDelayCalibrationManagerDialog` - Resizable DataGridView showing all stored line delay calibration runs for one camera (or all cameras when `camera_id=None`); columns include camera area, binning, tilt, pan, colour space, file format, exposure, gain, per-line delay, line 0 delay, label, and notes. Label and Notes columns are editable inline (`CellEndEdit` → `config.update_line_delay_calibration()`); Delete button with confirmation prompt
+- `LineDelayCalculatorDialog` - Fixed dialog (opened via **Camera Delay Calculator**) for calculating acquisition delay from a stored calibration; camera and calibration dropdowns, Y pixel entry (float), live result at 22pt bold, formula breakdown, Copy to clipboard, and Manage Calibrations… shortcut
+
 - `EventsDataGrid(DataGridView)` - Custom data grid for events with checkbox column
 
 ---
@@ -237,11 +250,12 @@ OWCloud API → download_events() → OccultationEvent objects →
 
 ### 4. Configuration Management
 
-#### Config Module (`config.py` - 658 lines)
+#### Config Module (`config.py` - 700+ lines)
 **Responsibilities:**
 - Persistent configuration storage (JSON)
 - File path management
 - Equipment configurations (telescopes, cameras)
+- Line delay calibration runs per camera
 - Observer information
 - API credentials and settings
 - First-run setup with folder structure creation
@@ -273,6 +287,7 @@ OWCloud API → download_events() → OccultationEvent objects →
    - `telescopes` - List of telescope configurations
    - `cameras` - List of camera configurations
    - `active_telescope_id` / `active_camera_id` - Currently selected equipment
+   - `line_delay_calibrations` - List of GPS flash line delay calibration runs; each run stores camera area, binning, tilt, pan, colour space, file format, exposure ms, gain, per-line delay (ms/line), line 0 delay (ms), user label, and free-text notes
 
 5. **Observer Information** (for reports)
    - Name, email, address, phone
@@ -291,8 +306,11 @@ OWCloud API → download_events() → OccultationEvent objects →
 - `add_telescope()` / `get_telescope()` - Equipment management
 - `add_camera()` / `get_camera()` - Camera management
 - `get_observer_name()` / `get_observer_email()` - Report data access
-
-**Path Detection:**
+- `get_line_delay_calibrations(camera_id=None)` - Return all runs, optionally filtered by camera
+- `get_line_delay_calibration_by_id(run_id)` - Return a single run by UUID, or None
+- `add_line_delay_calibration(run_dict)` - Append and save; auto-generates UUID id
+- `update_line_delay_calibration(run_id, updates)` - Patch fields and save; protects id/camera_id
+- `delete_line_delay_calibration(run_id)` - Remove and save; returns True/False
 ```python
 # Installation directory auto-detection (first-run):
 1. Try __file__ (script location)
@@ -515,7 +533,25 @@ thread.start()
 
 ---
 
-### 8. Supporting Modules
+### 9. GPS Timing Tools
+
+#### GPS Flash Line Delay Calibration (`led_line_delay_calibration.py`)
+**Responsibilities:**
+- Capture frames via SharpCap live camera or replay an ADV file
+- Detect GPS PPS LED flashes in top and bottom apertures
+- Calculate per-line rolling shutter delay via linear regression
+- Save calibration result to `ConfigManager` with full capture metadata
+
+**Key Classes:**
+- `LEDLineDelayCalibrationForm` - Main calibration form; includes **Save Result to Camera** button (enabled after a successful run); stores `_calib_fit_result`, `_calib_capture_settings`, and `_calib_saved` state
+- `SaveCalibrationDialog` - Collects camera selection, user label, and notes before saving; accepts optional `preselect_camera_id` to pre-load the correct camera
+
+**Integration Note:**
+This module is distributed in both `occultation-manager/python/` (integrated workflow) and `gps-timing-analysis/python/` (standalone). The OM copy uses `_OM_CONFIG_AVAILABLE = True` to enable config persistence; the GPS standalone copy gracefully falls back when `config.py` is not present.
+
+---
+
+### 10. Supporting Modules
 
 #### Theme Management (`theme.py` - 178 lines)
 - `ThemeManager` - Light/night mode themes
@@ -731,18 +767,20 @@ User → Selects event → Generate Report Button
 
 ## Version History Context
 
-Current version: **0.2.0-beta.4** (Fourth Public Beta - April 2026)
+Current version: **0.2.0-beta.5** (Fifth Public Beta - April 2026)
 
 Key capabilities implemented:
 - Automatic folder structure creation
 - Smart path detection
 - Multi-sequence execution
 - Comprehensive error tracking
-- Report generation for NA and TT formats
+- Report generation for NA, TT, and SODIS formats
 - Equipment management
 - AOTA/Tangra integration
+- NTP timing analysis and GPS PPS comparison tools
+- GPS flash line delay calibration with integrated save, manage, and calculate workflow
 
 ---
 
-*Last Updated: March 2026*
+*Last Updated: April 2026*
 *For API reference and reusable components, see API.md*
