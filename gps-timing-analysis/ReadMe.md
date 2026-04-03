@@ -1,9 +1,11 @@
 ## GPS Timing Analysis - Camera Timestamp Validation
 
-Python toolkit for analyzing GPS flash timing to validate camera timestamp accuracy. Critical for ensuring sub-millisecond timing precision in occultation observations.
+Python toolkit for analyzing GPS flash timing to validate camera timestamp accuracy, monitoring NTP offset and jitter, and comparing internet NTP server UTC accuracy against a GPS PPS ground-truth reference. Critical for ensuring sub-millisecond timing precision in occultation observations.
 
 ### Key Features
 
+- **NTP Timing Analysis**: loopstats/peerstats offset, jitter, and delay charting with per-server U(k=2) uncertainty estimate (SharpCap add-in via Occultation Manager, or standalone)
+- **GPS PPS Comparison**: measures UTC error of each internet NTP server relative to a GPS PPS refclock; clock drift OLS regression; per-server uncertainty table
 - **LED Line Delay Calibration**: Measure rolling shutter line delays using GPS timing LED (SharpCap add-in)
 - **Tangra Light Curve Analysis**: Import and analyze Tangra CSV files for timestamp quality
 - **Video Format Extraction**: Automatic extraction of video format from Tangra measurement parameters
@@ -15,6 +17,52 @@ Python toolkit for analyzing GPS flash timing to validate camera timestamp accur
 - **Quality Validation**: Detect dropped frames, timing anomalies, and system issues
 
 ### Tools
+
+#### **NTP Timing Analysis** (SharpCap Add-in via Occultation Manager)
+Full loopstats/peerstats analysis window accessible from **Tools → NTP Timing Analysis** in Occultation Manager, or launched in-flow during report generation.
+
+**Location:** `python/analyze_ntp_timing_accuracy.py`  
+**Shared core:** `python/ntp_analysis_core.py`
+
+**Features:**
+- Four charts: delay, offset, jitter, dispersion
+- Per-server color coding with distance (km) in legend
+- Dataset selector with day filter
+- k=2 expanded uncertainty estimate
+- JSON + CSV export
+
+---
+
+#### **GPS PPS Comparison** (SharpCap Add-in via Occultation Manager)
+Measures internet NTP server UTC error against a GPS PPS refclock using the same loopstats/peerstats dataset.  Accessible from **Tools → GPS PPS Comparison** in Occultation Manager.
+
+**Location:** `python/gps_pps_comparison.py`  
+**Shared core:** `python/ntp_analysis_core.py`
+
+**How it works:**
+
+1. Identifies all `127.127.*.*` refclock candidates in peerstats; user confirms via preflight dialog
+2. Restricts analysis to *noselect intervals* (GPS select code < 4) — the period when NTP is not using the GPS as its sync source
+3. For each internet server record inside a noselect interval, linearly interpolates the GPS PPS offset to the server's timestamp:
+
+   ```
+   UTC error = internet_offset − linear_interpolation(GPS PPS offset, t)
+   ```
+
+4. Computes per-server mean, Std, U(k=2) and combined estimate
+5. OLS linear regression on the NTP-selected peer gives clock drift in ms/hr and ppm
+
+**Charts:**
+- **Delay**: NTP round-trip delay for each server
+- **UTC Error per Server**: `offset − GPS PPS` for all internet servers, color-coded
+- **Selected Peer + Drift**: UTC error for the NTP-selected peer with dashed OLS trend line
+
+**Preflight dialog** shows:
+- Traffic-light status: green (strictly noselect), amber (mixed), red (never noselect)
+- Noselect interval count, total coverage hours, and up to 3 interval timestamps
+- Warning if non-noselect GPS records are present
+
+---
 
 #### **LED Line Delay Calibration** (SharpCap Add-in)
 Real-time camera calibration tool for measuring rolling shutter line delays.

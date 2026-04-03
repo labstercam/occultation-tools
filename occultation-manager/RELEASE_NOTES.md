@@ -1,5 +1,68 @@
 # Occultation Manager - Release Notes
 
+## Version 0.2.0-beta.4 (April 2026)
+
+**NTP Timing Integration, GPS PPS Comparison Tool, and Chart Improvements**
+
+### GPS PPS Comparison Analysis (New Tool)
+
+A new standalone analysis form accessible from **Tools → GPS PPS Comparison** that uses the same NTP loopstats/peerstats dataset as the NTP Timing Analyser to measure how accurately each internet NTP server tracks true UTC.
+
+The tool identifies a GPS PPS refclock (`127.127.*.*`) in the peerstats data as a UTC ground-truth reference and computes the UTC error of every internet server by interpolating the GPS offset to each server's measurement timestamp.  Analysis is restricted to strictly-noselect intervals (select code < 4) when NTP is not using the GPS as its sync source, preventing circular bias.
+
+**Key capabilities:**
+- **Preflight dialog**: scans all `127.127.*.*` candidates, shows record count, select-code distribution, and a traffic-light status indicator (green = strictly noselect, amber = mixed, red = never noselect); displays noselect interval coverage with timestamps
+- **UTC Error chart**: per-server `offset − GPS PPS` offset in ms, constrained to GPS noselect windows, color-coded by server
+- **Delay chart**: NTP round-trip delay for each server over the session
+- **Selected Peer + Drift chart**: UTC error for the NTP-selected peer together with an OLS linear drift regression trend line
+- **k=2 uncertainty box**: combined expanded uncertainty across all servers (mean, U(k=2), N)
+- **Drift report**: clock drift in ms/hr and ppm with R² and record count
+- **Text report**: per-server table with mean, Std, U(k=2), N; combined estimate; GPS coverage summary and warnings
+- **JSON export**: full comparison result, uncertainty, and drift data
+- **Observer lat/lon**: server distances shown in legend (uses shared `national_utc_ntp_servers.json` / IP geolocation cache)
+
+**GPS PPS comparison calculation:**
+
+For each internet server record inside a noselect interval:
+```
+UTC error = internet_offset − linear_interpolation(GPS PPS offset, target_time)
+```
+GPS measurements more than 120 s apart are rejected.  Expanded uncertainty U(k=2) = 2 × σ(UTC errors).
+
+### NTP Timing Integration into Report Flow
+
+The report workflow (Generate Reports → Confirm Observer Location) now includes an optional **NTP timing step** before the comprehensive report dialog:
+
+- **Open NTP Analyser**: launches the full NTP Timing Analysis window non-blocking alongside the report dialog
+- **Analyze NTP**: performs a quick in-flow NTP offset/uncertainty estimate directly in the dialog
+- NTP dataset input uses a single stats folder; the closest loopstats/peerstats pair to the event date/time is auto-selected
+- The selected folder is remembered between sessions
+- Shared NTP resources (`national_utc_ntp_servers.json`, `ip_location_cache.json`) are loaded from the sibling `gps-timing-analysis/resources/` directory
+
+### Chart and Axis Improvements (NTP and GPS PPS tools)
+
+- **X-axis now visible on all charts**: data-constrained bounds (not midnight-to-midnight) with tick intervals chosen from the data span
+  - ≤ 2 h span → 30 min major, 10 min minor
+  - ≤ 6 h → 1 h / 30 min
+  - ≤ 24 h → 2 h / 1 h
+  - > 24 h → 6 h / 1 h
+- **Y-axis tick density capped** at 8 intervals (9 gridlines) for all charts
+- **Series clipped to plot rectangle**: out-of-range data no longer overflows axis borders
+- **Legend on top chart only** (GPS PPS tools); selected-peer/drift chart has inline legend identifying the data line and the dashed OLS trend line
+- Chart containers set `AutoSize = False` to prevent WinForms anchor miscalculation that was clipping axis labels
+
+### Other Improvements
+
+- Bugs fixes from user testing reports
+- Improvements based on user feedback including better folder and file management
+- Performed a brief cleanup to archive or remove out-of-date code/files.
+- Updated release-facing documentation and version references for Beta.4.
+- Updated release packaging/version pointers (ZIP naming and instructions).
+- Release packaging now pre-seeds `data/templates` with sequencer master templates.
+- Release ZIP packaging replaced `Compress-Archive` with `System.IO.Compression.ZipArchive` opened with `FileShare.ReadWrite`, eliminating "file in use" errors caused by antivirus/Windows Search Indexer scanning temp files during packaging.
+
+---
+
 ## Version 0.2.0-beta.3 (March 2026)
 
 **Bug Fixes, User Improvements, Documentation and Release Preparation Update**

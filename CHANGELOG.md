@@ -5,27 +5,45 @@ All notable changes to the Occultation Manager project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0-beta.4] - 2026-04
 
 ### Added
-- Occultation Manager report workflow now includes an optional NTP timing analysis step in `LocationConfirmDialog` before opening the comprehensive report dialog.
-- Added folder-based NTP dataset selection/persistence for integrated report-time analysis.
+- **GPS PPS Comparison tool** (`gps_pps_comparison.py`): new standalone form accessible from **Tools → GPS PPS Comparison** that measures internet NTP server UTC error against a GPS PPS refclock.
+  - `GPSPPSPreflightDialog`: confirms GPS PPS candidate and noselect interval coverage before analysis.
+  - `GPSPPSComparisonForm`: three-panel chart (delay, UTC error per server, selected peer + drift), k=2 uncertainty box, clock drift display, text report, and JSON export.
+  - Nine new pure-Python functions added to `ntp_analysis_core.py`: `find_gps_pps_candidates`, `check_gps_pps_noselect_status`, `get_gps_pps_noselect_intervals`, `_dt_in_noselect_intervals`, `interpolate_gps_pps_offset`, `compute_gps_pps_comparison`, `estimate_comparison_uncertainty`, `estimate_drift_linear_regression`, `generate_gps_comparison_report`.
+- **Tools → GPS PPS Comparison** menu item in Occultation Manager main window (`main_gui.py`).
+- **NTP timing step in report flow**: `LocationConfirmDialog` now offers optional NTP analysis (Open NTP Analyser / Analyze NTP) before the comprehensive report dialog; folder selection remembers the last used path.
+- Chart x-axis now shows data-constrained bounds with tick intervals auto-selected from data span (30 min / 10 min through 6 h / 1 h).
+- Y-axis tick density capped at 8 intervals for GPS PPS charts.
+- Series drawing clipped to plot rectangle (`Graphics.SetClip`) so out-of-range data does not overflow axis borders.
+- Inline legend on Selected Peer UTC Error + Clock Drift chart.
+- Legend restricted to top chart only in GPS PPS comparison (delays chart).
 
 ### Changed
-- Occult OBS.XML export now writes `D`/`R` times in consistent zero-padded format: `hh mm ss.ss`.
+- `_choose_y_step_ms` threshold raised from 7 to 8 intervals to reduce tick crowding on small-span charts.
+- `_y_limits` in GPS PPS comparison now recalculates tick step after minimum-2-step extension to keep tick count ≤ 9.
+- Trend line in Selected Peer chart rebased onto offset-diff data (intercept recomputed from actual `sel_pts` to remove GPS PPS mean offset bias).
+- Release packaging (`create_release_zip.ps1`) replaced `Compress-Archive` with `System.IO.Compression.ZipArchive` using `FileShare.ReadWrite` to avoid "file in use" errors from antivirus/indexer.
+- Chart containers use `AutoSize = False` to prevent WinForms anchor miscalculation clipping axis labels.
+- `gps_pps_comparison.py` added to `$gpsPythonFiles` in `create_release_zip.ps1`.
+- Occult OBS.XML export writes `D`/`R` times in consistent zero-padded format: `hh mm ss.ss`.
 
 ### Fixed
 - Fixed NTP analyzer startup/runtime NameErrors caused by underscore-prefixed helper resolution in `analyze_ntp_timing_accuracy.py`.
 - Fixed NTP analyzer window activation so opening/reopening brings the analyzer in front of Occultation Manager dialogs.
 - Fixed TT report `D`/`R` Excel writes to use numeric values (hours/minutes as integers, seconds as numeric) instead of text-prefixed values.
 - Hardened NA report `D`/`R` numeric conversion to handle apostrophe-prefixed source values.
+- Fixed broken `show_configuration_click` docstring (missing closing `"""`) introduced during Phase 4 integration.
 
 ### Maintenance
 - Brief cleanup pass completed to archive or remove out-of-date code/files.
 
 ### Documentation
-- Documentation refreshed for current structure and release-facing guidance.
-- Updated NTP workflow documentation in `occultation-manager/ReadMe.md`, `occultation-manager/ARCHITECTURE.md`, and top-level `README.md`.
+- `RELEASE_NOTES.md` updated with Beta.4 section covering GPS PPS tool, NTP report integration, and chart improvements.
+- `occultation-manager/ReadMe.md` updated with GPS PPS Comparison entry under Tools and enhanced NTP report flow description.
+- `gps-timing-analysis/ReadMe.md` updated with GPS PPS Comparison Analysis section.
+- Top-level `README.md` updated to reflect new tools and integration.
 
 ## [0.2.0-beta.3] - 2026-03
 
@@ -35,6 +53,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Updated release-facing version references from `0.2.0-beta.2` to `0.2.0-beta.3`.
 - Updated release package naming/links and related release-prep documentation.
+
+## [0.2.0-beta.2] - 2026-02
+
+### Documentation
+- Updated release-facing version references from `0.2.0-beta.1` to `0.2.0-beta.2` in user and release-prep documentation.
+- Updated installation package name and GitHub release download URL in `occultation-manager/ReadMe.md`.
+- Updated embedded Quick Start install package reference in `occultation-manager/python/help.py`.
+- Updated current version context in `occultation-manager/ARCHITECTURE.md`.
+
+### Release Preparation
+- Consolidated development-oriented markdown docs into `occultation-manager/python/development documentation/`.
+- Updated moved-doc references in `occultation-manager/python/ReadMe.md` and `occultation-manager/python/lib/README.md`.
 
 ## [0.2.0-beta.2] - 2026-02
 

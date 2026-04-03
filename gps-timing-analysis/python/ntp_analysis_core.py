@@ -572,7 +572,10 @@ def format_us(seconds):
 
 
 def _choose_y_step_ms(span_ms):
-    """Return a nice round Y-axis tick interval (in ms) for the given data span."""
+    """Return a nice round Y-axis tick interval (in ms) for the given data span.
+
+    Targets at most 8 tick intervals (9 gridlines) so axes stay uncluttered.
+    """
     if span_ms <= 0:
         return 1.0
     # Candidate nice intervals in ms
@@ -585,7 +588,7 @@ def _choose_y_step_ms(span_ms):
         100.0, 200.0, 500.0, 1000.0,
     ]
     for step in nice:
-        if span_ms / step <= 7:
+        if span_ms / step <= 8:
             return step
     return nice[-1]
 
@@ -1235,6 +1238,575 @@ def estimate_offset_at_time(query_mjd, query_sec, loop_rows, peer_rows, window_s
     }
 
 
+# ---------------------------------------------------------------------------
+# GPS PPS Comparison Analysis
+# ---------------------------------------------------------------------------
+# These functions implement a comparison between internet NTP server offsets
+# and a local GPS PPS refclock (address 127.127.*.*) treated as ground truth.
+# The GPS PPS offset can be assumed accurate to <<1 ms, so the difference
+#   offset_diff = internet_offset - gps_pps_offset
+# is the UTC error of the internet NTP server at that moment.
+#
+# Analysis is restricted to intervals where the GPS PPS server is in the
+# "noselect" state (NTP select code < 4), which is the intended test
+# configuration.  If the GPS PPS server was temporarily selected (code >= 4)
+# those windows are excluded with a warning.
+# ---------------------------------------------------------------------------
+
+
+def find_gps_pps_candidates(peer_rows):
+    """Scan peerstats for NTP refclock addresses (127.127.*.*).
+
+    Parameters
+    ----------
+    peer_rows : list[PeerRecord]
+
+    Returns
+    -------
+    list of (addr, record_count) sorted by record_count descending.
+    """
+    counts = {}
+    for row in peer_rows:
+        addr = row.server_address if hasattr(row, "server_address") else ""
+        if addr.startswith("127.127."):
+            counts[addr] = counts.get(addr, 0) + 1
+    return sorted(counts.items(), key=lambda pair: pair[1], reverse=True)
+
+
+def check_gps_pps_noselect_status(peer_rows, gps_pps_addr):
+    """Analyse whether a GPS PPS refclock was held in the noselect state.
+
+    NTP selects the GPS PPS server's best source state bits:
+      code 0-3: reject / falsetick / excess / outlier   -> noselect in effect
+      code 4-7: candidate / backup / sys.peer / pps.peer-> noselect NOT in effect
+
+    Parameters
+    ----------
+    peer_rows     : list[PeerRecord]
+    gps_pps_addr  : str   address of the GPS PPS server (e.g. "127.127.20.0")
+
+    Returns
+    -------
+    dict with keys:
+      is_strictly_noselect  bool          True if all records have code < 4
+      select_code_counts    dict[int,int]  count per select code observed
+      noselect_fraction     float          fraction of records with code < 4
+      warnings              list[str]
+    """
+    gps_rows = [r for r in peer_rows
+                if (r.server_address if hasattr(r, "server_address") else "") == gps_pps_addr]
+
+    code_counts = {}
+    for row in gps_rows:
+        code = get_select_code(row.status)
+        code_counts[code] = code_counts.get(code, 0) + 1
+
+    total = len(gps_rows)
+    noselect_n = sum(v for k, v in code_counts.items() if k < 4)
+    noselect_fraction = float(noselect_n) / float(total) if total > 0 else 0.0
+    is_strictly = all(k < 4 for k in code_counts.keys())
+
+    warnings = []
+    if total == 0:
+        warnings.append("No peerstats records found for %s." % gps_pps_addr)
+    elif not is_strictly:
+        selected_n = total - noselect_n
+        warnings.append(
+            "%s had %d record(s) (%.1f%%) where noselect was NOT in effect "
+            "(select code >= 4).  Those intervals are excluded from the analysis."
+            % (gps_pps_addr, selected_n, (1.0 - noselect_fraction) * 100.0)
+        )
+
+    return {
+        "is_strictly_noselect": is_strictly,
+        "select_code_counts": code_counts,
+        "noselect_fraction": noselect_fraction,
+        "warnings": warnings,
+    }
+
+
+def get_gps_pps_noselect_intervals(peer_rows, gps_pps_addr, gap_threshold_s=300.0):
+    """Extract contiguous time intervals where the GPS PPS server was in noselect state.
+
+    Contiguous runs of valid (select code < 4) GPS PPS records are grouped
+    into intervals.  Two consecutive records separate a new interval when
+    the gap between them exceeds *gap_threshold_s* (default 5 minutes).
+
+    Parameters
+    ----------
+    peer_rows       : list[PeerRecord]
+    gps_pps_addr    : str
+    gap_threshold_s : float   maximum gap (seconds) within one interval
+
+    Returns
+    -------
+    list of (start_dt, end_dt)  each as a datetime.
+    Empty list if no valid records exist.
+    """
+    gps_noselect = [
+        r for r in peer_rows
+        if (r.server_address if hasattr(r, "server_address") else "") == gps_pps_addr
+        and get_select_code(r.status) < 4
+    ]
+    if not gps_noselect:
+        return []
+
+    gps_noselect.sort(key=lambda r: (r.mjd, r.sec_of_day))
+
+    intervals = []
+    span_start = None
+    prev_dt = None
+
+    for row in gps_noselect:
+        dt = to_utc_datetime(row.mjd, row.sec_of_day)
+        if prev_dt is None:
+            span_start = dt
+        else:
+            gap = (dt - prev_dt).total_seconds()
+            if gap > gap_threshold_s:
+                intervals.append((span_start, prev_dt))
+                span_start = dt
+        prev_dt = dt
+
+    if span_start is not None and prev_dt is not None:
+        intervals.append((span_start, prev_dt))
+
+    return intervals
+
+
+def _dt_in_noselect_intervals(dt, noselect_intervals):
+    """Return True if *dt* falls within any of the noselect intervals."""
+    for start, end in noselect_intervals:
+        if start <= dt <= end:
+            return True
+    return False
+
+
+def interpolate_gps_pps_offset(gps_records_sorted, target_dt, max_gap_s=120.0):
+    """Linearly interpolate the GPS PPS offset to *target_dt*.
+
+    Parameters
+    ----------
+    gps_records_sorted : list[PeerRecord]  GPS PPS records, sorted by time,
+                         restricted to noselect intervals.
+    target_dt          : datetime
+    max_gap_s          : float   reject interpolation if bracketing gap > this.
+
+    Returns
+    -------
+    float (seconds) or None if interpolation is not possible.
+    """
+    if not gps_records_sorted:
+        return None
+
+    before = None
+    after = None
+    for row in gps_records_sorted:
+        dt = to_utc_datetime(row.mjd, row.sec_of_day)
+        if dt <= target_dt:
+            before = (dt, row.offset)
+        else:
+            after = (dt, row.offset)
+            break
+
+    # Exact match or extrapolation at the start
+    if before is None:
+        return None
+
+    # Only a "before" record exists (target is after all GPS data)
+    if after is None:
+        gap = (target_dt - before[0]).total_seconds()
+        if gap > max_gap_s:
+            return None
+        return before[1]
+
+    # Normal linear interpolation
+    span = (after[0] - before[0]).total_seconds()
+    if span <= 0.0:
+        return before[1]
+    if span > max_gap_s:
+        return None
+
+    fraction = (target_dt - before[0]).total_seconds() / span
+    return before[1] + fraction * (after[1] - before[1])
+
+
+def compute_gps_pps_comparison(peer_rows, gps_pps_addr, noselect_intervals,
+                               observer_lat=None, observer_lon=None,
+                               known_servers=None):
+    """Compute per-server offset differences relative to the GPS PPS refclock.
+
+    Only timestamps that fall within *noselect_intervals* are included.
+    For each internet NTP server the offset difference is:
+        offset_diff = internet_offset - interpolated_gps_pps_offset
+
+    Parameters
+    ----------
+    peer_rows          : list[PeerRecord]  all peerstats rows for the dataset
+    gps_pps_addr       : str               confirmed GPS PPS server address
+    noselect_intervals : list[(datetime, datetime)]  from get_gps_pps_noselect_intervals()
+    observer_lat       : float or None
+    observer_lon       : float or None
+    known_servers      : list or None      from load_known_servers()
+
+    Returns
+    -------
+    dict with keys:
+      per_server_delay   dict[addr, list[(datetime, delay_s)]]
+      per_server_diff    dict[addr, list[(datetime, offset_diff_s)]]
+      selected_peer_diff list[(datetime, offset_diff_s)]
+      server_to_km       dict[addr, float or None]
+      gps_pps_addr       str
+      noselect_intervals list
+      coverage_hours     float
+    """
+    # Separate GPS PPS records (noselect only) from internet server records
+    gps_noselect_rows = [
+        r for r in peer_rows
+        if (r.server_address if hasattr(r, "server_address") else "") == gps_pps_addr
+        and get_select_code(r.status) < 4
+    ]
+    gps_noselect_rows.sort(key=lambda r: (r.mjd, r.sec_of_day))
+
+    internet_rows = [
+        r for r in peer_rows
+        if not (r.server_address if hasattr(r, "server_address") else "").startswith("127.127.")
+    ]
+
+    # Coverage hours: sum of noselect interval durations
+    coverage_hours = sum(
+        (end - start).total_seconds() / 3600.0
+        for start, end in noselect_intervals
+    )
+
+    # Resolve geographic distance for each internet server
+    unique_internet_servers = list(set(
+        (r.server_address if hasattr(r, "server_address") else "") for r in internet_rows
+    ))
+    server_to_km = {}
+    for addr in unique_internet_servers:
+        if addr:
+            loc = resolve_server_location(addr, known_servers or [], observer_lat, observer_lon)
+            server_to_km[addr] = loc.get("geo_km")
+
+    # Build per-server delay and diff series (within noselect intervals only)
+    per_server_delay = {}
+    per_server_diff = {}
+
+    for row in internet_rows:
+        addr = row.server_address if hasattr(row, "server_address") else ""
+        if not addr:
+            continue
+        dt = to_utc_datetime(row.mjd, row.sec_of_day)
+        if not _dt_in_noselect_intervals(dt, noselect_intervals):
+            continue
+
+        gps_offset = interpolate_gps_pps_offset(gps_noselect_rows, dt)
+        if gps_offset is None:
+            continue
+
+        offset_diff = row.offset - gps_offset
+
+        if addr not in per_server_delay:
+            per_server_delay[addr] = []
+            per_server_diff[addr] = []
+        per_server_delay[addr].append((dt, row.delay))
+        per_server_diff[addr].append((dt, offset_diff))
+
+    # Selected peer diff: use reduce_to_active_timeline on internet rows only
+    active_timeline = reduce_to_active_timeline(
+        [r for r in internet_rows if is_selected_status(r.status)]
+    )
+    if not active_timeline:
+        # Fall back to all internet rows in the active timeline
+        active_timeline = reduce_to_active_timeline(internet_rows)
+
+    selected_peer_diff = []
+    for row in active_timeline:
+        dt = to_utc_datetime(row.mjd, row.sec_of_day)
+        if not _dt_in_noselect_intervals(dt, noselect_intervals):
+            continue
+        gps_offset = interpolate_gps_pps_offset(gps_noselect_rows, dt)
+        if gps_offset is None:
+            continue
+        selected_peer_diff.append((dt, row.offset - gps_offset))
+
+    return {
+        "per_server_delay": per_server_delay,
+        "per_server_diff": per_server_diff,
+        "selected_peer_diff": selected_peer_diff,
+        "server_to_km": server_to_km,
+        "gps_pps_addr": gps_pps_addr,
+        "noselect_intervals": noselect_intervals,
+        "coverage_hours": coverage_hours,
+    }
+
+
+def estimate_comparison_uncertainty(per_server_diff):
+    """Compute k=2 uncertainty of offset differences per server and combined.
+
+    Parameters
+    ----------
+    per_server_diff : dict[addr, list[(datetime, offset_diff_s)]]
+                      from compute_gps_pps_comparison()["per_server_diff"]
+
+    Returns
+    -------
+    dict with keys:
+      per_server  dict[addr, {mean_ms, stdev_ms, u_expanded_k2_ms, n, low_n_warning}]
+      combined    {mean_ms, stdev_ms, u_expanded_k2_ms, n, low_n_warning}
+    """
+    _LOW_N_THRESHOLD = 30
+
+    per_server_result = {}
+    all_diffs_ms = []
+
+    for addr, series in per_server_diff.items():
+        diffs_ms = [diff_s * 1000.0 for _dt, diff_s in series]
+        n = len(diffs_ms)
+        if n == 0:
+            per_server_result[addr] = {
+                "mean_ms": None, "stdev_ms": None,
+                "u_expanded_k2_ms": None, "n": 0,
+                "low_n_warning": True,
+            }
+            continue
+        m = mean(diffs_ms)
+        s = stdev(diffs_ms) if n >= 2 else 0.0
+        per_server_result[addr] = {
+            "mean_ms": m,
+            "stdev_ms": s,
+            "u_expanded_k2_ms": 2.0 * s,
+            "n": n,
+            "low_n_warning": n < _LOW_N_THRESHOLD,
+        }
+        all_diffs_ms.extend(diffs_ms)
+
+    n_combined = len(all_diffs_ms)
+    if n_combined >= 2:
+        m_combined = mean(all_diffs_ms)
+        s_combined = stdev(all_diffs_ms)
+    elif n_combined == 1:
+        m_combined = all_diffs_ms[0]
+        s_combined = 0.0
+    else:
+        m_combined = None
+        s_combined = None
+
+    combined = {
+        "mean_ms": m_combined,
+        "stdev_ms": s_combined,
+        "u_expanded_k2_ms": (2.0 * s_combined) if s_combined is not None else None,
+        "n": n_combined,
+        "low_n_warning": n_combined < _LOW_N_THRESHOLD,
+    }
+
+    return {"per_server": per_server_result, "combined": combined}
+
+
+def estimate_drift_linear_regression(peer_rows, start_dt, end_dt):
+    """Estimate PC clock drift by OLS linear regression on selected peer offsets.
+
+    Uses all selected-peer records (select code 6 or 7) within [start_dt, end_dt]
+    from internet servers only (not refclock addresses).  Returns the slope of
+    offset vs time in multiple units, plus goodness-of-fit statistics.
+
+    OLS is implemented directly using sums to avoid external library dependencies.
+
+    Parameters
+    ----------
+    peer_rows : list[PeerRecord]
+    start_dt  : datetime  start of regression window (GPS PPS coverage start)
+    end_dt    : datetime  end of regression window
+
+    Returns
+    -------
+    dict with keys:
+      drift_ppm            float   slope expressed as ppm (s/s * 1e6)
+      drift_ms_per_hour    float   slope in ms per hour
+      r_squared            float   coefficient of determination (0-1)
+      n_points             int     number of data points used
+      coverage_hours       float   end_dt - start_dt in hours
+      start_offset_ms      float   mean offset in first 10% of window (ms)
+      end_offset_ms        float   mean offset in last 10% of window (ms)
+      warning              str or None
+    """
+    internet_selected = [
+        r for r in peer_rows
+        if not (r.server_address if hasattr(r, "server_address") else "").startswith("127.127.")
+        and get_select_code(r.status) in (6, 7)
+    ]
+
+    window_rows = []
+    for row in internet_selected:
+        dt = to_utc_datetime(row.mjd, row.sec_of_day)
+        if start_dt <= dt <= end_dt:
+            window_rows.append((dt, row.offset))
+
+    window_rows.sort(key=lambda pair: pair[0])
+    n = len(window_rows)
+
+    coverage_hours = (end_dt - start_dt).total_seconds() / 3600.0
+
+    if n < 2:
+        return {
+            "drift_ppm": None,
+            "drift_ms_per_hour": None,
+            "r_squared": None,
+            "n_points": n,
+            "coverage_hours": coverage_hours,
+            "start_offset_ms": None,
+            "end_offset_ms": None,
+            "warning": "Fewer than 2 selected-peer records in GPS coverage window.",
+        }
+
+    # OLS: t in seconds since start_dt, y = offset (seconds)
+    t0 = window_rows[0][0]
+    t_vals = [(dt - t0).total_seconds() for dt, _off in window_rows]
+    y_vals = [off for _dt, off in window_rows]
+
+    n_f = float(n)
+    sum_t = sum(t_vals)
+    sum_y = sum(y_vals)
+    sum_tt = sum(t * t for t in t_vals)
+    sum_ty = sum(t * y for t, y in zip(t_vals, y_vals))
+
+    denom = n_f * sum_tt - sum_t * sum_t
+    if abs(denom) < 1e-30:
+        slope = 0.0
+        intercept = sum_y / n_f
+    else:
+        slope = (n_f * sum_ty - sum_t * sum_y) / denom      # s/s
+        intercept = (sum_y - slope * sum_t) / n_f
+
+    # R-squared
+    mean_y = sum_y / n_f
+    ss_tot = sum((y - mean_y) ** 2 for y in y_vals)
+    ss_res = sum((y - (intercept + slope * t)) ** 2 for t, y in zip(t_vals, y_vals))
+    r_squared = 1.0 - (ss_res / ss_tot) if ss_tot > 1e-30 else 0.0
+
+    # Start / end offset estimates from the first and last 10% of points
+    tenth = max(1, int(round(n * 0.1)))
+    start_offset_ms = mean([off for _dt, off in window_rows[:tenth]]) * 1000.0
+    end_offset_ms = mean([off for _dt, off in window_rows[-tenth:]]) * 1000.0
+
+    warning = None
+    if n < 30:
+        warning = "Only %d selected-peer records in window; regression may be unreliable." % n
+
+    return {
+        "drift_ppm": slope * 1.0e6,
+        "drift_ms_per_hour": slope * 3600.0 * 1000.0,
+        "r_squared": r_squared,
+        "n_points": n,
+        "coverage_hours": coverage_hours,
+        "start_offset_ms": start_offset_ms,
+        "end_offset_ms": end_offset_ms,
+        "warning": warning,
+    }
+
+
+def generate_gps_comparison_report(comparison_result, uncertainty_result, drift_result,
+                                   noselect_status=None):
+    """Format a text report for the GPS PPS comparison analysis.
+
+    Parameters
+    ----------
+    comparison_result  : dict from compute_gps_pps_comparison()
+    uncertainty_result : dict from estimate_comparison_uncertainty()
+    drift_result       : dict from estimate_drift_linear_regression()
+    noselect_status    : dict from check_gps_pps_noselect_status(), or None
+
+    Returns
+    -------
+    str  (lines joined by \\r\\n for Windows TextBox compatibility)
+    """
+    gps_addr = comparison_result.get("gps_pps_addr", "unknown")
+    coverage_hours = comparison_result.get("coverage_hours", 0.0)
+    intervals = comparison_result.get("noselect_intervals", [])
+
+    lines = [
+        "GPS PPS Comparison Report",
+        "=" * 80,
+        "GPS PPS reference server: %s" % gps_addr,
+        "Noselect coverage: %.2f hours (%d interval(s))" % (coverage_hours, len(intervals)),
+    ]
+
+    # noselect validation warnings
+    if noselect_status:
+        for w in noselect_status.get("warnings", []):
+            lines.append("WARNING: %s" % w)
+        frac = noselect_status.get("noselect_fraction", 1.0)
+        lines.append("Noselect fraction: %.1f%%" % (frac * 100.0))
+
+    lines.append("")
+
+    # Per-server uncertainty table
+    lines.append("UTC Error per Internet NTP Server (offset - GPS PPS, k=2)")
+    lines.append("-" * 80)
+
+    per_server = uncertainty_result.get("per_server", {})
+    if per_server:
+        header = "%-22s  %8s  %8s  %10s  %6s" % ("Server", "Mean(ms)", "Std(ms)", "U(k=2)(ms)", "N")
+        lines.append(header)
+        lines.append("-" * len(header))
+        for addr in sorted(per_server.keys()):
+            ps = per_server[addr]
+            if ps["mean_ms"] is None:
+                lines.append("%-22s  %8s  %8s  %10s  %6d" % (addr, "no data", "--", "--", ps["n"]))
+            else:
+                flag = " *" if ps.get("low_n_warning") else ""
+                lines.append(
+                    "%-22s  %8.3f  %8.3f  %10.3f  %6d%s"
+                    % (addr, ps["mean_ms"], ps["stdev_ms"], ps["u_expanded_k2_ms"], ps["n"], flag)
+                )
+    else:
+        lines.append("No internet server data available.")
+
+    lines.append("")
+
+    # Combined estimate
+    combined = uncertainty_result.get("combined", {})
+    lines.append("Combined UTC Error Estimate (all servers pooled)")
+    lines.append("-" * 80)
+    if combined.get("mean_ms") is not None:
+        lines.append("Mean offset error: %.3f ms" % combined["mean_ms"])
+        lines.append("Std deviation:     %.3f ms" % combined["stdev_ms"])
+        lines.append("U_expanded (k=2):  +/- %.3f ms" % combined["u_expanded_k2_ms"])
+        lines.append("N (total points):  %d" % combined["n"])
+        if combined.get("low_n_warning"):
+            lines.append("* NOTE: fewer than 30 data points — uncertainty estimate may be unreliable.")
+    else:
+        lines.append("Insufficient data for combined estimate.")
+
+    lines.append("")
+
+    # Clock drift
+    lines.append("PC Clock Drift (linear regression on selected peer offsets)")
+    lines.append("-" * 80)
+    if drift_result.get("drift_ms_per_hour") is not None:
+        lines.append("Drift rate:           %.4f ms/hour  (%.4f ppm)" % (
+            drift_result["drift_ms_per_hour"], drift_result["drift_ppm"]))
+        lines.append("R-squared:            %.4f" % drift_result["r_squared"])
+        lines.append("Coverage window:      %.2f hours" % drift_result["coverage_hours"])
+        lines.append("N (regression pts):   %d" % drift_result["n_points"])
+        lines.append("Offset at start:      %.3f ms" % drift_result["start_offset_ms"])
+        lines.append("Offset at end:        %.3f ms" % drift_result["end_offset_ms"])
+        total_drift_ms = drift_result["drift_ms_per_hour"] * drift_result["coverage_hours"]
+        lines.append("Total drift over window: %.3f ms" % total_drift_ms)
+        if drift_result.get("warning"):
+            lines.append("* NOTE: %s" % drift_result["warning"])
+    else:
+        lines.append("Insufficient data for drift estimate.")
+        if drift_result.get("warning"):
+            lines.append("Details: %s" % drift_result["warning"])
+
+    lines.append("")
+    lines.append("* = fewer than 30 data points in this estimate")
+
+    return "\r\n".join(lines)
+
+
 def analyze(option, loop_rows, peer_rows, known_servers=None, observer_lat=None, observer_lon=None):
     if not loop_rows:
         raise RuntimeError("No usable loopstats rows were found for the selected day.")
@@ -1400,29 +1972,8 @@ def generate_report(result):
         "Active source transitions: %d" % d.get("active_transitions", 0),
         "Unique active servers: %d" % d.get("active_unique_servers", 0),
         "",
-        "Interpretation A (literal reading)",
-        "-" * 80,
-        "Mean signed loop offset: %s" % format_ms(m["mean_offset_signed"]),
-        "Mean peer delay (RTT): %s" % format_ms(m["mean_delay"]),
-        "Quadrature sum: %s" % format_ms(m["a_uncertainty"]),
-        "",
-        "Interpretation B (metrological)",
-        "-" * 80,
-        "u_offset = mean(abs(offset))/sqrt(3): %s" % format_ms(m["b_u_offset"]),
-        "u_delay = (mean(delay)/2)/sqrt(3): %s" % format_ms(m["b_u_delay"]),
-        "u_server (fixed): %s" % format_us(m["b_u_server"]),
-        "u_combined (k=1): %s" % format_ms(m["b_u_combined"]),
-        "U_expanded (k=2): +/- %s" % format_ms(m["b_u_expanded"]),
-        "",
-        "Interpretation C (statistical)",
-        "-" * 80,
-        "Systematic bias (mean signed offset): %s" % format_ms(m["c_bias"]),
-        "u_wander = stdev(offset): %s" % format_ms(m["c_u_wander"]),
-        "u_asymmetry = (mean(delay)/2)/sqrt(3): %s" % format_ms(m["c_u_asymmetry"]),
-        "u_delay_variation = stdev(delay)/2: %s" % format_ms(m["c_u_delay_variation"]),
-        "u_server (rectangular): %s" % format_us(m["c_u_server"]),
-        "u_combined (k=1): %s" % format_ms(m["c_u_combined"]),
-        "U_expanded (k=2): +/- %s" % format_ms(m["c_u_expanded"]),
+        "Recommended UTC Accuracy Summaries (stronger set)",
+        "=" * 80,
         "",
         "Interpretation D (NTP native statistics)",
         "-" * 80,
@@ -1434,8 +1985,15 @@ def generate_report(result):
         "u_combined (k=1): %s" % format_ms(m["d_u_combined"]),
         "U_expanded (k=2): +/- %s" % format_ms(m["d_u_expanded"]),
         "",
-        "Offset Accuracy to UTC (practical variants)",
-        "=" * 80,
+        "Interpretation C (statistical)",
+        "-" * 80,
+        "Systematic bias (mean signed offset): %s" % format_ms(m["c_bias"]),
+        "u_wander = stdev(offset): %s" % format_ms(m["c_u_wander"]),
+        "u_asymmetry = (mean(delay)/2)/sqrt(3): %s" % format_ms(m["c_u_asymmetry"]),
+        "u_delay_variation = stdev(delay)/2: %s" % format_ms(m["c_u_delay_variation"]),
+        "u_server (rectangular): %s" % format_us(m["c_u_server"]),
+        "u_combined (k=1): %s" % format_ms(m["c_u_combined"]),
+        "U_expanded (k=2): +/- %s" % format_ms(m["c_u_expanded"]),
         "",
         "Variant E (minimal: network + measurement)",
         "-" * 80,
@@ -1443,11 +2001,6 @@ def generate_report(result):
         "u_measurement = stdev(offset): %s" % format_ms(m["e_u_measurement"]),
         "u_combined (k=1): %s" % format_ms(m["e_u_combined"]),
         "U_expanded (k=2): +/- %s" % format_ms(m["e_u_expanded"]),
-        "",
-        "Variant F (using NTP's dispersion directly)",
-        "-" * 80,
-        "u_offset = mean(dispersion): %s" % format_ms(m["f_u_offset"]),
-        "U_expanded (k=2): +/- %s" % format_ms(m["f_u_expanded"]),
         "",
         "Variant G (conservative: worst-case delay)",
         "-" * 80,
