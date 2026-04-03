@@ -1,11 +1,9 @@
 # occultation-tools
 
-![Version](https://img.shields.io/badge/version-0.2.0--beta.3-blue)
+![Version](https://img.shields.io/badge/version-0.2.0--beta.4-blue)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
 
 Tools for automating occultation observations and validating timing accuracy.
-
-Repository housekeeping update: out-of-date code/files were briefly cleaned up (archived/removed as appropriate), and documentation was refreshed.
 
 📋 **[View CHANGELOG](CHANGELOG.md)** for release history and version details.
 
@@ -25,29 +23,36 @@ Automates the complete occultation observation workflow: downloads personal obse
 - Generates customizable SharpCap sequences for automated recording
 - Observation preparation panel with GOTO, plate solve, and test recording
 - Report generation with Tangra CSV integration (experimental)
-- Optional NTP timing analysis step during report generation (folder-based NTP dataset selection)
+- Optional NTP timing analysis step during report generation — open the full NTP Analyser or run a quick in-flow estimate, folder remembered between sessions
 - Supports NA (IOTA) and TT (RASNZ) Excel outputs plus SODIS (IOTA-ES Form 2.03) text output
 - Multiple telescope and camera configuration support
+- **Tools menu** provides access to the NTP Timing Analyser, GPS Flash Calibration, and GPS PPS Comparison directly from the main window
 
 ### 2. GPS Timing Analysis
-**Python toolkit for camera timestamp validation**
+**Python toolkit for NTP offset monitoring, GPS PPS validation, and camera timestamp calibration**
 
-Validates camera timestamp accuracy using GPS flash timing analysis. Essential for ensuring sub-millisecond timing precision in occultation observations.
+Validates camera timestamp accuracy and NTP performance. Includes LED line delay calibration, NTP loopstats/peerstats analysis, and GPS PPS UTC error comparison.
 
 📖 **[Read Full Documentation](gps-timing-analysis/ReadMe.md)**  
 🔬 **[View Examples](gps-timing-analysis/examples/)**
 
 **Quick Overview:**
-- Tangra CSV light curve analysis
-- GPS flash detection and timing offset calculation
-- Rolling shutter characterization
-- Camera calibration and quality assurance
+- **NTP Timing Analysis**: loopstats/peerstats offset and jitter charting, server delay analysis, U(k=2) uncertainty estimate
+- **GPS PPS Comparison**: measures internet NTP server UTC error against a GPS PPS refclock; clock drift regression; per-server uncertainty table
+- **LED Line Delay Calibration**: rolling shutter line delay measurement from live GPS flash captures
+- **Tangra CSV analysis**: light curve import, timestamp statistics, GPS flash detection
 
 ### Integration
 
-The tools work together:
-- **GPS Timing Analysis**: Validates camera timestamp accuracy
-- **Occultation Manager**: Uses Tangra CSV files to auto-populate reports with timing data and can launch the NTP timing analyzer from the report flow
+The tools work together as a timing quality chain:
+
+| Step | Tool | Purpose |
+|---|---|---|
+| 1 | GPS Timing + NTP installer | Set up Meinberg NTP with GPS/PPS discipline |
+| 2 | NTP Timing Analyser | Verify NTP server selection and offset stability |
+| 3 | GPS PPS Comparison | Quantify UTC error and clock drift against GPS ground truth |
+| 4 | LED Line Delay Calibration | Characterise rolling shutter offset for the camera |
+| 5 | Occultation Manager report flow | Apply NTP uncertainty to the observation report |
 
 ---
 
@@ -61,7 +66,7 @@ occultation-tools/
 │   └── RELEASE_NOTES.md     # Version history
 │
 ├── gps-timing-analysis/      # Timing validation toolkit
-│   ├── python/              # Analysis functions
+│   ├── python/              # Analysis functions + GUI tools
 │   ├── examples/            # Jupyter notebooks
 │   ├── requirements.txt     # Dependencies
 │   └── ReadMe.md           # Full documentation

@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env ipy
 """IronPython 3.4 Windows Forms tool to analyze NTP loopstats/peerstats timing accuracy.
 
-This implements interpretations A, B, C, and D from docs/ntp_traceability.md.
+This presents the stronger working interpretation set: D, C, E, and G.
 """
 
 import csv
@@ -198,7 +198,7 @@ class AnalyzerForm(Form):
         lp = split.Panel1
 
         self.lbl_title = Label()
-        self.lbl_title.Text = "NTP Timing Accuracy - Interpretations A, B, C, D"
+        self.lbl_title.Text = "NTP Timing Accuracy Analysis"
         self.lbl_title.Font = Font("Segoe UI", 11, FontStyle.Bold)
         self.lbl_title.Location = Point(8, 8)
         self.lbl_title.Size = Size(440, 26)
@@ -331,7 +331,7 @@ class AnalyzerForm(Form):
         lp.Controls.Add(self.txt_pit_result)
 
         self.lbl_pit_note = Label()
-        self.lbl_pit_note.Text = "Actual error via fibre likely 2-5x smaller, but no less than the jitter"
+        self.lbl_pit_note.Text = "Estimated accuracy accounts for distance to servers so is lower than the theoretical max error bound of delay/2"
         self.lbl_pit_note.Location = Point(8, 450)
         self.lbl_pit_note.Size = Size(280, 34)
         lp.Controls.Add(self.lbl_pit_note)

@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.3
+# Release Package Instructions - v0.2.0-beta.4
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -17,7 +17,7 @@ This script automatically:
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
 - Pre-seeds `data/templates/` with working copies of the sequencer master templates
 - Seeds/creates data folders under `data/{config,events,templates,sequences,reports}/`
-- Generates `occultation-manager-v0.2.0-beta.3.zip`
+- Generates `occultation-manager-v0.2.0-beta.4.zip`
 
 ### Manual File List (if needed)
 
@@ -117,7 +117,7 @@ occultation-manager/
 │   ├── sequences/
 │   └── reports/
 ├── ReadMe.md                                      <-- User documentation
-├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.3 features
+├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.4 features
 └── RELEASE_INSTRUCTIONS.md
 ```
 
@@ -131,29 +131,31 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.2.0-beta.3`
+   - Tag: `v0.2.0-beta.4`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.3 - Documentation and Release Preparation Update`
+   - Release title: `Occultation Manager v0.2.0-beta.4 - NTP Integration and GPS PPS Comparison`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.3 - Documentation and Release Preparation Update
+   # Occultation Manager v0.2.0-beta.4 - NTP Integration and GPS PPS Comparison
    
-   **Improved Excel report generation** with Openize SDK for SharpCap.
+   **NTP timing integration, GPS PPS comparison tool, and chart improvements** for SharpCap.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
 
    ## 🧹 Maintenance
 
-   - Archived or removed out-of-date code/files.
-   - Refreshed documentation to match current project/release state.
+   - Bug fixes from user testing reports.
+   - Improvements based on user feedback.
+   - Refreshed documentation and version references for Beta.4.
+   - Release ZIP now uses `System.IO.Compression.ZipArchive` eliminating file-in-use packaging errors.
    
    ## 📦 Installation
    
-   **Download:** [occultation-manager-v0.2.0-beta.3.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip)
+   **Download:** [occultation-manager-v0.2.0-beta.4.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip)
    
    ### Quick Start:
    1. Download and extract the ZIP file to a location with read/write access
@@ -180,27 +182,22 @@ occultation-manager/
    
    See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
    
-   ## ✨ What's New in Beta.3
+   ## ✨ What's New in Beta.4
    
-   ### Openize SDK Implementation
-   - **Direct Excel Cell Manipulation**: Uses Openize.OpenXML-SDK for reliable Excel report generation
-   - **No More XML Placeholders**: Eliminates manual XML string replacement approach
-   - **Preserves Excel Features**: Maintains data validation, formulas, and formatting
-   - **IronPython Compatible**: Fully tested with IronPython 3.4.2 on .NET 8.0
-   - **Bundled DLLs**: Required .NET assemblies included in `app/lib/` - no additional downloads needed
+   ### GPS PPS Comparison (New Tool — Tools → GPS PPS Comparison)
+   - Measures how accurately each internet NTP server tracks true UTC using the GPS PPS refclock as ground truth
+   - Preflight dialog: GPS candidate scan, noselect interval coverage display, traffic-light status indicator
+   - UTC Error chart, Delay chart, Selected-Peer + OLS drift trend chart
+   - k=2 expanded uncertainty, drift report (ms/hr and ppm), text report, JSON export
    
-   ### Enhanced Report Features
-   - **Conditions Section**: Added clouds and stability fields to comprehensive report dialog
-   - **Occult XML Integration**: Conditions automatically mapped to Occult XML transparency/stability codes
-   - **Improved Reliability**: More robust Excel manipulation without file corruption risks
-   - New report generators: `tt_report_openize.py` and `na_report_openize.py`
+   ### NTP Timing Integration into Report Flow
+   - Confirm Observer Location step now offers optional in-flow NTP offset/uncertainty estimate
+   - Open NTP Analyser available non-blocking alongside the report dialog
    
-   ### Installation Requirements
-   - **Openize SDK DLLs** (included in release, no downloads required):
-     - Openize.OpenXMLSDK.dll
-     - DocumentFormat.OpenXml.dll
-     - DocumentFormat.OpenXml.Framework.dll
-   - DLLs located in `lib/` folder with installation guide
+   ### Chart Improvements (NTP and GPS PPS Tools)
+   - X-axis now visible: data-constrained bounds with span-based tick intervals
+   - Y-axis tick density capped at 9 gridlines for all charts
+   - Series drawing clipped to plot rectangle; WinForms AutoSize fix eliminates axis-label clipping
    
    ## 🎯 Key Features
    
@@ -278,10 +275,10 @@ occultation-manager/
    ```
 
 5. **Upload ZIP file:**
-   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.3.zip`
+   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.4.zip`
    - Drag and drop ZIP to "Attach binaries" section in GitHub release
    - GitHub does **not** auto-update markdown links in release notes; paste this URL manually in the notes:
-     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip`
+     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip`
 
 6. **Set release options:**
    - ✅ Check "Set as a pre-release" (this is a beta version)
@@ -291,7 +288,7 @@ occultation-manager/
 ### After Publishing
 
 The release will be available at:
-- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.3`
+- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.4`
 - Latest release: `https://github.com/labstercam/occultation-tools/releases/latest`
 
 ## Version Control Best Practices
@@ -314,14 +311,14 @@ The release will be available at:
 3. **Commit all changes**:
    ```bash
    git add .
-   git commit -m "Release v0.2.0-beta.3"
+   git commit -m "Release v0.2.0-beta.4"
    git push
    ```
 
 4. **Create and push tag**:
    ```bash
-   git tag v0.2.0-beta.3
-   git push origin v0.2.0-beta.3
+   git tag v0.2.0-beta.4
+   git push origin v0.2.0-beta.4
    ```
 
 ### After Release
@@ -330,7 +327,7 @@ The release will be available at:
 2. **Test installation** from GitHub release ZIP
 3. **Update documentation** if any installation issues found
 - Direct link: `https://github.com/labstercam/occultation-tools/releases/latest`
-- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip`
+- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip`
 
 Update README.md with this download link.
 
@@ -408,7 +405,7 @@ Before creating the release, verify:
 - [ ] README seed files present in data/events, data/sequences, data/reports
 - [ ] Working templates seeded into data/templates from resources/templates_master/sequencer
 
-### Sequence Execution (Available in v0.2.0-beta.3)
+### Sequence Execution (Available in v0.2.0-beta.3+)
 - [ ] Run Sequences button executes multiple selected sequences
 - [ ] Sequences run in chronological order
 - [ ] Progress updates show current sequence
@@ -429,7 +426,7 @@ Before creating the release, verify:
 - [ ] About dialog shows correct information
 
 ### Documentation
-- [ ] README.md up to date with v0.2.0-beta.3 features
+- [ ] README.md up to date with v0.2.0-beta.4 features
 - [ ] RELEASE_NOTES.md reflects current functionality
 - [ ] Installation instructions clear and accurate
 - [ ] Configuration steps documented

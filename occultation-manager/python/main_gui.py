@@ -5,6 +5,7 @@ clr.AddReference("System")
 
 import os
 import sys
+import imp
 import threading
 import time
 import webbrowser
@@ -42,6 +43,7 @@ _NTP_PYTHON = os.path.normpath(
 _NTP_RESOURCES = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "..", "gps-timing-analysis", "resources")
 )
+_GPS_CALIBRATION_SCRIPT = os.path.join(_NTP_PYTHON, "led_line_delay_calibration.py")
 if _NTP_PYTHON not in sys.path:
     sys.path.insert(0, _NTP_PYTHON)
 
@@ -138,6 +140,12 @@ class OccultationManagerGUI(Form):
                 self._ntp_init_error = str(ex)
         elif _NTP_IMPORT_ERROR:
             self._ntp_init_error = _NTP_IMPORT_ERROR
+
+        # Standalone tool windows opened from the Tools menu.
+        self._ntp_gui_form = None
+        self._gps_flash_form = None
+        self._gps_flash_module = None
+        self._gps_pps_comp_form = None
         
         self.setup_ui()
         self.load_initial_data()
@@ -606,6 +614,9 @@ class OccultationManagerGUI(Form):
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Manage Cameras", None, self.show_camera_manager_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Template Manager", None, self.show_template_manager_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("NTP Timing Analysis", None, self.open_ntp_timing_analysis_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS Flash Calibration", None, self.open_gps_flash_calibration_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS PPS Comparison", None, self.open_gps_pps_comparison_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Night Mode", None, self.toggle_night_mode_click))
         menu_bar.Items.Add(menu_tools)
@@ -2955,7 +2966,163 @@ class OccultationManagerGUI(Form):
         dialog.SelectedPath = self.config.get_sequences_folder()
         if dialog.ShowDialog() == DialogResult.OK:
             self.update_status(f"Sequence path is fixed in beta: {self.config.get_sequences_folder()}")
+
+    def _activate_tool_form(self, form):
+        """Bring a non-modal tool form to the foreground."""
+        if form is None:
+            return
+        try:
+            if getattr(form, 'WindowState', None) == FormWindowState.Minimized:
+                form.WindowState = FormWindowState.Normal
+        except Exception:
+            pass
+        try:
+            form.BringToFront()
+            form.Activate()
+            form.TopMost = True
+            form.TopMost = False
+        except Exception:
+            pass
+
+    def open_ntp_timing_analysis_click(self, sender, e):
+        """Open the standalone NTP Timing Analysis GUI window."""
+        if getattr(self, '_ntp_gui_form', None) is not None:
+            try:
+                if not self._ntp_gui_form.IsDisposed:
+                    self._activate_tool_form(self._ntp_gui_form)
+                    self.update_status("NTP Timing Analysis already open")
+                    return
+            except Exception:
+                pass
+
+        try:
+            if ntp is None and _NTP_IMPORT_ERROR:
+                MessageBox.Show(
+                    "NTP analysis core was not loaded:\n\n{0}".format(_NTP_IMPORT_ERROR),
+                    "NTP Module Not Available",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning,
+                )
+                return
+
+            import analyze_ntp_timing_accuracy as ntp_gui
+            self._ntp_gui_form = ntp_gui.AnalyzerForm()
+            try:
+                self._ntp_gui_form.Show(self)
+            except Exception:
+                self._ntp_gui_form.Show()
+            self._activate_tool_form(self._ntp_gui_form)
+            self.update_status("Opened NTP Timing Analysis")
+        except Exception as ex:
+            MessageBox.Show(
+                "Could not open the NTP Timing Analysis window:\n\n{0}".format(str(ex)),
+                "NTP Timing Analysis Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error,
+            )
+
+    def open_gps_flash_calibration_click(self, sender, e):
+        """Open the GPS Flash Calibration GUI window."""
+        if getattr(self, '_gps_flash_form', None) is not None:
+            try:
+                if not self._gps_flash_form.IsDisposed:
+                    self._activate_tool_form(self._gps_flash_form)
+                    self.update_status("GPS Flash Calibration already open")
+                    return
+            except Exception:
+                pass
+
+        try:
+            if _NTP_PYTHON not in sys.path and os.path.isdir(_NTP_PYTHON):
+                sys.path.insert(0, _NTP_PYTHON)
+
+            try:
+                import led_line_delay_calibration as gps_cal
+            except ImportError as import_ex:
+                if "led_line_delay_calibration" not in str(import_ex):
+                    raise
+                if not os.path.isfile(_GPS_CALIBRATION_SCRIPT):
+                    raise ImportError("GPS calibration script not found at: {0}".format(_GPS_CALIBRATION_SCRIPT))
+                gps_cal = imp.load_source("led_line_delay_calibration", _GPS_CALIBRATION_SCRIPT)
+
+            self._gps_flash_module = gps_cal
+
+            # Ensure the calibration module can access the active SharpCap instance.
+            try:
+                gps_cal.SharpCap = self.sharpcap
+            except Exception:
+                pass
+
+            existing_form = getattr(gps_cal, 'form', None)
+            try:
+                if existing_form is not None and not existing_form.IsDisposed:
+                    self._gps_flash_form = existing_form
+                    self._activate_tool_form(self._gps_flash_form)
+                    self.update_status("Opened GPS Flash Calibration")
+                    return
+            except Exception:
+                pass
+
+            self._gps_flash_form = gps_cal.LEDLineDelayCalibrationForm()
+            try:
+                self._gps_flash_form.StartPosition = FormStartPosition.CenterScreen
+            except Exception:
+                pass
+            gps_cal.form = self._gps_flash_form
+            try:
+                self._gps_flash_form.Show(self)
+            except Exception:
+                self._gps_flash_form.Show()
+            self._activate_tool_form(self._gps_flash_form)
+            self.update_status("Opened GPS Flash Calibration")
+        except Exception as ex:
+            MessageBox.Show(
+                "Could not open the GPS Flash Calibration window.\n\n{0}".format(str(ex)),
+                "GPS Flash Calibration Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error,
+            )
     
+    def open_gps_pps_comparison_click(self, sender, e):
+        """Open the GPS PPS Comparison GUI window."""
+        if getattr(self, '_gps_pps_comp_form', None) is not None:
+            try:
+                if not self._gps_pps_comp_form.IsDisposed:
+                    self._activate_tool_form(self._gps_pps_comp_form)
+                    self.update_status("GPS PPS Comparison already open")
+                    return
+            except Exception:
+                pass
+
+        try:
+            if _NTP_PYTHON not in sys.path and os.path.isdir(_NTP_PYTHON):
+                sys.path.insert(0, _NTP_PYTHON)
+
+            _script = os.path.join(_NTP_PYTHON, "gps_pps_comparison.py")
+            try:
+                import gps_pps_comparison as gps_comp
+            except ImportError as import_ex:
+                if "gps_pps_comparison" not in str(import_ex):
+                    raise
+                if not os.path.isfile(_script):
+                    raise ImportError("GPS PPS Comparison script not found at: {0}".format(_script))
+                gps_comp = imp.load_source("gps_pps_comparison", _script)
+
+            self._gps_pps_comp_form = gps_comp.GPSPPSComparisonForm()
+            try:
+                self._gps_pps_comp_form.Show(self)
+            except Exception:
+                self._gps_pps_comp_form.Show()
+            self._activate_tool_form(self._gps_pps_comp_form)
+            self.update_status("Opened GPS PPS Comparison")
+        except Exception as ex:
+            MessageBox.Show(
+                "Could not open the GPS PPS Comparison window.\n\n{0}".format(str(ex)),
+                "GPS PPS Comparison Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error,
+            )
+
     def show_configuration_click(self, sender, e):
         """Show configuration dialog"""
         config_dialog = ConfigurationDialog(self.config, self.theme_manager)

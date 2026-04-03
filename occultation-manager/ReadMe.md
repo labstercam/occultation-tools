@@ -1,6 +1,6 @@
 # Occultation Manager
 
-**Version 0.2.0-beta.3** - SharpCap add-in for automated occultation observations
+**Version 0.2.0-beta.4** - SharpCap add-in for automated occultation observations
 
 SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences. Sequences can be run interactively or unattended for fully automated recordings for an entire nights observations. The sequences can be run on remote PCs without internet connection for multiple station deployments.
 
@@ -27,12 +27,14 @@ The workflow can be as simple as announce stations in Occult Watcher Cloud, open
 7. **Generate Reports**: Confirm observer location, optionally run NTP analysis, then load Tangra/AOTA analysis and generate reports for North America, Australasia or SODIS reporting systems (working prototypes)
 <img width="494" height="407" alt="image" src="https://github.com/user-attachments/assets/6720113f-5cf5-4e08-a689-7588f370cdeb" />
   
+8. **Validate Timing (optional)**: Use **Tools → NTP Timing Analysis** or **Tools → GPS PPS Comparison** for independent UTC accuracy verification
+  
 
 ## 📦 Installation
 
 ### Quick Start
 
-1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.3.zip` [https://github.com/labstercam/occultation-tools/releases/download/0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.3/occultation-manager-v0.2.0-beta.3.zip)
+1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.4.zip` [https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.4/occultation-manager-v0.2.0-beta.4.zip)
 2. **Extract**: Unzip to a location with read/write access (e.g., `Documents\SharpCap\occultation-manager`)
    - ⚠️ **Avoid Program Files** - Windows may restrict write access
    - ✅ **Recommended**: User Documents or Desktop folders
@@ -158,6 +160,11 @@ occultation-manager/
 - Observing conditions capture (clouds, stability, other notes)
 - Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
 - Use with caution and verify all generated data before submission
+
+**Tools Menu**
+- **NTP Timing Analysis**: Full loopstats/peerstats offset, jitter, and delay charting with uncertainty estimate; launched as a separate non-blocking window
+- **GPS Flash Calibration**: LED line delay calibration for rolling-shutter cameras (requires SharpCap live capture or ADV replay)
+- **GPS PPS Comparison**: Measures UTC error of each internet NTP server relative to a GPS PPS refclock using the same NTP dataset; produces per-server uncertainty table, clock drift regression, and three charts (delay, UTC error, selected peer + trend)
 
 **Equipment Management**
 - Multiple telescope and camera configurations

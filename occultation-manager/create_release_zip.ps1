@@ -1,6 +1,6 @@
 # Create release ZIP for Occultation Manager (folder-based layout)
 
-$version = "0.2.0-beta.3"
+$version = "0.2.0-beta.4"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
@@ -45,6 +45,7 @@ $gpsResourcesDir = "$gpsTargetDir\resources"
 $gpsScriptsDir = "$gpsTargetDir\scripts"
 $gpsConfigDir = "$gpsTargetDir\config"
 $gpsLogsDir = "$gpsTargetDir\logs"
+$gpsLibDir = "$gpsTargetDir\lib"
 
 Write-Host "Creating folder structure..." -ForegroundColor Cyan
 @(
@@ -61,7 +62,8 @@ Write-Host "Creating folder structure..." -ForegroundColor Cyan
     $gpsResourcesDir,
     $gpsScriptsDir,
     $gpsConfigDir,
-    $gpsLogsDir
+    $gpsLogsDir,
+    $gpsLibDir
 ) | ForEach-Object {
     New-Item -ItemType Directory -Path $_ -Force | Out-Null
     $rel = $_
@@ -145,6 +147,10 @@ $gpsPythonFiles = @(
     "python\analyze_ntp_timing_accuracy.py",
     "python\ntp_analysis_core.py",
     "python\ntp_analysis.py",
+    "python\led_line_delay_calibration.py",
+    "python\gps_pps_comparison.py",
+    "python\adv_helper.py",
+    "python\adv_processing_iron.py",
     "python\ReadMe.md"
 )
 
@@ -163,6 +169,14 @@ $gpsConfigFiles = @(
     "config\NTP Server Config for NZ.txt",
     "config\ntp-country-servers.json",
     "config\ntp.conf.template"
+)
+
+$gpsLibFiles = @(
+    "lib\AdvLib.Core32.dll",
+    "lib\AdvLib.Core64.dll",
+    "lib\AdvLib.dll",
+    "lib\README.md",
+    "lib\unblock_dlls.ps1"
 )
 
 function Copy-ExistingFile {
@@ -252,6 +266,13 @@ foreach ($file in $gpsConfigFiles) {
     Copy-ExistingFile -Source $source -Destination $dest
 }
 
+Write-Host "`nCopying gps-timing-analysis lib files..." -ForegroundColor Cyan
+foreach ($file in $gpsLibFiles) {
+    $source = Join-Path $gpsSourceRoot $file
+    $dest = Join-Path $gpsLibDir (Split-Path $file -Leaf)
+    Copy-ExistingFile -Source $source -Destination $dest
+}
+
 # Ensure cache file path exists for runtime updates by ntp_analysis_core.
 Set-Content -Path "$gpsResourcesDir\ip_location_cache.json" -Value "{}" -Encoding UTF8
 
@@ -276,8 +297,30 @@ if (Test-Path "README_reports_folder.txt") {
 Set-Content -Path "$dataConfigDir\README.txt" -Value "Configuration storage (occultation_config.json)" -Encoding UTF8
 Set-Content -Path "$dataTemplatesDir\README.txt" -Value "User-editable working template copies" -Encoding UTF8
 
-# Create zip
-Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -CompressionLevel Optimal
+# Create zip using .NET ZipArchive so each file is opened with FileShare.ReadWrite.
+# This avoids "file in use" errors caused by antivirus / Windows Search Indexer
+# scanning the freshly-copied temp files while Compress-Archive holds exclusive locks.
+Add-Type -Assembly System.IO.Compression          # ZipArchive, ZipArchiveEntry
+Add-Type -Assembly System.IO.Compression.FileSystem  # ZipFile (pulls in the full set)
+
+$zipFullPath = [System.IO.Path]::GetFullPath($zipPath)
+$zipStream   = [System.IO.File]::Open($zipFullPath, [System.IO.FileMode]::Create)
+$archive     = [System.IO.Compression.ZipArchive]::new($zipStream, [System.IO.Compression.ZipArchiveMode]::Create)
+$basePath    = [System.IO.Path]::GetFullPath($tempDir)
+
+Get-ChildItem -Path $tempDir -Recurse -File | ForEach-Object {
+    $entryName  = $_.FullName.Substring($basePath.Length).TrimStart('\').Replace('\', '/')
+    $entry      = $archive.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+    $entryStream = $entry.Open()
+    $fileStream  = [System.IO.File]::Open($_.FullName, [System.IO.FileMode]::Open,
+                       [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    $fileStream.CopyTo($entryStream)
+    $fileStream.Dispose()
+    $entryStream.Dispose()
+}
+
+$archive.Dispose()
+$zipStream.Dispose()
 
 # Cleanup
 Remove-Item $tempDir -Recurse -Force
@@ -290,7 +333,7 @@ if (Test-Path $zipPath) {
     Write-Host "  occultation-manager/resources/templates_master/sequencer" -ForegroundColor Gray
     Write-Host "  occultation-manager/resources/templates_master/reports" -ForegroundColor Gray
     Write-Host "  occultation-manager/data/{config,events,templates,sequences,reports}" -ForegroundColor Gray
-    Write-Host "  gps-timing-analysis/{python,resources,scripts,config,logs}" -ForegroundColor Gray
+    Write-Host "  gps-timing-analysis/{python,resources,scripts,config,logs,lib}" -ForegroundColor Gray
 } else {
     Write-Host "`nERROR: Failed to create zip file" -ForegroundColor Red
 }
