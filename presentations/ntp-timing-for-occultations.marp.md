@@ -3,199 +3,296 @@ marp: true
 theme: default
 paginate: true
 title: NTP Timing for Occultations
+style: |
+  section {
+    background-color: #0d1b2a;
+    color: #d6e4f0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    padding: 40px 60px;
+  }
+  h1 {
+    color: #5bc0eb;
+    font-size: 1.5em;
+    margin-bottom: 0.2em;
+    border-bottom: 2px solid #1e3a52;
+    padding-bottom: 0.12em;
+  }
+  h2 { color: #8bb8d0; font-size: 1.05em; margin: 0.2em 0 0.5em 0; }
+  section::after { color: #2a4a6a; font-size: 0.7em; }
+  table { font-size: 0.78em; border-collapse: collapse; width: 100%; margin-top: 0.4em; }
+  th { background: #1a3a5a; color: #5bc0eb; padding: 5px 10px; text-align: left; }
+  td { border: 1px solid #1e3040; padding: 4px 10px; }
+  tr:nth-child(even) td { background: #0f1e2a; }
+  blockquote {
+    border-left: 4px solid #5bc0eb;
+    background: rgba(91,192,235,0.07);
+    padding: 10px 16px;
+    margin: 10px 0;
+    font-style: italic;
+    font-size: 0.95em;
+    color: #b8d8f0;
+    border-radius: 0 6px 6px 0;
+  }
+  code {
+    background: #1a2f40;
+    color: #7ec8e3;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.82em;
+  }
+  ul, ol { margin-top: 0.3em; padding-left: 1.5em; }
+  li { margin-bottom: 0.3em; font-size: 0.93em; }
+  strong { color: #7ed6f5; }
+  section.lead { text-align: center; justify-content: center; }
+  section.lead h1 { font-size: 2.2em; border-bottom: none; color: #5bc0eb; }
+  section.lead h2 { font-size: 1.3em; }
+  section.hook h1 { color: #ffffff; border-bottom: none; font-size: 1.8em; }
 ---
 
-# NTP Timing for Occultations
+<!-- _paginate: false -->
+<!-- _class: hook -->
 
-## How almost anyone with a PC and camera can time occultations for free
+![bg brightness:0.55](assets/occultation-map.png)
 
-- Audience: observers, beginners
-- Focus: Easy installation and processes especially suitable for beginners
+<br><br><br><br>
 
----
+# No observations.
 
-# Agenda
+Not because no one had a camera.
 
-1. Why don't more people observe occultations?
-2. NTP for PC timing
-3. Installing NTP - NTP installer to the rescue!
-4. Understanding NTP offsets and timing accuracy
-5. When is NTP good enough?
-6. Camera acquisition delays for cheaters
-7. Measuring camera acquisition delays properly
-8. Adding GPS receivers and flashers
-9. Tools and Software
-10. Wrapping up 
-
----
-
-# Why don't more people observe occultations?
-
-- No clear and easy path to follow. 
-- High up-front cost.
-    - Analog cameras and VTI. Complex, old tech. ~$500+
-    - Astrid. All singing all dancing. Totally new workflow compared to typcial PC imaging. $700+
-    - GPS cameras, QHY174GPS, DVTI-CAM. $1,200 plus.
-- Complexity of hardware and softwared stops people early.
-- Good news: a practical NTP workflow can be good enough for many events.
-
-Goal of this talk:
-- Make NTP timing practical, repeatable, and reviewable for beginners.
-- Give a cheap and easy options for large scale campaigns and casual observers
-
----
-
-# NTP for PC timing
-
-- NTP keeps your PC clock aligned to UTC using Internet network time servers
-- Software runs in the background automatically
-- NTP monitor to understand timing performance
-
-What to look for:
-- Good quality servers with small delays (5-20 ms)
-- Low jitter
-
----
-
-# Installing NTP - NTP installer to the rescue!
-
-- Single Installer:
-    - Meinberg NTP
-    - NTP Server Monitor
-    - Configures National Standards Servers for 35 countries
-    - Country specific pool servers
-    - Optionally set up GPS receivers
-    
-- Quick, easy, no specialist knowledge required.
-- NTP should be up and running in under 10 minutes
-
-https://github.com/labstercam/occultation-ntp-installer
+**Because no one thought they could time it.**
 
 ---
 
-# Understanding NTP offsets and timing accuracy
+# The assumed path
 
-- Run NTP Server Monitor to check performance
-- Offset is the estimated difference between your local clock and the NTP server
-- Delay is the return trip time to the server. Lower is better - preferably < 10 ms
-- Delay is typically a few ms within you city, ~10 ms for 500-1,000 km
-- Time error is by defintion no more than half the Delay
-- In practice can be 2-5x lower, but <1-2 ms is practically impossible via home internet
+Most people researching occultation timing find this:
 
----
+1. *"You need a GPS timing device..."*
+2. *"Or an analog camera and VTI..."*
+3. *"Or a dedicated camera..."*
+4. Hardware cost: **$500 – $1,200+ US**
+5. → **They close the tab.**
 
-# When is NTP good enough?
-
-- Fibre connection to fibre network
-- VDSL2 or VDSL likely not good enough (unless < 1-2 km to a fibre cabinet)
-- Good quality servers choosen (the installer should do this)
-
-Look for:
-- stable delay and jitter
--  delays of 10 ms or less
-- Rough estimate of likely error is 1/4-1/3 of the delay to selected server (*)
-- Better estimate of accuracy in the SharpCap NTP analyser
-
-If you are seeing delays of 20 ms or less and jitter of a few ms it will probably be good enough. But MUST check!
-
-The offset doesn't matter as long as it is stable or drifts slowly.
-The estimated error matters A LOT.
-
-5 ms or so accuracy is good enough. 10 ms should be OK. 20 ms is perhaps too much and should add a GPS receiver.
+**There is a Step 0 they were never told about.**
 
 ---
 
-# Camera acquisition delays for cheaters
+# What NTP actually delivers
 
-- NTP can discipline the PC clock to hopefully 5 ms or so
-- But there are still camera acquisition delays which can be 5-20 ms for a small sensor camera, or much larger for larger sensors
-- Best practice is to measure these delays using a GPS flasher
-- Very good estimates of line delay possible without flasher
-    - max FPS corresponds to the total line delay for a rolling shutter sensor. e.g 50 fps max frame rate in SharpCap means it takes 20 ms to readout the sensor, and the per line delay is 20 ms/ total lines, e.g. 0.02 ms per line for a 1,000 line ROI.
-- Frame delay itself cannot be measured without a flasher. Typically 1-6 ms but varies by sensor and ROI. For small sensors, small ROI it is usualy < 2 ms
-- Could use measurements from other observers with the same camera
+## Home observatory PC — domestic fibre
 
-So for beginners, it is acceptable to measure line delay from max FPS for given ROI and camera settings, and add ~ 2 ms. 
+![w:95%](assets/ntp-server-monitor-status.png)
 
-Or get delays from other observers with same camera that have a flasher.
+- **Offset: −0.035 ms** — that is 35 *microseconds*, not milliseconds
+- All active servers GPS-referenced at Stratum 1
+- **Reach 377** — every poll for the last 8 intervals responded
+- The "±100 ms" fear = Windows default time service, **not** configured NTP
 
-Warning! This only works for cameras where the USB connection is faster than the sensor readout. Cameras with USB 2.0 interfaces are NOT SUITABLE. Must be USB 3. Large sensor cameras (4/3 or larger) with ROI of more than ~6,000 pixel (WxH) likely not suitable unless a smaller ROI is used.
-
-So use the smallest ROI that is workable with your telescope. Bin 2x or higher to reduce data rate, use MONO8 for colour cameras. 
+> *"The NTP you set up by default is not the NTP we're talking about."*
 
 ---
 
-# Measuring camera acquisition delays properly
+# Is 5 ms good enough?
 
-- Use a GPS flasher in the optical path to measure true end-to-end timing.
-- New tool in SharpCap to measure line delays automatically from live recording
-- Works with any flasher or GPS receiver PPS output
-- Calibrations for various camera settings stored for use in SharpCap tool so can be applied in TANGRA/PyOTE
+For a typical main-belt occultation at mag 12–13, 100 ms exposure:
+- D/R uncertainty from the **light curve: ~50 ms** (half the exposure)
+- Timing uncertainty is **not the limiting factor** for most events
 
-Important: The line delays and acquisition delay vary with:
-    - ROI
-    - binning
-    - bit depth / format
-    - Tilt and Pan
-- So repeat the measurements for all settings you will use.
+| Source | Uncertainty |
+|--------|-------------|
+| NTP clock (PIT estimate from logs) | ~5 ms |
+| Camera line delay (measured) | ~1 ms |
+| Camera frame delay (estimated) | ~2 ms |
+| **Total (RSS)** | **~6 ms** |
 
----
-
-<!-- _paginate: true -->
-![bg right:43% contain](assets/ntp-offset-lifecycle.svg)
-
-# Adding GPS receivers and flashers for better timing
-
-
-## GPS Receivers
-Simple to add GPS PPS or GPS NMEA receivers to NTP. The NTP-Installer streamlines the installation
-
-- GPS PPS accuracy of <<1 ms in PC time
-    - easy DIY build for $50
-- GPS NMEA accuracy of a few ms in PC time
-    - almost any GPS receiver, $20-50
-
-
-## Add GPS flash timing to NTP
-
-- Add GPS flash timing methods to get D/R accuracy of a few ms
-
-
-Upgrade path:
-- Start with NTP-only, then add GPS receiver of GPS flash timing  when ready.
-- Or purchase a dedicated occultation camera and timer
+> *"About 5 ms is accurate enough for most observing situations.*
+> *Reliability and traceability are more important than the raw accuracy number."*
+> — **Dave Herald**, IOTA worldwide coordinator
 
 ---
 
-# Tools and Software
+# You can verify it — exactly
 
-## Core tools
-- NTP-Installer - installs and configures NTP and GPS 
-- SharpCap for line delay estimation
-- SharpCap Line Delay measurement add-in for accurate line delay measurement
-- Occultation-Manager SharpCap Add-in for event selection, recording and report generation.
-- NTP accuracy analysis built into Occultation-manager
+## NTP Clock Accuracy in Occultation Manager
 
-## Optional accuracy upgrades
-- NTP Installer for guided setup and country-specific server presets
-- GPS PPS receiver (higher clock confidence)
-- GPS flasher (camera delay calibration)
+Analyses NTP log files. Computes offset and error at the **Point-In-Time of D/R**.
 
-## Recommended workflow stack for beginners
-- Start: SharpCap + Meinberg NTP + NTP Server Monitor
-- Next: add Tangra/PyOTE for extraction and reporting
-- Upgrade: add GPS PPS/flasher when ready or 
+![bg right:50%](assets/ntp-accuracy-example1.png)
+
+**Event: 2004 DG41 — 2026-03-02 10:58 UTC**
+
+- Offset: **−0.380 ms**
+- Uncertainty: **±4.879 ms (95%)**
+- Data age: 0 min before event
+
+*"My clock was −0.38 ms off at disappearance."*
+
+That number goes directly into the observation report.
+
+Most GPS-camera users never document this at all.
 
 ---
 
-# Wrapping up
+# GPS ground-truth verification
 
-- Most observers can start with a PC + NTP and produce useful timings.
-- Prequisites are a good Fibre connection, and connection to good NTP servers
-- No need to buy a new camera or timer or any additional equipment
-- Camera acquisition delays can be estimated
+## GPS vs NTP Testing — 23 hours against GPS PPS reference
 
-Suiltable for beginners, casual observers, or large observing campaigns.
+![bg right:65% contain](assets/gps-pps-comparison.png)
 
-Suitable for observatories where changing cameras or adding equipment to the scope/camera is not feasible. Either NTP or GPS-PPS.
+**Results:**
+- Mean UTC error: **0.097 ms**
+- U(k=2): **±9.4 ms**
+- Best servers: **±0.5–1 ms** of GPS
+
+The calibration chain:
+
+**UTC ← GPS PPS ← NTP servers ← your clock**
+
+---
+
+<!-- _class: lead -->
+
+# 10-minute install.
+# Free.
+
+*Everything configured automatically.*
+
+---
+
+# The NTP Installer
+
+![bg right:52%](assets/NTP-Installer.png)
+
+**One run configures everything:**
+
+- Meinberg NTP + Time Server Monitor
+- National standards servers for **35 countries**
+- Windows network QoS optimisation (DSCP 46)
+- Optional GPS PPS receiver setup
+
+**Estimated time: 10–20 minutes**
+
+*"You can set this up in the time it takes to make a toasted cheese sandwich."*
+
+→ [github.com/labstercam/**occultation-ntp-installer**](https://github.com/labstercam/occultation-ntp-installer)
+
+---
+
+# Camera delays — estimated without a flasher
+
+**The max-FPS method:** `per_line_delay = (1 / max_fps) / ROI_height × 1000 ms`
+
+*Camera Timing Setup in Occultation Manager calculates this automatically.*
+
+![w:90%](assets/camera-coefs.png)
+
+**Example — ZWO ASI462MM, 408×411 ROI, binning ×2:**
+Per-line delay: −0.0287 ms | Frame delay (Line 0): 13.8 ms
+
+- Frame delay for small sensors, small ROI: typically **< 2 ms**
+- Use community-shared calibrations for your camera
+- **Not suitable:** USB 2.0 cameras; sensors ≥ 4/3" with full-frame ROI
+
+---
+
+# Camera delays — measured with a flasher
+
+## A $10 GPS receiver is all you need
+
+![bg right:50%](assets/gps-camera-calibration.png)
+
+*HiLetgo VK172, Beitian BN-180, or similar*
+
+**Camera Timing Setup — Line Delay Calibration**
+
+Result: *"Line delay: 12.8 − 0.028 × Y ms"*
+
+**R² = 0.990 — Excellent**
+
+Clean linear fit across the full sensor height.
+Even a cheap receiver produces sub-millisecond calibration precision.
+
+---
+
+# Camera delay is stable
+
+## 27,042 GPS flashes — 9 continuous hours
+
+![bg right:60%](assets/gps-stability-test.png)
+
+| Stat | Value |
+|------|-------|
+| Mean | 7.377 ms |
+| 95% CI | ± **0.006 ms** |
+| Std Dev | 0.465 ms |
+| Range | 6.2 – 8.5 ms |
+
+*"How do you know the camera delay doesn't drift?"*
+
+**27,000 measurements over 9 hours say: it doesn't.**
+
+Measure it once per camera/ROI/settings combination. Use it with confidence.
+
+---
+
+# What it costs
+
+| Component | What | Cost |
+|-----------|------|------|
+| Windows PC | Already own | $0 |
+| USB3 camera | Already own or ToupTek G3M662M | $0 or ~$US 179 |
+| SharpCap Pro | Capture software | ~$US 20/yr |
+| Meinberg NTP | Clock discipline | Free |
+| NTP Installer | All-in-one setup | Free |
+| Occultation Manager | Events, sequences, reports | Free |
+| **Total new cost** | | **~$US 20** |
+
+**Optional upgrades:**
+
+| GPS PPS receiver + flasher | DIY | ~$50–80 AUD | Sub-ms clock + measured delays |
+| Dedicated flash timer | Aarts Timers, StampOfApproval | ~$80–200 AUD | Most versatile |
+
+---
+
+# The upgrade path
+
+Start today. Upgrade when you're ready.
+
+| Level | Clock | Camera delays | Typical cost |
+|-------|-------|--------------|------|
+| **0 — NTP only** | ~5 ms | Estimated from max FPS | ~$20 |
+| **1 — + GPS PPS + flasher** | < 1 ms | Measured ± 1 ms | + $50–120 |
+| **2 — TimeBox / GPS NTP server** | < 1 ms | Measured ± 1 ms | + $150–250 |
+| **3 — Dedicated camera** | Built-in GPS | Built-in | $700–1,200+ |
+
+Level 0 covers **the majority of events.**
+
+Level 3 hardware is the *destination*, not the entry requirement.
+
+> *"Start at Level 0 today and learn how to do occultations.*
+> *Upgrade later when you need to."*
+
+---
+
+# Start tonight
+
+**New observers:**
+Download and run the installer. Check NTP status in the morning.
+If the numbers look good — **you can do occultations.**
+
+**Experienced observers and clubs:**
+NTP is free, works, and accuracy is verifiable and traceable to UTC.
+Help your members start — every new observer adds chords to every campaign.
+
+**Campaign coordinators:**
+NTP observers expand multi-station coverage at zero hardware cost.
+*Let's get this listed formally.*
+
+---
+
+**Links:**
+
+- NTP Installer: [github.com/labstercam/occultation-ntp-installer](https://github.com/labstercam/occultation-ntp-installer)
+- Tools & docs: [github.com/labstercam/occultation-tools](https://github.com/labstercam/occultation-tools)
 
