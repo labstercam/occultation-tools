@@ -2335,16 +2335,61 @@ class OccultationManagerGUI(Form):
                     xml_output_path = None
                 
                 print(f"SUCCESS: Report generated: {output_path}")
-                
-                # Update status and message based on whether XML was also generated
-                if xml_output_path:
-                    self.update_status("Report and XML generated successfully")
-                    MessageBox.Show(f"Report and Occult4 XML generated successfully.\n\nFiles saved to:\n{output_path}\n{xml_output_path}", 
-                                "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+
+                # Copy reports to the folder selected in the observations section
+                selected_obs_folder = comprehensive_dialog.get_selected_folder()
+                copy_folder = None
+                copied_files = []
+
+                if selected_obs_folder and os.path.isdir(selected_obs_folder):
+                    copy_folder = selected_obs_folder
                 else:
-                    self.update_status("Report generated successfully")
-                    MessageBox.Show(f"Report generated successfully.\n\nFile saved to:\n{output_path}", 
-                                "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    # No observation folder was selected — prompt the user
+                    copy_dialog = FolderBrowserDialog()
+                    copy_dialog.Description = "Select folder to save copies of the generated report files (Cancel to skip)"
+                    if copy_dialog.ShowDialog() == DialogResult.OK:
+                        copy_folder = copy_dialog.SelectedPath
+
+                if copy_folder and os.path.isdir(copy_folder):
+                    import shutil
+                    try:
+                        dest = os.path.join(copy_folder, os.path.basename(output_path))
+                        shutil.copy2(output_path, dest)
+                        copied_files.append(dest)
+                        if xml_output_path:
+                            dest_xml = os.path.join(copy_folder, os.path.basename(xml_output_path))
+                            shutil.copy2(xml_output_path, dest_xml)
+                            copied_files.append(dest_xml)
+                        print(f"Copied {len(copied_files)} file(s) to: {copy_folder}")
+                    except Exception as ex:
+                        print(f"Warning: Could not copy files to selected folder: {ex}")
+                        MessageBox.Show(
+                            f"Report generated but copies could not be saved to:\n{copy_folder}\n\n{str(ex)}",
+                            "Copy Warning",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning
+                        )
+                        copied_files = []
+
+                # Build success message
+                generated_files = [output_path]
+                if xml_output_path:
+                    generated_files.append(xml_output_path)
+                files_list = "\n".join(generated_files)
+                
+                if xml_output_path:
+                    status_msg = "Report and XML generated successfully"
+                    success_msg = f"Report and Occult4 XML generated successfully.\n\nFiles saved to:\n{files_list}"
+                else:
+                    status_msg = "Report generated successfully"
+                    success_msg = f"Report generated successfully.\n\nFile saved to:\n{output_path}"
+
+                if copied_files:
+                    copies_list = "\n".join(copied_files)
+                    success_msg += f"\n\nCopies also saved to:\n{copies_list}"
+
+                self.update_status(status_msg)
+                MessageBox.Show(success_msg, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
             else:
                 print(f"ERROR: Report generation failed (check log)")
                 self.update_status("Report generation failed")

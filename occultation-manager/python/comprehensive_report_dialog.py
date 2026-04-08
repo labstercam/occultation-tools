@@ -70,7 +70,7 @@ class ComprehensiveReportDialog(Form):
     def setup_ui(self):
         """Setup user interface"""
         self.Text = "Generate Report"
-        self.Size = Size(1000, 820)
+        self.Size = Size(1000, 850)
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -907,4 +907,7 @@ class ComprehensiveReportDialog(Form):
     
     def get_other_conditions(self):
         return self.other_conditions
+
+    def get_selected_folder(self):
+        return self.current_folder
 
