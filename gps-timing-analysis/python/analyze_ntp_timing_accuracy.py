@@ -267,6 +267,38 @@ class AnalyzerForm(Form):
         self.cmb_dataset.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         lp.Controls.Add(self.cmb_dataset)
 
+        # ---- Analysis time filter ----
+        self.lbl_time_filter = Label()
+        self.lbl_time_filter.Text = "Time filter (HH:MM):"
+        self.lbl_time_filter.Location = Point(8, 250)
+        self.lbl_time_filter.Size = Size(120, 20)
+        lp.Controls.Add(self.lbl_time_filter)
+
+        self.txt_time_start = TextBox()
+        self.txt_time_start.Text = "00:00"
+        self.txt_time_start.Location = Point(134, 248)
+        self.txt_time_start.Size = Size(52, 24)
+        lp.Controls.Add(self.txt_time_start)
+
+        self.lbl_time_to = Label()
+        self.lbl_time_to.Text = "to"
+        self.lbl_time_to.Location = Point(190, 251)
+        self.lbl_time_to.Size = Size(20, 20)
+        lp.Controls.Add(self.lbl_time_to)
+
+        self.txt_time_end = TextBox()
+        self.txt_time_end.Text = "24:00"
+        self.txt_time_end.Location = Point(214, 248)
+        self.txt_time_end.Size = Size(52, 24)
+        lp.Controls.Add(self.txt_time_end)
+
+        self.btn_reset_time = Button()
+        self.btn_reset_time.Text = "Reset"
+        self.btn_reset_time.Location = Point(272, 246)
+        self.btn_reset_time.Size = Size(64, 28)
+        self.btn_reset_time.Click += self.on_reset_time_filter
+        lp.Controls.Add(self.btn_reset_time)
+
         self.chk_export = CheckBox()
         self.chk_export.Text = "Export JSON + CSV"
         self.chk_export.Location = Point(8, 258)
@@ -294,6 +326,7 @@ class AnalyzerForm(Form):
         self.chk_raw_peer_points.Location = Point(8, 320)
         self.chk_raw_peer_points.Size = Size(228, 24)
         self.chk_raw_peer_points.Checked = False
+        self.chk_raw_peer_points.CheckedChanged += self.on_raw_peer_points_toggled
         lp.Controls.Add(self.chk_raw_peer_points)
 
         self.lbl_pit_time = Label()
@@ -557,6 +590,28 @@ class AnalyzerForm(Form):
         self.cmb_dataset.Location = Point(margin, y)
         self.cmb_dataset.Size = Size(full_w, text_h)
         y += text_h + inter
+
+        # Time-of-day filter row
+        tf_lbl_w = 120
+        tf_txt_w = 52
+        tf_to_w = 20
+        tf_gap = 4
+        tf_reset_w = 64
+        self.lbl_time_filter.Location = Point(margin, y)
+        self.lbl_time_filter.Size = Size(tf_lbl_w, label_h)
+        xf = margin + tf_lbl_w + tf_gap
+        self.txt_time_start.Location = Point(xf, y)
+        self.txt_time_start.Size = Size(tf_txt_w, text_h)
+        xf += tf_txt_w + tf_gap
+        self.lbl_time_to.Location = Point(xf, y + 2)
+        self.lbl_time_to.Size = Size(tf_to_w, label_h)
+        xf += tf_to_w + tf_gap
+        self.txt_time_end.Location = Point(xf, y)
+        self.txt_time_end.Size = Size(tf_txt_w, text_h)
+        xf += tf_txt_w + tf_gap
+        self.btn_reset_time.Location = Point(xf, y - 1)
+        self.btn_reset_time.Size = Size(tf_reset_w, button_h)
+        y += max(text_h, button_h) + inter
 
         self.chk_export.Location = Point(margin, y)
         self.chk_export.Size = Size(min(220, full_w), text_h)
@@ -853,6 +908,31 @@ class AnalyzerForm(Form):
         label_brush = SolidBrush(Color.FromArgb(80, 80, 80))
         label_font = Font("Segoe UI", 7)
         try:
+            # --- Filter shading (excluded time regions, drawn first) ---
+            filter_shade = chart_data.get("filter_shade_intervals")
+            if filter_shade:
+                self._draw_filter_shading(graphics, plot_rect, filter_shade, x_start, x_end)
+
+            # --- Raw peer scatter dots (drawn before gridlines and main series) ---
+            raw_peer_points = chart_data.get("raw_peer_points", [])
+            stc = chart_data.get("server_to_color") or {}
+            if raw_peer_points and stc:
+                dot_brushes = {}
+                for _srv, _col in stc.items():
+                    dot_brushes[_srv] = SolidBrush(Color.FromArgb(120, _col.R, _col.G, _col.B))
+                fallback_brush = SolidBrush(Color.FromArgb(120, 128, 128, 128))
+                try:
+                    for _rp in raw_peer_points:
+                        _px = self.map_x(_rp[0], x_start, x_end, plot_rect)
+                        _py = self.map_y(_rp[1] * 1000.0, y_min, y_max, plot_rect)
+                        if plot_rect.Left <= _px <= plot_rect.Right and plot_rect.Top <= _py <= plot_rect.Bottom:
+                            _b = dot_brushes.get(_rp[2] if len(_rp) > 2 else "", fallback_brush)
+                            graphics.FillEllipse(_b, _px - 2, _py - 2, 4, 4)
+                finally:
+                    for _b in dot_brushes.values():
+                        _b.Dispose()
+                    fallback_brush.Dispose()
+
             # --- Vertical x-gridlines (hourly) ---
             hour = x_start
             while hour <= x_end:
@@ -1087,12 +1167,30 @@ class AnalyzerForm(Form):
                 y_max = y_min + step * 2
             return y_min, y_max, step
 
+        # Collect raw per-server scatter points when checkbox is active
+        raw_peer_delay_pts = []   # (timestamp, delay, server)
+        raw_peer_jitter_pts = []  # (timestamp, jitter, server)
+        raw_peer_disp_pts = []    # (timestamp, dispersion, server)
+        if use_raw_peer_points:
+            for server, pts in delays_by_server.items():
+                for stamp, val in pts:
+                    raw_peer_delay_pts.append((stamp, val, server))
+            for server, pts in jitters_by_server.items():
+                for stamp, val in pts:
+                    raw_peer_jitter_pts.append((stamp, val, server))
+            for server, pts in dispersions_by_server.items():
+                for stamp, val in pts:
+                    raw_peer_disp_pts.append((stamp, val, server))
+
         offset_min, offset_max, offset_step = y_limits_ms([offset_points])
-        jitter_min, jitter_max, jitter_step = y_limits_ms([loop_jitter_points, peer_jitter_points])
-        disp_min, disp_max, disp_step = y_limits_ms([dispersion_points])
+        raw_j_flat = [(s, v) for s, v, _ in raw_peer_jitter_pts]
+        jitter_min, jitter_max, jitter_step = y_limits_ms([loop_jitter_points, peer_jitter_points] + ([raw_j_flat] if raw_j_flat else []))
+        raw_d_flat = [(s, v) for s, v, _ in raw_peer_disp_pts]
+        disp_min, disp_max, disp_step = y_limits_ms([dispersion_points] + ([raw_d_flat] if raw_d_flat else []))
         # For delay points, extract just the values (second element of tuple)
         delay_values_only = [(dt, val) for dt, val, srv in delay_points]
-        delay_min, delay_max, delay_step = y_limits_ms([delay_values_only])
+        raw_dl_flat = [(s, v) for s, v, _ in raw_peer_delay_pts]
+        delay_min, delay_max, delay_step = y_limits_ms([delay_values_only] + ([raw_dl_flat] if raw_dl_flat else []))
 
         # Get unique selected servers for legend
         unique_servers = sorted(set([srv for _stamp, srv in peer_timeline]))
@@ -1123,6 +1221,7 @@ class AnalyzerForm(Form):
                 "points": delay_points,  # List of (timestamp, delay, server) tuples
                 "server_to_color": server_to_color,
                 "unique_servers": unique_servers,
+                "raw_peer_points": raw_peer_delay_pts,
             },
             "offset": {
                 "x_start": x_start,
@@ -1140,6 +1239,8 @@ class AnalyzerForm(Form):
                 "y_min": jitter_min,
                 "y_max": jitter_max,
                 "y_step": jitter_step,
+                "server_to_color": server_to_color,
+                "raw_peer_points": raw_peer_jitter_pts,
                 "series": [
                     {
                         "name": "Loop Jitter",
@@ -1161,6 +1262,8 @@ class AnalyzerForm(Form):
                 "y_min": disp_min,
                 "y_max": disp_max,
                 "y_step": disp_step,
+                "server_to_color": server_to_color,
+                "raw_peer_points": raw_peer_disp_pts,
                 "series": [
                     {"name": "Dispersion", "color": Color.FromArgb(214, 39, 40), "points": dispersion_points},
                 ],
@@ -1293,22 +1396,137 @@ class AnalyzerForm(Form):
             raise RuntimeError("Dataset selection is invalid. Please rescan datasets.")
         return option
 
+    # -----------------------------------------------------------------------
+    # Time-of-day filter helpers
+    # -----------------------------------------------------------------------
+
+    def _parse_time_filter(self):
+        """Parse HH:MM text boxes → (start_sec, end_sec).
+        Returns (0.0, 86400.0) on invalid input or default values."""
+        def _parse_hhmm(text, default_sec):
+            text = text.strip()
+            try:
+                parts = text.split(":")
+                if len(parts) == 2:
+                    h = int(parts[0])
+                    m = int(parts[1])
+                    if 0 <= h <= 24 and 0 <= m <= 59:
+                        sec = h * 3600 + m * 60
+                        return 86400.0 if sec >= 86400 else float(sec)
+            except (ValueError, AttributeError):
+                pass
+            return default_sec
+        start_sec = _parse_hhmm(self.txt_time_start.Text, 0.0)
+        end_sec   = _parse_hhmm(self.txt_time_end.Text,   86400.0)
+        if start_sec >= end_sec:
+            return 0.0, 86400.0
+        return start_sec, end_sec
+
+    def _apply_time_filter(self, loop_rows, peer_rows):
+        """Filter rows to the current time-of-day window.
+        Returns (filtered_loop, filtered_peer, start_sec, end_sec, is_filtered)."""
+        start_sec, end_sec = self._parse_time_filter()
+        is_filtered = (start_sec > 0.0 or end_sec < 86400.0)
+        if not is_filtered:
+            return loop_rows, peer_rows, start_sec, end_sec, False
+        filtered_loop = [r for r in loop_rows if start_sec <= r.sec_of_day < end_sec]
+        filtered_peer = [r for r in peer_rows if start_sec <= r.sec_of_day < end_sec]
+        return filtered_loop, filtered_peer, start_sec, end_sec, True
+
+    def _apply_filter_shading(self, start_sec, end_sec):
+        """Inject filter_shade_intervals into all _plot_data entries and redraw."""
+        for cd in self._plot_data.values():
+            x_start = cd.get("x_start")
+            x_end   = cd.get("x_end")
+            if x_start is None:
+                continue
+            filter_base = x_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            shade = []
+            if start_sec > 0.0:
+                shade_end = filter_base + timedelta(seconds=start_sec)
+                if shade_end > x_start:
+                    shade.append((x_start, shade_end))
+            if end_sec < 86400.0:
+                shade_start = filter_base + timedelta(seconds=end_sec)
+                if shade_start < x_end:
+                    shade.append((shade_start, x_end))
+            cd["filter_shade_intervals"] = shade
+        self.invalidate_plots()
+
+    def _draw_filter_shading(self, graphics, plot_rect, intervals, x_start, x_end):
+        """Draw light-gray shading rectangles for the excluded time regions."""
+        shade_brush = SolidBrush(Color.FromArgb(48, 160, 160, 160))
+        try:
+            for start_dt, end_dt in intervals:
+                x0 = self.map_x(start_dt, x_start, x_end, plot_rect)
+                x1 = self.map_x(end_dt,   x_start, x_end, plot_rect)
+                x0 = max(plot_rect.Left, min(plot_rect.Right, x0))
+                x1 = max(plot_rect.Left, min(plot_rect.Right, x1))
+                band_w = max(1, x1 - x0)
+                graphics.FillRectangle(shade_brush,
+                                       x0, plot_rect.Top, band_w, plot_rect.Height)
+        finally:
+            shade_brush.Dispose()
+
+    def on_raw_peer_points_toggled(self, sender, event):
+        """Immediately re-render charts with or without raw peer dots."""
+        if self._last_loop_rows:
+            self.update_charts(self._last_loop_rows, self._last_peer_rows, self.chk_raw_peer_points.Checked)
+            # Re-apply filter shading if a filter is active (it was cleared by update_charts rebuild)
+            _, _, t_start_sec, t_end_sec, is_filtered = self._apply_time_filter(
+                self._last_loop_rows, self._last_peer_rows)
+            if is_filtered:
+                self._apply_filter_shading(t_start_sec, t_end_sec)
+
+    def on_reset_time_filter(self, sender, event):
+        """Reset time filter to defaults and re-analyze if data is loaded."""
+        self.txt_time_start.Text = "00:00"
+        self.txt_time_end.Text = "24:00"
+        if self._plot_data:
+            # Re-run analysis without triggering export (Reset is not Analyze+Export)
+            was_export = self.chk_export.Checked
+            self.chk_export.Checked = False
+            try:
+                self.on_analyze(None, None)
+            finally:
+                self.chk_export.Checked = was_export
+
+    # -----------------------------------------------------------------------
+
     def on_analyze(self, sender, event):
         try:
             option = self.get_selected_option()
             loop_rows = parse_loopstats(option.loop_path, option.target_mjd)
             peer_rows = parse_peerstats(option.peer_path, option.target_mjd)
             obs_lat, obs_lon = self._get_observer_coords()
-            result = analyze(option, loop_rows, peer_rows,
+
+            # Apply time-of-day filter
+            filtered_loop, filtered_peer, t_start_sec, t_end_sec, is_filtered = \
+                self._apply_time_filter(loop_rows, peer_rows)
+
+            result = analyze(option, filtered_loop, filtered_peer,
                              known_servers=self._known_servers,
                              observer_lat=obs_lat, observer_lon=obs_lon)
-            self._last_loop_rows = loop_rows
-            self._last_peer_rows = peer_rows
+            self._last_loop_rows = filtered_loop
+            self._last_peer_rows = filtered_peer
             self._last_result = result
             self._last_aggregate_report = generate_report(result)
-            self.update_charts(loop_rows, peer_rows, self.chk_raw_peer_points.Checked)
+            if is_filtered:
+                def _sec_to_hhmm(s):
+                    h = int(s) // 3600
+                    m = (int(s) % 3600) // 60
+                    return "%02d:%02d" % (h, m)
+                end_str = "24:00" if t_end_sec >= 86400.0 else _sec_to_hhmm(t_end_sec)
+                self._last_aggregate_report = (
+                    "Analysis time filter: %s \u2013 %s UTC\r\n\r\n" % (
+                        _sec_to_hhmm(t_start_sec), end_str)
+                    + self._last_aggregate_report
+                )
+            self.update_charts(filtered_loop, filtered_peer, self.chk_raw_peer_points.Checked)
+            if is_filtered:
+                self._apply_filter_shading(t_start_sec, t_end_sec)
 
-            pit = self._compute_pit_for_display(loop_rows, peer_rows, result)
+            pit = self._compute_pit_for_display(filtered_loop, filtered_peer, result)
             self._show_combined_output(pit)
 
             save_folder_settings(self.txt_log_folder.Text.strip(), self.txt_export_folder.Text.strip(),

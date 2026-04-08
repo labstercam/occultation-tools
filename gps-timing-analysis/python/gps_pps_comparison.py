@@ -591,6 +591,38 @@ class GPSPPSComparisonForm(Form):
         self.cmb_dataset.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         lp.Controls.Add(self.cmb_dataset)
 
+        # ---- Analysis time filter ----
+        self.lbl_time_filter = Label()
+        self.lbl_time_filter.Text = "Time filter (HH:MM):"
+        self.lbl_time_filter.Location = Point(8, 250)
+        self.lbl_time_filter.Size = Size(120, 20)
+        lp.Controls.Add(self.lbl_time_filter)
+
+        self.txt_time_start = TextBox()
+        self.txt_time_start.Text = "00:00"
+        self.txt_time_start.Location = Point(134, 248)
+        self.txt_time_start.Size = Size(52, 24)
+        lp.Controls.Add(self.txt_time_start)
+
+        self.lbl_time_to = Label()
+        self.lbl_time_to.Text = "to"
+        self.lbl_time_to.Location = Point(190, 251)
+        self.lbl_time_to.Size = Size(20, 20)
+        lp.Controls.Add(self.lbl_time_to)
+
+        self.txt_time_end = TextBox()
+        self.txt_time_end.Text = "24:00"
+        self.txt_time_end.Location = Point(214, 248)
+        self.txt_time_end.Size = Size(52, 24)
+        lp.Controls.Add(self.txt_time_end)
+
+        self.btn_reset_time = Button()
+        self.btn_reset_time.Text = "Reset"
+        self.btn_reset_time.Location = Point(272, 246)
+        self.btn_reset_time.Size = Size(64, 28)
+        self.btn_reset_time.Click += self.on_reset_time_filter
+        lp.Controls.Add(self.btn_reset_time)
+
         # ---- Export ----
         self.chk_export = CheckBox()
         self.chk_export.Text = "Export JSON + CSV"
@@ -849,6 +881,28 @@ class GPSPPSComparisonForm(Form):
         self.cmb_dataset.Location = Point(margin, y)
         self.cmb_dataset.Size = Size(full_w, text_h)
         y += text_h + inter
+
+        # Time-of-day filter row
+        tf_lbl_w = 120
+        tf_txt_w = 52
+        tf_to_w = 20
+        tf_gap = 4
+        tf_reset_w = 64
+        self.lbl_time_filter.Location = Point(margin, y)
+        self.lbl_time_filter.Size = Size(tf_lbl_w, label_h)
+        xf = margin + tf_lbl_w + tf_gap
+        self.txt_time_start.Location = Point(xf, y)
+        self.txt_time_start.Size = Size(tf_txt_w, text_h)
+        xf += tf_txt_w + tf_gap
+        self.lbl_time_to.Location = Point(xf, y + 2)
+        self.lbl_time_to.Size = Size(tf_to_w, label_h)
+        xf += tf_to_w + tf_gap
+        self.txt_time_end.Location = Point(xf, y)
+        self.txt_time_end.Size = Size(tf_txt_w, text_h)
+        xf += tf_txt_w + tf_gap
+        self.btn_reset_time.Location = Point(xf, y - 1)
+        self.btn_reset_time.Size = Size(tf_reset_w, button_h)
+        y += max(text_h, button_h) + inter
 
         # Export row: checkbox on its own sub-row, then folder + browse
         self.chk_export.Location = Point(margin, y)
@@ -1112,6 +1166,11 @@ class GPSPPSComparisonForm(Form):
         label_brush    = SolidBrush(Color.FromArgb(80, 80, 80))
         label_font     = Font("Segoe UI", 7)
         try:
+            # --- Filter shading (excluded time regions, drawn first) ---
+            filter_shade = chart_data.get("filter_shade_intervals")
+            if filter_shade:
+                self._draw_filter_shading(graphics, plot_rect, filter_shade, x_start, x_end)
+
             # --- Coverage bands (behind everything) ---
             coverage_intervals = chart_data.get("coverage_intervals")
             if coverage_intervals:
@@ -1615,6 +1674,111 @@ class GPSPPSComparisonForm(Form):
         return option
 
     # -----------------------------------------------------------------------
+    # Time-of-day filter helpers
+    # -----------------------------------------------------------------------
+
+    def _parse_time_filter(self):
+        """Parse HH:MM text boxes → (start_sec, end_sec).
+        Returns (0.0, 86400.0) on invalid input or default values."""
+        def _parse_hhmm(text, default_sec):
+            text = text.strip()
+            try:
+                parts = text.split(":")
+                if len(parts) == 2:
+                    h = int(parts[0])
+                    m = int(parts[1])
+                    if 0 <= h <= 24 and 0 <= m <= 59:
+                        sec = h * 3600 + m * 60
+                        return 86400.0 if sec >= 86400 else float(sec)
+            except (ValueError, AttributeError):
+                pass
+            return default_sec
+        start_sec = _parse_hhmm(self.txt_time_start.Text, 0.0)
+        end_sec   = _parse_hhmm(self.txt_time_end.Text,   86400.0)
+        if start_sec >= end_sec:
+            return 0.0, 86400.0
+        return start_sec, end_sec
+
+    def _apply_time_filter(self, loop_rows, peer_rows):
+        """Filter rows to the current time-of-day window.
+        Returns (filtered_loop, filtered_peer, start_sec, end_sec, is_filtered)."""
+        start_sec, end_sec = self._parse_time_filter()
+        is_filtered = (start_sec > 0.0 or end_sec < 86400.0)
+        if not is_filtered:
+            return loop_rows, peer_rows, start_sec, end_sec, False
+        filtered_loop = [r for r in loop_rows if start_sec <= r.sec_of_day < end_sec]
+        filtered_peer = [r for r in peer_rows if start_sec <= r.sec_of_day < end_sec]
+        return filtered_loop, filtered_peer, start_sec, end_sec, True
+
+    def _apply_filter_shading(self, start_sec, end_sec,
+                               full_x_start=None, full_x_end=None):
+        """Inject filter_shade_intervals into all _plot_data entries and redraw.
+        If full_x_start/full_x_end are supplied, the chart x bounds are expanded
+        to the full day so the shaded regions are visible."""
+        for cd in self._plot_data.values():
+            x_ref_start = full_x_start if full_x_start is not None else cd.get("x_start")
+            x_ref_end   = full_x_end   if full_x_end   is not None else cd.get("x_end")
+            if x_ref_start is None:
+                continue
+            filter_base = x_ref_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            shade = []
+            if start_sec > 0.0:
+                shade_end = filter_base + timedelta(seconds=start_sec)
+                if shade_end > x_ref_start:
+                    shade.append((x_ref_start, shade_end))
+            if end_sec < 86400.0:
+                shade_start = filter_base + timedelta(seconds=end_sec)
+                if shade_start < x_ref_end:
+                    shade.append((shade_start, x_ref_end))
+            cd["filter_shade_intervals"] = shade
+            if full_x_start is not None:
+                cd["x_start"] = x_ref_start
+                cd["x_end"]   = x_ref_end
+                # Recompute tick spacing for the expanded range
+                _span_s = (x_ref_end - x_ref_start).total_seconds()
+                if _span_s <= 7200.0:
+                    cd["x_major_minutes"] = 30
+                    cd["x_minor_minutes"] = 10
+                elif _span_s <= 21600.0:
+                    cd["x_major_minutes"] = 60
+                    cd["x_minor_minutes"] = 30
+                elif _span_s <= 86400.0:
+                    cd["x_major_minutes"] = 120
+                    cd["x_minor_minutes"] = 60
+                else:
+                    cd["x_major_minutes"] = 360
+                    cd["x_minor_minutes"] = 60
+        self.invalidate_plots()
+
+    def _draw_filter_shading(self, graphics, plot_rect, intervals, x_start, x_end):
+        """Draw light-gray shading rectangles for the excluded time regions."""
+        shade_brush = SolidBrush(Color.FromArgb(48, 160, 160, 160))
+        try:
+            for start_dt, end_dt in intervals:
+                x0 = self.map_x(start_dt, x_start, x_end, plot_rect)
+                x1 = self.map_x(end_dt,   x_start, x_end, plot_rect)
+                x0 = max(plot_rect.Left, min(plot_rect.Right, x0))
+                x1 = max(plot_rect.Left, min(plot_rect.Right, x1))
+                band_w = max(1, x1 - x0)
+                graphics.FillRectangle(shade_brush,
+                                       x0, plot_rect.Top, band_w, plot_rect.Height)
+        finally:
+            shade_brush.Dispose()
+
+    def on_reset_time_filter(self, sender, event):
+        """Reset time filter text boxes to defaults and clear chart shading."""
+        self.txt_time_start.Text = "00:00"
+        self.txt_time_end.Text = "24:00"
+        # Clear shading from charts; user clicks Run Comparison to re-analyze
+        for cd in self._plot_data.values():
+            cd.pop("filter_shade_intervals", None)
+        self.invalidate_plots()
+        if self._comparison_result is not None:
+            self.set_status(
+                "Time filter reset.  Click 'Run Comparison' to re-analyze with all data."
+            )
+
+    # -----------------------------------------------------------------------
     # Main analysis flow
     # -----------------------------------------------------------------------
 
@@ -1659,13 +1823,19 @@ class GPSPPSComparisonForm(Form):
                     "least some of the dataset period." % gps_addr
                 )
 
+            # --- Apply time-of-day filter (after GPS identification) ---
+            # Compute full-day x bounds from unfiltered rows for chart shading.
+            _fd_x_start, _fd_x_end = compute_axis_day_bounds(loop_rows, peer_rows)
+            filtered_loop, filtered_peer, t_start_sec, t_end_sec, is_filtered = \
+                self._apply_time_filter(loop_rows, peer_rows)
+
             self.set_status("Running GPS PPS comparison...")
 
             obs_lat, obs_lon = self._get_observer_coords()
 
-            # --- Phase 1: core comparison ---
+            # --- Phase 1: core comparison (filtered peer rows) ---
             comparison = compute_gps_pps_comparison(
-                peer_rows, gps_addr, noselect_intervals,
+                filtered_peer, gps_addr, noselect_intervals,
                 observer_lat=obs_lat, observer_lon=obs_lon,
                 known_servers=self._known_servers,
             )
@@ -1683,7 +1853,7 @@ class GPSPPSComparisonForm(Form):
 
             if drift_start is not None:
                 drift = estimate_drift_linear_regression(
-                    peer_rows, drift_start, drift_end
+                    filtered_peer, drift_start, drift_end
                 )
                 # Attach datetime anchors so _draw_trend_line can use them
                 drift["_trend_start_dt"] = drift_start
@@ -1694,8 +1864,8 @@ class GPSPPSComparisonForm(Form):
                           "warning": "No noselect intervals available."}
 
             # Cache for potential re-use
-            self._last_loop_rows   = loop_rows
-            self._last_peer_rows   = peer_rows
+            self._last_loop_rows   = filtered_loop
+            self._last_peer_rows   = filtered_peer
             self._comparison_result = comparison
             self._uncertainty_result = uncertainty
             self._drift_result      = drift
@@ -1741,10 +1911,26 @@ class GPSPPSComparisonForm(Form):
             report_text = generate_gps_comparison_report(
                 comparison, uncertainty, drift, noselect_status
             )
+            if is_filtered:
+                def _sec_to_hhmm(s):
+                    h = int(s) // 3600
+                    m = (int(s) % 3600) // 60
+                    return "%02d:%02d" % (h, m)
+                end_str = "24:00" if t_end_sec >= 86400.0 else _sec_to_hhmm(t_end_sec)
+                report_text = (
+                    "Analysis time filter: %s \u2013 %s UTC\r\n\r\n" % (
+                        _sec_to_hhmm(t_start_sec), end_str)
+                    + report_text
+                )
             self.txt_output.Text = report_text
 
             # --- Charts ---
-            self.update_charts(loop_rows, peer_rows, comparison, drift)
+            self.update_charts(filtered_loop, filtered_peer, comparison, drift)
+
+            # Apply filter shading (expands x bounds to full day if filter active)
+            if is_filtered and _fd_x_start is not None:
+                self._apply_filter_shading(t_start_sec, t_end_sec,
+                                           _fd_x_start, _fd_x_end)
 
             # --- Optional export ---
             save_folder_settings(
