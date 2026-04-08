@@ -5,7 +5,55 @@
 
 ---
 
-## Overview
+## Table of Contents
+
+1. [Overview](#1-overview)
+2. [Quick Reference — Choosing the Right Method](#2-quick-reference--choosing-the-right-method)
+3. [Background](#3-background)
+4. [The Most Important Distinction: Two Different Questions](#4-the-most-important-distinction-two-different-questions)
+   - 4.1. [Question 1 — Whole-day accuracy](#41-question-1--how-accurately-does-my-pc-clock-track-utc-over-a-whole-day)
+   - 4.2. [Question 2 — Point-in-time correction](#42-question-2--what-was-the-offset-at-the-exact-moment-of-my-recording-and-how-do-i-correct-my-timestamps)
+5. [NTP Log File Fields](#5-ntp-log-file-fields)
+   - 5.1. [loopstats fields](#51-loopstats-fields)
+   - 5.2. [peerstats fields](#52-peerstats-fields)
+   - 5.3. [NTP select codes](#53-ntp-select-codes)
+6. [Part 1: Whole-Day Clock Accuracy Methods (A – G)](#6-part-1-whole-day-clock-accuracy-methods-a--g)
+   - 6.1. [Methods Shown in the Analysis Report](#61-methods-shown-in-the-analysis-report)
+   - 6.2. [Interpretation C — Statistical](#62-interpretation-c--statistical-most-rigorous-for-clock-accuracy)
+   - 6.3. [Interpretation D — NTP Native Statistics](#63-interpretation-d--ntp-native-statistics)
+   - 6.4. [Variant E — Minimal](#64-variant-e--minimal-network-asymmetry--measurement-scatter)
+   - 6.5. [Variant G — Conservative Worst-Case Delay](#65-variant-g--conservative-worst-case-delay)
+   - 6.6. [Comparison of Whole-Day Methods](#66-comparison-of-whole-day-methods)
+   - 6.7. [Reference Only — Not Shown in the Report](#67-reference-only--not-shown-in-the-analysis-report)
+   - 6.8. [Interpretation A — Literal NMI Reading](#68-interpretation-a--literal-reading-of-the-nmi-procedure)
+   - 6.9. [Interpretation B — Metrologically Consistent](#69-interpretation-b--metrologically-consistent-what-the-nmi-meant)
+   - 6.10. [Variant F — NTP Dispersion Directly](#610-variant-f--ntp-dispersion-directly)
+7. [Part 2: Point-in-Time (PIT) Offset Correction](#7-part-2-point-in-time-pit-offset-correction)
+   - 7.1. [What It Does](#71-what-it-does-plain-english)
+   - 7.2. [Step 1 — Best-Estimate Offset at T](#72-step-1--best-estimate-offset-at-t)
+   - 7.3. [Step 2 — Drift Uncertainty](#73-step-2--drift-uncertainty)
+   - 7.4. [Step 3 — Network Path Asymmetry Uncertainty](#74-step-3--network-path-asymmetry-uncertainty)
+   - 7.5. [Step 3a — Alternative Estimate from Candidate Peers](#75-step-3a--alternative-estimate-from-candidate-peers)
+   - 7.6. [Step 4 — Measurement Scatter](#76-step-4--measurement-scatter)
+   - 7.7. [Step 5 — Combined and Expanded Uncertainty](#77-step-5--combined-and-expanded-uncertainty)
+   - 7.8. [Step 6 — Applying the Correction](#78-step-6--applying-the-correction)
+   - 7.9. [PIT Uncertainty Budget — Typical Examples](#79-pit-uncertainty-budget--typical-examples)
+   - 7.10. [PIT Limitations](#710-pit-limitations)
+8. [Part 3: Reading the Meinberg Time Server Monitor — Maximum Error Estimation](#8-part-3-reading-the-meinberg-time-server-monitor--maximum-error-estimation)
+   - 8.1. [Meinberg Status Panel Fields](#81-meinberg-status-panel-fields)
+   - 8.2. [Quick Maximum-Error Guide](#82-quick-maximum-error-guide)
+9. [Summary](#9-summary)
+
+**[Appendix: References to Technical Standards](#appendix-references-to-technical-standards)**
+- A.1. [The Core Uncertainty Equation](#a1-the-core-uncertainty-equation)
+- A.2. [Traceability to UTC Link Formula](#a2-traceability-to-utc-link-formula)
+- A.3. [Maximum Error Bound (NTP Dispersion)](#a3-maximum-error-bound-ntp-dispersion)
+- A.4. [Industry Compliance Standards](#a4-industry-compliance-standards)
+- A.5. [References](#a5-references)
+
+---
+
+## 1. Overview
 
 This document explains every calculation used in the NTP Timing Analysis tool to estimate how accurately a PC clock tracks UTC.  It is intended for both:
 
@@ -16,22 +64,22 @@ Each method is explained at three levels: plain English, formal mathematics, and
 
 ---
 
-## Quick Reference — Choosing the Right Method
+## 2. Quick Reference — Choosing the Right Method
 
 | Your question | Method |  Where to read |
 |---|---|---|
-| **What correction do I apply to my observation timestamps?** | **PIT estimator** | **Part 2** |
-| What was the maximum possible error at my recording time? | PIT $U_{\text{expanded}}$ + Meinberg delay check | Part 2, Part 3 |
-| Is my timing setup good enough overall? | Interpretation C or D | Part 1 |
-| What is the worst case over the whole day? | Variant G | Part 1 |
-| Simplest audit-friendly single figure? | Variant F or B | Part 1 — reference only |
-| Could a different server have done better? | PIT alternative estimate | Part 2, Step 3a |
+| **What correction do I apply to my observation timestamps?** | **PIT estimator** | **[Part 2](#7-part-2-point-in-time-pit-offset-correction)** |
+| What was the maximum possible error at my recording time? | PIT $U_{\text{expanded}}$ + Meinberg delay check | [Part 2](#7-part-2-point-in-time-pit-offset-correction), [Part 3](#8-part-3-reading-the-meinberg-time-server-monitor--maximum-error-estimation) |
+| Is my timing setup good enough overall? | Interpretation C or D | [Part 1](#6-part-1-whole-day-clock-accuracy-methods-a--g) |
+| What is the worst case over the whole day? | Variant G | [Part 1](#6-part-1-whole-day-clock-accuracy-methods-a--g) |
+| Simplest audit-friendly single figure? | Variant F or B | [Part 1 — reference only](#67-reference-only--not-shown-in-the-analysis-report) |
+| Could a different server have done better? | PIT alternative estimate | [Part 2](#7-part-2-point-in-time-pit-offset-correction), [Step 3a](#75-step-3a--alternative-estimate-from-candidate-peers) |
 
 **For occultation observers the PIT estimator is always the primary method.**  The whole-day methods (A–G) characterise your setup for records and reports; the PIT correction is what you actually apply to your timestamps.
 
 ---
 
-## Background
+## 3. Background
 
 This document is derived from the analysis in
 `ntp_traceability.md` (located in the `occultation-ntp-installer` repository),
@@ -47,16 +95,16 @@ correction method.
 
 ---
 
-## The Most Important Distinction: Two Different Questions
+## 4. The Most Important Distinction: Two Different Questions
 
 There are fundamentally **two different questions** this toolset can answer,
 and they are answered by different methods.
 
 ---
 
-### Question 1 — "How accurately does my PC clock track UTC over a whole day?"
+### 4.1. Question 1 — "How accurately does my PC clock track UTC over a whole day?"
 
-**Shown in the analysis report: Interpretations C, D and Variants E, G.**  Interpretations A, B and Variant F are also computed and available in the JSON export; their detailed descriptions appear in the [Reference Only](#reference-only--not-shown-in-the-analysis-report) section of Part 1.
+**Shown in the analysis report: Interpretations C, D and Variants E, G.**  Interpretations A, B and Variant F are also computed and available in the JSON export; their detailed descriptions appear in the [Reference Only](#67-reference-only--not-shown-in-the-analysis-report) section of Part 1.
 
 These methods analyse a full day's worth of NTP log data and produce an overall
 characterisation of how well the PC clock performed.  They are useful for:
@@ -73,7 +121,7 @@ whole observation period.
 
 ---
 
-### Question 2 — "What was the offset at the exact moment of my recording, and how do I correct my timestamps?"
+### 4.2. Question 2 — "What was the offset at the exact moment of my recording, and how do I correct my timestamps?"
 
 **Answered by: the Point-in-Time (PIT) estimator**
 
@@ -95,11 +143,11 @@ when submitting an observation report.
 
 ---
 
-## NTP Log File Fields
+## 5. NTP Log File Fields
 
 Before explaining the methods, here is what each field in the log files means.
 
-### loopstats fields
+### 5.1. loopstats fields
 
 | Field | Symbol | Meaning |
 |---|---|---|
@@ -111,7 +159,7 @@ Before explaining the methods, here is what each field in the log files means.
 
 **Important:** `offset` is the **remaining residual clock error** measured at each NTP poll — it shows how far the PC clock was from UTC when NTP took that measurement.  NTP uses this to continuously steer the clock toward zero, but some residual always remains between polls.  The `jitter` field captures how noisily those successive offset measurements vary.  Do not confuse `offset` with `freq`: the frequency field records the rate correction NTP is *already applying* to the kernel clock, not an uncompensated drift.
 
-### peerstats fields
+### 5.2. peerstats fields
 
 | Field | Symbol | Meaning |
 |---|---|---|
@@ -124,7 +172,7 @@ Before explaining the methods, here is what each field in the log files means.
 | dispersion | $\sigma_p$ | NTP's internal estimate of accumulated uncertainty at this peer (seconds) |
 | jitter | $j_p$ | Short-term scatter in this peer's offset measurements (seconds) |
 
-### NTP select codes
+### 5.3. NTP select codes
 
 NTP assigns each peer a numeric status code based on how it evaluates them.
 Only peers that passed all sanity checks are used in analysis.
@@ -143,21 +191,21 @@ to the PC clock.
 
 ---
 
-## Part 1: Whole-Day Clock Accuracy Methods (A – G)
+## 6. Part 1: Whole-Day Clock Accuracy Methods (A – G)
 
 These methods all operate on the **full set of log records for a day**.
 They produce a single characterisation summary — not a moment-by-moment estimate.
 
 **Displayed in the analysis report:** Interpretations C and D; Variants E and G.
-**Computed but not displayed** (available in the JSON export; see the [Reference Only](#reference-only--not-shown-in-the-analysis-report) section below): Interpretations A and B; Variant F.
+**Computed but not displayed** (available in the JSON export; see the [Reference Only](#67-reference-only--not-shown-in-the-analysis-report) section below): Interpretations A and B; Variant F.
 
 ---
 
-### Methods Shown in the Analysis Report
+### 6.1. Methods Shown in the Analysis Report
 
 ---
 
-### Interpretation C — Statistical (Most Rigorous for Clock Accuracy)
+### 6.2. Interpretation C — Statistical (Most Rigorous for Clock Accuracy)
 
 #### Plain English
 
@@ -218,7 +266,7 @@ c_u_expanded = 2.0 * c_u_combined
 
 ---
 
-### Interpretation D — NTP Native Statistics
+### 6.3. Interpretation D — NTP Native Statistics
 
 #### Plain English
 
@@ -262,7 +310,7 @@ d_u_expanded = 2.0 * d_u_combined
 
 ---
 
-### Variant E — Minimal (Network Asymmetry + Measurement Scatter)
+### 6.4. Variant E — Minimal (Network Asymmetry + Measurement Scatter)
 
 #### Plain English
 
@@ -294,7 +342,7 @@ e_u_expanded    = 2.0 * e_u_combined
 
 ---
 
-### Variant G — Conservative Worst-Case Delay
+### 6.5. Variant G — Conservative Worst-Case Delay
 
 #### Plain English
 
@@ -321,7 +369,7 @@ g_u_expanded    = 2.0 * g_u_combined
 
 ---
 
-### Comparison of Whole-Day Methods
+### 6.6. Comparison of Whole-Day Methods
 
 | | A | B | C | D | E | F | G |
 |---|---|---|---|---|---|---|---|
@@ -342,13 +390,13 @@ plausible range.
 
 ---
 
-### Reference Only — Not Shown in the Analysis Report
+### 6.7. Reference Only — Not Shown in the Analysis Report
 
 These methods are computed internally and included in the JSON export but do not appear in the on-screen analysis report.  They are documented here as a **data dictionary for the JSON export** and for comparison with the NMI source procedure.
 
 ---
 
-### Interpretation A — Literal Reading of the NMI Procedure
+### 6.8. Interpretation A — Literal Reading of the NMI Procedure
 
 #### Plain English
 
@@ -388,7 +436,7 @@ a_uncertainty = math.sqrt(mean_offset_signed**2 + mean_delay**2)
 
 ---
 
-### Interpretation B — Metrologically Consistent (What the NMI Meant)
+### 6.9. Interpretation B — Metrologically Consistent (What the NMI Meant)
 
 #### Plain English
 
@@ -432,7 +480,7 @@ b_u_expanded = 2.0 * b_u_combined
 
 ---
 
-### Variant F — NTP Dispersion Directly
+### 6.10. Variant F — NTP Dispersion Directly
 
 #### Plain English
 
@@ -458,7 +506,7 @@ f_u_expanded = 2.0 * f_u_offset
 
 ---
 
-## Part 2: Point-in-Time (PIT) Offset Correction
+## 7. Part 2: Point-in-Time (PIT) Offset Correction
 
 **This is the method that matters most for occultation observers.**
 
@@ -468,7 +516,7 @@ specifically for that problem.
 
 ---
 
-### What It Does (Plain English)
+### 7.1. What It Does (Plain English)
 
 You recorded an occultation at some time $T$.  NTP was running the whole time.
 The PIT estimator:
@@ -488,7 +536,7 @@ $\hat{\delta}(T)$ is the estimated NTP offset at time $T$.
 
 ---
 
-### Step 1 — Best-Estimate Offset at $T$
+### 7.2. Step 1 — Best-Estimate Offset at T
 
 #### Plain English
 
@@ -534,7 +582,7 @@ best_offset = before.offset
 
 ---
 
-### Step 2 — Drift Uncertainty $u_{\text{drift}}$
+### 7.3. Step 2 — Drift Uncertainty
 
 #### Plain English
 
@@ -578,7 +626,7 @@ u_drift = max(freq_drift_bound / SQRT3, before.jitter)
 
 ---
 
-### Step 3 — Network Path Asymmetry Uncertainty $u_{\text{asymmetry}}$
+### 7.4. Step 3 — Network Path Asymmetry Uncertainty
 
 #### Plain English
 
@@ -639,7 +687,7 @@ u_asymmetry = b_asym / SQRT3
 
 ---
 
-### Step 3a — Alternative Estimate from Candidate Peers
+### 7.5. Step 3a — Alternative Estimate from Candidate Peers
 
 #### Plain English
 
@@ -697,7 +745,7 @@ for addr, (gap, row) in by_server.items():
 
 ---
 
-### Step 4 — Measurement Scatter $u_{\text{scatter}}$
+### 7.6. Step 4 — Measurement Scatter
 
 #### Plain English
 
@@ -725,7 +773,7 @@ u_scatter    = stdev(near_offsets) if len(near_offsets) >= 2 else 0.0
 
 ---
 
-### Step 5 — Combined and Expanded Uncertainty
+### 7.7. Step 5 — Combined and Expanded Uncertainty
 
 #### Plain English
 
@@ -766,7 +814,7 @@ u_expanded = math.sqrt((0.95 * b_asym)**2 + (2.0 * u_stat)**2)
 
 ---
 
-### Step 6 — Applying the Correction
+### 7.8. Step 6 — Applying the Correction
 
 #### Plain English
 
@@ -782,7 +830,7 @@ subtracting it shifts the timestamp later.
 
 ---
 
-### PIT Uncertainty Budget — Typical Examples
+### 7.9. PIT Uncertainty Budget — Typical Examples
 
 **Internet NTP server, RTT ≈ 50 ms, interpolating between records 64 s apart:**
 
@@ -808,7 +856,7 @@ reduce the RTT — by using a closer server or a local GPS source.
 
 ---
 
-### PIT Limitations
+### 7.10. PIT Limitations
 
 | Limitation | Impact |
 |---|---|
@@ -821,7 +869,7 @@ reduce the RTT — by using a closer server or a local GPS source.
 
 ---
 
-## Part 3: Reading the Meinberg Time Server Monitor — Maximum Error Estimation
+## 8. Part 3: Reading the Meinberg Time Server Monitor — Maximum Error Estimation
 
 The Meinberg NTP Time Server Monitor (and the `ntpq -p` command it is based on)
 shows a live status panel for each NTP peer.  This section explains what each
@@ -831,7 +879,7 @@ the time of observation**, without needing to run log file analysis.
 This is intended as a quick sanity check at the telescope, not a substitute
 for full log-based analysis.
 
-### Meinberg Status Panel Fields
+### 8.1. Meinberg Status Panel Fields
 
 The three fields shown in the Meinberg NTP Status panel:
 
@@ -849,7 +897,7 @@ Dispersion cannot be read directly from the three panel fields, but for practica
 - The variation you observe in the Offset field from one panel refresh to the next is essentially Jitter — not Dispersion, but a close proxy for it.
 - For any internet server, the Delay/2 asymmetry term is 5–50× larger than dispersion, so dispersion adds negligibly in quadrature.  The quick formula below therefore omits it.
 
-### Quick Maximum-Error Guide
+### 8.2. Quick Maximum-Error Guide
 
 **Hard physical maximum error:**
 
@@ -906,7 +954,7 @@ better accuracy in that case is to use a closer or GPS-disciplined server.
 
 ---
 
-## Summary
+## 9. Summary
 
 There are two fundamentally different things this tool can tell you:
 
@@ -917,3 +965,76 @@ There are two fundamentally different things this tool can tell you:
 The network round-trip delay (RTT) is the single most important factor in both cases.  The hard physical maximum error from path asymmetry is always $\bar{d}/2$ — no analysis can improve on that.  The fastest route to better timing accuracy is to reduce RTT by using a closer or GPS-disciplined server.
 
 If in doubt, report both the PIT correction and the whole-day summary side by side, noting which server was active at the time of the event.
+
+
+# Appendix: References to Technical Standards
+
+This section contains references to various technical standards used in telecommunications, financial and other industries. These have very tight timing requirements for their internal reference clocks, as tight as 100 ns for telecommunications packet timing.
+
+For occultations using consumer grade PCs and laptops these standards are not applicable as the actual timing performance is much worse, measured in ms, not micro or nano seconds. So whilst these standards are useful to understand timing uncertainty analysis and budgets they are not directly useable for occultations timed with consumer PCs as factors such as internet delay and instability and PC clock drift are much larger and dominate the uncertainty.
+
+Establishing metrological traceability to UTC for an NTP server requires more than just synchronising to a source; it involves a documented, unbroken chain of calibrations with stated measurement uncertainties. [1, 2] The formal calculation for traceability is based on an Uncertainty Budget, governed by standards like ISO/IEC Guide 98-3 (GUM) and technical recommendations from the [BIPM](https://www.bipm.org/documents/20126/30132352/cc-publication-ID-311/4fef80e8-241d-e8ae-59c9-2513aebed7d8). [3, 4]
+
+### A.1. The Core Uncertainty Equation
+
+The overall uncertainty of an NTP timestamp ($u_{total}$) is typically calculated using the Root Sum Square (RSS) method of all individual uncertainty components: [5, 6]
+
+$$u_{total} = \sqrt{u_{ref}^2 + u_{sys}^2 + u_{net}^2}$$
+
+Where:
+
+- $u_{ref}$: Uncertainty of the reference source (e.g., GPS/GNSS or a National Metrology Institute like NIST).
+- $u_{sys}$: Internal system uncertainty, including hardware latencies, OS interrupt handling, and clock resolution.
+- $u_{net}$: Network transfer uncertainty (jitter and asymmetric delays). [6, 7, 8]
+
+### A.2. Traceability to UTC Link Formula
+
+Traceability is formally established by relating the server's time ($T_{server}$) to a national realization of UTC, denoted as $UTC(k)$. The absolute offset to UTC is calculated as: [9, 10]
+
+$$\Delta_{UTC} = (T_{server} - UTC(k)) + (UTC(k) - UTC)$$
+
+Where:
+
+- $(T_{server} - UTC(k))$: The measured offset between your server and a National Metrology Institute (NMI) laboratory (e.g., [MSL New Zealand](https://www.measurement.govt.nz/about-us/official-new-zealand-time/about-time) or PTB Germany).
+- $(UTC(k) - UTC)$: The known deviation of the national laboratory from the international UTC scale, published monthly by the BIPM in Circular T. [4, 11, 12, 13]
+
+### A.3. Maximum Error Bound (NTP Dispersion)
+
+Technically, NTP defines a formal "Root Dispersion" ($\Lambda$) in RFC 5905, which provides the maximum error relative to the primary reference source: [14]
+
+$$\Lambda = \epsilon + \frac{\phi \cdot \tau}{2} + \frac{\delta}{2}$$
+
+Where:
+
+- $\epsilon$: Precision/Resolution error.
+- $\phi$: Frequency tolerance (drift).
+- $\tau$: Time since last update.
+- $\delta$: Root delay (round-trip time). [11]
+
+### A.4. Industry Compliance Standards
+
+- **Financial Sector (MiFID II/RTS 25):** Requires a maximum divergence from UTC. For high-frequency trading, this is 100 microseconds with 1-microsecond granularity.
+- **Telecommunications ([ITU-T G.8272](https://www.itu.int/epublications/publication/itu-t-g-8272-2025-07-timing-characteristics-of-primary-reference-time-clocks)):** Specifies requirements for Primary Reference Time Clocks (PRTC), requiring accuracy within 100 ns of UTC. [15, 16, 17]
+
+### A.5. References
+
+1. [Achieving traceability to UTC through GNSS measurements](https://www.researchgate.net/publication/364566421_Achieving_traceability_to_UTC_through_GNSS_measurements) — ResearchGate
+2. [Traceability for Time Servers](https://endruntechnologies.com/pdf/TraceabilityTimeServers.pdf) — EndRun Technologies
+3. [BIPM CC publication ID 311](https://www.bipm.org/documents/20126/30132352/cc-publication-ID-311/4fef80e8-241d-e8ae-59c9-2513aebed7d8) — BIPM
+4. [Metrological traceability for timing — IOP](https://iopscience.iop.org/article/10.1088/1681-7575/ac98cb/pdf) — Metrologia
+5. [Traceability for Time Servers](https://endruntechnologies.com/pdf/TraceabilityTimeServers.pdf) — EndRun Technologies
+6. [Traceability for Time Servers](https://endruntechnologies.com/pdf/TraceabilityTimeServers.pdf) — EndRun Technologies
+7. [NTP/PTP timestamp uncertainty](https://endruntechnologies.com/pdf/TraceabilityTimeServers.pdf) — EndRun Technologies
+8. [Calibrating NTP](https://www.researchgate.net/publication/336512341_Calibrating_NTP) — ResearchGate
+9. [ESMA/BIPM-NPL time traceability](https://www.esma.europa.eu/sites/default/files/consultations/2016/03/esma_cp_tr_ork_cs_bipm-npl_annex1.pdf) — ESMA
+10. [IEEE — NTP traceability](https://ieeexplore.ieee.org/document/8543075/) — IEEE
+11. [MSL New Zealand — Official NZ Time](https://www.measurement.govt.nz/about-us/official-new-zealand-time/about-time) — MSL NZ
+12. [Metrologia — timing uncertainty](https://iopscience.iop.org/article/10.1088/1681-7575/aae940) — Metrologia
+13. [Metrological traceability for timing](https://iopscience.iop.org/article/10.1088/1681-7575/ac98cb) — Metrologia
+14. [RFC 5905 — Network Time Protocol Version 4](http://www.faqs.org/rfcs/rfc5905.html) — IETF
+15. [ITU-T G.8272 — PRTC timing characteristics](https://www.itu.int/epublications/publication/itu-t-g-8272-2025-07-timing-characteristics-of-primary-reference-time-clocks) — ITU
+16. [ESMA/BIPM-NPL time traceability](https://www.esma.europa.eu/sites/default/files/consultations/2016/03/esma_cp_tr_ork_cs_bipm-npl_annex1.pdf) — ESMA
+17. [ITU-T G.8272.2 — Enhanced PRTC](https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.8272.2-202401-I!!PDF-E&type=items) — ITU
+
+
+
