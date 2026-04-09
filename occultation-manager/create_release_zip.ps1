@@ -42,7 +42,6 @@ $dataReportsDir = "$dataDir\reports"
 # gps-timing-analysis release structure (sibling to occultation-manager)
 $gpsPythonDir = "$gpsTargetDir\python"
 $gpsResourcesDir = "$gpsTargetDir\resources"
-$gpsScriptsDir = "$gpsTargetDir\scripts"
 $gpsConfigDir = "$gpsTargetDir\config"
 $gpsLogsDir = "$gpsTargetDir\logs"
 $gpsLibDir = "$gpsTargetDir\lib"
@@ -60,7 +59,6 @@ Write-Host "Creating folder structure..." -ForegroundColor Cyan
     $dataReportsDir,
     $gpsPythonDir,
     $gpsResourcesDir,
-    $gpsScriptsDir,
     $gpsConfigDir,
     $gpsLogsDir,
     $gpsLibDir
@@ -140,9 +138,7 @@ $appLibFiles = @(
 # NTP toolkit files to package into sibling gps-timing-analysis/
 $gpsRootFiles = @(
     "ReadMe.md",
-    "requirements.txt",
-    "install_ntp_timing_bootstrap.cmd",
-    "install_ntp_timing_bootstrap.ps1"
+    "requirements.txt"
 )
 
 $gpsPythonFiles = @(
@@ -159,12 +155,6 @@ $gpsPythonFiles = @(
 $gpsResourceFiles = @(
     "resources\national_utc_ntp_servers.json",
     "resources\ntp_pool_zones.json"
-)
-
-$gpsScriptFiles = @(
-    "scripts\find_gps_com_port.ps1",
-    "scripts\install_ntp_timing_guided.cmd",
-    "scripts\install_ntp_timing_guided.ps1"
 )
 
 $gpsConfigFiles = @(
@@ -251,13 +241,6 @@ Write-Host "`nCopying gps-timing-analysis resources..." -ForegroundColor Cyan
 foreach ($file in $gpsResourceFiles) {
     $source = Join-Path $gpsSourceRoot $file
     $dest = Join-Path $gpsResourcesDir (Split-Path $file -Leaf)
-    Copy-ExistingFile -Source $source -Destination $dest
-}
-
-Write-Host "`nCopying gps-timing-analysis scripts..." -ForegroundColor Cyan
-foreach ($file in $gpsScriptFiles) {
-    $source = Join-Path $gpsSourceRoot $file
-    $dest = Join-Path $gpsScriptsDir (Split-Path $file -Leaf)
     Copy-ExistingFile -Source $source -Destination $dest
 }
 

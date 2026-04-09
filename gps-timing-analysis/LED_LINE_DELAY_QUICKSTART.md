@@ -2,7 +2,7 @@
 
 ## Overview
 
-The GPS LED Line Delay Calibration tool measures rolling shutter line delays using GPS timing LED flashes. It captures frames from two apertures (top and bottom of frame), analyzes GPS PPS flashes, and calculates the time delay per sensor line using linear regression.
+The GPS LED Line Delay Calibration tool measures rolling shutter line delays using GPS timing LED flashes. It captures frames from multiple apertures over the height of the frame, analyzes GPS PPS flashes, and calculates the time delay per sensor line using linear regression.
 
 ## Installation
 
