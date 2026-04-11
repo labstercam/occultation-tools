@@ -1635,7 +1635,7 @@ class SaveCalibrationDialog(Form):
 class LEDLineDelayCalibrationForm(Form):
     """Windows Forms GUI for LED line delay calibration"""
     
-    def __init__(self, sharpcap=None, config=None):
+    def __init__(self, sharpcap=None, config=None, theme_manager=None):
         """Initialize the calibration form"""
         self._sharpcap = sharpcap
         self._config = config
@@ -1680,7 +1680,7 @@ class LEDLineDelayCalibrationForm(Form):
     def InitializeComponent(self):
         """Setup GUI components"""
         self.Text = "Camera Delay Calibration"
-        self.ClientSize = Size(720, 880)
+        self.ClientSize = Size(720, 930)
         self.TopMost = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -1800,14 +1800,14 @@ class LEDLineDelayCalibrationForm(Form):
         # Close button
         self.button_close = Button()
         self.button_close.Text = "Close"
-        self.button_close.Location = Point(600, 520)
+        self.button_close.Location = Point(600, 570)
         self.button_close.Size = Size(80, 25)
         self.button_close.Click += self.close_form
 
         # Save Result to Camera button (enabled only after a successful calibration)
         self.button_save_calibration = Button()
         self.button_save_calibration.Text = "Save Result to Camera..."
-        self.button_save_calibration.Location = Point(440, 520)
+        self.button_save_calibration.Location = Point(440, 570)
         self.button_save_calibration.Size = Size(150, 25)
         self.button_save_calibration.Enabled = False
         self.button_save_calibration.Click += self.save_calibration_click
@@ -1815,7 +1815,7 @@ class LEDLineDelayCalibrationForm(Form):
         # Approximate Delays button (no GPS flasher required)
         self.label_approx_delays = Label()
         self.label_approx_delays.Text = "Alternative if no GPS flasher available"
-        self.label_approx_delays.Location = Point(20, 500)
+        self.label_approx_delays.Location = Point(20, 550)
         self.label_approx_delays.AutoSize = True
         self.label_approx_delays.ForeColor = Color.Black
         self.label_approx_delays.Font = Font(self.label_approx_delays.Font.FontFamily,
@@ -1823,7 +1823,7 @@ class LEDLineDelayCalibrationForm(Form):
 
         self.button_approx_delays = Button()
         self.button_approx_delays.Text = "Approximate Delays"
-        self.button_approx_delays.Location = Point(20, 520)
+        self.button_approx_delays.Location = Point(20, 570)
         self.button_approx_delays.Size = Size(175, 25)
         self.button_approx_delays.Click += self.approximate_delays_click
 

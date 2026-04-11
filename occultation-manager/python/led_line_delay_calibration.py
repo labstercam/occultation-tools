@@ -1696,7 +1696,7 @@ class LEDLineDelayCalibrationForm(Form):
     def InitializeComponent(self):
         """Setup GUI components"""
         self.Text = "Camera Delay Calibration"
-        self.ClientSize = Size(720, 968)
+        self.ClientSize = Size(720, 1018)
         self.TopMost = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -1816,7 +1816,7 @@ class LEDLineDelayCalibrationForm(Form):
         # Approximate Delays button (no GPS flasher required) — placed immediately below plot view
         self.label_approx_delays = Label()
         self.label_approx_delays.Text = "Alternative if no GPS flasher available:"
-        self.label_approx_delays.Location = Point(20, 520)
+        self.label_approx_delays.Location = Point(20, 570)
         self.label_approx_delays.AutoSize = True
         self.label_approx_delays.ForeColor = Color.Black
         self.label_approx_delays.Font = Font(self.label_approx_delays.Font.FontFamily,
@@ -1824,21 +1824,21 @@ class LEDLineDelayCalibrationForm(Form):
 
         self.button_approx_delays = Button()
         self.button_approx_delays.Text = "Approximate Delays"
-        self.button_approx_delays.Location = Point(20, 542)
+        self.button_approx_delays.Location = Point(20, 592)
         self.button_approx_delays.Size = Size(175, 25)
         self.button_approx_delays.Click += self.approximate_delays_click
 
         # Close button — below approx button
         self.button_close = Button()
         self.button_close.Text = "Close"
-        self.button_close.Location = Point(600, 578)
+        self.button_close.Location = Point(600, 628)
         self.button_close.Size = Size(80, 25)
         self.button_close.Click += self.close_form
 
         # Save Result to Camera button (enabled only after a successful calibration)
         self.button_save_calibration = Button()
         self.button_save_calibration.Text = "Save Result to Camera..."
-        self.button_save_calibration.Location = Point(440, 578)
+        self.button_save_calibration.Location = Point(440, 628)
         self.button_save_calibration.Size = Size(150, 25)
         self.button_save_calibration.Enabled = False
         self.button_save_calibration.Click += self.save_calibration_click
@@ -1846,7 +1846,7 @@ class LEDLineDelayCalibrationForm(Form):
         # Information panel explaining the two calibration methods
         info_group = GroupBox()
         info_group.Text = "About Camera Delay Calibration"
-        info_group.Location = Point(20, 618)
+        info_group.Location = Point(20, 668)
         info_group.Size = Size(665, 75)
 
         lbl_info = Label()
