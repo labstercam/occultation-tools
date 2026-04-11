@@ -628,6 +628,7 @@ class OccultationManagerGUI(Form):
         menu_help.DropDownItems.Add(ToolStripMenuItem("User Guide", None, self.show_help_click))
         menu_help.DropDownItems.Add(ToolStripSeparator())
         menu_help.DropDownItems.Add(ToolStripMenuItem("About", None, self.show_about_click))
+        menu_help.DropDownItems.Add(ToolStripMenuItem("Licence", None, self.show_licence_click))
         menu_bar.Items.Add(menu_help)
         
         return menu_bar
@@ -3110,7 +3111,7 @@ class OccultationManagerGUI(Form):
             except Exception:
                 pass
 
-            self._gps_flash_form = gps_cal.LEDLineDelayCalibrationForm(sharpcap=self.sharpcap, config=self.config)
+            self._gps_flash_form = gps_cal.LEDLineDelayCalibrationForm(sharpcap=self.sharpcap, config=self.config, theme_manager=self.theme_manager)
             try:
                 self._gps_flash_form.StartPosition = FormStartPosition.CenterScreen
             except Exception:
@@ -3193,7 +3194,7 @@ class OccultationManagerGUI(Form):
         """Open the Camera Delay Calculator dialog."""
         try:
             import line_delay_dialogs
-            dlg = line_delay_dialogs.LineDelayCalculatorDialog(self.config)
+            dlg = line_delay_dialogs.LineDelayCalculatorDialog(self.config, theme_manager=self.theme_manager)
             dlg.ShowDialog(self)
         except Exception as ex:
             MessageBox.Show(
@@ -3215,6 +3216,10 @@ class OccultationManagerGUI(Form):
     def show_about_click(self, sender, e):
         """Show about dialog with author information"""
         self.help_manager.show_about()
+
+    def show_licence_click(self, sender, e):
+        """Show licence dialog"""
+        self.help_manager.show_licence(parent_form=self)
 
     def exit_click(self, sender, e):
         """Exit application"""

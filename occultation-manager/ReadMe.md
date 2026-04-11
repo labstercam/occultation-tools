@@ -1,6 +1,6 @@
 # Occultation Manager
 
-**Version 0.2.0-beta.5** - SharpCap add-in for automated occultation observations
+**Version 0.2.0-beta.6** - SharpCap add-in for automated occultation observations
 
 SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences. Sequences can be run interactively or unattended for fully automated recordings for an entire nights observations. The sequences can be run on remote PCs without internet connection for multiple station deployments.
 
@@ -34,10 +34,10 @@ The workflow can be as simple as announce stations in Occult Watcher Cloud, open
 
 ### Quick Start
 
-1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.5.zip` [https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip)
-2. **Extract**: Unzip to a location with read/write access (e.g., `Documents\SharpCap\occultation-manager`)
+1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.6.zip` [https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.6/occultation-manager-v0.2.0-beta.6.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.6/occultation-manager-v0.2.0-beta.6.zip)
+2. **Extract**: Unzip to a location with read/write access (e.g., `Documents\SharpCap`)
    - ⚠️ **Avoid Program Files** - Windows may restrict write access
-   - ✅ **Recommended**: User Documents or Desktop folders
+   - ✅ **Recommended**: `Documents\SharpCap`
 3. **Load in SharpCap**:
    - Open SharpCap
    - Go to **File → SharpCap Settings → Startup Scripts**

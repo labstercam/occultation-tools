@@ -1269,7 +1269,8 @@ class CameraManagerDialog(Form):
             dlg = line_delay_dialogs.LineDelayCalibrationManagerDialog(
                 self.config,
                 camera_id=self.selected_camera_id,
-                camera_name=cam_name
+                camera_name=cam_name,
+                theme_manager=self.theme_manager,
             )
             dlg.ShowDialog(self)
         except Exception as ex:
@@ -1286,7 +1287,7 @@ class CameraManagerDialog(Form):
             return
         try:
             import led_line_delay_calibration as _ld
-            form = _ld.LEDLineDelayCalibrationForm(sharpcap=self.sharpcap, config=self.config)
+            form = _ld.LEDLineDelayCalibrationForm(sharpcap=self.sharpcap, config=self.config, theme_manager=self.theme_manager)
             form.StartPosition = FormStartPosition.CenterScreen
             form.ShowDialog(self)
             # If a calibration was completed but not yet saved, offer to save it
@@ -1307,7 +1308,8 @@ class CameraManagerDialog(Form):
                         form._calib_fit_result,
                         form._calib_capture_settings,
                         preselect_camera_id=self.selected_camera_id,
-                        config=self.config
+                        config=self.config,
+                        theme_manager=self.theme_manager,
                     )
                     dlg.StartPosition = FormStartPosition.CenterParent
                     dlg.ShowDialog(self)

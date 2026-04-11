@@ -33,7 +33,9 @@ from events import OccultationManager
 manager = OccultationManager(config)
 
 # Download events from OWCloud (downloads, merges, and saves)
-num_events = manager.download_events_from_cloud()
+num_events = manager.download_events_from_cloud(
+    progress_callback=lambda msg: print(msg)  # Optional
+)
 if num_events > 0:
     print(f"Downloaded {num_events} events")
 elif num_events == 0:
@@ -675,6 +677,39 @@ xml_path = exporter.export_observation_to_path(
 
 ---
 
+### SODISReportGeneratorText
+
+Generates IOTA-ES / SODIS plain-text observation reports.
+
+```python
+from sodis_report_text import SODISReportGeneratorText
+
+# Initialize
+generator = SODISReportGeneratorText(config)
+
+# Generate report
+report_path = generator.generate_report(
+    event=event_object,
+    telescope_id='telescope_uuid',
+    camera_id='camera_uuid',
+    observation_type='Positive',  # 'Positive', 'Negative', 'Unsure'
+    tangra_data=tangra_data,       # Optional
+    aota_report_data=aota_data,    # Optional
+    aota_xml_used=False,
+    clouds='Clear',                # Optional: sky conditions
+    stability='Good',              # Optional: atmospheric stability
+    other_conditions=''            # Optional: free-text conditions notes
+)
+```
+
+**Report Output:**
+- Format: Plain text (.txt)
+- Template: `{install_dir}/resources/templates_master/reports/IOTA-ES_report.txt`
+- Location: `{install_dir}/data/reports/`
+- Returns `None` on failure
+
+---
+
 ### ReportGeneratorBase
 
 Base class with common report functionality.
@@ -771,11 +806,12 @@ location_name = get_location_name_from_coordinates(
 ```python
 from utils import save_occultation_sequence
 
-# Save sequence file with error handling
+# Generate and save a sequence file from an OccultationEvent object
 success = save_occultation_sequence(
-    content="SHOW NOTIFICATION ...",
-    filename="20251223_event.scs",
-    folder_path="C:/sequences"
+    occ=event_object,          # OccultationEvent or dict
+    template_path="C:/install/data/templates/SharpCap Sequence UTC Template.txt",
+    sequence_path="C:/sequences/20251223_event.scs",  # Optional; uses config default if omitted
+    config=config              # Required if sequence_path is None
 )
 # Returns: bool (True on success)
 ```

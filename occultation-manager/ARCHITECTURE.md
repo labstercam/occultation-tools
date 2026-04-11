@@ -11,7 +11,7 @@ Occultation Manager is a Windows desktop application that automates the workflow
 - OccultWatcher Cloud (OWCloud) REST API for event data
 - Excel/XML for report generation
 
-**Total Code Size:** ~16,400 lines of Python across 26 top-level modules
+**Total Code Size:** ~25,000 lines of Python across 29 top-level modules
 
 ---
 
@@ -21,7 +21,7 @@ Occultation Manager is a Windows desktop application that automates the workflow
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ MAIN APPLICATION WINDOW                                                     │
 │ OccultationManagerGUI (Form)                                                │
-│ main_gui.py (3,631 lines)                                                   │
+│ main_gui.py (~4,260 lines)                                                  │
 └──────────────────────────────────────────────────────────────────────────────┘
                                        │
                                        ▼
@@ -42,7 +42,7 @@ Occultation Manager is a Windows desktop application that automates the workflow
 │ EVENT MANAGEMENT   │  │ SEQUENCE WORKFLOW  │  │ REPORT WORKFLOW    │  │ CONFIGURATION      │
 └────────────────────┘  └────────────────────┘  └────────────────────┘  └────────────────────┘
 
-EVENT MANAGEMENT DIALOGS (gui_dialogs.py - 1,949 lines)
+EVENT MANAGEMENT DIALOGS (gui_dialogs.py - ~2,490 lines)
     Download Events -> LocationConfirmDialog -> OWCloud download -> grid
     Edit Event Settings -> ExposureEditDialog
     View Event Details -> EventDetailsDialog
@@ -65,7 +65,7 @@ BACKEND ARCHITECTURE
 ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐
 │ Events Manager     │  │ Config Manager     │  │ Sequence Runner    │  │ Report Generators  │
 │ events.py          │  │ config.py          │  │ sequence_runner.py │  │ na/tt/occult4      │
-│ 986 lines          │  │ 658 lines          │  │ 116 lines          │  │ openize/xml exports│
+│ ~1,200 lines       │  │ ~830 lines         │  │ 116 lines          │  │ openize/xml exports│
 └─────────┬──────────┘  └─────────┬──────────┘  └─────────┬──────────┘  └─────────┬──────────┘
           │                       │                       │                       │
           ▼                       ▼                       ▼                       ▼
@@ -95,7 +95,7 @@ BACKEND ARCHITECTURE
 
 ### 2. GUI Layer
 
-#### Main GUI (`main_gui.py` - 3,631 lines)
+#### Main GUI (`main_gui.py` - ~4,260 lines)
 **Responsibilities:**
 - Main application window and event management interface
 - Menu/toolbar actions and command routing
@@ -152,7 +152,9 @@ BACKEND ARCHITECTURE
 
 **Help**
 - User Guide
+- *(separator)*
 - About
+- Licence
 
 Top Toolbar (left-to-right):
 - Download
@@ -177,7 +179,7 @@ Bottom Panel:
 - Async execution using Python threading module
 - Invoke() pattern for cross-thread UI updates
 
-#### Dialog Windows (`gui_dialogs.py` - 1,949 lines)
+#### Dialog Windows (`gui_dialogs.py` - ~2,490 lines)
 **Key Dialogs:**
 - `ExposureEditDialog` - Edit exposure/duration settings for events
 - `EventDetailsDialog` - View full event details
@@ -185,7 +187,7 @@ Bottom Panel:
 - `TemplateSelectionDialog` - Choose sequence countdown template
 - `LocationConfirmDialog` - Confirm observation location on download
 
-#### Equipment Dialogs (`equipment_dialogs.py` - 1,200+ lines)
+#### Equipment Dialogs (`equipment_dialogs.py` - ~1,550 lines)
 **Key Dialogs:**
 - `TelescopeManagerDialog` - Add/edit telescope configurations
 - `CameraManagerDialog` - Add/edit camera configurations; includes **Calibrations...** button (opens `LineDelayCalibrationManagerDialog` for the selected camera) and **Run New Calibration** button (launches `LEDLineDelayCalibrationForm` with the camera pre-selected; offers to save the result on close)
@@ -195,6 +197,7 @@ Bottom Panel:
 **Key Dialogs:**
 - `LineDelayCalibrationManagerDialog` - Resizable DataGridView showing all stored line delay calibration runs for one camera (or all cameras when `camera_id=None`); columns include camera area, binning, tilt, pan, colour space, file format, exposure, gain, per-line delay, line 0 delay, label, and notes. Label and Notes columns are editable inline (`CellEndEdit` → `config.update_line_delay_calibration()`); Delete button with confirmation prompt
 - `LineDelayCalculatorDialog` - Fixed dialog (opened via **Camera Delay Calculator**) for calculating acquisition delay from a stored calibration; camera and calibration dropdowns, Y pixel entry (float), live result at 22pt bold, formula breakdown, Copy to clipboard, and Manage Calibrations… shortcut
+- `ManualCalibrationEntryDialog` - Dialog for manually entering a line delay calibration value (per-line delay and line 0 delay) when no automated capture is possible; validates numeric input and saves to `ConfigManager` via the standard calibration schema
 
 - `EventsDataGrid(DataGridView)` - Custom data grid for events with checkbox column
 
@@ -202,7 +205,7 @@ Bottom Panel:
 
 ### 3. Event Management
 
-#### Events Module (`events.py` - 986 lines)
+#### Events Module (`events.py` - ~1,200 lines)
 **Responsibilities:**
 - OWCloud API integration for downloading event predictions
 - Event data processing and caching
@@ -250,7 +253,7 @@ OWCloud API → download_events() → OccultationEvent objects →
 
 ### 4. Configuration Management
 
-#### Config Module (`config.py` - 700+ lines)
+#### Config Module (`config.py` - ~830 lines)
 **Responsibilities:**
 - Persistent configuration storage (JSON)
 - File path management
@@ -370,15 +373,22 @@ OWCloud API → download_events() → OccultationEvent objects →
 
 **Template System:**
 ```
-Template files contain data tags in format {{tag_name}}
-Available tags:
-  {{goto_time}}       - UTC time to start GOTO
-  {{goto_time_local}} - Local time for GOTO
-  {{start_time}}      - UTC recording start time
-  {{start_time_local}}- Local recording start time
-  {{duration}}        - Recording duration (seconds)
-  {{object_name}}     - Asteroid/object name
-  {{star_name}}       - Target star identifier
+Template files are processed via Python str.format(), so substitution tags use
+single braces and any literal braces in the template must be doubled.
+
+Substitution tags (replaced with event data):
+  {goto_time}        - UTC GOTO time
+  {goto_time_local}  - Local GOTO time (used in WAIT UNTIL statements)
+  {start_time}       - UTC recording start time
+  {start_time_local} - Local recording start time
+  {duration}         - Recording duration (seconds)
+  {object_name}      - Asteroid/object name
+  {star_name}        - Target star identifier
+
+In RUN PYTHON blocks, any Python code containing its own {braces} must be
+escaped as {{braces}} so str.format() passes them through as literal characters.
+Example: `print(f"{{object_name}}")` in the template produces `print(f"{object_name}")` in
+the .scs output.
 ```
 
 **Template Types:**
@@ -424,6 +434,12 @@ Three specialized report generators create Excel-based observation reports by fi
 - Fields: Event details, observer info, timing, equipment
 - Note: EventFits section omitted (added by IOTA post-processing)
 
+**SODIS / IOTA-ES Text Reports (`sodis_report_text.py`):**
+- `SODISReportGeneratorText` - IOTA-ES plain-text report format
+- Template: `resources/templates_master/reports/IOTA-ES_report.txt`
+- Extra parameters: `clouds`, `stability`, `other_conditions` (observing conditions)
+- Output: Plain-text .txt file saved to `data/reports/`
+
 **Report Generation Flow:**
 ```
 1. User selects event in grid
@@ -466,7 +482,7 @@ Three specialized report generators create Excel-based observation reports by fi
 - Templates loaded from `resources/templates_master/reports/`
 - Automatic Occult 4 XML export with matching filename
 
-#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - 753 lines)
+#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - ~1,400 lines)
 - Unified dialog for all report types
 - Equipment selection dropdowns
 - Observation type radio buttons
@@ -564,7 +580,7 @@ This module is distributed in both `occultation-manager/python/` (integrated wor
 - Coordinate conversions
 - Date/time formatting
 
-#### Help System (`help.py` - 809 lines)
+#### Help System (`help.py` - ~1,430 lines)
 - `HelpManager` - Rich text help documents
 - Quick Start Guide, troubleshooting, FAQ
 - Displayed in dialog with styled text
@@ -590,7 +606,7 @@ User → Selects events (checkboxes) → Generate Sequences Button
     → gui_dialogs.TemplateSelectionDialog [choose countdown type]
     → For each selected event:
         - templates.TemplateManager.load_template()
-        - Replace data tags: {{goto_time}}, {{start_time}}, {{duration}}
+        - Replace data tags: {goto_time}, {start_time}, {duration}
         - Save .scs file to data/sequences/ folder
     → Update status bar with count
 ```
@@ -767,7 +783,7 @@ User → Selects event → Generate Report Button
 
 ## Version History Context
 
-Current version: **0.2.0-beta.5** (Fifth Public Beta - April 2026)
+Current version: **0.2.0-beta.6** (Sixth Public Beta - April 2026)
 
 Key capabilities implemented:
 - Automatic folder structure creation

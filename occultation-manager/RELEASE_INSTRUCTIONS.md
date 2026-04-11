@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.5
+# Release Package Instructions - v0.2.0-beta.6
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -17,7 +17,7 @@ This script automatically:
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
 - Pre-seeds `data/templates/` with working copies of the sequencer master templates
 - Seeds/creates data folders under `data/{config,events,templates,sequences,reports}/`
-- Generates `occultation-manager-v0.2.0-beta.5.zip`
+- Generates `occultation-manager-v0.2.0-beta.6.zip`
 
 ### Manual File List (if needed)
 
@@ -119,7 +119,7 @@ occultation-manager/
 │   ├── sequences/
 │   └── reports/
 ├── ReadMe.md                                      <-- User documentation
-├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.5 features
+├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.6 features
 └── RELEASE_INSTRUCTIONS.md
 ```
 
@@ -133,34 +133,34 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.2.0-beta.5`
+   - Tag: `v0.2.0-beta.6`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.5 - Line Delay Calibration Integration`
+   - Release title: `Occultation Manager v0.2.0-beta.6 - Report Enhancements & Help Documentation`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.5 - Line Delay Calibration Integration
+   # Occultation Manager v0.2.0-beta.6 - Report Enhancements & Help Documentation
    
-   **Line delay calibration integrated into Occultation Manager** — save, manage, and calculate rolling-shutter acquisition delays from within the app.
+   **Report Enhancements & Help Documentation** — new Timestamp Inspector window with deviation charts, and expanded help documentation including Equipment Setup topic.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
 
    ## 🧹 Maintenance
 
-   - Updated release-facing documentation and version references for Beta.5.
+   - Updated release-facing documentation and version references for Beta.6.
    - Updated release packaging/version pointers (ZIP naming and instructions).
    
    ## 📦 Installation
    
-   **Download:** [occultation-manager-v0.2.0-beta.5.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip)
+   **Download:** [occultation-manager-v0.2.0-beta.6.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.6/occultation-manager-v0.2.0-beta.6.zip)
    
    ### Quick Start:
    1. Download and extract the ZIP file to a location with read/write access
       - ⚠️ **Avoid Program Files** - Windows may restrict write access
-      - ✅ **Recommended**: `Documents\SharpCap\occultation-manager`
+      - ✅ **Recommended**: `Documents\SharpCap`
    2. Start SharpCap
    3. Go to **File → SharpCap Settings → Startup Scripts**
    4. Browse to the extracted `app` folder and select `app/main.py`
@@ -182,26 +182,30 @@ occultation-manager/
    
    See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
    
-   ## ✨ What's New in Beta.5
+   ## ✨ What's New in Beta.6
    
-   ### Line Delay Calibration — Fully Integrated Workflow
+   ### Timestamp Inspector — New Window
    
-   The GPS flash line delay calibration tool is now fully integrated into Occultation Manager.
+   A new Timestamp Inspector window accessible from the Generate Report dialog shows frame timing analysis for Tangra CSV imports.
    
-   **Camera Manager** (`Tools → Manage Cameras`):
-   - **Calibrations...** button: view, label, edit notes, and delete stored calibration runs per camera
-   - **Run New Calibration** button: launch GPS Flash Calibration with the selected camera pre-selected; offered save on close if result was not yet saved
+   - **Chart 1**: Frame interval deviation from median (ms); Y-axis always shows ≥ ±5 ms range
+   - **Chart 2**: Signal level (ADU) for the primary aperture
+   - **Stats line**: median interval, min deviation, max deviation
+   - **Vertical reference lines**: blue solid = predicted event, red dashed = D time, green dashed = R time
    
-   **Camera Delay Calibration** (`Tools → Camera Delay Calibration`):
-   - New **Save Calibration to Camera** button after a successful run
-   - Saves per-line delay, line 0 delay, and all capture metadata to the camera profile
-   - **Approximate Delays** button for use when no GPS flasher is available
+   ### Timestamp Check Subpanel (Generate Report)
    
-   **Camera Delay Calculator** (`Tools → Camera Delay Calculator`) — *new tool*:
-   - Select camera and labelled calibration (A, B, C…)
-   - Enter Y pixel position of the occulted star
-   - Live calculation: `per_line_delay × Y + line_0_delay = delay ms`
-   - One-click **Copy** to clipboard in TANGRA format
+   - Colour-coded status label: **OK** / **Check** / **Issues** based on delayed/late frame counts
+   - Min/max deviation values (ms from median) displayed
+   - Event-time window warning when predicted event falls outside CSV coverage
+   - **Explain...** and **Inspect Timestamps...** buttons
+   
+   ### Help Documentation Expanded
+   
+   - New **Equipment Setup** topic: full Telescope Manager and Camera Manager field-level documentation
+   - Quick Start: Observer/Telescope tab documented; User Settings expanded (Sync Mount, Display UTC, Debug Logs)
+   - Quick Filters: On/Off checkbox toggle documented
+   - About dialog: version updated to 0.2.0-beta.6, features list expanded
    
    ## 🎯 Key Features
    

@@ -1,6 +1,6 @@
 # Create release ZIP for Occultation Manager (folder-based layout)
 
-$version = "0.2.0-beta.5"
+$version = "0.2.0-beta.6"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
@@ -75,6 +75,7 @@ Write-Host "Creating folder structure..." -ForegroundColor Cyan
 
 # Files to package into app/
 $pythonFiles = @(
+    "python\adv_helper.py",
     "python\aota_dialogs.py",
     "python\aota_parser.py",
     "python\aota_report_parser.py",

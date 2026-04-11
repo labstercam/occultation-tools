@@ -1,5 +1,46 @@
 # Occultation Manager - Release Notes
 
+## Version 0.2.0-beta.6 (April 2026)
+
+**Report Enhancements & Help Documentation**
+
+### Timestamp Check Subpanel (Generate Report form)
+
+The Generate Report dialog now includes a Timestamp Check subpanel when a Tangra CSV is loaded:
+
+- Colour-coded status label: **OK** / **Check** / **Issues** based on delayed/late frame counts
+- Min/max deviation values (ms from median) displayed
+- Event-time window warning when the OWC predicted event time falls outside the CSV time coverage
+- **Explain...** button: describes what the check means and how to interpret results
+- **Inspect Timestamps...** button: opens the new Timestamp Inspector window
+
+### Timestamp Inspector Window (New)
+
+A dedicated analysis window for visual frame timing inspection:
+
+- **Chart 1**: Frame interval deviation from median (ms); Y-axis always spans ≥ ±5 ms
+- **Chart 2**: Signal level (ADU) for the primary aperture
+- **Stats line** between charts: median interval, min deviation, max deviation
+- **Vertical reference lines**: blue solid = predicted event time, red dashed = D time,
+  green dashed = R time
+
+### Help Documentation Expanded
+
+- New **Equipment Setup** topic: complete Telescope Manager and Camera Manager
+  field-level documentation, including all Occult 4 codes and the first-time setup workflow
+- **Quick Start** guide updated: Observer/Telescope tab fully documented; User Settings
+  expanded with Sync Mount, Display UTC, and Debug Logs fields
+- **Quick Filters** description updated: On/Off checkbox toggle documented
+- **About dialog**: version updated to 0.2.0-beta.6, features list expanded to include
+  telescope/camera management, calibration tools, Timestamp Inspector, and SODIS format support
+
+### Other Improvements
+
+- Updated release-facing documentation and version references for Beta.6.
+- Updated release packaging/version pointers (ZIP naming and instructions).
+
+---
+
 ## Version 0.2.0-beta.5 (April 2026)
 
 **Line Delay Calibration Integration**
