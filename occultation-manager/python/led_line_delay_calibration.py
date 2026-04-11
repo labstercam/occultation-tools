@@ -111,6 +111,13 @@ except Exception:
     _om_config = None
     _OM_CONFIG_AVAILABLE = False
 
+# Theme import for night mode support (graceful fallback when not available)
+try:
+    from theme import apply_theme_to_control
+    _OM_THEME_AVAILABLE = True
+except Exception:
+    _OM_THEME_AVAILABLE = False
+
 # SharpCap global — provided by SharpCap's IronPython console; None when run standalone
 try:
     _ = SharpCap
@@ -1225,7 +1232,7 @@ class SimpleXlsxWriter:
 class _MinDelayDialog(Form):
     """Simple modal dialog prompting the user to enter a minimum line delay value."""
 
-    def __init__(self, hint_text=''):
+    def __init__(self, hint_text='', theme_manager=None):
         self.min_delay_ms = None
         self.Text = "Enter Minimum Delay"
         self.ClientSize = Size(420, 160)
@@ -1270,6 +1277,9 @@ class _MinDelayDialog(Form):
         self.Controls.Add(btn_cancel)
         self.CancelButton = btn_cancel
 
+        if theme_manager is not None and _OM_THEME_AVAILABLE:
+            apply_theme_to_control(self, theme_manager.get_current_theme())
+
     def _ok_click(self, sender, event):
         try:
             self.min_delay_ms = float(self._txt.Text)
@@ -1286,14 +1296,17 @@ class _MinDelayDialog(Form):
 class SaveCalibrationDialog(Form):
     """Dialog to save a line delay calibration result to Occultation Manager config."""
 
-    def __init__(self, fit_result, capture_settings, preselect_camera_id=None, config=None):
+    def __init__(self, fit_result, capture_settings, preselect_camera_id=None, config=None, theme_manager=None):
         self._fit_result = fit_result
         self._capture_settings = dict(capture_settings) if capture_settings else {}
         self._config = config   # may be None; _load_cameras creates one if so
+        self._theme_manager = theme_manager
         self._camera_ids = []
         self._preselect_camera_id = preselect_camera_id
         self.InitializeComponent()
         self._load_cameras()
+        if theme_manager is not None and _OM_THEME_AVAILABLE:
+            apply_theme_to_control(self, theme_manager.get_current_theme())
 
     def InitializeComponent(self):
         self.Text = "Save Calibration to Camera"
@@ -1635,10 +1648,11 @@ class SaveCalibrationDialog(Form):
 class LEDLineDelayCalibrationForm(Form):
     """Windows Forms GUI for LED line delay calibration"""
     
-    def __init__(self, sharpcap=None, config=None):
+    def __init__(self, sharpcap=None, config=None, theme_manager=None):
         """Initialize the calibration form"""
         self._sharpcap = sharpcap
         self._config = config
+        self._theme_manager = theme_manager
         self.capture_handler = FrameCaptureHandler()
         self.stop_requested = False
         # Stability test result storage (for save / re-save)
@@ -1655,6 +1669,8 @@ class LEDLineDelayCalibrationForm(Form):
         self.InitializeComponent()
         # Force handle creation to avoid invoke errors from background threads
         handle = self.Handle
+        if theme_manager is not None and _OM_THEME_AVAILABLE:
+            apply_theme_to_control(self, theme_manager.get_current_theme())
         
     def SafeInvoke(self, action):
         """Safely invoke action on UI thread, handling handle creation issues"""
@@ -2832,7 +2848,7 @@ class LEDLineDelayCalibrationForm(Form):
                     "2 ms is reasonable for a small ROI (< 1000\u00d71000) "
                     "with a mono planetary camera."
                 )
-                dlg = _MinDelayDialog(hint)
+                dlg = _MinDelayDialog(hint, theme_manager=form._theme_manager)
                 dlg.StartPosition = FormStartPosition.CenterParent
                 if dlg.ShowDialog(form) == DialogResult.OK:
                     min_delay_holder[0] = dlg.min_delay_ms
@@ -2900,7 +2916,7 @@ class LEDLineDelayCalibrationForm(Form):
             )
             return
         dlg = SaveCalibrationDialog(self._calib_fit_result, self._calib_capture_settings,
-                                    config=self._config)
+                                    config=self._config, theme_manager=self._theme_manager)
         dlg.StartPosition = FormStartPosition.CenterParent
         if dlg.ShowDialog(self) == DialogResult.OK:
             self._calib_saved = True

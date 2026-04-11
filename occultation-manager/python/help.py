@@ -58,9 +58,10 @@ class HelpDialog(Form):
         # Create main split container
         main_split = SplitContainer()
         main_split.Dock = DockStyle.Fill
-        main_split.SplitterDistance = int(600 * sf)  # 3x wider for better topic visibility
         main_split.FixedPanel = FixedPanel.Panel1
         self.Controls.Add(main_split)
+        # Set AFTER Controls.Add so layout is realised before the value is applied
+        main_split.SplitterDistance = int(185 * sf)  # Panel1 = topics tree width
         
         # Left panel - Help topics tree
         self.setup_help_topics(main_split.Panel1)
@@ -90,6 +91,7 @@ class HelpDialog(Form):
         
         self.tree_topics = TreeView()
         self.tree_topics.Dock = DockStyle.Fill
+        self.tree_topics.Font = Font("Segoe UI", 10 * sf)
         self.tree_topics.AfterSelect += self.topic_selected
         panel.Controls.Add(self.tree_topics)
         
@@ -97,7 +99,7 @@ class HelpDialog(Form):
         lbl_topics.Text = "Help Topics:"
         lbl_topics.Dock = DockStyle.Top
         lbl_topics.Height = int(25 * sf)
-        lbl_topics.Font = Font("Microsoft Sans Serif", 9 * sf, FontStyle.Bold)
+        lbl_topics.Font = Font("Segoe UI", 9 * sf, FontStyle.Bold)
         panel.Controls.Add(lbl_topics)
         
         # Apply theme colors to TreeView
@@ -117,7 +119,7 @@ class HelpDialog(Form):
         self.txt_help_content.ReadOnly = True
         self.txt_help_content.ScrollBars = ScrollBars.Vertical
         self.txt_help_content.WordWrap = True
-        self.txt_help_content.Font = Font("Microsoft Sans Serif", 10 * sf)
+        self.txt_help_content.Font = Font("Segoe UI", 10 * sf)
         self.txt_help_content.Dock = DockStyle.Fill
         panel.Controls.Add(self.txt_help_content)
 
@@ -155,6 +157,16 @@ class HelpDialog(Form):
         timing_node = TreeNode("Timing & Calibration Tools")
         timing_node.Tag = "timing_tools"
         self.tree_topics.Nodes.Add(timing_node)
+
+        # Report Generation
+        report_gen_node = TreeNode("Report Generation")
+        report_gen_node.Tag = "report_generation"
+        self.tree_topics.Nodes.Add(report_gen_node)
+
+        # Equipment Setup
+        equipment_node = TreeNode("Equipment Setup")
+        equipment_node.Tag = "equipment_setup"
+        self.tree_topics.Nodes.Add(equipment_node)
         
         # Expand top-level nodes
         for node in self.tree_topics.Nodes:
@@ -198,7 +210,9 @@ class HelpDialog(Form):
             "quickstart": self.get_quickstart_content().replace('\n','\r\n'),
             "workflow": self.get_workflow_content().replace('\n','\r\n'),
             "template_modification": self.get_template_modification_content().replace('\n','\r\n'),
-            "timing_tools": self.get_timing_tools_content().replace('\n','\r\n')
+            "timing_tools": self.get_timing_tools_content().replace('\n','\r\n'),
+            "report_generation": self.get_report_generation_content().replace('\n','\r\n'),
+            "equipment_setup": self.get_equipment_setup_content().replace('\n','\r\n')
         }
         
         return content_map.get(topic, "Help content not found for this topic.")
@@ -215,7 +229,7 @@ INSTALLATION
 1. Download occultation-manager-v0.2.0-beta.5.zip from GitHub
 2. Extract to a folder with read/write access
    ⚠️ AVOID Program Files - Windows may restrict write access
-   ✅ RECOMMENDED: Documents\\SharpCap\\occultation-manager
+   ✅ RECOMMENDED: Documents\\SharpCap
 3. Start SharpCap
 4. Go to File → SharpCap Settings → Startup Scripts
 5. Browse to the extracted app folder and select 'app/main.py'
@@ -228,36 +242,10 @@ FIRST STARTUP - AUTOMATIC SETUP
 When you first launch Occultation Manager, it automatically:
 
 • Detects your installation directory
-• Creates folder structure:
-    - data/config/ - Configuration storage
-    - data/events/ - Event data files
-    - data/templates/ - Working template copies
-    - data/sequences/ - SharpCap sequence files (.scs)
-    - data/reports/ - Generated Excel reports
-    - resources/templates_master/ - Master templates
+• Creates all required data folders automatically (see Folder Structure below)
 • Uses fixed install-relative paths (no path setup required)
 • Seeds missing templates from resources/templates_master/sequencer/
 • Saves configuration to data/config/occultation_config.json
-
-FOLDER STRUCTURE
-----------------
-After extraction and first run:
-
-occultation-manager/
-├── app/
-│   ├── main.py                      # SharpCap startup script
-│   ├── *.py
-│   └── lib/
-├── resources/
-│   └── templates_master/
-│       ├── sequencer/
-│       └── reports/
-└── data/                            # Auto-created user data
-    ├── config/occultation_config.json
-    ├── events/occultations.json
-    ├── templates/
-    ├── sequences/
-    └── reports/
 
 INITIAL CONFIGURATION
 ---------------------
@@ -275,20 +263,28 @@ CREDENTIALS TAB (Required):
 
 FILE PATHS TAB:
 • Paths are fixed by installation layout and are not user-configurable
-• Use buttons to open these folders in Windows Explorer:
-        - data/config/
-        - data/events/
-        - data/templates/
-        - data/sequences/
-        - data/reports/
+• Use buttons to open data folders in Windows Explorer (see Folder Structure below)
 
 USER SETTINGS TAB:
 • Base Duration: Extra recording time (default: 60s)
 • GOTO Lead Time: Slew start before recording (default: 240s)
 • Mag for 40ms exp: Reference magnitude (default: 12.0)
 • Default Gain: Camera gain for new events (default: 450)
+• Sync Mount with GOTO: Syncs mount to plate-solved position after each GOTO (default: off)
+  ⚠ Only enable if you normally sync your mount manually with every GOTO
+  Do NOT use with permanently aligned or precision pointing-model mounts
+• Display UTC in Grid: Show event times in UTC instead of local time (default: off)
+• Output Debug Logs: Enable verbose OWC download/parsing log files (default: off)
+  Click "Open Debug Logs Folder" to access owc_raw_download.log and owc_data_debug.log
 
 Click the 'Explain' button next to any setting for detailed help.
+
+OBSERVER/TELESCOPE TAB:
+• Fill in your personal details that will auto-fill into generated reports:
+  - Name, Email, Address, City, State, Country, Phone, Fax
+• Station latitude and longitude come from OWC event data (not set here)
+• Click "Tools → Manage Telescopes" and "Tools → Manage Cameras" to set up
+  your equipment profiles — see the "Equipment Setup" help topic for details
 
 Click Save to apply changes.
 
@@ -311,13 +307,36 @@ GETTING STARTED
   - Delete when done using Quick Filters Delete button
 • Station Filter: Shows events for specific location
 • Event Grid: All event information with sortable columns
-• Quick Filters: Show Today/Future/All events, Delete selected events
+• Quick Filters: Show Today/Future/All events, toggle all checkboxes On/Off, Delete selected
 • Observation Preparation: Test GOTO, plate solve, camera setup
 • Create Sequences: Generate customizable SharpCap .scs files
 • Night Mode: Red theme for observing sessions
 
 See "Event Recording Workflow" for detailed workflow steps.
-See "Template Modification" for customizing sequences."""
+See "Template Modification" for customizing sequences.
+
+FOLDER STRUCTURE
+----------------
+After extraction and first run, the install folder contains:
+
+occultation-manager/
+├── app/
+│   ├── main.py                      # SharpCap startup script
+│   ├── *.py
+│   └── lib/
+├── resources/
+│   └── templates_master/
+│       ├── sequencer/
+│       └── reports/
+└── data/                            # Auto-created on first launch
+    ├── config/occultation_config.json
+    ├── events/occultations.json
+    ├── templates/
+    ├── sequences/
+    └── reports/
+
+The data/ folders are created automatically — no manual setup is needed.
+Use Tools → Configuration → File Paths to open any folder in Explorer."""
 
     def get_workflow_content(self):
         return """EVENT RECORDING WORKFLOW
@@ -477,13 +496,9 @@ STEP 8: GENERATE REPORT (UNDER DEVELOPMENT - NOT APPROVED)
 has NOT been approved by reporting coordinators. All generated reports 
 must be carefully verified before submission.
 
-Events → Generate Report:
-• Select report format (North America / Trans-Tasman)
-• Choose equipment (telescope/camera)
-• Set observation type (Positive/Negative/Unsure)
-• Select folder with AOTA and Tangra CSV files
-• Generate pre-filled Excel report
-• MANUALLY VERIFY all data before submitting
+See the dedicated "Report Generation" help topic for full details of
+the Generate Report form, Timestamp Check tools, and Inspect Timestamps
+chart viewer.
 
 WORKFLOW SUMMARY
 ----------------
@@ -859,6 +874,275 @@ COMMON CUSTOMIZATIONS
 Every setup is different - customize templates to match your 
 specific equipment, site conditions, and workflow preferences."""
 
+    def get_equipment_setup_content(self):
+        return """EQUIPMENT SETUP
+================
+
+Configure telescope and camera profiles used for report generation.
+Access both managers via the Tools menu.
+
+TELESCOPE MANAGER  (Tools → Manage Telescopes)
+-----------------------------------------------
+Maintains a list of telescope profiles.  The active telescope is
+pre-selected in the Generate Report form.
+
+Fields:
+  • Name         — A label you choose (e.g. "C11 Main")
+  • Aperture     — Mirror/lens diameter in mm (e.g. 280)
+  • Focal Ratio  — f/ ratio (e.g. 10.0 for f/10)
+  • Type         — One of:
+      SCT including Cass and Mak
+      Newtonian
+      Refractor
+      EdgeHD
+      Ritchey-Chretien
+      Other
+
+Buttons:
+  • Add New      — Clears fields; fill in details and click Add New to save
+  • Update       — Saves edits to the currently selected telescope
+  • Delete       — Permanently removes the selected telescope
+  • Set as Active — Marks the selected telescope as the default for reports
+    (★ shown next to active telescope in the list)
+
+CAMERA MANAGER  (Tools → Manage Cameras)
+------------------------------------------
+Maintains a list of camera configurations including timing and
+Occult 4 classification fields.  The active camera is pre-selected
+in the Generate Report form.
+
+Report Type MUST be selected first when adding a new camera.
+The Report Type controls which timing options appear in the
+Timing dropdown and which cameras are shown in the report form
+for a given report format (NA/TT/SODIS).
+
+Fields:
+  • Report Type      — NA, TT, or SODIS (select this first for a new camera)
+  • Name             — A label you choose (e.g. "ASI174MC GPS")
+  • Detector         — Camera model; free-editable dropdown with common cameras
+  • Timing           — Timing method; options depend on Report Type:
+      NA/TT:  "GPS - time inserted", "NTP", "Stopwatch", etc.
+      SODIS:  Occult 4 time codes used directly (a-GPS, b-NTP, etc.)
+  • Timing Device    — Free text for time-stamping device name (e.g. "QHY 174 GPS")
+  • Occult 4 Method  — Detection method code for Occult 4 / IOTA reporting
+      Auto-populated from Detector when a known detector is selected
+      Can be overridden manually
+  • Occult 4 Time    — Timing method code for Occult 4 / IOTA reporting
+      Auto-populated from Timing when a known timing method is selected
+      Can be overridden manually
+  • Other Detector Info — Free text for additional notes about the camera
+
+Occult 4 method codes:
+  a - Analogue & digital video
+  b - Digital SLR-camera video
+  c - Photometer
+  d - Sequential images
+  e - Drift scan
+  f - Visual
+  g - Other
+
+Occult 4 time codes:
+  a - GPS
+  b - NTP
+  c - Telephone (fixed or mobile)
+  d - Radio time signal
+  e - Internal clock of recorder
+  f - Stopwatch
+  g - Other
+
+Buttons:
+  • Add New             — Clears fields; select Report Type first, fill in
+                          details, then click Add New to save
+  • Update              — Saves edits to the currently selected camera
+  • Delete              — Permanently removes the selected camera
+  • Set as Active       — Marks the selected camera as the default for reports
+    (★ shown next to active camera in the list)
+  • Calibrations...     — Shows all saved line-delay calibration runs for this
+                          camera; select a run to view its parameters
+  • Run New Calibration — Launches the Camera Delay Calibration tool to record
+                          a new calibration run for this camera
+    (See "Timing & Calibration Tools" for the full calibration workflow)
+
+WORKFLOW — FIRST TIME SETUP
+-----------------------------
+1. Open Tools → Configuration → Observer/Telescope tab
+   Fill in your Name, Email, and postal address for report auto-fill
+
+2. Open Tools → Manage Telescopes
+   Click Add New, fill in Name, Aperture, Focal Ratio, and Type
+   Click Add New to save, then Set as Active
+
+3. Open Tools → Manage Cameras
+   Select Report Type (NA, TT, or SODIS) for your reporting organisation
+   Fill in Name, Detector, Timing, and Timing Device
+   Occult 4 Method and Occult 4 Time are auto-populated — verify them
+   Click Add New to save, then Set as Active
+
+4. These profiles are now available in Section 2 of the Generate Report form"""
+
+    def get_report_generation_content(self):
+        return """REPORT GENERATION
+==================
+
+⚠ CRITICAL WARNING: Report generation is under development and has NOT
+been approved by reporting coordinators. All generated reports must be
+carefully verified before submission. Do not submit without checking.
+
+OPENING THE FORM
+----------------
+Events menu → Generate Report
+
+The form is divided into five sections. All required sections must be
+complete before the Generate Report button becomes active.
+
+SECTION 1: REPORT FORMAT
+-------------------------
+Choose the reporting organisation format:
+  • IOTA North America (V5.6.12r)
+  • Trans-Tasman / RASNZ (V4.1.2.G)
+  • IOTA-ES / SODIS (Form 2.03)
+
+The camera dropdown in Section 2 is filtered to show only cameras
+configured for the selected report type.
+
+SECTION 2: EQUIPMENT SELECTION
+-------------------------------
+  • Telescope: select from configured telescopes
+  • Camera: select from cameras matching the chosen report type
+  • Use Manage... buttons to add or edit equipment profiles
+
+SECTION 3: OBSERVATION RESULT
+------------------------------
+  • Positive - Observed disappearance and reappearance (AOTA required)
+  • Negative - No occultation occurred (AOTA optional)
+  • Unsure   - Possible event but uncertain (AOTA required)
+
+SECTION 4: OBSERVATION FILES
+-----------------------------
+Browse to the folder containing your observation files. The three file
+lists are populated automatically when a folder is selected.
+
+Column order (left to right):
+  1. Tangra CSV  - Tangra light-curve CSV export
+  2. AOTA Files  - AOTA prediction files (.aota.xml)
+  3. AOTA Report - AOTA report text files (_aota_report.txt)
+
+Select one file in each column. A short preview appears below each
+list showing extracted times or D/R values for quick verification.
+
+TIMESTAMP CHECK SUBPANEL
+-------------------------
+Automatically populated when a Tangra CSV is selected. Analyses frame
+timing for irregularities that could affect timing accuracy.
+
+  Delayed frames
+    Frames where the interval between consecutive frames is more than
+    10% longer than the median interval. Minor timing slip — usually
+    caused by brief CPU load. A small number is generally acceptable.
+
+  Late frames
+    Frames where the interval is more than 90% longer than the median.
+    This almost always means one or more frames were dropped. Each late
+    frame is a gap in coverage and may affect timing accuracy.
+
+  Status
+    OK               - No delayed or late frames (green)
+    Check            - Some delayed frames, no late frames (orange)
+    Issues detected  - One or more late frames (red)
+
+  Deviation (min/max)
+    Shows the minimum and maximum frame interval expressed as a
+    deviation from the median exposure time, in milliseconds.
+    e.g. "-0.5 to +42.3 ms" indicates the worst dropped-frame gap.
+
+  Event time warning (orange/red text, right of Inspect button)
+    Appears when the predicted event time from OWC falls outside the
+    recording start-to-end window of the selected Tangra CSV. This
+    does not prevent report generation but should be investigated —
+    it may mean the wrong CSV file is selected.
+
+  Explain... button
+    Opens a message box with plain-language explanations of all
+    three metrics and guidance on when to be concerned.
+
+  Inspect Timestamps... button
+    Opens the Timestamp Inspector window (see below). Only enabled
+    when a Tangra CSV has been successfully loaded.
+
+SECTION 5: CONDITIONS
+----------------------
+  • Clouds: sky transparency (Clear / Fog / Thin cloud / etc.)
+  • Stability: atmospheric seeing (Steady / Flickering)
+  • Other Conditions: free-text field for additional notes
+
+GENERATE REPORT BUTTON
+-----------------------
+Active when all required fields are complete. Click to generate the
+pre-filled Excel report and save it to data/reports/.
+
+Manually verify all data in the generated report before submitting.
+
+
+TIMESTAMP INSPECTOR WINDOW
+===========================
+
+Opened via the Inspect Timestamps... button. Displays two OxyPlot
+charts from the selected Tangra CSV for detailed frame-timing analysis.
+
+CHART 1: FRAME INTERVAL DEVIATION FROM MEDIAN
+----------------------------------------------
+X axis: Frame number
+Y axis: Deviation of each frame interval from the median exposure (ms)
+  • Zero line (dashed grey) = perfect, uniform timing
+  • Positive values = frame arrived later than expected
+  • Negative values = frame arrived slightly early (rare)
+
+Y-axis scaling:
+  • Auto-scales to the data range
+  • Always shows at least ±5 ms so small deviations remain visible
+  • A slight jitter of ±0.5–2 ms is normal and acceptable
+
+CHART 2: SIGNAL LEVEL
+----------------------
+X axis: Frame number (same range as Chart 1)
+Y axis: Signal (ADU) of the primary aperture (signal_1)
+
+Use this chart to visually locate the occultation event and compare
+it against any timing anomalies visible in Chart 1.
+
+VERTICAL REFERENCE LINES (both charts)
+---------------------------------------
+  Blue solid    - Predicted event time from OWC ("Event")
+  Red dashed    - D time from AOTA file ("D")
+  Green dashed  - R time from AOTA file ("R")
+
+If no AOTA file is selected, D and R lines are not drawn.
+If no event time is available, the Event line is not drawn.
+
+STATS LINE (between the two charts)
+-------------------------------------
+  Median exposure: X.XX ms  |  Min deviation: ±X.XX ms  |  Max deviation: ±X.XX ms
+
+INTERPRETING THE CHARTS
+------------------------
+  • Scattered points close to zero (< ±2 ms):
+      Normal USB or driver jitter — no impact on timing.
+
+  • A single large positive spike:
+      One late frame or dropped frame. Check whether it falls within
+      or outside the D/R event window. If outside, no impact.
+
+  • Multiple large spikes or spikes during the event window:
+      Significant timing issues. The event times may be unreliable.
+      Consider noting in your report or contacting your coordinator.
+
+  • Gradual drift (slope across the chart):
+      Possible clock or driver issue. Check NTP clock accuracy logs.
+
+  • Event line (blue) outside the D/R window:
+      May indicate the wrong AOTA file or CSV was selected, or the
+      event prediction was updated after the AOTA was generated."""
+
     def get_timing_tools_content(self):
         return """TIMING & CALIBRATION TOOLS
 ===========================
@@ -970,7 +1254,7 @@ class HelpManager:
     def show_about(self):
         """Show about dialog with author information"""
         about_text = """OCCULTATION MANAGER FOR SHARPCAP
-Version 0.1.0
+Version 0.2.0-beta.6
 
 Author: Michael Camilleri
 
@@ -980,33 +1264,46 @@ https://github.com/labstercam/occultation-tools
 A tool for managing asteroid occultation observations through customizable SharpCap sequences.
 
 FEATURES:
-• Automated event download from OccultWatcher Cloud
-• Generate realistic test events for practice and testing
-• Interactive observation preparation tools  
-• Customizable SharpCap sequence generation
-• Full control over recording workflow automation
-• Equipment-specific template customization
-• Multi-event session support
-• Night vision preserving interface
-• Station filtering and event management
+\u2022 Automated event download from OccultWatcher Cloud
+\u2022 Generate realistic test events for practice and testing
+\u2022 Interactive observation preparation tools
+\u2022 Customizable SharpCap sequence generation
+\u2022 Full control over recording workflow automation
+\u2022 Equipment-specific template customization
+\u2022 Multi-event session support
+\u2022 Night vision preserving interface
+\u2022 Station filtering and event management
+\u2022 Telescope and camera profile management
+\u2022 Camera delay calibration (GPS-timed LED flash method)
+\u2022 Camera delay calculator (per-event acquisition delay)
+\u2022 NTP clock accuracy analysis
+\u2022 GPS vs NTP timing comparison
 
 PRIMARY WORKFLOW:
-Download → Filter → Prepare → Customize → Generate Sequence → Execute
+Download \u2192 Filter \u2192 Prepare \u2192 Customize \u2192 Generate Sequence \u2192 Execute
 
 OPTIONAL FEATURES:
-• Excel report generation (North America / Trans-Tasman)
-  ⚠ Experimental - Not approved by reporting coordinators
-• AOTA Report and Tangra CSV data import for reports
+\u2022 Excel report generation (NA / Trans-Tasman / SODIS)
+  \u26a0 Experimental - Not approved by reporting coordinators
+\u2022 Tangra CSV import with frame-timing analysis and Timestamp Inspector
+\u2022 AOTA file import for D/R times in reports
 
-This tool emphasizes giving you complete control through SharpCap sequences. 
-Customize templates to match your equipment and automate as much or as little 
+This tool emphasizes giving you complete control through SharpCap sequences.
+Customize templates to match your equipment and automate as much or as little
 as you need. Test thoroughly before relying on automated sequences.
 
-For complete documentation, use Help → User Guide.
+For complete documentation, use Help \u2192 User Guide.
+For licence terms, use Help \u2192 Licence."""
 
-Licensed under the BSD 3-Clause License
+        MessageBox.Show(about_text, "About Occultation Manager",
+                       MessageBoxButtons.OK, MessageBoxIcon.Information)
+
+    def show_licence(self, parent_form=None):
+        """Show BSD 3-Clause licence in a scrollable dialog"""
+        licence_text = """BSD 3-Clause License
 
 Copyright (c) 2026, Michael Camilleri
+All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1023,15 +1320,49 @@ modification, are permitted provided that the following conditions are met:
    this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."""
+AND WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE."""
 
-        MessageBox.Show(about_text, "About Occultation Manager", 
-                       MessageBoxButtons.OK, MessageBoxIcon.Information)
+        sf = _detect_scale_factor()
+        dlg = Form()
+        dlg.Text = "Licence"
+        dlg.FormBorderStyle = FormBorderStyle.FixedDialog
+        dlg.MaximizeBox = False
+        dlg.MinimizeBox = False
+        dlg.StartPosition = FormStartPosition.CenterParent
+        dlg.ClientSize = Size(int(580 * sf), int(380 * sf))
+
+        txt = TextBox()
+        txt.Multiline = True
+        txt.ReadOnly = True
+        txt.ScrollBars = ScrollBars.Vertical
+        txt.WordWrap = True
+        txt.Font = Font("Courier New", 8.5)
+        txt.Text = licence_text
+        txt.Location = Point(int(10 * sf), int(10 * sf))
+        txt.Size = Size(int(560 * sf), int(320 * sf))
+        txt.BorderStyle = 0  # None
+        dlg.Controls.Add(txt)
+
+        btn_ok = Button()
+        btn_ok.Text = "Close"
+        btn_ok.DialogResult = DialogResult.OK
+        btn_ok.Size = Size(int(80 * sf), int(28 * sf))
+        btn_ok.Location = Point(int((580 * sf - 90 * sf) // 2), int(346 * sf))
+        dlg.Controls.Add(btn_ok)
+        dlg.AcceptButton = btn_ok
+
+        theme_colors = self.theme_manager.get_current_theme()
+        apply_theme_to_control(dlg, theme_colors)
+
+        if parent_form:
+            dlg.Owner = parent_form
+        dlg.ShowDialog()

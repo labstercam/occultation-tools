@@ -20,6 +20,12 @@ from System.Windows.Forms import (
 )
 from System.Drawing import Point, Size, Color, Font, FontStyle
 
+try:
+    from theme import apply_theme_to_control
+    _THEME_AVAILABLE = True
+except ImportError:
+    _THEME_AVAILABLE = False
+
 
 class LineDelayCalibrationManagerDialog(Form):
     """Shows stored line delay calibration runs for a camera (or all cameras).
@@ -32,7 +38,7 @@ class LineDelayCalibrationManagerDialog(Form):
         Tools menu → "Line Delay Calibrations…" (all cameras, camera_id=None)
     """
 
-    def __init__(self, config, camera_id=None, camera_name=None):
+    def __init__(self, config, camera_id=None, camera_name=None, theme_manager=None):
         """
         config      : ConfigManager instance
         camera_id   : if provided, show only runs for this camera; None = all
@@ -41,9 +47,12 @@ class LineDelayCalibrationManagerDialog(Form):
         self._config = config
         self._camera_id = camera_id
         self._camera_name = camera_name or 'All Cameras'
+        self._theme_manager = theme_manager
         self._run_ids = []   # parallel list to DataGridView rows
         self.InitializeComponent()
         self._load_data()
+        if theme_manager is not None and _THEME_AVAILABLE:
+            apply_theme_to_control(self, theme_manager.get_current_theme())
 
     # ------------------------------------------------------------------
     # UI setup
@@ -259,6 +268,7 @@ class LineDelayCalibrationManagerDialog(Form):
             self._config,
             self._camera_id,
             self._camera_name,
+            theme_manager=self._theme_manager,
         )
         if dlg.ShowDialog(self) == DialogResult.OK:
             self._load_data()
@@ -273,13 +283,16 @@ class LineDelayCalculatorDialog(Form):
     The result can be copied to the clipboard and pasted into TANGRA.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, theme_manager=None):
         self._config = config
+        self._theme_manager = theme_manager
         self._calib_data = []   # run dicts for the selected camera
         self._camera_ids = []
         self._current_delay = None   # float or None
         self.InitializeComponent()
         self._load_cameras()
+        if theme_manager is not None and _THEME_AVAILABLE:
+            apply_theme_to_control(self, theme_manager.get_current_theme())
 
     # ------------------------------------------------------------------
     # UI setup
@@ -545,7 +558,8 @@ class LineDelayCalculatorDialog(Form):
         dlg = LineDelayCalibrationManagerDialog(
             self._config,
             camera_id=cam_id,
-            camera_name=cam_name
+            camera_name=cam_name,
+            theme_manager=self._theme_manager,
         )
         dlg.ShowDialog(self)
         # Refresh calibrations in case the user deleted or edited entries
@@ -566,11 +580,14 @@ class ManualCalibrationEntryDialog(Form):
     Per Line Delay and Line 0 Delay are required; all other fields are optional.
     """
 
-    def __init__(self, config, camera_id, camera_name):
+    def __init__(self, config, camera_id, camera_name, theme_manager=None):
         self._config = config
         self._camera_id = camera_id
         self._camera_name = camera_name
+        self._theme_manager = theme_manager
         self.InitializeComponent()
+        if theme_manager is not None and _THEME_AVAILABLE:
+            apply_theme_to_control(self, theme_manager.get_current_theme())
 
     # ------------------------------------------------------------------
     # UI setup

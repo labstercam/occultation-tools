@@ -10,6 +10,7 @@ The GPS LED Line Delay Calibration tool measures rolling shutter line delays usi
 ```
 gps-timing-analysis/python/led_line_delay_calibration.py
 ```
+or it is available built in to occultation-manager
 
 ## Usage
 
