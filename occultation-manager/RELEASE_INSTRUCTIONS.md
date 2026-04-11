@@ -192,7 +192,7 @@ occultation-manager/
    - **Calibrations...** button: view, label, edit notes, and delete stored calibration runs per camera
    - **Run New Calibration** button: launch GPS Flash Calibration with the selected camera pre-selected; offered save on close if result was not yet saved
    
-   **Camera Timing Setup** (`Tools → Camera Timing Setup`):
+   **Camera Delay Calibration** (`Tools → Camera Delay Calibration`):
    - New **Save Calibration to Camera** button after a successful run
    - Saves per-line delay, line 0 delay, and all capture metadata to the camera profile
    - **Approximate Delays** button for use when no GPS flasher is available
@@ -239,7 +239,7 @@ occultation-manager/
    - AOTA timing data integration (D/R times)
    - Tangra CSV light curve analysis (fully integrated)
    - Automatic video format and exposure detection
-   - GPS flash timing analysis available via Tools → Camera Timing Setup
+   - GPS flash timing analysis available via Tools → Camera Delay Calibration
    
    ### Equipment Management
    - Multiple telescope and camera configurations

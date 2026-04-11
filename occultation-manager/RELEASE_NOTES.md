@@ -13,11 +13,11 @@ now be launched, calibrated, and have results saved directly within the Occultat
 **Camera Manager integration** (`Tools → Manage Cameras`):
 - **Calibrations...** button: opens the Calibration Manager showing all stored calibration
   runs for the selected camera — view, label (A, B, C…), edit notes, and delete runs inline
-- **Run New Calibration** button: launches the Camera Timing Setup form with the current
+- **Run New Calibration** button: launches the Camera Delay Calibration form with the current
   camera pre-selected; on close, if a result was produced but not saved, offers to save it
   with the camera pre-selected in the Save dialog
 
-**Camera Timing Setup form** (`Tools → Camera Timing Setup`):
+**Camera Delay Calibration form** (`Tools → Camera Delay Calibration`):
 - New **Save Calibration to Camera** button appears after a successful calibration run
 - Saves the result (per-line delay, line 0 delay) to the camera profile in
   `occultation_config.json` with full capture metadata (camera area, binning, tilt, pan,

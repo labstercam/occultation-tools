@@ -217,21 +217,15 @@ class AnalyzerForm(Form):
         self.txt_log_folder.Location = Point(8, 66)
         self.txt_log_folder.Size = Size(446, 24)
         self.txt_log_folder.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+        self.txt_log_folder.Leave += self.on_scan
         lp.Controls.Add(self.txt_log_folder)
 
         self.btn_browse_log = Button()
         self.btn_browse_log.Text = "Browse..."
         self.btn_browse_log.Location = Point(8, 96)
-        self.btn_browse_log.Size = Size(100, 28)
+        self.btn_browse_log.Size = Size(120, 28)
         self.btn_browse_log.Click += self.on_browse_log
         lp.Controls.Add(self.btn_browse_log)
-
-        self.btn_scan = Button()
-        self.btn_scan.Text = "Scan Datasets"
-        self.btn_scan.Location = Point(114, 96)
-        self.btn_scan.Size = Size(120, 28)
-        self.btn_scan.Click += self.on_scan
-        lp.Controls.Add(self.btn_scan)
 
         self.lbl_filter = Label()
         self.lbl_filter.Text = "Day filter (optional text / MJD / YYYYMMDD):"
@@ -330,7 +324,7 @@ class AnalyzerForm(Form):
         lp.Controls.Add(self.chk_raw_peer_points)
 
         self.lbl_pit_time = Label()
-        self.lbl_pit_time.Text = "Point-in-time (HH:MM:SS, dataset day):"
+        self.lbl_pit_time.Text = "Point-in-time (HH:MM:SS):"
         self.lbl_pit_time.Location = Point(8, 348)
         self.lbl_pit_time.Size = Size(280, 20)
         lp.Controls.Add(self.lbl_pit_time)
@@ -553,13 +547,9 @@ class AnalyzerForm(Form):
         self.txt_log_folder.Size = Size(full_w, text_h)
         y += text_h + inter
 
-        btn_gap = 6
-        browse_w = 100
-        scan_w = 120
+        browse_w = 120
         self.btn_browse_log.Location = Point(margin, y)
         self.btn_browse_log.Size = Size(browse_w, button_h)
-        self.btn_scan.Location = Point(margin + browse_w + btn_gap, y)
-        self.btn_scan.Size = Size(scan_w, button_h)
         y += button_h + inter
 
         self.lbl_filter.Location = Point(margin, y)
@@ -1290,6 +1280,48 @@ class AnalyzerForm(Form):
             return None, None
         return lat, lon
 
+    def prefill_from_event(self, log_folder, event_dt, lat, lon):
+        """Pre-populate the analyser with event context and trigger analysis.
+
+        Parameters
+        ----------
+        log_folder : str   Path to the NTP stats folder.
+        event_dt   : datetime  UTC event datetime.
+        lat        : float  Observer latitude.
+        lon        : float  Observer longitude.
+        """
+        try:
+            if log_folder and os.path.isdir(log_folder):
+                self.txt_log_folder.Text = log_folder
+                if not self.txt_export_folder.Text.strip():
+                    self.txt_export_folder.Text = os.path.join(log_folder, "reports")
+
+            if lat is not None:
+                self.txt_observer_lat.Text = "%.3f" % round(lat, 3)
+            if lon is not None:
+                self.txt_observer_lon.Text = "%.3f" % round(lon, 3)
+
+            if event_dt is not None:
+                pit = "%02d:%02d:%02d" % (event_dt.hour, event_dt.minute, event_dt.second)
+                self.txt_pit_time.Text = pit
+
+            # Scan and then try to select the dataset matching the event date.
+            self.scan_options()
+
+            if event_dt is not None:
+                date_tag = event_dt.strftime("%Y%m%d")
+                date_label = "%s-%s-%s" % (date_tag[:4], date_tag[4:6], date_tag[6:])
+                for i in range(self.cmb_dataset.Items.Count):
+                    item = self.cmb_dataset.Items[i]
+                    if date_tag in item or date_label in item:
+                        self.cmb_dataset.SelectedIndex = i
+                        break
+
+            # Trigger analysis automatically.
+            self.on_analyze(None, None)
+        except Exception:
+            pass  # Best-effort; leave form open for manual use.
+
     def prefill_defaults(self):
         saved = load_folder_settings()
         saved_log = saved.get("log_folder", "").strip()
@@ -1348,12 +1380,21 @@ class AnalyzerForm(Form):
         self.btn_browse_export.Enabled = enabled
 
     def on_scan(self, sender, event):
+        # When triggered by the Leave event on txt_log_folder, only re-scan if
+        # the folder path has actually changed.  This prevents the selection
+        # being reset to index 0 when focus simply moves away from the textbox
+        # (e.g. the user clicks Analyse without editing the folder).
+        current_folder = self.txt_log_folder.Text.strip().strip('"')
+        if sender is self.txt_log_folder:
+            if current_folder == getattr(self, '_last_scanned_folder', None):
+                return
         save_folder_settings(self.txt_log_folder.Text.strip(), self.txt_export_folder.Text.strip(),
                               self.txt_observer_lat.Text.strip(), self.txt_observer_lon.Text.strip())
         self.scan_options()
 
     def scan_options(self):
         log_folder = self.txt_log_folder.Text.strip().strip('"')
+        self._last_scanned_folder = log_folder
         self.cmb_dataset.Items.Clear()
         self._options_by_label = {}
 

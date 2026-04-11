@@ -346,6 +346,73 @@ class TelescopeManagerDialog(Form):
         self.Close()
 
 
+# ---------------------------------------------------------------------------
+# Camera Manager — mapping tables for auto-populating Occult 4 fields
+# ---------------------------------------------------------------------------
+
+_TIMING_TO_OCCULT4_TIME = {
+    # NA / TT GPS-based
+    "GPS - time inserted":              "a - GPS",
+    "GPS - other linking":              "a - GPS",
+    "GPS - KIWI":                       "a - GPS",
+    "IOTA-VTI":                         "a - GPS",
+    # Radio / WWV
+    "WWV":                              "d - Radio time signal",
+    "Radio broadcast - calibrated":     "d - Radio time signal",
+    "Video + audio time signal":        "d - Radio time signal",
+    "Tape Recorder + time signal":      "d - Radio time signal",
+    # Stopwatch
+    "Stopwatch":                        "f - Stopwatch",
+    "Eye-Ear + time signal":            "f - Stopwatch",
+    # Other / unknown
+    "Visual":                           "g - Other",
+    "Other":                            "g - Other",
+    "other":                            "g - Other",
+    "Unknown":                          " - unspecified",
+    # SODIS — timing options are the Occult 4 codes directly
+    "a - GPS":                          "a - GPS",
+    "b - NTP":                          "b - NTP",
+    "c - Telephone (fixed or mobile)": "c - Telephone (fixed or mobile)",
+    "d - Radio time signal":            "d - Radio time signal",
+    "e - Internal clock of recorder":   "e - Internal clock of recorder",
+    "f - Stopwatch":                    "f - Stopwatch",
+    "g - Other":                        "g - Other",
+}
+
+_DETECTOR_TO_OCCULT4_METHOD = {
+    # Unambiguous non-video types
+    "CCD Drift Scan":                   "e - Drift scan",
+    "Photometer":                       "c - Photometer",
+    "Visual":                           "f - Visual",
+    # Analogue video cameras
+    "G-Star":                           "a - Analogue & digital video",
+    "KPC-350BH":                        "a - Analogue & digital video",
+    "LN-300-11673":                     "a - Analogue & digital video",
+    "Mallincam":                        "a - Analogue & digital video",
+    "Mintron 12v1C-EX":                 "a - Analogue & digital video",
+    "PC164C":                           "a - Analogue & digital video",
+    "PC164C-EX":                        "a - Analogue & digital video",
+    "PC165-DNR":                        "a - Analogue & digital video",
+    "Samsung SBC-2000":                 "a - Analogue & digital video",
+    "Watec 120N":                       "a - Analogue & digital video",
+    "Watec 120N+":                      "a - Analogue & digital video",
+    "Watec 902H":                       "a - Analogue & digital video",
+    "Watec 910BD":                      "a - Analogue & digital video",
+    "Watec 910HX":                      "a - Analogue & digital video",
+    # Digital/CMOS cameras
+    "ASTRID":                           "b - Digital SLR-camera video",
+    "Flea 3-03S1 with ADVS":            "b - Digital SLR-camera video",
+    "Flea 3-03S3 with ADVS":            "b - Digital SLR-camera video",
+    "Flea 3-28S4M with ADVS":           "b - Digital SLR-camera video",
+    "Grasshopper Express with ADVS":    "b - Digital SLR-camera video",
+    "QHY 174 GPS":                      "b - Digital SLR-camera video",
+    "QHY 174GPS":                       "b - Digital SLR-camera video",
+    "RunCam Night Eagle":               "b - Digital SLR-camera video",
+    "RunCam Night Eagle Astro":         "b - Digital SLR-camera video",
+    "CCD":                              "b - Digital SLR-camera video",
+}
+
+
 class CameraManagerDialog(Form):
     """Dialog for managing multiple camera configurations"""
     
@@ -355,6 +422,10 @@ class CameraManagerDialog(Form):
         self.sharpcap = sharpcap
         self.selected_camera_id = None
         self.camera_map = {}  # Map list index to camera dict
+        self._is_adding_new = False
+        self._report_type_chosen = False
+        self._add_new_index = -1
+        self._loading = True  # Suppress auto-populate during UI construction
         
         # Setup form
         self.Text = "Camera Manager"
@@ -365,6 +436,7 @@ class CameraManagerDialog(Form):
         self.MinimizeBox = False
         
         self.setup_ui()
+        self._loading = False
         self.load_cameras()
         
         if theme_manager:
@@ -398,6 +470,26 @@ class CameraManagerDialog(Form):
         
         y_pos = 30
         
+        # Report Type (must be chosen first when adding a new camera)
+        lbl_report_type = Label()
+        lbl_report_type.Text = "Report Type:"
+        lbl_report_type.Location = Point(int(15 * sf), int(y_pos * sf))
+        lbl_report_type.Size = Size(int(130 * sf), int(20 * sf))
+        details_group.Controls.Add(lbl_report_type)
+        
+        self.combo_report_type = ComboBox()
+        self.combo_report_type.Location = Point(int(150 * sf), int(y_pos * sf))
+        self.combo_report_type.Size = Size(int(260 * sf), int(20 * sf))
+        self.combo_report_type.DropDownStyle = ComboBoxStyle.DropDownList
+        report_types = ["Select...", "NA", "TT", "SODIS"]
+        for rt in report_types:
+            self.combo_report_type.Items.Add(rt)
+        self.combo_report_type.SelectedIndex = 1  # Default to "NA"
+        self.combo_report_type.SelectedIndexChanged += self.report_type_changed
+        details_group.Controls.Add(self.combo_report_type)
+        
+        y_pos += 40
+        
         # Name
         lbl_name = Label()
         lbl_name.Text = "Name:"
@@ -408,6 +500,7 @@ class CameraManagerDialog(Form):
         self.txt_name = TextBox()
         self.txt_name.Location = Point(int(150 * sf), int(y_pos * sf))
         self.txt_name.Size = Size(int(260 * sf), int(20 * sf))
+        self.txt_name.TextChanged += self._on_detail_changed
         details_group.Controls.Add(self.txt_name)
         
         y_pos += 40
@@ -423,27 +516,9 @@ class CameraManagerDialog(Form):
         self.combo_detector.Location = Point(int(150 * sf), int(y_pos * sf))
         self.combo_detector.Size = Size(int(260 * sf), int(20 * sf))
         self.combo_detector.DropDownStyle = ComboBoxStyle.DropDown
+        self.combo_detector.TextChanged += self._on_detail_changed
+        self.combo_detector.SelectionChangeCommitted += self._detector_changed
         details_group.Controls.Add(self.combo_detector)
-        
-        y_pos += 40
-        
-        # Report Type
-        lbl_report_type = Label()
-        lbl_report_type.Text = "Report Type:"
-        lbl_report_type.Location = Point(int(15 * sf), int(y_pos * sf))
-        lbl_report_type.Size = Size(int(130 * sf), int(20 * sf))
-        details_group.Controls.Add(lbl_report_type)
-        
-        self.combo_report_type = ComboBox()
-        self.combo_report_type.Location = Point(int(150 * sf), int(y_pos * sf))
-        self.combo_report_type.Size = Size(int(260 * sf), int(20 * sf))
-        self.combo_report_type.DropDownStyle = ComboBoxStyle.DropDownList
-        report_types = ["NA", "TT", "SODIS"]
-        for rt in report_types:
-            self.combo_report_type.Items.Add(rt)
-        self.combo_report_type.Text = "NA"
-        self.combo_report_type.SelectedIndexChanged += self.report_type_changed
-        details_group.Controls.Add(self.combo_report_type)
         
         y_pos += 40
         
@@ -458,6 +533,8 @@ class CameraManagerDialog(Form):
         self.combo_timing.Location = Point(int(150 * sf), int(y_pos * sf))
         self.combo_timing.Size = Size(int(260 * sf), int(20 * sf))
         self.combo_timing.DropDownStyle = ComboBoxStyle.DropDown
+        self.combo_timing.TextChanged += self._on_detail_changed
+        self.combo_timing.SelectionChangeCommitted += self._timing_changed
         details_group.Controls.Add(self.combo_timing)
         
         y_pos += 40
@@ -473,6 +550,7 @@ class CameraManagerDialog(Form):
         self.combo_timing_device.Location = Point(int(150 * sf), int(y_pos * sf))
         self.combo_timing_device.Size = Size(int(260 * sf), int(20 * sf))
         self.combo_timing_device.DropDownStyle = ComboBoxStyle.DropDown
+        self.combo_timing_device.TextChanged += self._on_detail_changed
         details_group.Controls.Add(self.combo_timing_device)
         
         # Initialize timing options for default report type
@@ -503,6 +581,7 @@ class CameraManagerDialog(Form):
         ]
         self.combo_occult4_method.Items.AddRange(Array[object](method_items))
         self.combo_occult4_method.SelectedIndex = 2  # Default to 'b - Digital SLR-camera video'
+        self.combo_occult4_method.SelectedIndexChanged += self._on_detail_changed
         details_group.Controls.Add(self.combo_occult4_method)
         
         y_pos += 40
@@ -530,6 +609,7 @@ class CameraManagerDialog(Form):
         ]
         self.combo_occult4_time.Items.AddRange(Array[object](time_items))
         self.combo_occult4_time.SelectedIndex = 1  # Default to 'a - GPS'
+        self.combo_occult4_time.SelectedIndexChanged += self._on_detail_changed
         details_group.Controls.Add(self.combo_occult4_time)
         
         y_pos += 40
@@ -641,14 +721,30 @@ class CameraManagerDialog(Form):
             self.lst_cameras.Items.Add(name)
             # Store the camera dict for later retrieval
             self.camera_map[self.lst_cameras.Items.Count - 1] = camera
+
+        # Placeholder at the bottom for creating a new camera
+        self.lst_cameras.Items.Add("  + Add New...")
+        self._add_new_index = self.lst_cameras.Items.Count - 1
     
     def report_type_changed(self, sender, e):
         """Handle report type change - update timing options"""
-        self.update_timing_options()
+        selected = self.combo_report_type.Text
+        if self._is_adding_new and not self._report_type_chosen:
+            if selected and selected != "Select...":
+                # Lock in the report type; now enable all other fields
+                self._report_type_chosen = True
+                self.update_timing_options()
+                self._set_detail_controls_enabled(True)
+                self.combo_report_type.Enabled = False
+                self.txt_name.Focus()
+        else:
+            self.update_timing_options()
     
     def update_timing_options(self):
         """Update timing, timing device, and detector options based on selected report type"""
         report_type = self.combo_report_type.Text
+        if not report_type or report_type == "Select...":
+            return
         current_timing = self.combo_timing.Text
         current_device = self.combo_timing_device.Text
         current_detector = self.combo_detector.Text
@@ -844,92 +940,209 @@ class CameraManagerDialog(Form):
     
     def camera_selected(self, sender, e):
         """Handle camera selection"""
-        if self.lst_cameras.SelectedIndex >= 0:
-            camera = self.camera_map.get(self.lst_cameras.SelectedIndex)
+        self._loading = True
+        try:
+            idx = self.lst_cameras.SelectedIndex
+            if idx < 0:
+                self.clear_fields()
+                return
+
+            # 'Add New...' placeholder selected
+            if idx == self._add_new_index:
+                self._start_add_new()
+                return
+
+            camera = self.camera_map.get(idx)
             if not camera:
                 return
-                
+
+            # Restore normal (existing-camera) mode
+            self._is_adding_new = False
+            self._report_type_chosen = False
+            self.combo_report_type.Enabled = True
+            self._set_detail_controls_enabled(True)
             self.selected_camera_id = camera.get('id')
-            
+
             # Load camera details
             self.txt_name.Text = camera.get('name', '')
             self.combo_detector.Text = camera.get('detector', '')
-            
-            # Set report type first
+
+            # Set report type first (so update_timing_options uses the right type)
             report_type = camera.get('report_type', 'NA')
             # Migrate old 'Both' to 'NA'
             if report_type == 'Both':
                 report_type = 'NA'
             self.combo_report_type.Text = report_type
-            
+
             # Manually update timing options (setting Text doesn't trigger event)
             self.update_timing_options()
-            
+
             # Now load timing values (after options are updated)
             self.combo_timing.Text = camera.get('timing', 'GPS - other linking')
             self.combo_timing_device.Text = camera.get('timing_device', '')
-            
+
             # Load Occult 4 Method
             occult4_method = camera.get('occult4_method', 'b')  # Default to 'b'
             method_found = False
             for i in range(self.combo_occult4_method.Items.Count):
                 item_text = self.combo_occult4_method.Items[i].ToString()
-                # Handle both single char codes and blank/unspecified
                 if item_text.startswith(occult4_method + ' ') or (occult4_method == ' ' and item_text == ' - unspecified'):
                     self.combo_occult4_method.SelectedIndex = i
                     method_found = True
                     break
             if not method_found:
                 self.combo_occult4_method.SelectedIndex = 2  # Fallback to 'b - Digital SLR-camera video'
-            
+
             # Load Occult 4 Time
             occult4_time = camera.get('occult4_time', 'a')  # Default to 'a'
             time_found = False
             for i in range(self.combo_occult4_time.Items.Count):
                 item_text = self.combo_occult4_time.Items[i].ToString()
-                # Handle both single char codes and blank/unspecified
                 if item_text.startswith(occult4_time + ' ') or (occult4_time == ' ' and item_text == ' - unspecified'):
                     self.combo_occult4_time.SelectedIndex = i
                     time_found = True
                     break
             if not time_found:
                 self.combo_occult4_time.SelectedIndex = 1  # Fallback to 'a - GPS'
-            
+
             self.txt_other_info.Text = camera.get('other_info', '')
-            
-            # Enable buttons
+
+            # Button state for existing camera
+            self.btn_add.Enabled = False
             self.btn_update.Enabled = True
             self.btn_delete.Enabled = True
             self.btn_set_active.Enabled = True
             self.btn_calibrations.Enabled = True
             self.btn_run_calibration.Enabled = True
-            
+
             # Show active indicator
             active_camera = self.config.get_active_camera()
             active_id = active_camera.get('id') if active_camera else None
             is_active = (self.selected_camera_id == active_id)
             self.lbl_active.Visible = is_active
             self.btn_set_active.Enabled = not is_active
-        else:
-            self.clear_fields()
-    
+        finally:
+            self._loading = False
+
     def clear_fields(self):
-        """Clear all input fields"""
-        self.txt_name.Text = ""
-        self.combo_detector.Text = ""
-        self.combo_report_type.Text = "NA"
-        self.combo_timing.Text = "GPS - other linking"
-        self.combo_timing_device.Text = ""
-        self.combo_occult4_method.SelectedIndex = 2  # Default to 'b - Digital SLR-camera video'
-        self.combo_occult4_time.SelectedIndex = 1  # Default to 'a - GPS'
-        self.txt_other_info.Text = ""
-        self.btn_update.Enabled = False
-        self.btn_delete.Enabled = False
-        self.btn_set_active.Enabled = False
-        self.btn_calibrations.Enabled = False
-        self.btn_run_calibration.Enabled = False
-        self.lbl_active.Visible = False
-        self.selected_camera_id = None
+        """Clear all input fields and reset to idle state"""
+        self._loading = True
+        try:
+            self._is_adding_new = False
+            self._report_type_chosen = False
+            self.combo_report_type.Enabled = True
+            self._set_detail_controls_enabled(True)
+            self.txt_name.Text = ""
+            self.combo_detector.Text = ""
+            self.combo_report_type.Text = "NA"
+            self.combo_timing.Text = "GPS - other linking"
+            self.combo_timing_device.Text = ""
+            self.combo_occult4_method.SelectedIndex = 2  # Default to 'b - Digital SLR-camera video'
+            self.combo_occult4_time.SelectedIndex = 1  # Default to 'a - GPS'
+            self.txt_other_info.Text = ""
+            self.btn_add.Enabled = False
+            self.btn_update.Enabled = False
+            self.btn_delete.Enabled = False
+            self.btn_set_active.Enabled = False
+            self.btn_calibrations.Enabled = False
+            self.btn_run_calibration.Enabled = False
+            self.lbl_active.Visible = False
+            self.selected_camera_id = None
+        finally:
+            self._loading = False
+
+    def _start_add_new(self):
+        """Enter 'adding new camera' mode."""
+        self._loading = True
+        try:
+            self._is_adding_new = True
+            self._report_type_chosen = False
+            self.selected_camera_id = None
+            # Clear fields
+            self.txt_name.Text = ""
+            self.combo_detector.Text = ""
+            self.combo_timing.Text = ""
+            self.combo_timing_device.Text = ""
+            self.txt_other_info.Text = ""
+            # Set Report Type to placeholder and enable it; disable all other detail fields
+            self.combo_report_type.SelectedIndex = 0  # "Select..."
+            self.combo_report_type.Enabled = True
+            self._set_detail_controls_enabled(False)
+            # All action buttons off until fields are complete
+            self.btn_add.Enabled = False
+            self.btn_update.Enabled = False
+            self.btn_delete.Enabled = False
+            self.btn_set_active.Enabled = False
+            self.btn_calibrations.Enabled = False
+            self.btn_run_calibration.Enabled = False
+            self.lbl_active.Visible = False
+        finally:
+            self._loading = False
+
+    def _set_detail_controls_enabled(self, enabled):
+        """Enable or disable all camera detail controls except Report Type."""
+        self.txt_name.Enabled = enabled
+        self.combo_detector.Enabled = enabled
+        self.combo_timing.Enabled = enabled
+        self.combo_timing_device.Enabled = enabled
+        self.combo_occult4_method.Enabled = enabled
+        self.combo_occult4_time.Enabled = enabled
+        self.txt_other_info.Enabled = enabled
+
+    def _timing_changed(self, sender, e):
+        """Auto-populate Occult 4 Time when user selects a Timing value from the list."""
+        if self._loading:
+            return
+        occult4_time = _TIMING_TO_OCCULT4_TIME.get(self.combo_timing.Text)
+        if occult4_time:
+            self._set_occult4_time_by_value(occult4_time)
+
+    def _detector_changed(self, sender, e):
+        """Auto-populate Occult 4 Method when user selects a Detector from the list."""
+        if self._loading:
+            return
+        occult4_method = _DETECTOR_TO_OCCULT4_METHOD.get(self.combo_detector.Text)
+        if occult4_method:
+            self._set_occult4_method_by_value(occult4_method)
+
+    def _set_occult4_time_by_value(self, value):
+        """Select the Occult 4 Time combo item whose text matches value."""
+        for i in range(self.combo_occult4_time.Items.Count):
+            if self.combo_occult4_time.Items[i].ToString() == value:
+                self.combo_occult4_time.SelectedIndex = i
+                return
+
+    def _set_occult4_method_by_value(self, value):
+        """Select the Occult 4 Method combo item whose text matches value."""
+        for i in range(self.combo_occult4_method.Items.Count):
+            if self.combo_occult4_method.Items[i].ToString() == value:
+                self.combo_occult4_method.SelectedIndex = i
+                return
+
+    def _on_detail_changed(self, sender, e):
+        """Called when any required detail field changes; refreshes btn_add state."""
+        if self._is_adding_new and self._report_type_chosen:
+            self._update_add_button_state()
+
+    def _update_add_button_state(self):
+        """Enable btn_add only when all required fields are filled."""
+        self.btn_add.Enabled = (len(self._get_missing_required_fields()) == 0)
+
+    def _get_missing_required_fields(self):
+        """Return list of display names for unfilled required fields."""
+        missing = []
+        if not self.txt_name.Text.strip():
+            missing.append("Name")
+        if not self.combo_detector.Text.strip():
+            missing.append("Detector")
+        rt = self.combo_report_type.Text
+        if not rt or rt == "Select...":
+            missing.append("Report Type")
+        if not self.combo_timing.Text.strip():
+            missing.append("Timing")
+        if not self.combo_timing_device.Text.strip():
+            missing.append("Timing Device")
+        return missing
     
     def add_camera(self, sender, e):
         """Add a new camera"""
@@ -945,21 +1158,29 @@ class CameraManagerDialog(Form):
         
         other_info = self.txt_other_info.Text.strip()
         
-        if not name:
-            MessageBox.Show("Please enter a camera name.", "Validation Error",
-                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        missing = self._get_missing_required_fields()
+        if missing:
+            MessageBox.Show(
+                "Please fill in the following required fields:\n\u2022 " + "\n\u2022 ".join(missing),
+                "Validation Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
             return
-        
-        if not detector:
-            MessageBox.Show("Please enter a detector name.", "Validation Error",
-                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            return
-        
+
         self.config.add_camera(name, detector, report_type, timing, timing_device, occult4_method, occult4_time, other_info)
         self.config.save_config()
+        self._is_adding_new = False
+        self._report_type_chosen = False
+        new_name = name
         self.load_cameras()
         self.clear_fields()
-        
+        # Re-select the newly added camera by name
+        for i, cam in self.camera_map.items():
+            if cam.get('name') == new_name:
+                self.lst_cameras.SelectedIndex = i
+                break
+
         MessageBox.Show("Camera added successfully.", "Success",
                       MessageBoxButtons.OK, MessageBoxIcon.Information)
     
@@ -980,16 +1201,16 @@ class CameraManagerDialog(Form):
         
         other_info = self.txt_other_info.Text.strip()
         
-        if not name:
-            MessageBox.Show("Please enter a camera name.", "Validation Error",
-                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        missing = self._get_missing_required_fields()
+        if missing:
+            MessageBox.Show(
+                "Please fill in the following required fields:\n\u2022 " + "\n\u2022 ".join(missing),
+                "Validation Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
             return
-        
-        if not detector:
-            MessageBox.Show("Please enter a detector name.", "Validation Error",
-                          MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            return
-        
+
         self.config.update_camera(self.selected_camera_id, name, detector, report_type, timing, timing_device, occult4_method, occult4_time, other_info)
         self.config.save_config()
         self.load_cameras()

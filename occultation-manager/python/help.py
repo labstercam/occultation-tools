@@ -866,8 +866,8 @@ specific equipment, site conditions, and workflow preferences."""
 Four tools are available under the Tools menu for camera timing calibration
 and NTP/GPS clock verification.
 
-CAMERA TIMING SETUP  (Tools → Camera Timing Setup)
----------------------------------------------------
+CAMERA DELAY CALIBRATION  (Tools → Camera Delay Calibration)
+-------------------------------------------------------------
 Measures the rolling-shutter line delay of your camera using GPS-timed LED
 flashes.  This is the primary calibration tool — it captures frames from two
 apertures (top and bottom of the frame), detects GPS PPS flashes, and fits a
@@ -880,7 +880,7 @@ Use this tool when:
 
 Workflow:
 1. Connect your GPS timing LED to the serial port
-2. Open Tools → Camera Timing Setup in SharpCap
+2. Open Tools → Camera Delay Calibration in SharpCap
 3. Point camera at LED through two apertures (top and bottom of frame)
 4. Click Start Calibration and wait for data collection to complete
 5. Review the fit results (R², per-line delay, line-0 delay)
@@ -888,7 +888,7 @@ Workflow:
 
 APPROXIMATE DELAYS (no GPS required):
 If you do not have a GPS flasher, use the "Approximate Delays" button in the
-Camera Timing Setup window.  This method:
+Camera Delay Calibration window.  This method:
 • Sets the camera to 1 ms exposure and measures the actual frame rate
 • Asks you to enter an estimated minimum delay (2 ms is a reasonable default)
 • Calculates per-line and line-0 delays from the measured frame rate and ROI height

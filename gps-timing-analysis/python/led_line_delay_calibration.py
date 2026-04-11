@@ -1679,7 +1679,7 @@ class LEDLineDelayCalibrationForm(Form):
         
     def InitializeComponent(self):
         """Setup GUI components"""
-        self.Text = "Camera Timing Setup"
+        self.Text = "Camera Delay Calibration"
         self.ClientSize = Size(720, 880)
         self.TopMost = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog

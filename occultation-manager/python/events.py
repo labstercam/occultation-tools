@@ -411,7 +411,8 @@ class EventProcessor:
 
                     # Use elevation from OW Cloud station fields.
                     # Preferred order: Elevation, Altitude, Height.
-                    elevation = 0.0
+                    # Use None when not found so callers can trigger a lookup.
+                    elevation = None
                     raw_elevation = station.get('Elevation')
                     if raw_elevation in (None, ""):
                         raw_elevation = station.get('Altitude')
@@ -422,15 +423,21 @@ class EventProcessor:
                         if raw_elevation not in (None, ""):
                             elevation = float(raw_elevation)
                     except Exception:
-                        elevation = 0.0
+                        elevation = None
 
                     # Use cached geocoded location name (by lat/lon) or lookup if needed.
+                    # Also use cached elevation as fallback when OWCloud returns none.
                     obs_location = ""
                     try:
                         cache_key = (round(float(latitude), 6), round(float(longitude), 6))
                         if cache_key in geocode_cache:
                             cached_geo = geocode_cache.get(cache_key, {})
                             obs_location = str(cached_geo.get('obs_location', '') or '')
+                            # Use cached elevation if OWCloud did not supply one.
+                            if elevation is None:
+                                cached_elev = cached_geo.get('elevation')
+                                if cached_elev:
+                                    elevation = float(cached_elev)
                         else:
                             if debug_enabled:
                                 print("Performing location lookup for station: {}".format(stationName))
@@ -450,7 +457,8 @@ class EventProcessor:
                                     print("  Location lookup failed, using empty string")
 
                             geocode_cache[cache_key] = {
-                                'obs_location': obs_location
+                                'obs_location': obs_location,
+                                'elevation': elevation,  # may be None
                             }
                     except Exception as ex:
                         if debug_enabled:
@@ -571,11 +579,16 @@ class OccultationEvent:
         self.precalc_exposure = float(data.get('exposure', 0))
         
         # Load geocoded data (elevation and observing location)
-        # Use get with defaults for backwards compatibility with old event files
-        try:
-            self.elevation = float(data.get('elevation', 0.0))
-        except (ValueError, TypeError):
-            self.elevation = 0.0
+        # Use get with defaults for backwards compatibility with old event files.
+        # None means elevation was never retrieved and a lookup should be triggered.
+        raw_elev = data.get('elevation')
+        if raw_elev is None:
+            self.elevation = None
+        else:
+            try:
+                self.elevation = float(raw_elev)
+            except (ValueError, TypeError):
+                self.elevation = None
         
         self.obs_location = str(data.get('obs_location', '')) if data.get('obs_location') else ''
         

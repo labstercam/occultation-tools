@@ -1842,7 +1842,7 @@ class LocationConfirmDialog(Form):
         # Get coordinates - prepopulate with stored values
         latitude = getattr(event, 'latitude', 0.0)
         longitude = getattr(event, 'longitude', 0.0)
-        elevation = getattr(event, 'elevation', 0.0)
+        elevation = getattr(event, 'elevation', None)  # None means lookup needed
         
         # Latitude input
         lbl_lat = Label()
@@ -1880,7 +1880,13 @@ class LocationConfirmDialog(Form):
         self.txt_elevation = TextBox()
         self.txt_elevation.Location = Point(int(120 * sf), int(110 * sf))
         self.txt_elevation.Size = Size(int(120 * sf), int(20 * sf))
-        self.txt_elevation.Text = str(elevation) if elevation != 0.0 else ''
+        if elevation is None:
+            self.txt_elevation.Text = ''
+        elif elevation == 0.0:
+            self.txt_elevation.Text = '0'
+        else:
+            self.txt_elevation.Text = str(elevation)
+        self._elevation_needs_lookup = (elevation is None)
         station_group.Controls.Add(self.txt_elevation)
         
         # Google Maps link
@@ -1918,13 +1924,13 @@ class LocationConfirmDialog(Form):
 
         # Optional NTP analyzer step
         ntp_group = GroupBox()
-        ntp_group.Text = "Step 2 (Optional): NTP Analyzer"
+        ntp_group.Text = "Step 2 (Optional): NTP Analyser"
         ntp_group.Location = Point(int(10 * sf), y_pos)
         ntp_group.Size = Size(int(510 * sf), int(190 * sf))
         panel.Controls.Add(ntp_group)
 
         lbl_ntp = Label()
-        lbl_ntp.Text = "Analyse offset/uncertainty at event time, or open full interactive analyzer."
+        lbl_ntp.Text = "Analyse offset/uncertainty at event time, or open full interactive analyser."
         lbl_ntp.Location = Point(int(15 * sf), int(20 * sf))
         lbl_ntp.Size = Size(int(470 * sf), int(20 * sf))
         ntp_group.Controls.Add(lbl_ntp)
@@ -1961,42 +1967,59 @@ class LocationConfirmDialog(Form):
         btn_analyse.Click += self.analyse_ntp_click
         ntp_group.Controls.Add(btn_analyse)
 
+        self.lbl_analysing = Label()
+        self.lbl_analysing.Text = ""
+        self.lbl_analysing.Location = Point(int(135 * sf), int(109 * sf))
+        self.lbl_analysing.Size = Size(int(235 * sf), int(18 * sf))
+        self.lbl_analysing.ForeColor = Color.Gray
+        ntp_group.Controls.Add(self.lbl_analysing)
+
         btn_ntp = Button()
         btn_ntp.Text = "Open NTP Analyser"
-        btn_ntp.Location = Point(int(380 * sf), int(103 * sf))
-        btn_ntp.Size = Size(int(115 * sf), int(28 * sf))
+        btn_ntp.Location = Point(int(375 * sf), int(103 * sf))
+        btn_ntp.Size = Size(int(130 * sf), int(28 * sf))
         btn_ntp.Click += self.open_ntp_analyser_click
         ntp_group.Controls.Add(btn_ntp)
 
+        _results_font = Font("Microsoft Sans Serif", 9)
+
         self.lbl_ntp_offset = Label()
-        self.lbl_ntp_offset.Text = "offset: -"
+        self.lbl_ntp_offset.Text = "Offset: -"
         self.lbl_ntp_offset.Location = Point(int(15 * sf), int(137 * sf))
-        self.lbl_ntp_offset.Size = Size(int(150 * sf), int(18 * sf))
+        self.lbl_ntp_offset.Size = Size(int(150 * sf), int(20 * sf))
+        self.lbl_ntp_offset.Font = _results_font
         self.lbl_ntp_offset.ForeColor = Color.Gray
         ntp_group.Controls.Add(self.lbl_ntp_offset)
 
         self.lbl_ntp_uncertainty = Label()
-        self.lbl_ntp_uncertainty.Text = "uncertainty: -"
+        self.lbl_ntp_uncertainty.Text = "Uncertainty: -"
         self.lbl_ntp_uncertainty.Location = Point(int(170 * sf), int(137 * sf))
-        self.lbl_ntp_uncertainty.Size = Size(int(190 * sf), int(18 * sf))
+        self.lbl_ntp_uncertainty.Size = Size(int(190 * sf), int(20 * sf))
+        self.lbl_ntp_uncertainty.Font = _results_font
         self.lbl_ntp_uncertainty.ForeColor = Color.Gray
         ntp_group.Controls.Add(self.lbl_ntp_uncertainty)
 
         self.lbl_ntp_age = Label()
-        self.lbl_ntp_age.Text = "data age: -"
+        self.lbl_ntp_age.Text = "Data age: -"
         self.lbl_ntp_age.Location = Point(int(365 * sf), int(137 * sf))
-        self.lbl_ntp_age.Size = Size(int(130 * sf), int(18 * sf))
+        self.lbl_ntp_age.Size = Size(int(130 * sf), int(20 * sf))
+        self.lbl_ntp_age.Font = _results_font
         self.lbl_ntp_age.ForeColor = Color.Gray
         ntp_group.Controls.Add(self.lbl_ntp_age)
 
         self.lbl_ntp_server = Label()
-        self.lbl_ntp_server.Text = "server: -"
-        self.lbl_ntp_server.Location = Point(int(15 * sf), int(158 * sf))
+        self.lbl_ntp_server.Text = "Server: -"
+        self.lbl_ntp_server.Location = Point(int(15 * sf), int(161 * sf))
         self.lbl_ntp_server.Size = Size(int(480 * sf), int(20 * sf))
+        self.lbl_ntp_server.Font = _results_font
         self.lbl_ntp_server.ForeColor = Color.Gray
         ntp_group.Controls.Add(self.lbl_ntp_server)
 
         self.prefill_ntp_folder()
+
+        # Auto-trigger elevation lookup if elevation was not in the event data.
+        if getattr(self, '_elevation_needs_lookup', False):
+            self._auto_lookup_elevation(latitude, longitude)
 
         y_pos += int(200 * sf)
         
@@ -2065,6 +2088,16 @@ class LocationConfirmDialog(Form):
             sender.Text = original_text
             sender.Enabled = True
     
+    def _auto_lookup_elevation(self, latitude, longitude):
+        """Silently look up elevation on form load; populate field if successful."""
+        try:
+            from utils import get_elevation_from_coordinates
+            elevation = get_elevation_from_coordinates(latitude, longitude, verbose=False)
+            if elevation is not None:
+                self.txt_elevation.Text = str(round(elevation, 1))
+        except Exception:
+            pass  # Leave blank; user can use the Lookup Elevation button manually.
+
     def lookup_elevation_click(self, sender, e):
         """Look up elevation from coordinates using online API"""
         original_text = sender.Text
@@ -2111,20 +2144,43 @@ class LocationConfirmDialog(Form):
             # Validate and store the entered values
             self.latitude = float(self.txt_latitude.Text)
             self.longitude = float(self.txt_longitude.Text)
-            self.elevation = float(self.txt_elevation.Text) if self.txt_elevation.Text.strip() else 0.0
+            self.elevation = float(self.txt_elevation.Text) if self.txt_elevation.Text.strip() else None
             self.obs_location = self.txt_obs_location.Text.strip()
-            
-            # Validate observing location is filled
+
+            # Check all required fields are present.
+            missing = []
             if not self.obs_location:
-                MessageBox.Show("Please enter an observing location (use the Lookup button or enter manually).", 
-                              "Missing Location", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-                return
-            
+                missing.append("Observing Location")
+            if self.elevation is None:
+                missing.append("Elevation")
+
+            if missing:
+                msg = (
+                    "The following required fields are empty:\n\n"
+                    + "\n".join("  \u2022 " + m for m in missing)
+                    + "\n\nIf you continue without filling these in you will need to "
+                    "enter them manually in a later form (not recommended).\n\n"
+                    "Do you want to go back and complete the missing fields?"
+                )
+                result = MessageBox.Show(
+                    msg,
+                    "Missing Required Fields",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                )
+                if result == DialogResult.Yes:
+                    return  # Return to form
+                # User chose to continue anyway — use safe defaults
+                if self.elevation is None:
+                    self.elevation = 0.0
+                if not self.obs_location:
+                    self.obs_location = ''
+
             self.confirmed = True
             self.DialogResult = DialogResult.OK
             self.Close()
         except ValueError:
-            MessageBox.Show("Please enter valid numeric values for latitude and longitude.", 
+            MessageBox.Show("Please enter valid numeric values for latitude, longitude and elevation.",
                           "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning)
     
     def cancel_click(self, sender, e):
@@ -2242,6 +2298,10 @@ class LocationConfirmDialog(Form):
             MessageBox.Show("Selected event does not have a UTC event time.", "Missing Event Time", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
 
+        if hasattr(self, 'lbl_analysing'):
+            self.lbl_analysing.Text = "Analysing - please wait up to ~30s"
+            self.Refresh()
+
         try:
             option, sec_gap = self._pick_dataset_for_event(ntp_module, stats_folder, event_dt)
             mjd = (event_dt.date() - date(1858, 11, 17)).days
@@ -2297,26 +2357,38 @@ class LocationConfirmDialog(Form):
             age_minutes = int(round(gap_before_s / 60.0))
             server = result.get('active_server_at_T') or 'unknown'
 
-            self.lbl_ntp_offset.Text = "offset: {0:+.3f} ms".format(offset_ms)
-            self.lbl_ntp_uncertainty.Text = "uncertainty: +/- {0:.3f} ms (95%)".format(uncertainty_ms)
-            self.lbl_ntp_age.Text = "data age: {0} min before event".format(age_minutes)
-            self.lbl_ntp_server.Text = "server: {0}".format(server)
+            delay_ms = float(result.get('mean_delay_near_T', 0.0)) * 1000.0
+            location_note = result.get('server_location_note') or ''
 
-            self.lbl_ntp_offset.ForeColor = Color.Green
-            self.lbl_ntp_uncertainty.ForeColor = Color.Green
-            self.lbl_ntp_age.ForeColor = Color.Green
-            self.lbl_ntp_server.ForeColor = Color.Green
+            self.lbl_ntp_offset.Text = "Offset: {0:+.1f} ms".format(offset_ms)
+            self.lbl_ntp_uncertainty.Text = "Uncertainty: +/- {0:.1f} ms (95%)".format(uncertainty_ms)
+            self.lbl_ntp_age.Text = "Data age: {0} min".format(age_minutes)
+            if location_note:
+                self.lbl_ntp_server.Text = "Server: {0}  |  {1:.1f} ms  ({2})".format(server, delay_ms, location_note)
+            else:
+                self.lbl_ntp_server.Text = "Server: {0}  |  {1:.1f} ms".format(server, delay_ms)
+
+            theme_colors = self.theme_manager.get_current_theme()
+            text_fg = theme_colors['text_foreground']
+            self.lbl_ntp_offset.ForeColor = text_fg
+            self.lbl_ntp_uncertainty.ForeColor = text_fg
+            self.lbl_ntp_age.ForeColor = text_fg
+            self.lbl_ntp_server.ForeColor = text_fg
+            if hasattr(self, 'lbl_analysing'):
+                self.lbl_analysing.Text = ""
         except Exception as ex:
             self.ntp_analysis_result = None
             self.lbl_ntp_dataset.Text = "dataset: -"
-            self.lbl_ntp_offset.Text = "offset: -"
-            self.lbl_ntp_uncertainty.Text = "uncertainty: -"
-            self.lbl_ntp_age.Text = "data age: -"
-            self.lbl_ntp_server.Text = "server: -"
+            self.lbl_ntp_offset.Text = "Offset: -"
+            self.lbl_ntp_uncertainty.Text = "Uncertainty: -"
+            self.lbl_ntp_age.Text = "Data age: -"
+            self.lbl_ntp_server.Text = "Server: -"
             self.lbl_ntp_offset.ForeColor = Color.Red
             self.lbl_ntp_uncertainty.ForeColor = Color.Red
             self.lbl_ntp_age.ForeColor = Color.Red
             self.lbl_ntp_server.ForeColor = Color.Red
+            if hasattr(self, 'lbl_analysing'):
+                self.lbl_analysing.Text = ""
             MessageBox.Show(
                 "NTP analysis failed:\n\n{0}".format(str(ex)),
                 "NTP Analysis Error",
@@ -2362,6 +2434,19 @@ class LocationConfirmDialog(Form):
             self._ntp_gui_form.Activate()
             self._ntp_gui_form.TopMost = True
             self._ntp_gui_form.TopMost = False
+
+            # Pre-populate with event context.
+            stats_folder = (self.txt_ntp_stats_folder.Text or '').strip() or None
+            event_dt = getattr(self.event, 'event_datetime', None)
+            try:
+                obs_lat = float(self.txt_latitude.Text)
+            except (ValueError, AttributeError):
+                obs_lat = None
+            try:
+                obs_lon = float(self.txt_longitude.Text)
+            except (ValueError, AttributeError):
+                obs_lon = None
+            self._ntp_gui_form.prefill_from_event(stats_folder, event_dt, obs_lat, obs_lon)
         except Exception as ex:
             MessageBox.Show(
                 "Unable to open NTP analyser:\n\n{0}".format(str(ex)),

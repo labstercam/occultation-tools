@@ -55,6 +55,11 @@ class ComprehensiveReportDialog(Form):
         self.aota_report_files = []
         self.current_folder = None
         
+        # Timestamp check state
+        self._ts_summary = None
+        self._d_time_seconds = None
+        self._r_time_seconds = None
+        
         self.setup_ui()
         
         # Load saved preferences
@@ -70,7 +75,7 @@ class ComprehensiveReportDialog(Form):
     def setup_ui(self):
         """Setup user interface"""
         self.Text = "Generate Report"
-        self.Size = Size(1000, 850)
+        self.Size = Size(1000, 966)
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -79,7 +84,7 @@ class ComprehensiveReportDialog(Form):
         # Main scroll panel
         main_panel = Panel()
         main_panel.Location = Point(10, 10)
-        main_panel.Size = Size(970, 725)
+        main_panel.Size = Size(970, 841)
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
         
@@ -210,7 +215,7 @@ class ComprehensiveReportDialog(Form):
         grp_files = GroupBox()
         grp_files.Text = "4. Observation Files"
         grp_files.Location = Point(10, y_pos)
-        grp_files.Size = Size(940, 240)
+        grp_files.Size = Size(940, 310)
         main_panel.Controls.Add(grp_files)
         
         # Folder selection
@@ -234,50 +239,22 @@ class ComprehensiveReportDialog(Form):
         grp_files.Controls.Add(btn_browse)
         
         # Three-column layout for file lists
-        # AOTA files (left)
-        lbl_aota = Label()
-        lbl_aota.Text = "AOTA Files:"
-        lbl_aota.Location = Point(15, 85)
-        lbl_aota.Size = Size(120, 20)
-        grp_files.Controls.Add(lbl_aota)
-        
-        self.aota_count_label = Label()
-        self.aota_count_label.Text = "No folder"
-        self.aota_count_label.Location = Point(135, 85)
-        self.aota_count_label.Size = Size(165, 20)
-        self.aota_count_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.aota_count_label)
-        
-        self.aota_listbox = ListBox()
-        self.aota_listbox.Location = Point(15, 108)
-        self.aota_listbox.Size = Size(285, 65)
-        self.aota_listbox.SelectionMode = SelectionMode.One
-        self.aota_listbox.SelectedIndexChanged += self.selection_changed
-        grp_files.Controls.Add(self.aota_listbox)
-
-        self.aota_preview_label = Label()
-        self.aota_preview_label.Text = "D/R: -"
-        self.aota_preview_label.Location = Point(15, 176)
-        self.aota_preview_label.Size = Size(285, 40)
-        self.aota_preview_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.aota_preview_label)
-        
-        # Tangra CSV files (middle)
+        # Tangra CSV files (left)
         lbl_csv = Label()
         lbl_csv.Text = "Tangra CSV:"
-        lbl_csv.Location = Point(315, 85)
+        lbl_csv.Location = Point(15, 85)
         lbl_csv.Size = Size(120, 20)
         grp_files.Controls.Add(lbl_csv)
         
         self.csv_count_label = Label()
         self.csv_count_label.Text = "No folder"
-        self.csv_count_label.Location = Point(435, 85)
+        self.csv_count_label.Location = Point(135, 85)
         self.csv_count_label.Size = Size(165, 20)
         self.csv_count_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.csv_count_label)
         
         self.csv_listbox = ListBox()
-        self.csv_listbox.Location = Point(315, 108)
+        self.csv_listbox.Location = Point(15, 108)
         self.csv_listbox.Size = Size(285, 65)
         self.csv_listbox.SelectionMode = SelectionMode.One
         self.csv_listbox.SelectedIndexChanged += self.selection_changed
@@ -285,10 +262,38 @@ class ComprehensiveReportDialog(Form):
 
         self.csv_preview_label = Label()
         self.csv_preview_label.Text = "Observing times: -"
-        self.csv_preview_label.Location = Point(315, 176)
+        self.csv_preview_label.Location = Point(15, 176)
         self.csv_preview_label.Size = Size(285, 40)
         self.csv_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.csv_preview_label)
+        
+        # AOTA files (middle)
+        lbl_aota = Label()
+        lbl_aota.Text = "AOTA Files:"
+        lbl_aota.Location = Point(315, 85)
+        lbl_aota.Size = Size(120, 20)
+        grp_files.Controls.Add(lbl_aota)
+        
+        self.aota_count_label = Label()
+        self.aota_count_label.Text = "No folder"
+        self.aota_count_label.Location = Point(435, 85)
+        self.aota_count_label.Size = Size(165, 20)
+        self.aota_count_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.aota_count_label)
+        
+        self.aota_listbox = ListBox()
+        self.aota_listbox.Location = Point(315, 108)
+        self.aota_listbox.Size = Size(285, 65)
+        self.aota_listbox.SelectionMode = SelectionMode.One
+        self.aota_listbox.SelectedIndexChanged += self.selection_changed
+        grp_files.Controls.Add(self.aota_listbox)
+
+        self.aota_preview_label = Label()
+        self.aota_preview_label.Text = "D/R: -"
+        self.aota_preview_label.Location = Point(315, 176)
+        self.aota_preview_label.Size = Size(285, 40)
+        self.aota_preview_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.aota_preview_label)
         
         # AOTA Report files (right)
         lbl_report = Label()
@@ -318,7 +323,65 @@ class ComprehensiveReportDialog(Form):
         self.report_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.report_preview_label)
 
-        y_pos += 250
+        # ===== TIMESTAMP CHECK SUBPANEL =====
+        grp_ts_check = GroupBox()
+        grp_ts_check.Text = "Timestamp Check"
+        grp_ts_check.Location = Point(15, 222)
+        grp_ts_check.Size = Size(910, 80)
+        grp_files.Controls.Add(grp_ts_check)
+
+        self.lbl_ts_delayed = Label()
+        self.lbl_ts_delayed.Text = "Delayed frames: -"
+        self.lbl_ts_delayed.Location = Point(15, 22)
+        self.lbl_ts_delayed.Size = Size(165, 20)
+        self.lbl_ts_delayed.ForeColor = Color.Gray
+        grp_ts_check.Controls.Add(self.lbl_ts_delayed)
+
+        self.lbl_ts_late = Label()
+        self.lbl_ts_late.Text = "Late frames: -"
+        self.lbl_ts_late.Location = Point(190, 22)
+        self.lbl_ts_late.Size = Size(140, 20)
+        self.lbl_ts_late.ForeColor = Color.Gray
+        grp_ts_check.Controls.Add(self.lbl_ts_late)
+
+        self.lbl_ts_status = Label()
+        self.lbl_ts_status.Text = "Status: -"
+        self.lbl_ts_status.Location = Point(340, 22)
+        self.lbl_ts_status.Size = Size(200, 20)
+        self.lbl_ts_status.ForeColor = Color.Gray
+        grp_ts_check.Controls.Add(self.lbl_ts_status)
+
+        self.lbl_ts_minmax = Label()
+        self.lbl_ts_minmax.Text = "Deviation: -"
+        self.lbl_ts_minmax.Location = Point(550, 22)
+        self.lbl_ts_minmax.Size = Size(345, 20)
+        self.lbl_ts_minmax.ForeColor = Color.Gray
+        grp_ts_check.Controls.Add(self.lbl_ts_minmax)
+
+        btn_ts_explain = Button()
+        btn_ts_explain.Text = "Explain..."
+        btn_ts_explain.Location = Point(15, 48)
+        btn_ts_explain.Size = Size(80, 25)
+        btn_ts_explain.Click += self._ts_explain_click
+        grp_ts_check.Controls.Add(btn_ts_explain)
+
+        self.btn_ts_inspect = Button()
+        self.btn_ts_inspect.Text = "Inspect Timestamps..."
+        self.btn_ts_inspect.Location = Point(105, 48)
+        self.btn_ts_inspect.Size = Size(160, 25)
+        self.btn_ts_inspect.Enabled = False
+        self.btn_ts_inspect.Click += self._ts_inspect_click
+        grp_ts_check.Controls.Add(self.btn_ts_inspect)
+
+        self.lbl_ts_event_warning = Label()
+        self.lbl_ts_event_warning.Text = ""
+        self.lbl_ts_event_warning.Location = Point(275, 52)
+        self.lbl_ts_event_warning.Size = Size(620, 20)
+        self.lbl_ts_event_warning.ForeColor = Color.OrangeRed
+        self.lbl_ts_event_warning.Visible = False
+        grp_ts_check.Controls.Add(self.lbl_ts_event_warning)
+
+        y_pos += 320
         
         # ===== SECTION 5: CONDITIONS =====
         grp_conditions = GroupBox()
@@ -372,14 +435,14 @@ class ComprehensiveReportDialog(Form):
         # ===== BOTTOM BUTTONS =====
         self.status_label = Label()
         self.status_label.Text = "Please complete all sections above"
-        self.status_label.Location = Point(20, 755)
+        self.status_label.Location = Point(20, 871)
         self.status_label.Size = Size(700, 20)
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
         
         self.btn_generate = Button()
         self.btn_generate.Text = "Generate Report"
-        self.btn_generate.Location = Point(750, 750)
+        self.btn_generate.Location = Point(750, 866)
         self.btn_generate.Size = Size(140, 35)
         self.btn_generate.Enabled = False
         self.btn_generate.Click += self.generate_click
@@ -388,7 +451,7 @@ class ComprehensiveReportDialog(Form):
         
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
-        btn_cancel.Location = Point(900, 750)
+        btn_cancel.Location = Point(900, 866)
         btn_cancel.Size = Size(80, 35)
         btn_cancel.Click += self.cancel_click
         self.Controls.Add(btn_cancel)
@@ -553,6 +616,9 @@ class ComprehensiveReportDialog(Form):
         self.aota_preview_label.Text = "D/R: -"
         self.csv_preview_label.Text = "Observing times: -"
         self.report_preview_label.Text = "D/R: -"
+        self._d_time_seconds = None
+        self._r_time_seconds = None
+        self._reset_timestamp_check()
         
         if not os.path.exists(folder_path):
             self.aota_count_label.Text = "Folder not found"
@@ -664,11 +730,13 @@ class ComprehensiveReportDialog(Form):
         try:
             if self.csv_listbox.SelectedIndex < 0:
                 self.csv_preview_label.Text = "Observing times: -"
+                self._reset_timestamp_check()
                 return
 
             tangra_path = self.csv_files[self.csv_listbox.SelectedIndex]
             import light_curves_iron as lc
             summary = lc.get_observation_summary(tangra_path, percentiles=[1, 99])
+            self._ts_summary = summary
 
             start_time = summary.get('start_time', '') if summary else ''
             end_time = summary.get('end_time', '') if summary else ''
@@ -680,11 +748,49 @@ class ComprehensiveReportDialog(Form):
                 )
             else:
                 self.csv_preview_label.Text = "Observing times: not found"
+
+            # Update timestamp check labels
+            n_delayed = int(summary.get('n_delayed_frames', 0) or 0)
+            n_late = int(summary.get('n_late_frames', 0) or 0)
+            self.lbl_ts_delayed.Text = "Delayed frames: {0}".format(n_delayed)
+            self.lbl_ts_late.Text = "Late frames: {0}".format(n_late)
+            if n_late > 0:
+                self.lbl_ts_delayed.ForeColor = Color.OrangeRed
+                self.lbl_ts_late.ForeColor = Color.OrangeRed
+                self.lbl_ts_status.Text = "Status: Issues detected"
+                self.lbl_ts_status.ForeColor = Color.OrangeRed
+            elif n_delayed > 0:
+                self.lbl_ts_delayed.ForeColor = Color.Orange
+                self.lbl_ts_late.ForeColor = Color.Gray
+                self.lbl_ts_status.Text = "Status: Check"
+                self.lbl_ts_status.ForeColor = Color.Orange
+            else:
+                self.lbl_ts_delayed.ForeColor = Color.Gray
+                self.lbl_ts_late.ForeColor = Color.Gray
+                self.lbl_ts_status.Text = "Status: OK"
+                self.lbl_ts_status.ForeColor = Color.Green
+            self.btn_ts_inspect.Enabled = True
+            # Min/max deviation from median
+            tdelta_min = summary.get('tdelta_min', None)
+            tdelta_max = summary.get('tdelta_max', None)
+            tdelta_median = summary.get('tdelta_median', None)
+            if tdelta_min is not None and tdelta_max is not None and tdelta_median:
+                min_dev = tdelta_min - tdelta_median
+                max_dev = tdelta_max - tdelta_median
+                self.lbl_ts_minmax.Text = "Deviation: {0:+.1f} to {1:+.1f} ms".format(min_dev, max_dev)
+            else:
+                self.lbl_ts_minmax.Text = "Deviation: -"
+            self.lbl_ts_minmax.ForeColor = Color.Gray
+            self._check_event_in_window(summary)
         except Exception:
             self.csv_preview_label.Text = "Observing times: unable to extract"
+            self._reset_timestamp_check()
 
     def _update_aota_xml_preview(self):
         """Update AOTA XML D/R preview"""
+        # Always clear stale D/R values at the start; only set on successful parse
+        self._d_time_seconds = None
+        self._r_time_seconds = None
         try:
             if self.aota_listbox.SelectedIndex < 0:
                 self.aota_preview_label.Text = "D/R: -"
@@ -709,6 +815,20 @@ class ComprehensiveReportDialog(Form):
             d_time = self._format_hms(evt.d_hours, evt.d_minutes, d_seconds)
             r_time = self._format_hms(evt.r_hours, evt.r_minutes, r_seconds)
             self.aota_preview_label.Text = "D: {0}\nR: {1}".format(d_time, r_time)
+
+            # Store D/R times as seconds-from-midnight for the inspector form
+            try:
+                d_h = int(evt.d_hours or 0)
+                d_m = int(evt.d_minutes or 0)
+                d_s = float(d_seconds) if d_seconds is not None else 0.0
+                self._d_time_seconds = d_h * 3600.0 + d_m * 60.0 + d_s
+                r_h = int(evt.r_hours or 0)
+                r_m = int(evt.r_minutes or 0)
+                r_s = float(r_seconds) if r_seconds is not None else 0.0
+                self._r_time_seconds = r_h * 3600.0 + r_m * 60.0 + r_s
+            except Exception:
+                self._d_time_seconds = None
+                self._r_time_seconds = None
         except Exception:
             self.aota_preview_label.Text = "D/R: unable to extract"
 
@@ -738,6 +858,95 @@ class ComprehensiveReportDialog(Form):
         except Exception:
             self.report_preview_label.Text = "D/R: unable to extract"
     
+    def _reset_timestamp_check(self):
+        """Reset timestamp check labels and state"""
+        self._ts_summary = None
+        self.lbl_ts_delayed.Text = "Delayed frames: -"
+        self.lbl_ts_delayed.ForeColor = Color.Gray
+        self.lbl_ts_late.Text = "Late frames: -"
+        self.lbl_ts_late.ForeColor = Color.Gray
+        self.lbl_ts_status.Text = "Status: -"
+        self.lbl_ts_status.ForeColor = Color.Gray
+        self.btn_ts_inspect.Enabled = False
+        self.lbl_ts_minmax.Text = "Deviation: -"
+        self.lbl_ts_minmax.ForeColor = Color.Gray
+        self.lbl_ts_event_warning.Visible = False
+
+    def _check_event_in_window(self, summary):
+        """Check if the predicted event time falls within the CSV recording window"""
+        try:
+            event_time_str = self.event.event_time if (self.event and hasattr(self.event, 'event_time')) else ''
+            if not event_time_str or not summary:
+                self.lbl_ts_event_warning.Visible = False
+                return
+
+            # Parse HH:MM:SS from ISO datetime "YYYY-MM-DDTHH:MM:SS..."
+            t_part = event_time_str.split('T')[-1].rstrip('Z').split('.')[0]
+            parts = t_part.split(':')
+            event_secs = int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+
+            start_str = summary.get('start_time', '')
+            end_str = summary.get('end_time', '')
+            if not start_str or not end_str:
+                self.lbl_ts_event_warning.Visible = False
+                return
+
+            def hms_to_secs(s):
+                p = s.split(':')
+                return int(p[0]) * 3600 + int(p[1]) * 60 + float(p[2])
+
+            if hms_to_secs(start_str) <= event_secs <= hms_to_secs(end_str):
+                self.lbl_ts_event_warning.Visible = False
+            else:
+                self.lbl_ts_event_warning.Text = "Warning: predicted event time not within recording window"
+                self.lbl_ts_event_warning.Visible = True
+        except Exception:
+            self.lbl_ts_event_warning.Visible = False
+
+    def _ts_explain_click(self, sender, e):
+        """Show explanation of timestamp check metrics"""
+        MessageBox.Show(
+            "Timestamp Check analyses recording frame timing for irregularities.\n\n"
+            "Delayed frames: frames where the interval is more than 10% longer than "
+            "the median (minor timing slip).\n\n"
+            "Late frames: frames where the interval is more than 90% longer than the "
+            "median. This typically means one or more frames were dropped.\n\n"
+            "If these anomalies fall completely outside the D/R event window they have "
+            "no impact on the reported event times and can be ignored.\n\n"
+            "If many frames are affected the recording frame rate may have been too high "
+            "for the camera and computer. It is recommended to record at no more than "
+            "1/3 of the camera's maximum frame rate.",
+            "Timestamp Check Explained",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+
+    def _ts_inspect_click(self, sender, e):
+        """Open the Timestamp Inspector form"""
+        if self.csv_listbox.SelectedIndex < 0:
+            return
+        tangra_path = self.csv_files[self.csv_listbox.SelectedIndex]
+        try:
+            # Derive predicted event time as seconds-from-midnight
+            event_secs = None
+            try:
+                event_time_str = self.event.event_time if (self.event and hasattr(self.event, 'event_time')) else ''
+                if event_time_str:
+                    t_part = event_time_str.split('T')[-1].rstrip('Z').split('.')[0]
+                    p = t_part.split(':')
+                    event_secs = int(p[0]) * 3600 + int(p[1]) * 60 + float(p[2])
+            except Exception:
+                event_secs = None
+            form = TimestampInspectorForm(tangra_path, self._d_time_seconds, self._r_time_seconds, event_secs)
+            form.ShowDialog(self)
+        except Exception as ex:
+            MessageBox.Show(
+                "Error opening Timestamp Inspector:\n\n" + str(ex),
+                "Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            )
+
     def update_button_state(self):
         """Update generate button state and status message"""
         # Check all requirements
@@ -910,4 +1119,241 @@ class ComprehensiveReportDialog(Form):
 
     def get_selected_folder(self):
         return self.current_folder
+
+
+class TimestampInspectorForm(Form):
+    """Form for inspecting frame timing from a Tangra CSV file with OxyPlot charts"""
+
+    def __init__(self, tangra_path, d_time_seconds=None, r_time_seconds=None, event_time_seconds=None):
+        Form.__init__(self)
+        self.tangra_path = tangra_path
+        self.d_time_seconds = d_time_seconds
+        self.r_time_seconds = r_time_seconds
+        self.event_time_seconds = event_time_seconds
+        self._setup_ui()
+        self._build_charts()
+
+    def _setup_ui(self):
+        self.Text = "Timestamp Inspector"
+        self.Size = Size(900, 720)
+        self.StartPosition = FormStartPosition.CenterParent
+        self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle
+        self.MaximizeBox = False
+        self.MinimizeBox = False
+
+        clr.AddReference("OxyPlot")
+        clr.AddReference("OxyPlot.WindowsForms")
+        import OxyPlot.WindowsForms as OxyWF
+
+        self._plot_interval = OxyWF.PlotView()
+        self._plot_interval.Location = Point(10, 10)
+        self._plot_interval.Size = Size(865, 250)
+        self._plot_interval.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+        self.Controls.Add(self._plot_interval)
+
+        self._lbl_stats = Label()
+        self._lbl_stats.Location = Point(10, 264)
+        self._lbl_stats.Size = Size(865, 18)
+        self._lbl_stats.Text = ""
+        self.Controls.Add(self._lbl_stats)
+
+        self._plot_signal = OxyWF.PlotView()
+        self._plot_signal.Location = Point(10, 286)
+        self._plot_signal.Size = Size(865, 252)
+        self._plot_signal.Anchor = (AnchorStyles.Top | AnchorStyles.Left |
+                                    AnchorStyles.Right | AnchorStyles.Bottom)
+        self.Controls.Add(self._plot_signal)
+
+        self._lbl_info = Label()
+        self._lbl_info.Location = Point(10, 545)
+        self._lbl_info.Size = Size(770, 52)
+        self._lbl_info.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+        self._lbl_info.Text = (
+            "Delayed frames: deviation > +10% of median.  Late frames: deviation > +90% of median (dropped frame likely).\n"
+            "Anomalies outside the D/R window have no impact on reported event times.\n"
+            "Many anomalies may indicate frame rate too high. Recommended: record at \u22641/3 of camera max frame rate."
+        )
+        self.Controls.Add(self._lbl_info)
+
+        btn_close = Button()
+        btn_close.Text = "Close"
+        btn_close.Location = Point(793, 603)
+        btn_close.Size = Size(85, 28)
+        btn_close.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+        btn_close.Click += self._close_click
+        self.Controls.Add(btn_close)
+
+    def _close_click(self, sender, e):
+        self.Close()
+
+    def _build_charts(self):
+        try:
+            import OxyPlot
+            import OxyPlot.Series as OxySeries
+            import OxyPlot.Axes as OxyAxes
+            import OxyPlot.Annotations as OxyAnn
+            import light_curves_iron as lc
+
+            tangra_obj = lc.read_tangra_csv_iron(self.tangra_path)
+            light_curve = tangra_obj.get('light_curve', [])
+
+            if not light_curve or len(light_curve) < 2:
+                self._lbl_info.Text = "Not enough data to display charts."
+                return
+
+            valid_rows = [r for r in light_curve if r.get('time_ut') is not None]
+            times = [r['time_ut'] for r in valid_rows]
+            frame_nos = [r['frameno'] for r in valid_rows]
+            signals = [r.get('signal_1', 0) or 0 for r in valid_rows]
+            # Cache for use in _add_dr_annotations
+            self._cached_times = times
+            self._cached_frame_nos = frame_nos
+
+            # Compute timediffs in ms and deviations from median
+            timediffs = []
+            diff_frames = []
+            for i in range(1, len(times)):
+                delta_ms = (times[i] - times[i - 1]).total_seconds() * 1000.0
+                timediffs.append(delta_ms)
+                diff_frames.append(frame_nos[i])
+
+            if not timediffs:
+                self._lbl_info.Text = "Could not compute frame intervals."
+                return
+
+            # Median
+            sorted_td = sorted(timediffs)
+            n = len(sorted_td)
+            median_ms = (sorted_td[n // 2 - 1] + sorted_td[n // 2]) / 2.0 if n % 2 == 0 else sorted_td[n // 2]
+
+            # Deviations from median
+            deviations = [td - median_ms for td in timediffs]
+            min_dev = min(deviations)
+            max_dev = max(deviations)
+
+            # Populate stats label
+            self._lbl_stats.Text = (
+                "Median exposure: {0:.2f} ms   |   "
+                "Min deviation: {1:+.2f} ms   |   "
+                "Max deviation: {2:+.2f} ms"
+            ).format(median_ms, min_dev, max_dev)
+
+            # Find D/R frame numbers by closest timestamp
+            d_frame = self._nearest_frame(times, frame_nos, self.d_time_seconds)
+            r_frame = self._nearest_frame(times, frame_nos, self.r_time_seconds)
+
+            # --- Chart 1: interval deviation from median ---
+            model1 = OxyPlot.PlotModel()
+            model1.Title = "Frame Interval Deviation from Median"
+            model1.TitleFontSize = 12.0
+
+            xa1 = OxyAxes.LinearAxis()
+            xa1.Position = OxyAxes.AxisPosition.Bottom
+            xa1.Title = "Frame number"
+            model1.Axes.Add(xa1)
+
+            # Y axis: autoscale to data but enforce minimum ±5 ms range
+            y_pad = max(abs(min_dev), abs(max_dev)) * 0.1 + 0.5
+            y_min_axis = min(min_dev - y_pad, -5.0)
+            y_max_axis = max(max_dev + y_pad, 5.0)
+
+            ya1 = OxyAxes.LinearAxis()
+            ya1.Position = OxyAxes.AxisPosition.Left
+            ya1.Title = "Deviation from median (ms)"
+            ya1.Minimum = y_min_axis
+            ya1.Maximum = y_max_axis
+            model1.Axes.Add(ya1)
+
+            s1 = OxySeries.LineSeries()
+            s1.Title = "Deviation"
+            s1.Color = OxyPlot.OxyColors.SteelBlue
+            for fn, dv in zip(diff_frames, deviations):
+                s1.Points.Add(OxyPlot.DataPoint(float(fn), dv))
+            model1.Series.Add(s1)
+
+            zero_ann = OxyAnn.LineAnnotation()
+            zero_ann.Type = OxyAnn.LineAnnotationType.Horizontal
+            zero_ann.Y = 0.0
+            zero_ann.Color = OxyPlot.OxyColors.Gray
+            zero_ann.LineStyle = OxyPlot.LineStyle.Dash
+            zero_ann.Text = "0 (median)"
+            model1.Annotations.Add(zero_ann)
+
+            self._add_dr_annotations(model1, d_frame, r_frame, OxyAnn, OxyPlot)
+            self._plot_interval.Model = model1
+
+            # --- Chart 2: signal level ---
+            model2 = OxyPlot.PlotModel()
+            model2.Title = "Signal Level"
+            model2.TitleFontSize = 12.0
+
+            xa2 = OxyAxes.LinearAxis()
+            xa2.Position = OxyAxes.AxisPosition.Bottom
+            xa2.Title = "Frame number"
+            model2.Axes.Add(xa2)
+
+            ya2 = OxyAxes.LinearAxis()
+            ya2.Position = OxyAxes.AxisPosition.Left
+            ya2.Title = "Signal"
+            model2.Axes.Add(ya2)
+
+            s2 = OxySeries.LineSeries()
+            s2.Title = "Signal"
+            s2.Color = OxyPlot.OxyColors.DarkGreen
+            for fn, sig in zip(frame_nos, signals):
+                s2.Points.Add(OxyPlot.DataPoint(float(fn), float(sig)))
+            model2.Series.Add(s2)
+
+            self._add_dr_annotations(model2, d_frame, r_frame, OxyAnn, OxyPlot)
+            self._plot_signal.Model = model2
+
+        except Exception as ex:
+            self._lbl_info.Text = "Error building charts: " + str(ex)
+
+    def _nearest_frame(self, times, frame_nos, target_seconds):
+        """Return the frame number whose timestamp is closest to target_seconds from midnight"""
+        if target_seconds is None:
+            return None
+        best_diff = None
+        best_frame = None
+        for t, fn in zip(times, frame_nos):
+            if t is None:
+                continue
+            t_sec = t.hour * 3600.0 + t.minute * 60.0 + t.second + t.microsecond / 1e6
+            diff = abs(t_sec - target_seconds)
+            if best_diff is None or diff < best_diff:
+                best_diff = diff
+                best_frame = fn
+        return best_frame
+
+    def _add_dr_annotations(self, model, d_frame, r_frame, OxyAnn, OxyPlot):
+        """Add vertical D/R and predicted-event annotations to a plot model"""
+        event_frame = self._nearest_frame(
+            self._cached_times, self._cached_frame_nos, self.event_time_seconds
+        ) if hasattr(self, '_cached_times') else None
+        if event_frame is not None:
+            ann = OxyAnn.LineAnnotation()
+            ann.Type = OxyAnn.LineAnnotationType.Vertical
+            ann.X = float(event_frame)
+            ann.Color = OxyPlot.OxyColors.DodgerBlue
+            ann.LineStyle = OxyPlot.LineStyle.Solid
+            ann.StrokeThickness = 1.5
+            ann.Text = "Event"
+            model.Annotations.Add(ann)
+        if d_frame is not None:
+            ann = OxyAnn.LineAnnotation()
+            ann.Type = OxyAnn.LineAnnotationType.Vertical
+            ann.X = float(d_frame)
+            ann.Color = OxyPlot.OxyColors.Red
+            ann.LineStyle = OxyPlot.LineStyle.Dash
+            ann.Text = "D"
+            model.Annotations.Add(ann)
+        if r_frame is not None:
+            ann = OxyAnn.LineAnnotation()
+            ann.Type = OxyAnn.LineAnnotationType.Vertical
+            ann.X = float(r_frame)
+            ann.Color = OxyPlot.OxyColors.Green
+            ann.LineStyle = OxyPlot.LineStyle.Dash
+            ann.Text = "R"
+            model.Annotations.Add(ann)
 

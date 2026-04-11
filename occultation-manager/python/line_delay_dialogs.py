@@ -51,8 +51,8 @@ class LineDelayCalibrationManagerDialog(Form):
 
     def InitializeComponent(self):
         self.Text = 'Calibration Runs \u2014 ' + self._camera_name
-        self.Size = Size(1050, 530)
-        self.MinimumSize = Size(800, 400)
+        self.Size = Size(1050, 570)
+        self.MinimumSize = Size(800, 440)
         self.FormBorderStyle = FormBorderStyle.Sizable
         self.StartPosition = FormStartPosition.CenterParent
         self.MaximizeBox = True
@@ -180,7 +180,19 @@ class LineDelayCalibrationManagerDialog(Form):
                 val = run.get(key, '')
                 if val is None:
                     val = ''
-                self._grid.Rows[row_idx].Cells[col_idx].Value = str(val)
+                if key == 'per_line_delay':
+                    try:
+                        display = '{:.4f}'.format(float(val))
+                    except (ValueError, TypeError):
+                        display = str(val)
+                elif key == 'line_0_delay':
+                    try:
+                        display = '{:.2f}'.format(float(val))
+                    except (ValueError, TypeError):
+                        display = str(val)
+                else:
+                    display = str(val)
+                self._grid.Rows[row_idx].Cells[col_idx].Value = display
             self._run_ids.append(run.get('id', ''))
 
         count = len(runs)
