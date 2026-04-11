@@ -143,7 +143,7 @@ BACKEND ARCHITECTURE
 - *(separator)*
 - Template Manager
 - *(separator)*
-- Camera Timing Setup
+- Camera Delay Calibration
 - Camera Delay Calculator
 - NTP Clock Accuracy
 - GPS vs NTP Testing

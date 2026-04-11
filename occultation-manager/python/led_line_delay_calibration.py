@@ -1679,8 +1679,8 @@ class LEDLineDelayCalibrationForm(Form):
         
     def InitializeComponent(self):
         """Setup GUI components"""
-        self.Text = "Camera Timing Setup"
-        self.ClientSize = Size(720, 880)
+        self.Text = "Camera Delay Calibration"
+        self.ClientSize = Size(720, 968)
         self.TopMost = True
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -1797,25 +1797,10 @@ class LEDLineDelayCalibrationForm(Form):
         self.plot_view.Location = Point(20, 250)
         self.plot_view.Size = Size(660, 260)
         
-        # Close button
-        self.button_close = Button()
-        self.button_close.Text = "Close"
-        self.button_close.Location = Point(600, 520)
-        self.button_close.Size = Size(80, 25)
-        self.button_close.Click += self.close_form
-
-        # Save Result to Camera button (enabled only after a successful calibration)
-        self.button_save_calibration = Button()
-        self.button_save_calibration.Text = "Save Result to Camera..."
-        self.button_save_calibration.Location = Point(440, 520)
-        self.button_save_calibration.Size = Size(150, 25)
-        self.button_save_calibration.Enabled = False
-        self.button_save_calibration.Click += self.save_calibration_click
-
-        # Approximate Delays button (no GPS flasher required)
+        # Approximate Delays button (no GPS flasher required) — placed immediately below plot view
         self.label_approx_delays = Label()
-        self.label_approx_delays.Text = "Alternative if no GPS flasher available"
-        self.label_approx_delays.Location = Point(20, 500)
+        self.label_approx_delays.Text = "Alternative if no GPS flasher available:"
+        self.label_approx_delays.Location = Point(20, 520)
         self.label_approx_delays.AutoSize = True
         self.label_approx_delays.ForeColor = Color.Black
         self.label_approx_delays.Font = Font(self.label_approx_delays.Font.FontFamily,
@@ -1823,9 +1808,43 @@ class LEDLineDelayCalibrationForm(Form):
 
         self.button_approx_delays = Button()
         self.button_approx_delays.Text = "Approximate Delays"
-        self.button_approx_delays.Location = Point(20, 520)
+        self.button_approx_delays.Location = Point(20, 542)
         self.button_approx_delays.Size = Size(175, 25)
         self.button_approx_delays.Click += self.approximate_delays_click
+
+        # Close button — below approx button
+        self.button_close = Button()
+        self.button_close.Text = "Close"
+        self.button_close.Location = Point(600, 578)
+        self.button_close.Size = Size(80, 25)
+        self.button_close.Click += self.close_form
+
+        # Save Result to Camera button (enabled only after a successful calibration)
+        self.button_save_calibration = Button()
+        self.button_save_calibration.Text = "Save Result to Camera..."
+        self.button_save_calibration.Location = Point(440, 578)
+        self.button_save_calibration.Size = Size(150, 25)
+        self.button_save_calibration.Enabled = False
+        self.button_save_calibration.Click += self.save_calibration_click
+
+        # Information panel explaining the two calibration methods
+        info_group = GroupBox()
+        info_group.Text = "About Camera Delay Calibration"
+        info_group.Location = Point(20, 618)
+        info_group.Size = Size(665, 75)
+
+        lbl_info = Label()
+        lbl_info.Text = (
+            "With a GPS flasher:  Run the Line Delay Calibration above. "
+            "This measures precise per-line rolling shutter delays using GPS-timed LED flashes.\r\n"
+            "Without a GPS flasher:  Use Approximate Delays above. "
+            "This estimates delay values from camera specifications without specialist hardware."
+        )
+        lbl_info.Location = Point(10, 18)
+        lbl_info.Size = Size(645, 50)
+        lbl_info.AutoSize = False
+        info_group.Controls.Add(lbl_info)
+
 
         # Add controls to calibration tab
         self.tab_calibration.Controls.Add(self.label_duration)
@@ -1846,6 +1865,7 @@ class LEDLineDelayCalibrationForm(Form):
         self.tab_calibration.Controls.Add(self.button_approx_delays)
         self.tab_calibration.Controls.Add(self.label_approx_delays)
         self.tab_calibration.Controls.Add(self.button_close)
+        self.tab_calibration.Controls.Add(info_group)
         
         # === LONG TERM TIMING STABILITY TAB ===
         

@@ -615,7 +615,7 @@ class OccultationManagerGUI(Form):
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Template Manager", None, self.show_template_manager_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
-        menu_tools.DropDownItems.Add(ToolStripMenuItem("Camera Timing Setup", None, self.open_gps_flash_calibration_click))
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Camera Delay Calibration", None, self.open_gps_flash_calibration_click))
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Camera Delay Calculator", None, self.open_line_delay_calculator_click))
         menu_tools.DropDownItems.Add(ToolStripMenuItem("NTP Clock Accuracy", None, self.open_ntp_timing_analysis_click))
         menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS vs NTP Testing", None, self.open_gps_pps_comparison_click))
@@ -3074,7 +3074,7 @@ class OccultationManagerGUI(Form):
             try:
                 if not self._gps_flash_form.IsDisposed:
                     self._activate_tool_form(self._gps_flash_form)
-                    self.update_status("Camera Timing Setup already open")
+                    self.update_status("Camera Delay Calibration already open")
                     return
             except Exception:
                 pass
@@ -3105,7 +3105,7 @@ class OccultationManagerGUI(Form):
                 if existing_form is not None and not existing_form.IsDisposed:
                     self._gps_flash_form = existing_form
                     self._activate_tool_form(self._gps_flash_form)
-                    self.update_status("Opened Camera Timing Setup")
+                    self.update_status("Opened Camera Delay Calibration")
                     return
             except Exception:
                 pass
@@ -3121,11 +3121,11 @@ class OccultationManagerGUI(Form):
             except Exception:
                 self._gps_flash_form.Show()
             self._activate_tool_form(self._gps_flash_form)
-            self.update_status("Opened Camera Timing Setup")
+            self.update_status("Opened Camera Delay Calibration")
         except Exception as ex:
             MessageBox.Show(
-                "Could not open the Camera Timing Setup window.\n\n{0}".format(str(ex)),
-                "Camera Timing Setup Error",
+                "Could not open the Camera Delay Calibration window.\n\n{0}".format(str(ex)),
+                "Camera Delay Calibration Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error,
             )

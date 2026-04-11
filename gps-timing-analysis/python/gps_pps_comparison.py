@@ -539,21 +539,15 @@ class GPSPPSComparisonForm(Form):
         self.txt_log_folder.Location = Point(8, 66)
         self.txt_log_folder.Size = Size(446, 24)
         self.txt_log_folder.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+        self.txt_log_folder.Leave += self.on_scan
         lp.Controls.Add(self.txt_log_folder)
 
         self.btn_browse_log = Button()
         self.btn_browse_log.Text = "Browse..."
         self.btn_browse_log.Location = Point(8, 96)
-        self.btn_browse_log.Size = Size(100, 28)
+        self.btn_browse_log.Size = Size(120, 28)
         self.btn_browse_log.Click += self.on_browse_log
         lp.Controls.Add(self.btn_browse_log)
-
-        self.btn_scan = Button()
-        self.btn_scan.Text = "Scan Datasets"
-        self.btn_scan.Location = Point(114, 96)
-        self.btn_scan.Size = Size(120, 28)
-        self.btn_scan.Click += self.on_scan
-        lp.Controls.Add(self.btn_scan)
 
         # ---- Day filter ----
         self.lbl_filter = Label()
@@ -844,13 +838,9 @@ class GPSPPSComparisonForm(Form):
         self.txt_log_folder.Size = Size(full_w, text_h)
         y += text_h + inter
 
-        browse_w = 100
-        scan_w = 120
-        btn_gap = 6
+        browse_w = 120
         self.btn_browse_log.Location = Point(margin, y)
         self.btn_browse_log.Size = Size(browse_w, button_h)
-        self.btn_scan.Location = Point(margin + browse_w + btn_gap, y)
-        self.btn_scan.Size = Size(scan_w, button_h)
         y += button_h + inter
 
         self.lbl_filter.Location = Point(margin, y)
@@ -1623,6 +1613,10 @@ class GPSPPSComparisonForm(Form):
         self.btn_browse_export.Enabled = enabled
 
     def on_scan(self, sender, event):
+        current_folder = self.txt_log_folder.Text.strip().strip('"')
+        if sender is self.txt_log_folder:
+            if current_folder == getattr(self, '_last_scanned_folder', None):
+                return
         save_folder_settings(self.txt_log_folder.Text.strip(),
                               self.txt_export_folder.Text.strip(),
                               self.txt_observer_lat.Text.strip(),
@@ -1631,6 +1625,7 @@ class GPSPPSComparisonForm(Form):
 
     def scan_options(self):
         log_folder = self.txt_log_folder.Text.strip().strip('"')
+        self._last_scanned_folder = log_folder
         self.cmb_dataset.Items.Clear()
         self._options_by_label = {}
 
