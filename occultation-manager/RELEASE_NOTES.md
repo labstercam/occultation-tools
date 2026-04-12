@@ -1,5 +1,46 @@
 # Occultation Manager - Release Notes
 
+## Version 0.2.0-beta.7 (April 2026)
+
+**Multi-Format Light Curve Support and PyOTE Metrics Integration**
+
+### Multi-Format Light Curve Reader (New Module)
+
+A new `light_curve_reader.py` module provides automatic format detection and unified reading for all supported light curve CSV formats:
+
+- **Tangra** — standard IOTA CSV format
+- **R-OTE / PyOTE** — CSV format used by the R-OTE and PyOTE analysis tools
+- **Limovie** — CSV export from Limovie
+
+`detect_format(filepath)` identifies the format from the first line of the file without relying on filename conventions. `read_light_curve(filepath)` returns a unified `(frames, times, values)` tuple for all supported formats.
+
+### Timestamp Inspector Available for All Light Curve Formats
+
+The **Inspect Timestamps...** button in the Generate Report dialog is now available for R-OTE and Limovie CSV files as well as Tangra. All formats use `light_curve_reader.read_light_curve()` for consistent timestamp analysis with the same deviation charts, statistics line, and event-time reference lines.
+
+### PyOTE fit_metrics.txt Integration (New)
+
+The **4. Observation Files** section of the Generate Report dialog now supports PyOTE `fit_metrics.txt` files as an additional D/R timing source alongside AOTA XML and AOTA Report files:
+
+- **Content-based file detection**: scans all `.txt` files in the observation folder and identifies PyOTE metrics files by their `aperture name,` CSV header — no specific filename convention required
+- **Event selection**: a second listbox lists all aperture/event rows within the selected metrics file; each entry shows the aperture name, D time, and R time
+- **D/R preview**: a preview label shows the disappearance and reappearance times for the selected event
+- **Report integration**: the selected PyOTE event provides D/R times and SNR (DNR) to all report generators (NA, TT, SODIS, Occult 4 XML) when no AOTA source is selected
+
+New module `pyote_metrics_reader.py` provides:
+
+- `detect_pyote_metrics(file_path)` — reads the first non-blank line and returns `True` if it starts with `aperture name,`
+- `read_pyote_fit_metrics(file_path)` — full CSV read with header detection, blank-line and `Source file is` line skipping, and numeric coercion for all measurement columns
+- `record_to_aota_report_data(record)` — converts a PyOTE event record to the shared `aota_report_data` dict shape consumed by all report generators
+- `format_record_display(record)` — formats a one-line event summary for listbox display
+
+### Other Improvements
+
+- Updated release-facing documentation and version references for Beta.7.
+- Updated release packaging/version pointers (ZIP naming and instructions).
+
+---
+
 ## Version 0.2.0-beta.6 (April 2026)
 
 **Report Enhancements & Help Documentation**

@@ -454,8 +454,8 @@ Three specialized report generators create Excel-based observation reports by fi
      b. Select equipment (telescope + camera)
      c. Choose observation type (Positive/Negative/Unsure)
      d. Set observing conditions (clouds, stability, other)
-     e. Optional: Import Tangra light curve data
-     f. Optional: Import AOTA timing/SNR data
+     e. Optional: Import light curve data (Tangra, R-OTE, or Limovie formats auto-detected by `light_curve_reader.py`)
+     f. Optional: Import D/R timing data (AOTA XML, AOTA Report, or PyOTE fit_metrics.txt)
 5. Generator uses Openize SDK to:
    a. Load Excel template workbook
    b. Access Data worksheet directly
@@ -471,8 +471,8 @@ Three specialized report generators create Excel-based observation reports by fi
 - Equipment: From ConfigManager telescope/camera configs
 - Observer info: From ConfigManager observer fields
 - Conditions: User-selected clouds, stability, other conditions
-- Timing/SNR: From AOTA Report Parser (optional)
-- Light curve: From Tangra CSV files (optional)
+- Timing/SNR: From AOTA Report Parser or PyOTE fit_metrics.txt (optional)
+- Light curve: From Tangra, R-OTE, or Limovie CSV files via `light_curve_reader.py` (optional)
 - Optional NTP timing context: From `gps-timing-analysis/python/ntp_analysis_core.py` and related resources
 
 **Technical Implementation:**
@@ -482,12 +482,17 @@ Three specialized report generators create Excel-based observation reports by fi
 - Templates loaded from `resources/templates_master/reports/`
 - Automatic Occult 4 XML export with matching filename
 
-#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - ~1,400 lines)
+#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - ~1,500 lines)
 - Unified dialog for all report types
 - Equipment selection dropdowns
 - Observation type radio buttons
 - Observing conditions section (clouds, stability, other)
-- File import for analysis data
+- **Section 4 — Observation Files**: four file pickers loaded from the observation folder:
+  - CSV light curve files (Tangra / R-OTE / Limovie; format shown in brackets)
+  - AOTA XML files
+  - AOTA Report `.txt` files
+  - PyOTE `fit_metrics.txt` files (detected by content, not filename); a second listbox lists the events/apertures inside the selected file
+- Timestamp check subpanel (colour-coded status, deviation range, event-time window warning, Explain… and Inspect Timestamps… buttons); Inspect Timestamps available for all light curve formats
 - Validation and report generation coordination
 
 #### AOTA Integration (`aota_dialogs.py` - 466 lines, `aota_parser.py` - 297 lines)
@@ -495,6 +500,23 @@ Three specialized report generators create Excel-based observation reports by fi
 - Extract timing, SNR, and light curve data
 - Map AOTA events to OWCloud events
 - Import analysis results into reports
+
+#### AOTA Report Parser (`aota_report_parser.py`)
+- Parse plain-text AOTA Report `.txt` files
+- Extract D/R times, uncertainty, and SNR from formatted report text
+- Provides the same `aota_report_data` dict shape as the XML parser
+
+#### Light Curve Reader (`light_curve_reader.py`)
+- `detect_format(filepath)` — identifies CSV format (`'Tangra'`, `'R-OTE'`, `'Limovie'`, `'unknown'`) from the first line; no filename convention required
+- `read_light_curve(filepath)` — returns a unified `(frames, times, values)` tuple for all supported formats
+- `get_observation_summary(filepath)` — returns statistics dict (median interval, deviation range, frame count)
+- Used by the Timestamp Inspector for all light curve format types
+
+#### PyOTE Metrics Reader (`pyote_metrics_reader.py`)
+- `detect_pyote_metrics(file_path)` — returns `True` if the file's first non-blank line starts with `aperture name,`
+- `read_pyote_fit_metrics(file_path)` — reads CSV; skips `Source file is` and blank lines; coerces numeric columns; returns list of event dicts
+- `record_to_aota_report_data(record)` — converts a PyOTE event record to the `aota_report_data` dict shape used by all report generators
+- `format_record_display(record)` — returns a one-line event summary for listbox display
 
 ---
 
@@ -584,6 +606,18 @@ This module is distributed in both `occultation-manager/python/` (integrated wor
 - `HelpManager` - Rich text help documents
 - Quick Start Guide, troubleshooting, FAQ
 - Displayed in dialog with styled text
+
+#### Light Curve Reader (`light_curve_reader.py`)
+- `detect_format(filepath)` — identifies CSV format (`'Tangra'`, `'R-OTE'`, `'Limovie'`, `'unknown'`) by reading the first line of the file; no filename convention required
+- `read_light_curve(filepath)` — returns a unified `(frames, times, values)` tuple for all supported formats; format auto-detected
+- `get_observation_summary(filepath)` — returns a statistics dict (median interval, deviation range, frame count)
+- Used by the Timestamp Inspector for all supported light curve formats
+
+#### PyOTE Metrics Reader (`pyote_metrics_reader.py`)
+- `detect_pyote_metrics(file_path)` — returns `True` if the file's first non-blank line starts with `aperture name,`; used by `scan_folder()` to detect PyOTE files regardless of filename
+- `read_pyote_fit_metrics(file_path)` — reads CSV; skips `Source file is` and blank lines; coerces numeric columns; returns list of event dicts
+- `record_to_aota_report_data(record)` — converts a PyOTE event record to the `aota_report_data` dict shape consumed by all report generators
+- `format_record_display(record)` — returns a one-line event summary for listbox display
 
 ---
 

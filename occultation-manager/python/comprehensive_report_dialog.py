@@ -53,6 +53,10 @@ class ComprehensiveReportDialog(Form):
         self.aota_files = []
         self.csv_files = []
         self.aota_report_files = []
+        self.pyote_files = []
+        self.pyote_events = []       # list of dicts from current pyote file
+        self.selected_pyote_path = None
+        self.selected_pyote_event_index = -1
         self.current_folder = None
         
         # Timestamp check state
@@ -75,7 +79,7 @@ class ComprehensiveReportDialog(Form):
     def setup_ui(self):
         """Setup user interface"""
         self.Text = "Generate Report"
-        self.Size = Size(1000, 966)
+        self.Size = Size(1000, 1071)
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -84,7 +88,7 @@ class ComprehensiveReportDialog(Form):
         # Main scroll panel
         main_panel = Panel()
         main_panel.Location = Point(10, 10)
-        main_panel.Size = Size(970, 841)
+        main_panel.Size = Size(970, 940)
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
         
@@ -215,12 +219,12 @@ class ComprehensiveReportDialog(Form):
         grp_files = GroupBox()
         grp_files.Text = "4. Observation Files"
         grp_files.Location = Point(10, y_pos)
-        grp_files.Size = Size(940, 310)
+        grp_files.Size = Size(940, 415)
         main_panel.Controls.Add(grp_files)
         
         # Folder selection
         lbl_folder = Label()
-        lbl_folder.Text = "Folder containing AOTA, Tangra CSV, and AOTA Report files:"
+        lbl_folder.Text = "Folder containing AOTA, light curve CSV, and AOTA Report files:"
         lbl_folder.Location = Point(15, 25)
         lbl_folder.Size = Size(900, 20)
         grp_files.Controls.Add(lbl_folder)
@@ -241,15 +245,15 @@ class ComprehensiveReportDialog(Form):
         # Three-column layout for file lists
         # Tangra CSV files (left)
         lbl_csv = Label()
-        lbl_csv.Text = "Tangra CSV:"
+        lbl_csv.Text = "Light Curve File:"
         lbl_csv.Location = Point(15, 85)
-        lbl_csv.Size = Size(120, 20)
+        lbl_csv.Size = Size(130, 20)
         grp_files.Controls.Add(lbl_csv)
         
         self.csv_count_label = Label()
         self.csv_count_label.Text = "No folder"
-        self.csv_count_label.Location = Point(135, 85)
-        self.csv_count_label.Size = Size(165, 20)
+        self.csv_count_label.Location = Point(145, 85)
+        self.csv_count_label.Size = Size(155, 20)
         self.csv_count_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.csv_count_label)
         
@@ -323,10 +327,58 @@ class ComprehensiveReportDialog(Form):
         self.report_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.report_preview_label)
 
+        # PyOTE Metrics row (full-width, below the three columns)
+        lbl_pyote = Label()
+        lbl_pyote.Text = "PyOTE Metrics:"
+        lbl_pyote.Location = Point(15, 225)
+        lbl_pyote.Size = Size(120, 20)
+        grp_files.Controls.Add(lbl_pyote)
+
+        self.pyote_count_label = Label()
+        self.pyote_count_label.Text = "No folder"
+        self.pyote_count_label.Location = Point(135, 225)
+        self.pyote_count_label.Size = Size(200, 20)
+        self.pyote_count_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.pyote_count_label)
+
+        lbl_pyote_event = Label()
+        lbl_pyote_event.Text = "Events:"
+        lbl_pyote_event.Location = Point(460, 225)
+        lbl_pyote_event.Size = Size(60, 20)
+        grp_files.Controls.Add(lbl_pyote_event)
+
+        self.pyote_event_count_label = Label()
+        self.pyote_event_count_label.Text = "-"
+        self.pyote_event_count_label.Location = Point(525, 225)
+        self.pyote_event_count_label.Size = Size(210, 20)
+        self.pyote_event_count_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.pyote_event_count_label)
+
+        self.pyote_listbox = ListBox()
+        self.pyote_listbox.Location = Point(15, 245)
+        self.pyote_listbox.Size = Size(430, 55)
+        self.pyote_listbox.SelectionMode = SelectionMode.One
+        self.pyote_listbox.SelectedIndexChanged += self._pyote_file_selection_changed
+        grp_files.Controls.Add(self.pyote_listbox)
+
+        self.pyote_event_listbox = ListBox()
+        self.pyote_event_listbox.Location = Point(460, 245)
+        self.pyote_event_listbox.Size = Size(460, 55)
+        self.pyote_event_listbox.SelectionMode = SelectionMode.One
+        self.pyote_event_listbox.SelectedIndexChanged += self._pyote_event_selection_changed
+        grp_files.Controls.Add(self.pyote_event_listbox)
+
+        self.pyote_preview_label = Label()
+        self.pyote_preview_label.Text = "D/R: -"
+        self.pyote_preview_label.Location = Point(15, 304)
+        self.pyote_preview_label.Size = Size(905, 22)
+        self.pyote_preview_label.ForeColor = Color.Gray
+        grp_files.Controls.Add(self.pyote_preview_label)
+
         # ===== TIMESTAMP CHECK SUBPANEL =====
         grp_ts_check = GroupBox()
         grp_ts_check.Text = "Timestamp Check"
-        grp_ts_check.Location = Point(15, 222)
+        grp_ts_check.Location = Point(15, 331)
         grp_ts_check.Size = Size(910, 80)
         grp_files.Controls.Add(grp_ts_check)
 
@@ -381,7 +433,7 @@ class ComprehensiveReportDialog(Form):
         self.lbl_ts_event_warning.Visible = False
         grp_ts_check.Controls.Add(self.lbl_ts_event_warning)
 
-        y_pos += 320
+        y_pos += 425
         
         # ===== SECTION 5: CONDITIONS =====
         grp_conditions = GroupBox()
@@ -435,14 +487,14 @@ class ComprehensiveReportDialog(Form):
         # ===== BOTTOM BUTTONS =====
         self.status_label = Label()
         self.status_label.Text = "Please complete all sections above"
-        self.status_label.Location = Point(20, 871)
+        self.status_label.Location = Point(20, 976)
         self.status_label.Size = Size(700, 20)
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
         
         self.btn_generate = Button()
         self.btn_generate.Text = "Generate Report"
-        self.btn_generate.Location = Point(750, 866)
+        self.btn_generate.Location = Point(750, 971)
         self.btn_generate.Size = Size(140, 35)
         self.btn_generate.Enabled = False
         self.btn_generate.Click += self.generate_click
@@ -451,7 +503,7 @@ class ComprehensiveReportDialog(Form):
         
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
-        btn_cancel.Location = Point(900, 866)
+        btn_cancel.Location = Point(900, 971)
         btn_cancel.Size = Size(80, 35)
         btn_cancel.Click += self.cancel_click
         self.Controls.Add(btn_cancel)
@@ -583,7 +635,7 @@ class ComprehensiveReportDialog(Form):
     def browse_folder_click(self, sender, e):
         """Handle browse folder button click"""
         dialog = FolderBrowserDialog()
-        dialog.Description = "Select folder containing AOTA and Tangra CSV files"
+        dialog.Description = "Select folder containing AOTA and light curve CSV files"
         
         # Start in remembered folder if available
         if hasattr(self, 'remembered_folder') and self.remembered_folder and os.path.exists(self.remembered_folder):
@@ -606,16 +658,23 @@ class ComprehensiveReportDialog(Form):
             self.scan_folder(folder_path)
     
     def scan_folder(self, folder_path):
-        """Scan folder for AOTA, CSV, and AOTA Report files"""
+        """Scan folder for AOTA, CSV, AOTA Report, and PyOTE metrics files"""
         self.aota_files = []
         self.csv_files = []
         self.aota_report_files = []
+        self.pyote_files = []
+        self.pyote_events = []
         self.aota_listbox.Items.Clear()
         self.csv_listbox.Items.Clear()
         self.report_listbox.Items.Clear()
+        self.pyote_listbox.Items.Clear()
+        self.pyote_event_listbox.Items.Clear()
         self.aota_preview_label.Text = "D/R: -"
         self.csv_preview_label.Text = "Observing times: -"
         self.report_preview_label.Text = "D/R: -"
+        self.pyote_preview_label.Text = "D/R: -"
+        self.pyote_count_label.Text = "No folder"
+        self.pyote_event_count_label.Text = "-"
         self._d_time_seconds = None
         self._r_time_seconds = None
         self._reset_timestamp_check()
@@ -636,9 +695,22 @@ class ComprehensiveReportDialog(Form):
                 elif filename.lower().endswith('_aota_report.txt'):
                     self.aota_report_files.append(full_path)
                     self.report_listbox.Items.Add(filename)
+                elif filename.lower().endswith('.txt') and not filename.lower().endswith('_aota_report.txt'):
+                    try:
+                        import pyote_metrics_reader as pmr
+                        if pmr.detect_pyote_metrics(full_path):
+                            self.pyote_files.append(full_path)
+                            self.pyote_listbox.Items.Add(filename)
+                    except Exception:
+                        pass
                 elif filename.lower().endswith('.csv'):
                     self.csv_files.append(full_path)
-                    self.csv_listbox.Items.Add(filename)
+                    try:
+                        import light_curve_reader as lcr
+                        fmt = lcr.detect_format(full_path)
+                    except Exception:
+                        fmt = '?'
+                    self.csv_listbox.Items.Add(filename + '  [' + fmt + ']')
             
             # Update count labels
             aota_count = len(self.aota_files)
@@ -665,6 +737,14 @@ class ComprehensiveReportDialog(Form):
                 self.report_count_label.Text = "1 file found"
             else:
                 self.report_count_label.Text = f"{report_count} files found"
+
+            pyote_count = len(self.pyote_files)
+            if pyote_count == 0:
+                self.pyote_count_label.Text = "No PyOTE metrics found"
+            elif pyote_count == 1:
+                self.pyote_count_label.Text = "1 file found"
+            else:
+                self.pyote_count_label.Text = f"{pyote_count} files found"
             
             # Auto-select first files
             if aota_count > 0:
@@ -673,6 +753,8 @@ class ComprehensiveReportDialog(Form):
                 self.csv_listbox.SelectedIndex = 0
             if report_count > 0:
                 self.report_listbox.SelectedIndex = 0
+            if pyote_count > 0:
+                self.pyote_listbox.SelectedIndex = 0
 
             self.update_extracted_time_previews()
             
@@ -688,6 +770,7 @@ class ComprehensiveReportDialog(Form):
             self.aota_count_label.Text = "Error"
             self.csv_count_label.Text = "Error"
             self.report_count_label.Text = "Error"
+            self.pyote_count_label.Text = "Error"
     
     def selection_changed(self, sender, e):
         """Handle file selection changed"""
@@ -699,6 +782,7 @@ class ComprehensiveReportDialog(Form):
         self._update_tangra_preview()
         self._update_aota_xml_preview()
         self._update_aota_report_preview()
+        self._update_pyote_preview()
 
     def _format_time_value(self, value):
         """Format time value for preview with sensible precision"""
@@ -734,8 +818,8 @@ class ComprehensiveReportDialog(Form):
                 return
 
             tangra_path = self.csv_files[self.csv_listbox.SelectedIndex]
-            import light_curves_iron as lc
-            summary = lc.get_observation_summary(tangra_path, percentiles=[1, 99])
+            import light_curve_reader as lcr
+            summary = lcr.get_observation_summary(tangra_path, percentiles=[1, 99])
             self._ts_summary = summary
 
             start_time = summary.get('start_time', '') if summary else ''
@@ -857,6 +941,71 @@ class ComprehensiveReportDialog(Form):
             self.report_preview_label.Text = "D: {0}\nR: {1}".format(d_time, r_time)
         except Exception:
             self.report_preview_label.Text = "D/R: unable to extract"
+
+    def _pyote_file_selection_changed(self, sender, e):
+        """Handle PyOTE file listbox selection change - load events from selected file"""
+        self.pyote_events = []
+        self.pyote_event_listbox.Items.Clear()
+        self.pyote_preview_label.Text = "D/R: -"
+        self.pyote_event_count_label.Text = "-"
+
+        if self.pyote_listbox.SelectedIndex < 0:
+            self.update_button_state()
+            return
+
+        pyote_path = self.pyote_files[self.pyote_listbox.SelectedIndex]
+        try:
+            import pyote_metrics_reader as pmr
+            self.pyote_events = pmr.read_pyote_fit_metrics(pyote_path)
+            if not self.pyote_events:
+                self.pyote_event_count_label.Text = "No events found"
+                self.update_button_state()
+                return
+
+            for record in self.pyote_events:
+                self.pyote_event_listbox.Items.Add(pmr.format_record_display(record))
+
+            count = len(self.pyote_events)
+            if count == 1:
+                self.pyote_event_count_label.Text = "1 event"
+            else:
+                self.pyote_event_count_label.Text = f"{count} events"
+
+            self.pyote_event_listbox.SelectedIndex = 0
+        except Exception:
+            self.pyote_event_count_label.Text = "Error reading file"
+            self.pyote_preview_label.Text = "D/R: unable to read"
+
+        self.update_button_state()
+
+    def _pyote_event_selection_changed(self, sender, e):
+        """Handle PyOTE event listbox selection change - update D/R preview"""
+        self._update_pyote_preview()
+        self.update_button_state()
+
+    def _update_pyote_preview(self):
+        """Update PyOTE metrics D/R preview for the selected event"""
+        if self.pyote_event_listbox.SelectedIndex < 0 or not self.pyote_events:
+            self.pyote_preview_label.Text = "D/R: -"
+            return
+
+        idx = self.pyote_event_listbox.SelectedIndex
+        if idx >= len(self.pyote_events):
+            self.pyote_preview_label.Text = "D/R: -"
+            return
+
+        record = self.pyote_events[idx]
+        d_time = record.get('D time', '?')
+        r_time = record.get('R time', '?')
+        uncertainty = record.get('time err +/-secs', None)
+        snr = record.get('DNR', None)
+
+        preview = "D: {0}  R: {1}".format(d_time, r_time)
+        if uncertainty is not None:
+            preview += "  \u00b1{0}s".format(uncertainty)
+        if snr is not None:
+            preview += "  SNR(DNR):{0}".format(snr)
+        self.pyote_preview_label.Text = preview
     
     def _reset_timestamp_check(self):
         """Reset timestamp check labels and state"""
@@ -961,6 +1110,9 @@ class ComprehensiveReportDialog(Form):
         aota_selected = self.aota_listbox.SelectedIndex >= 0
         csv_selected = self.csv_listbox.SelectedIndex >= 0
         report_selected = self.report_listbox.SelectedIndex >= 0
+        pyote_selected = (self.pyote_listbox.SelectedIndex >= 0
+                          and self.pyote_event_listbox.SelectedIndex >= 0
+                          and bool(self.pyote_events))
         
         # Determine observation type
         if self.rb_positive.Checked:
@@ -981,11 +1133,11 @@ class ComprehensiveReportDialog(Form):
         if not has_camera:
             missing.append("camera")
         if not csv_selected:
-            missing.append("Tangra CSV file")
+            missing.append("light curve CSV file")
         
-        # AOTA requirement depends on observation type - either AOTA.xml OR AOTA Report is needed
-        if obs_type in ["Positive", "Unsure"] and not aota_selected and not report_selected:
-            missing.append("AOTA file or AOTA Report")
+        # AOTA requirement depends on observation type - either AOTA.xml, AOTA Report, or PyOTE Metrics is needed
+        if obs_type in ["Positive", "Unsure"] and not aota_selected and not report_selected and not pyote_selected:
+            missing.append("AOTA file, AOTA Report, or PyOTE Metrics")
         
         if missing:
             self.status_label.Text = "Missing: " + ", ".join(missing)
@@ -1046,7 +1198,7 @@ class ComprehensiveReportDialog(Form):
             self.selected_tangra_path = self.csv_files[self.csv_listbox.SelectedIndex]
         else:
             MessageBox.Show(
-                "Please select a Tangra CSV file.",
+                "Please select a light curve CSV file.",
                 "No CSV File",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning
@@ -1059,13 +1211,20 @@ class ComprehensiveReportDialog(Form):
         
         if self.report_listbox.SelectedIndex >= 0:
             self.selected_aota_report_path = self.aota_report_files[self.report_listbox.SelectedIndex]
-        
-        # For Positive/Unsure, need at least one of AOTA.xml or AOTA Report
+
+        # PyOTE metrics
+        self.selected_pyote_path = None
+        self.selected_pyote_event_index = -1
+        if self.pyote_listbox.SelectedIndex >= 0:
+            self.selected_pyote_path = self.pyote_files[self.pyote_listbox.SelectedIndex]
+            self.selected_pyote_event_index = self.pyote_event_listbox.SelectedIndex
+
+        # For Positive/Unsure, need at least one of AOTA.xml, AOTA Report, or PyOTE Metrics
         if self.observation_type in ["Positive", "Unsure"]:
-            if not self.selected_aota_path and not self.selected_aota_report_path:
+            if not self.selected_aota_path and not self.selected_aota_report_path and not self.selected_pyote_path:
                 MessageBox.Show(
-                    f"Either AOTA file or AOTA Report is required for {self.observation_type} observations.",
-                    "Missing AOTA Data",
+                    f"Either AOTA file, AOTA Report, or PyOTE Metrics is required for {self.observation_type} observations.",
+                    "Missing Event Data",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                 )
@@ -1119,6 +1278,12 @@ class ComprehensiveReportDialog(Form):
 
     def get_selected_folder(self):
         return self.current_folder
+
+    def get_selected_pyote_path(self):
+        return self.selected_pyote_path
+
+    def get_selected_pyote_event_index(self):
+        return self.selected_pyote_event_index
 
 
 class TimestampInspectorForm(Form):
@@ -1192,19 +1357,21 @@ class TimestampInspectorForm(Form):
             import OxyPlot.Series as OxySeries
             import OxyPlot.Axes as OxyAxes
             import OxyPlot.Annotations as OxyAnn
-            import light_curves_iron as lc
+            import light_curve_reader as lcr
 
-            tangra_obj = lc.read_tangra_csv_iron(self.tangra_path)
-            light_curve = tangra_obj.get('light_curve', [])
+            all_frames, all_times, all_values = lcr.read_light_curve(self.tangra_path)
 
-            if not light_curve or len(light_curve) < 2:
+            if not all_frames or len(all_frames) < 2:
                 self._lbl_info.Text = "Not enough data to display charts."
                 return
 
-            valid_rows = [r for r in light_curve if r.get('time_ut') is not None]
-            times = [r['time_ut'] for r in valid_rows]
-            frame_nos = [r['frameno'] for r in valid_rows]
-            signals = [r.get('signal_1', 0) or 0 for r in valid_rows]
+            valid = [(f, t, v) for f, t, v in zip(all_frames, all_times, all_values) if t is not None]
+            if len(valid) < 2:
+                self._lbl_info.Text = "Not enough valid timestamps to display charts."
+                return
+            frame_nos = [r[0] for r in valid]
+            times = [r[1] for r in valid]
+            signals = [r[2] if r[2] is not None else 0 for r in valid]
             # Cache for use in _add_dr_annotations
             self._cached_times = times
             self._cached_frame_nos = frame_nos

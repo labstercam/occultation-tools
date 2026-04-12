@@ -2008,6 +2008,8 @@ class OccultationManagerGUI(Form):
             aota_file_path = comprehensive_dialog.get_selected_aota_path()
             tangra_csv_path = comprehensive_dialog.get_selected_tangra_path()
             aota_report_path = comprehensive_dialog.get_selected_aota_report_path()
+            pyote_path = comprehensive_dialog.get_selected_pyote_path()
+            pyote_event_index = comprehensive_dialog.get_selected_pyote_event_index()
             clouds = comprehensive_dialog.get_clouds()
             stability = comprehensive_dialog.get_stability()
             other_conditions = comprehensive_dialog.get_other_conditions()
@@ -2019,6 +2021,8 @@ class OccultationManagerGUI(Form):
             print(f"AOTA file: {aota_file_path if aota_file_path else 'None'}")
             print(f"Tangra CSV: {tangra_csv_path if tangra_csv_path else 'None'}")
             print(f"AOTA Report: {aota_report_path if aota_report_path else 'None'}")
+            print(f"PyOTE Metrics: {pyote_path if pyote_path else 'None'}")
+            print(f"PyOTE event index: {pyote_event_index}")
             print(f"Clouds: {clouds if clouds else 'None'}")
             print(f"Stability: {stability if stability else 'None'}")
             print(f"Other conditions: {other_conditions if other_conditions else 'None'}")
@@ -2117,14 +2121,14 @@ class OccultationManagerGUI(Form):
                         MessageBoxIcon.Error
                     )
             
-            # Process Tangra CSV file
+            # Process light curve CSV file
             tangra_data = None
             if tangra_csv_path:
                 try:
-                    print(f"Processing Tangra CSV: {tangra_csv_path}")
-                    import light_curves_iron as lc
-                    tangra_data = lc.get_observation_summary(tangra_csv_path, percentiles=[1, 99])
-                    print(f"Tangra data extracted successfully")
+                    print(f"Processing light curve CSV: {tangra_csv_path}")
+                    import light_curve_reader as lcr
+                    tangra_data = lcr.get_observation_summary(tangra_csv_path, percentiles=[1, 99])
+                    print(f"Light curve data extracted successfully")
                     print(f"  Start time: {tangra_data['start_time']}")
                     print(f"  End time: {tangra_data['end_time']}")
                     print(f"  Exposure (ms): {tangra_data['tdelta_median']:.3f}")
@@ -2138,8 +2142,8 @@ class OccultationManagerGUI(Form):
                     print(f"Error processing Tangra CSV: {ex}")
                     print(error_details)
                     MessageBox.Show(
-                        f"Error processing Tangra CSV:\n\n{str(ex)}",
-                        "Tangra Processing Error",
+                        f"Error processing light curve CSV:\n\n{str(ex)}",
+                        "Light Curve Processing Error",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error
                     )
@@ -2246,6 +2250,35 @@ class OccultationManagerGUI(Form):
             # Compare AOTA.xml and AOTA Report times if both are available
             if aota_event and aota_report_data:
                 self._compare_aota_sources(aota_event, aota_report_data)
+
+            # Use PyOTE metrics as fallback if no AOTA Report data was obtained
+            if aota_report_data is None and pyote_path:
+                try:
+                    print(f"Processing PyOTE metrics: {pyote_path}")
+                    import pyote_metrics_reader as pmr
+                    pyote_records = pmr.read_pyote_fit_metrics(pyote_path)
+                    if pyote_records:
+                        idx = pyote_event_index if (pyote_event_index is not None and pyote_event_index >= 0) else 0
+                        idx = min(idx, len(pyote_records) - 1)
+                        record = pyote_records[idx]
+                        aota_report_data = pmr.record_to_aota_report_data(record)
+                        print(f"Using PyOTE metrics event #{idx + 1} ({record.get('aperture name', '?')})")
+                        print(f"  D time: {record.get('D time', '?')}")
+                        print(f"  R time: {record.get('R time', '?')}")
+                        print(f"  DNR (SNR): {record.get('DNR', '?')}")
+                    else:
+                        print("PyOTE metrics file contained no event rows")
+                except Exception as ex:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(f"Error processing PyOTE metrics: {ex}")
+                    print(error_details)
+                    MessageBox.Show(
+                        f"Error processing PyOTE metrics file:\n\n{str(ex)}",
+                        "PyOTE Metrics Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    )
             
             # Use AOTA Report data if AOTA.xml is not available
             if aota_report_data and not aota_event:
