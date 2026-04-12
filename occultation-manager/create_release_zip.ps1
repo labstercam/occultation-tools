@@ -1,6 +1,6 @@
 # Create release ZIP for Occultation Manager (folder-based layout)
 
-$version = "0.2.0-beta.6"
+$version = "0.2.0-beta.7"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
@@ -89,11 +89,13 @@ $pythonFiles = @(
     "python\gui_dialogs.py",
     "python\help.py",
     "python\led_line_delay_calibration.py",
+    "python\light_curve_reader.py",
     "python\light_curves_iron.py",
     "python\line_delay_dialogs.py",
     "python\main.py",
     "python\main_gui.py",
     "python\na_report_openize.py",
+    "python\pyote_metrics_reader.py",
     "python\occult4_export.py",
     "python\report_generator_base.py",
     "python\sequence_runner.py",

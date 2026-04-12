@@ -15,6 +15,8 @@ This document describes the public interfaces and reusable components for develo
 4. [Report Generation API](#report-generation-api)
 5. [Data Models](#data-models)
 6. [Utility Functions](#utility-functions)
+7. [Light Curve Reader API](#light-curve-reader-api)
+8. [PyOTE Metrics Reader API](#pyote-metrics-reader-api)
 
 ---
 
@@ -814,6 +816,124 @@ success = save_occultation_sequence(
     config=config              # Required if sequence_path is None
 )
 # Returns: bool (True on success)
+```
+
+---
+
+---
+
+## Light Curve Reader API
+
+Module: `light_curve_reader.py`
+
+Provides auto-detecting CSV reading for all supported light curve formats: Tangra, R-OTE / PyOTE, and Limovie. Format is identified by reading the first line of the file — no filename convention is required.
+
+```python
+import light_curve_reader as lcr
+
+# Detect format without reading the full file
+fmt = lcr.detect_format('path/to/lightcurve.csv')
+# Returns: 'Tangra', 'R-OTE', 'Limovie', or 'unknown'
+
+# Read light curve data (format auto-detected)
+frames, times, values = lcr.read_light_curve('path/to/lightcurve.csv')
+# frames: list of int frame numbers
+# times:  list of float timestamps (seconds from midnight, mid-frame convention)
+# values: list of float ADU values for the primary aperture
+
+# Get observation statistics
+summary = lcr.get_observation_summary('path/to/lightcurve.csv')
+# Returns dict:
+# {
+#   'format': 'Tangra',
+#   'frame_count': 1500,
+#   'median_interval_ms': 80.0,
+#   'min_deviation_ms': -2.1,
+#   'max_deviation_ms': 3.4,
+#   'start_time': 52242.0,
+#   'end_time': 52362.0
+# }
+```
+
+**Supported Formats:**
+
+| Format | First-line identifier | Timestamp convention |
+|--------|----------------------|----------------------|
+| Tangra | Contains `UTC Start` and `Tangra` | Mid-frame (source convention) |
+| R-OTE | Contains `R-OTE` or starts with `Frameno,` | Mid-frame (source convention) |
+| Limovie | Contains `,(1),` or starts with `No.,` | Start-of-frame (source convention) |
+
+**Timestamp Notes:**
+- All formats return timestamps verbatim from the CSV (no 0.5×timeDelta correction applied)
+- Consistent with PyOTE's own `csvreader.py` behaviour
+
+---
+
+## PyOTE Metrics Reader API
+
+Module: `pyote_metrics_reader.py`
+
+Reads PyOTE `fit_metrics.txt` CSV files and converts event records to the `aota_report_data` dict shape used by all report generators.
+
+```python
+import pyote_metrics_reader as pmr
+
+# Content-based detection (reads first non-blank line)
+is_pyote = pmr.detect_pyote_metrics('path/to/file.txt')
+# Returns True if first non-blank line starts with 'aperture name,'
+
+# Read all event records from a metrics file
+records = pmr.read_pyote_fit_metrics('path/to/fit_metrics.txt')
+# Returns list of dicts, one per event row. Example record:
+# {
+#   'aperture name': 'A0',
+#   'time err +/-secs': 0.04,
+#   'DNR': 12.5,
+#   'D time': '[14:30:42.3456]',
+#   'R time': '[14:30:50.6789]',
+#   'duration (secs)': 8.333,
+#   'D frame': 1042.0,
+#   'R frame': 1146.0,
+#   ... (all numeric columns coerced to float)
+# }
+
+# Convert a record to the shared aota_report_data dict shape
+aota_data = pmr.record_to_aota_report_data(records[0])
+# Returns:
+# {
+#   'd_hours': '14', 'd_minutes': '30', 'd_seconds': '42.3456',
+#   'd_uncertainty': 0.04,
+#   'r_hours': '14', 'r_minutes': '30', 'r_seconds': '50.6789',
+#   'r_uncertainty': 0.04,
+#   'snr': 12.5
+# }
+# Returns None if the record has no valid D or R time.
+
+# Format a one-line display string for listbox use
+display = pmr.format_record_display(records[0])
+# Returns: 'A0  D:[14:30:42.3456]  R:[14:30:50.6789]'
+```
+
+**fit_metrics.txt File Format:**
+- CSV with header line starting with `aperture name,`
+- One row per aperture / event
+- Optional `Source file is <path>` lines (skipped)
+- Blank lines skipped
+- Numeric columns coerced to `float`; non-numeric values left as strings
+
+**aota_report_data dict shape** (shared across all D/R sources):
+```python
+{
+    'd_hours': str,       # Disappearance hour (e.g. '14')
+    'd_minutes': str,     # Disappearance minute (e.g. '30')
+    'd_seconds': str,     # Disappearance second + sub-second (e.g. '42.3456')
+    'd_uncertainty': float,
+    'r_hours': str,
+    'r_minutes': str,
+    'r_seconds': str,
+    'r_uncertainty': float,
+    'snr': float          # Signal-to-noise ratio (DNR for PyOTE source)
+}
 ```
 
 ---
