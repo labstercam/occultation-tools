@@ -3581,7 +3581,7 @@ class LEDLineDelayCalibrationForm(Form):
             settings['pc_name'] = ''
 
         settings['camera_area'] = '{0}x{1}'.format(frame_width, frame_height)
-        settings['binning'] = '1'   # ADV frames are always actual pixel dimensions
+        settings['binning'] = '1x1'   # ADV frames are always actual pixel dimensions
         settings['tilt'] = ''       # Not stored in ADV header
         settings['pan'] = ''        # Not stored in ADV header
         settings['colour_space'] = ''

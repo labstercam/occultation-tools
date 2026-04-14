@@ -103,8 +103,11 @@ $pythonFiles = @(
     "python\tangra_dialogs.py",
     "python\templates.py",
     "python\theme.py",
+    "python\timing_utils.py",
     "python\tt_report_openize.py",
-    "python\utils.py"
+    "python\utils.py",
+    "python\vizier_export.py",
+    "python\vizier_export_dialog.py"
 )
 
 # Sequencer template masters

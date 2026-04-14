@@ -30,7 +30,7 @@ class SODISReportGeneratorText(ReportGeneratorBase):
 
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None,
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
-                       clouds=None, stability=None, other_conditions=None):
+                       clouds=None, stability=None, other_conditions=None, timing_data=None):
         """Generate SODIS text report.
 
         Args mirror existing Openize generator call pattern.
@@ -43,6 +43,7 @@ class SODISReportGeneratorText(ReportGeneratorBase):
         self._clouds = clouds
         self._stability = stability
         self._other_conditions = other_conditions
+        self._timing_data = timing_data
 
         template_path = self.get_template_path()
         if not os.path.exists(template_path):

@@ -1042,7 +1042,28 @@ class OccultationManager:
         filtered_events = self.get_filtered_events()
         self.selected_events.update(filtered_events)
         return len(filtered_events)
-    
+
+    def save_event_location(self, event):
+        """Persist updated latitude/longitude/elevation/obs_location back to occultations.json."""
+        try:
+            events_data = EventProcessor.load_occultations(
+                self.config.get_occultations_file(), self.config)
+            if not events_data:
+                return False
+            for entry in events_data:
+                if entry.get('id') == event.event_id:
+                    entry['latitude'] = event.latitude
+                    entry['longitude'] = event.longitude
+                    entry['elevation'] = event.elevation
+                    entry['obs_location'] = event.obs_location
+                    break
+            EventProcessor.save_occultations(
+                events_data, self.config.get_occultations_file(), self.config)
+            return True
+        except Exception as ex:
+            print('Warning: could not save event location: {0}'.format(ex))
+            return False
+
     def select_no_events(self):
         """Deselect all events"""
         self.selected_events.clear()
