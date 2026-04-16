@@ -410,11 +410,15 @@ Example: 20251223 (165690) 2001 PA3.scs
 #### Report Generators
 Three specialized report generators create Excel-based observation reports by filling standardized templates.
 
-**Base Class (`report_generator_base.py` - 91 lines):**
+**Base Class (`report_generator_base.py` - ~130 lines):**
 - `ReportGeneratorBase` - Common functionality for all report types
 - Star catalog parsing and mapping
 - Template path resolution
 - Filename generation
+- `build_timing_note(timing_data)` — static method; converts the `timing_data` dict (from
+  `ComprehensiveReportDialog.get_timing_data()`) into a human-readable string for report
+  comment fields (e.g. *"NTP timing corrections applied in Tangra: camera acq. delay 14.3 ms,
+  NTP offset +5.2 ms (net +19.5 ms) — confirmed by observer"*)
 
 **North America Reports (`na_report_openize.py` - 504 lines):**
 - `NAReportGeneratorOpenize` - IOTA North American report format
@@ -447,23 +451,44 @@ Three specialized report generators create Excel-based observation reports by fi
 3. LocationConfirmDialog opens:
     a. Confirm observer location
     b. Optional: Step 2 NTP timing analysis
-        - Analyze NTP from selected NTP stats folder
-        - Open full NTP analyzer window (non-blocking)
-4. Comprehensive Report Dialog opens:
-     a. Select report type (NA, TT, or SODIS)
-     b. Select equipment (telescope + camera)
-     c. Choose observation type (Positive/Negative/Unsure)
-     d. Set observing conditions (clouds, stability, other)
-     e. Optional: Import light curve data (Tangra, R-OTE, or Limovie formats auto-detected by `light_curve_reader.py`)
-     f. Optional: Import D/R timing data (AOTA XML, AOTA Report, or PyOTE fit_metrics.txt)
-5. Generator uses Openize SDK to:
+        - Analyse NTP from selected NTP stats folder
+        - Open full NTP analyser window (non-blocking)
+4. Comprehensive Report Dialog opens (6 sections):
+     §1  Select report type (NA, TT, or SODIS)
+     §2  Select equipment (telescope + camera — all cameras shown, not filtered by report type)
+     §3  Choose observation type (Positive/Negative/Unsure)
+     §4  Observation files — browse folder; auto-detects:
+           - Tangra / R-OTE / Limovie CSV (light_curve_reader.py)
+           - AOTA XML files
+           - AOTA Report files
+           - PyOTE fit_metrics.txt files (pyote_metrics_reader.py)
+         Timestamp Check subpanel (Tangra CSV): delayed/late frame counts, Inspect Timestamps
+     §5  Timing — select method (NTP/GPS/GPS-CMOS/Analog-VTI/Other):
+           NTP sub-panel:
+             - Calibration run selector + Y-line entry → calculated camera delay
+             - CameraSettings.txt auto-match for calibration run
+             - NTP clock offset from LocationConfirmDialog NTP analysis
+             - Correction radio: Applied in Tangra / Not yet applied / N/A
+               "Applied in Tangra": confirmation checkboxes with stale-value detection
+               "Not yet applied": step-by-step guidance panel with Copy buttons
+             - Net correction preview with corrected D/R times
+             - D/R plausibility check (D≥R blocking; >500 ms warning)
+           GPS-CMOS sub-panel: informational (no correction needed)
+           Analog-VTI sub-panel: VTI safety checks before generate
+     §6  Observing conditions (clouds, stability, other notes)
+5. Generator collects timing_data from get_timing_data():
+   - timing_method, camera_delay_ms, ntp_offset_ms, net_correction_s
+   - camera_delay_applied, ntp_applied, lc_timestamps_corrected
+   - corrections_confirmed (True only when both confirmation checkboxes ticked)
+6. Generator uses Openize SDK to:
    a. Load Excel template workbook
    b. Access Data worksheet directly
    c. Set cell values via PutValue() API
-   d. Save populated workbook
-6. Saves to `data/reports/`
-7. Generates matching Occult 4 XML file
-8. Opens report in Excel
+   d. Write timing note to comments cell via build_timing_note(timing_data)
+   e. Save populated workbook
+7. Saves to data/reports/
+8. Generates matching Occult 4 XML file
+9. Opens report in Excel
 ```
 
 **Data Sources:**
@@ -482,10 +507,10 @@ Three specialized report generators create Excel-based observation reports by fi
 - Templates loaded from `resources/templates_master/reports/`
 - Automatic Occult 4 XML export with matching filename
 
-#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - ~1,500 lines)
+#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - ~2,760 lines)
 - Unified dialog for all report types
 - Equipment selection dropdowns
-- Observation type radio buttons
+- Observation type radio buttons with tooltips (AOTA/PyOTE requirement per type)
 - Observing conditions section (clouds, stability, other)
 - **Section 4 — Observation Files**: four file pickers loaded from the observation folder:
   - CSV light curve files (Tangra / R-OTE / Limovie; format shown in brackets)
@@ -493,6 +518,19 @@ Three specialized report generators create Excel-based observation reports by fi
   - AOTA Report `.txt` files
   - PyOTE `fit_metrics.txt` files (detected by content, not filename); a second listbox lists the events/apertures inside the selected file
 - Timestamp check subpanel (colour-coded status, deviation range, event-time window warning, Explain… and Inspect Timestamps… buttons); Inspect Timestamps available for all light curve formats
+- **Section 5 — Timing** (NTP sub-panel):
+  - Calibration run selector and Y-line entry; calculates camera acquisition delay
+  - Inline `?` info buttons on calibration run (match requirements), Y-line (Tangra instructions), and NTP section header (concept explainer)
+  - CameraSettings.txt auto-match for calibration run
+  - NTP clock offset from LocationConfirmDialog analysis
+  - Correction status radio buttons: Applied in Tangra / Not yet applied / N/A
+  - "Applied in Tangra": confirmation checkboxes showing live correction values; stale-value detection (heading turns orange, checkboxes auto-clear if values change); "Why confirm?" info button
+  - "Not yet applied": step-by-step guidance panel with Copy buttons for entering values in Tangra
+  - Net correction preview with corrected D and R preview times
+  - D/R plausibility check: D ≥ R is blocking for Positive/Unsure events; net > 500 ms is a non-blocking warning; "What happened?" button appears alongside active warnings
+- **Status bar**: `?` button appears when Generate is blocked; shows the full blocking reason in a popup
+- `_setup_tooltips()` — configures all `ToolTip` instances after controls are built
+- `get_timing_data()` — returns timing_data dict (see `timing_utils.py`)
 - Validation and report generation coordination
 
 #### AOTA Integration (`aota_dialogs.py` - 466 lines, `aota_parser.py` - 297 lines)
@@ -517,6 +555,25 @@ Three specialized report generators create Excel-based observation reports by fi
 - `read_pyote_fit_metrics(file_path)` — reads CSV; skips `Source file is` and blank lines; coerces numeric columns; returns list of event dicts
 - `record_to_aota_report_data(record)` — converts a PyOTE event record to the `aota_report_data` dict shape used by all report generators
 - `format_record_display(record)` — returns a one-line event summary for listbox display
+
+#### Timing Utilities (`timing_utils.py`)
+- `build_timing_data(timing_method, camera_delay_ms, camera_delay_y_line, calib_run_id, ntp_offset_ms, camera_delay_applied, ntp_applied, net_correction_s, lc_timestamps_corrected)` — assembles and returns the canonical `timing_data` dict used by all report generators; the caller may add `corrections_confirmed` to the returned dict
+- `compute_net_correction_s(camera_delay_ms, ntp_offset_ms)` — returns net correction in seconds
+- `seconds_to_hms(seconds)` — returns integer `(hours, minutes, seconds)` tuple
+- **`timing_data` dict keys:**
+
+| Key | Type | Description |
+|---|---|---|
+| `timing_method` | str | `'NTP'`, `'GPS_dumb'`, `'GPS_CMOS'`, `'Analog-VTI'`, `'Other'` |
+| `camera_delay_ms` | float\|None | Camera acquisition delay in ms |
+| `camera_delay_y_line` | int\|None | Tangra Y-line used for calibration |
+| `calib_run_id` | str\|None | Calibration run identifier |
+| `ntp_offset_ms` | float\|None | NTP clock offset in ms |
+| `camera_delay_applied` | bool\|None | Whether camera delay was entered in Tangra |
+| `ntp_applied` | bool\|None | Whether NTP offset was entered in Tangra |
+| `net_correction_s` | float\|None | Net correction in seconds |
+| `lc_timestamps_corrected` | bool\|None | Whether light curve timestamps reflect applied corrections |
+| `corrections_confirmed` | bool | `True` only when both confirmation checkboxes were ticked in the dialog (patched in after `build_timing_data()` returns) |
 
 ---
 
@@ -716,6 +773,17 @@ User → Selects event → Generate Report Button
 - SharpCap interactions on background threads
 - Invoke() pattern for cross-thread UI updates
 - Prevents UI freezing during long operations
+
+### 8. **Correction Ownership — Tangra, not OM**
+
+Timing corrections (camera acquisition delay and NTP clock offset) are deliberately applied inside Tangra's Video File Properties → Timing Correction dialog, not by OM post-processing the CSV. Rationale:
+
+- **Provenance**: The Tangra CSV header's `Acquisition Delay (ms)` column is the authoritative record of what was applied. Any downstream tool — AOTA, PyOTE, R-OTE, a future tool, or another observer — can read that value without needing to know OM was involved. An OM-modified CSV would record `0` in that field while the timestamps were actually shifted, which is misleading to all downstream consumers.
+- **Double-correction prevention**: If OM modified the CSV and the observer also entered corrections in Tangra (a habit from prior events), the net correction would be applied twice with no visible warning. Keeping corrections in Tangra makes the audit trail single-sourced.
+- **Midnight wraparound and edge cases**: Tangra's internal timestamp arithmetic handles variable frame rates, dropped frames, and UTC midnight crossings with full context of the recording. Reproducing that logic in OM would require tight coupling to Tangra's internals and introduce a new untested code path.
+- **Tool scope**: OM's role is to assemble results from specialist tools and produce the final report. Not altering observation data keeps the error space cleanly partitioned — any reduction issue is entirely in the domain of the reduction tool.
+
+The tradeoff (a manual copy-paste step into Tangra's dialog) is mitigated by OM's Copy buttons in the "Not yet applied" guidance panel and the confirmation checkboxes with stale-value detection.
 
 ---
 

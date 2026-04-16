@@ -173,6 +173,7 @@ class AnalyzerForm(Form):
         self._last_peer_rows = []
         self._last_result = None
         self._last_aggregate_report = ""
+        self._current_pit_result = None
         _known_servers_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "..", "resources", "national_utc_ntp_servers.json",
@@ -1605,6 +1606,7 @@ class AnalyzerForm(Form):
 
     def _update_pit_result_display(self, pit):
         """Update the read-only summary box with the best-estimate offset and error."""
+        self._current_pit_result = pit
         if pit is None:
             self.txt_pit_result.Text = ""
             return
@@ -1617,6 +1619,17 @@ class AnalyzerForm(Form):
             offset_ms = pit["best_offset"] * 1000.0
             error_ms = primary_exp * 1000.0
         self.txt_pit_result.Text = "Offset: %.1f ms; Error: %.1f ms" % (offset_ms, error_ms)
+
+    def get_pit_result(self):
+        """Return the currently displayed PIT result as (offset_ms, error_ms), or None."""
+        pit = self._current_pit_result
+        if pit is None:
+            return None
+        alt_exp = pit.get("alt_u_expanded")
+        primary_exp = pit["u_expanded"]
+        if alt_exp is not None and alt_exp < primary_exp:
+            return (pit["alt_best_offset"] * 1000.0, alt_exp * 1000.0)
+        return (pit["best_offset"] * 1000.0, primary_exp * 1000.0)
 
     def _show_combined_output(self, pit):
         """Compose and display PIT section (top) then the aggregate report (below)."""

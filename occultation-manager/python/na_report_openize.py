@@ -342,7 +342,10 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "D43", comments[1])
         
         self._set_cell(worksheet, "D44", "This report was pre-filled by Occultation Manager")
-        
+        timing_note = self.build_timing_note(self._timing_data)
+        if timing_note:
+            self._set_cell(worksheet, "D45", timing_note)
+
         # AOTA TIMING DATA - populate if available from AOTA Report
         if self._aota_report_data:
             self._populate_aota_data(worksheet, self._aota_report_data)

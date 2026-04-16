@@ -1854,7 +1854,7 @@ class LocationConfirmDialog(Form):
         self.txt_latitude = TextBox()
         self.txt_latitude.Location = Point(int(120 * sf), int(80 * sf))
         self.txt_latitude.Size = Size(int(120 * sf), int(20 * sf))
-        self.txt_latitude.Text = f"{latitude:.5f}"
+        self.txt_latitude.Text = f"{latitude:.6f}"
         station_group.Controls.Add(self.txt_latitude)
         
         # Longitude input
@@ -1867,7 +1867,7 @@ class LocationConfirmDialog(Form):
         self.txt_longitude = TextBox()
         self.txt_longitude.Location = Point(int(365 * sf), int(80 * sf))
         self.txt_longitude.Size = Size(int(120 * sf), int(20 * sf))
-        self.txt_longitude.Text = f"{longitude:.5f}"
+        self.txt_longitude.Text = f"{longitude:.6f}"
         station_group.Controls.Add(self.txt_longitude)
         
         # Elevation input

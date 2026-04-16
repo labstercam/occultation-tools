@@ -733,12 +733,117 @@ class MyReportGenerator(ReportGeneratorBase):
   - Example: `"UCAC4 361-199861"` → `("UCAC4", "361-199861")`
 - `_generate_filename(event, date_str)` → filename string
 - `get_template_path()` → full path to the active report template
+- `build_timing_note(timing_data)` → str
+  - Static method. Returns a human-readable timing correction summary for the report Comments/Notes field.
+  - Returns `''` if `timing_data` is `None` or timing method is unrecognised.
+  - Output examples by scenario:
+
+| Scenario | Returns |
+|---|---|
+| `timing_method == 'GPS_dumb'` | `'GPS timing (reference only); no OM timing correction applied'` |
+| NTP, `lc_corrected=True`, `confirmed=True` | `'NTP timing corrections applied in Tangra: camera acq. delay X ms, NTP offset ±X ms (net ±X ms) — confirmed by observer'` |
+| NTP, `lc_corrected=True`, `confirmed=False` | As above without the `— confirmed by observer` suffix |
+| NTP, `cam_applied=None`, `ntp_applied=True` | `'NTP system used; timing corrections not applicable'` |
+| NTP, corrections not applied | `'NTP timing: corrections not applied in this session'` |
+| Any other method (`GPS_CMOS`, `Analog-VTI`, `Other`) | `''` (no note) |
 
 **Months Constant:**
 ```python
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 ```
+
+---
+
+### Timing Utilities
+
+Module: `timing_utils.py`
+
+```python
+from timing_utils import build_timing_data, compute_net_correction_s, seconds_to_hms
+```
+
+#### `build_timing_data()`
+
+Assembles the canonical `timing_data` dict used by all report generators.
+
+```python
+timing_data = build_timing_data(
+    timing_method,        # str: 'NTP' | 'GPS_dumb' | 'GPS_CMOS' | 'Analog-VTI' | 'Other'
+    camera_delay_ms,      # float | None
+    camera_delay_y_line,  # int | None
+    calib_run_id,         # str | None
+    ntp_offset_ms,        # float | None
+    camera_delay_applied, # bool | None
+    ntp_applied,          # bool | None
+    net_correction_s,     # float | None
+    lc_timestamps_corrected  # bool | None
+)
+# Caller may add: timing_data['corrections_confirmed'] = bool
+```
+
+**`timing_data` dict schema:**
+
+| Key | Type | Description |
+|---|---|---|
+| `timing_method` | str | Timing method selected in dialog |
+| `camera_delay_ms` | float\|None | Camera acquisition delay in milliseconds |
+| `camera_delay_y_line` | int\|None | Tangra Y-line used for calibration |
+| `calib_run_id` | str\|None | Calibration run identifier |
+| `ntp_offset_ms` | float\|None | NTP clock offset in milliseconds |
+| `camera_delay_applied` | bool\|None | Whether camera delay was entered in Tangra |
+| `ntp_applied` | bool\|None | Whether NTP offset was entered in Tangra |
+| `net_correction_s` | float\|None | Net correction in seconds |
+| `lc_timestamps_corrected` | bool\|None | Whether light curve timestamps reflect the applied corrections |
+| `corrections_confirmed` | bool | `True` only when both confirmation checkboxes were ticked in the dialog (patched in after `build_timing_data()` returns) |
+
+#### `compute_net_correction_s()`
+
+```python
+net_s = compute_net_correction_s(camera_delay_ms, ntp_offset_ms)
+# Returns: float (signed seconds)
+```
+
+#### `seconds_to_hms()`
+
+```python
+h, m, s = seconds_to_hms(total_seconds)
+# Returns: tuple(int, int, int)
+```
+
+---
+
+### ComprehensiveReportDialog
+
+Module: `comprehensive_report_dialog.py`
+
+```python
+from comprehensive_report_dialog import ComprehensiveReportDialog
+
+dlg = ComprehensiveReportDialog(
+    event=event_dict,
+    config=config,
+    ntp_analysis_result=ntp_result,  # from LocationConfirmDialog; may be None
+    parent_form=main_form
+)
+result = dlg.ShowDialog()
+```
+
+**Key methods:**
+
+- `get_report_type()` → str: `'NA'` | `'TT'` | `'SODIS'`
+- `get_selected_aota_report_path()` → str | None: full path to selected AOTA XML/Report file
+- `get_timing_data()` → dict: timing_data dict (see schema above); includes `corrections_confirmed`
+
+**`get_timing_data()` — Generate button preconditions for NTP:**
+
+The Generate button is disabled until all of the following are satisfied when the NTP panel is active:
+
+| Condition | Reason |
+|---|---|
+| Correction status radio selected | One of Applied / Not yet / N/A must be chosen |
+| Both confirmation checkboxes ticked | Only when "Applied in Tangra" is selected |
+| D/R plausibility passes | D < R for Positive/Unsure observations; blocks generation otherwise |
 
 ---
 

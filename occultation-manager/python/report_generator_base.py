@@ -92,3 +92,35 @@ class ReportGeneratorBase:
                 if c.get('id') == camera_id:
                     return c
         return self.config.get_active_camera()
+
+    @staticmethod
+    def build_timing_note(timing_data):
+        """Return a human-readable summary of timing corrections for report comments.
+
+        Returns an empty string when there is nothing meaningful to record.
+        """
+        if not timing_data:
+            return ''
+        method = timing_data.get('timing_method', '')
+        if method == 'GPS_dumb':
+            return 'GPS timing (reference only); no OM timing correction applied'
+        if method != 'NTP':
+            return ''
+        cam_ms = timing_data.get('camera_delay_ms') or 0.0
+        ntp_ms = timing_data.get('ntp_offset_ms') or 0.0
+        net_s = timing_data.get('net_correction_s')
+        lc_corrected = timing_data.get('lc_timestamps_corrected')
+        confirmed = timing_data.get('corrections_confirmed', False)
+        cam_applied = timing_data.get('camera_delay_applied')
+        ntp_applied = timing_data.get('ntp_applied')
+        if lc_corrected is True:
+            net_ms = (net_s * 1000.0) if net_s is not None else (cam_ms + ntp_ms)
+            note = ('NTP timing corrections applied in Tangra: '
+                    'camera acq. delay {0:.1f} ms, NTP offset {1:+.1f} ms (net {2:+.1f} ms)'.format(
+                        cam_ms, ntp_ms, net_ms))
+            if confirmed:
+                note += ' \u2014 confirmed by observer'
+            return note
+        if cam_applied is None and ntp_applied is True:
+            return 'NTP system used; timing corrections not applicable'
+        return 'NTP timing: corrections not applied in this session'

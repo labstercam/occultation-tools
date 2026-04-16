@@ -135,6 +135,11 @@ class SODISReportGeneratorText(ReportGeneratorBase):
         transparency_code = self._map_transparency_code(self._clouds)
         stability_code = self._map_stability_code(self._stability)
 
+        timing_note = self.build_timing_note(self._timing_data)
+        comments_value = self._other_conditions or ''
+        if timing_note:
+            comments_value = (comments_value + '  ' + timing_note).strip() if comments_value else timing_note
+
         values = {
             'Occultation': (self._observation_type or '').upper(),
             'DATE': dt.strftime('%d %B %Y') if dt else '',
@@ -172,7 +177,7 @@ class SODISReportGeneratorText(ReportGeneratorBase):
             'Temperature': '',
             'Transparency': transparency_code,
             'Stability': stability_code,
-            'Comments': self._other_conditions or ''
+            'Comments': comments_value
         }
 
         return values

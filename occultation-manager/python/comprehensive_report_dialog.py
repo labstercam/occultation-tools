@@ -16,7 +16,7 @@ from System.Windows.Forms import (
     Form, Button, Label, ListBox, Panel, TextBox, GroupBox, RadioButton, ComboBox,
     CheckBox, Clipboard, AnchorStyles, DockStyle, Padding, DialogResult,
     FormStartPosition, MessageBox, MessageBoxButtons, MessageBoxIcon,
-    FolderBrowserDialog, SelectionMode, ComboBoxStyle
+    FolderBrowserDialog, SelectionMode, ComboBoxStyle, ToolTip
 )
 from theme import apply_theme_to_control
 
@@ -68,9 +68,11 @@ class ComprehensiveReportDialog(Form):
         self._calib_runs = []
         self._ntp_offset_ms = 0.0
         self._ntp_uncertainty_ms = 0.0
+        self._ntp_gui_form = None          # reference to open AnalyzerForm, if any
         self._last_cam_id = None          # guards _init_timing_section from spurious fires
         self._correction_user_set = False # True once user explicitly clicks a correction radio
         self._suppress_correction_event = False  # True during programmatic radio changes
+        self._plausibility_dr_ok = True   # False when D >= R for a positive/unsure observation
 
         self.setup_ui()
         
@@ -278,7 +280,7 @@ class ComprehensiveReportDialog(Form):
         # --- NTP panel (visible when NTP method selected) ---
         self._pnl_timing_ntp = Panel()
         self._pnl_timing_ntp.Location = Point(8, 76)
-        self._pnl_timing_ntp.Size = Size(922, 390)
+        self._pnl_timing_ntp.Size = Size(922, 458)
         self._pnl_timing_ntp.Visible = False
         grp_timing.Controls.Add(self._pnl_timing_ntp)
 
@@ -289,6 +291,13 @@ class ComprehensiveReportDialog(Form):
         lbl_cam_section.Size = Size(270, 18)
         self._pnl_timing_ntp.Controls.Add(lbl_cam_section)
 
+        _btn_ntp_info = Button()
+        _btn_ntp_info.Text = "\u24d8  What is NTP correction?"
+        _btn_ntp_info.Location = Point(462, 3)
+        _btn_ntp_info.Size = Size(195, 22)
+        _btn_ntp_info.Click += self._on_ntp_info_click
+        self._pnl_timing_ntp.Controls.Add(_btn_ntp_info)
+
         lbl_calib_run = Label()
         lbl_calib_run.Text = "Calibration run:"
         lbl_calib_run.Location = Point(5, 28)
@@ -297,15 +306,23 @@ class ComprehensiveReportDialog(Form):
 
         self._combo_calib_run = ComboBox()
         self._combo_calib_run.Location = Point(118, 26)
-        self._combo_calib_run.Size = Size(390, 22)
+        self._combo_calib_run.Size = Size(356, 22)
         self._combo_calib_run.DropDownStyle = ComboBoxStyle.DropDownList
         self._combo_calib_run.SelectedIndexChanged += self._on_calib_run_changed
         self._pnl_timing_ntp.Controls.Add(self._combo_calib_run)
 
+        _btn_calib_info = Button()
+        _btn_calib_info.Text = "?"
+        _btn_calib_info.Location = Point(477, 26)
+        _btn_calib_info.Size = Size(24, 22)
+        _btn_calib_info.Click += self._on_calib_info_click
+        self._pnl_timing_ntp.Controls.Add(_btn_calib_info)
+
         self._lbl_calib_match = Label()
         self._lbl_calib_match.Text = ""
-        self._lbl_calib_match.Location = Point(514, 28)
-        self._lbl_calib_match.Size = Size(398, 22)
+        self._lbl_calib_match.Location = Point(514, 24)
+        self._lbl_calib_match.Size = Size(398, 34)
+        self._lbl_calib_match.AutoSize = False
         self._lbl_calib_match.ForeColor = Color.Gray
         self._pnl_timing_ntp.Controls.Add(self._lbl_calib_match)
 
@@ -322,15 +339,22 @@ class ComprehensiveReportDialog(Form):
         self._txt_y_line.TextChanged += self._on_y_line_changed
         self._pnl_timing_ntp.Controls.Add(self._txt_y_line)
 
+        _btn_y_line_info = Button()
+        _btn_y_line_info.Text = "?"
+        _btn_y_line_info.Location = Point(136, 52)
+        _btn_y_line_info.Size = Size(24, 22)
+        _btn_y_line_info.Click += self._on_y_line_info_click
+        self._pnl_timing_ntp.Controls.Add(_btn_y_line_info)
+
         lbl_calc_label = Label()
         lbl_calc_label.Text = "Calculated delay:"
-        lbl_calc_label.Location = Point(140, 54)
+        lbl_calc_label.Location = Point(163, 54)
         lbl_calc_label.Size = Size(128, 22)
         self._pnl_timing_ntp.Controls.Add(lbl_calc_label)
 
         self._lbl_calc_delay = Label()
         self._lbl_calc_delay.Text = "\u2014"
-        self._lbl_calc_delay.Location = Point(272, 54)
+        self._lbl_calc_delay.Location = Point(295, 54)
         self._lbl_calc_delay.Size = Size(200, 22)
         self._pnl_timing_ntp.Controls.Add(self._lbl_calc_delay)
 
@@ -353,8 +377,15 @@ class ComprehensiveReportDialog(Form):
         self._lbl_ntp_section.Font = Font(self._lbl_ntp_section.Font.FontFamily,
                                           self._lbl_ntp_section.Font.Size, FontStyle.Bold)
         self._lbl_ntp_section.Location = Point(5, 103)
-        self._lbl_ntp_section.Size = Size(750, 18)
+        self._lbl_ntp_section.Size = Size(582, 18)
         self._pnl_timing_ntp.Controls.Add(self._lbl_ntp_section)
+
+        _btn_open_ntp_analyser = Button()
+        _btn_open_ntp_analyser.Text = "Open NTP Analyser"
+        _btn_open_ntp_analyser.Location = Point(590, 101)
+        _btn_open_ntp_analyser.Size = Size(152, 22)
+        _btn_open_ntp_analyser.Click += self._on_open_ntp_analyser_click
+        self._pnl_timing_ntp.Controls.Add(_btn_open_ntp_analyser)
 
         self._lbl_ntp_warning = Label()
         self._lbl_ntp_warning.Text = "\u26a0  Not stored in Tangra CSV \u2014 cannot be auto-verified"
@@ -364,22 +395,56 @@ class ComprehensiveReportDialog(Form):
         self._pnl_timing_ntp.Controls.Add(self._lbl_ntp_warning)
 
         self._rad_corrections_applied = RadioButton()
-        self._rad_corrections_applied.Text = "Applied in Tangra \u2014 corrections were entered before this observation"
+        self._rad_corrections_applied.Text = "Applied in Tangra \u2014 I entered both corrections before generating the light curve"
         self._rad_corrections_applied.Location = Point(5, 145)
         self._rad_corrections_applied.Size = Size(890, 22)
         self._rad_corrections_applied.CheckedChanged += self._on_timing_radio_changed
         self._pnl_timing_ntp.Controls.Add(self._rad_corrections_applied)
 
+        # --- Confirmation sub-panel (visible when Applied in Tangra is selected) ---
+        self._pnl_applied_confirm = Panel()
+        self._pnl_applied_confirm.Location = Point(22, 167)
+        self._pnl_applied_confirm.Size = Size(890, 68)
+        self._pnl_applied_confirm.Visible = False
+        self._pnl_timing_ntp.Controls.Add(self._pnl_applied_confirm)
+
+        self._lbl_confirm_head = Label()
+        self._lbl_confirm_head.Text = "Confirm the values you entered in Tangra match:"
+        self._lbl_confirm_head.Location = Point(0, 0)
+        self._lbl_confirm_head.Size = Size(660, 18)
+        self._pnl_applied_confirm.Controls.Add(self._lbl_confirm_head)
+
+        _btn_why_confirm = Button()
+        _btn_why_confirm.Text = "Why confirm?"
+        _btn_why_confirm.Location = Point(664, 0)
+        _btn_why_confirm.Size = Size(100, 20)
+        _btn_why_confirm.Click += self._on_why_confirm_click
+        self._pnl_applied_confirm.Controls.Add(_btn_why_confirm)
+
+        self._chk_confirm_cam_delay = CheckBox()
+        self._chk_confirm_cam_delay.Text = "Camera acquisition delay: \u2014"
+        self._chk_confirm_cam_delay.Location = Point(0, 20)
+        self._chk_confirm_cam_delay.Size = Size(860, 20)
+        self._chk_confirm_cam_delay.CheckedChanged += self._on_confirm_check_changed
+        self._pnl_applied_confirm.Controls.Add(self._chk_confirm_cam_delay)
+
+        self._chk_confirm_ntp = CheckBox()
+        self._chk_confirm_ntp.Text = "NTP clock offset: \u2014"
+        self._chk_confirm_ntp.Location = Point(0, 44)
+        self._chk_confirm_ntp.Size = Size(860, 20)
+        self._chk_confirm_ntp.CheckedChanged += self._on_confirm_check_changed
+        self._pnl_applied_confirm.Controls.Add(self._chk_confirm_ntp)
+
         self._rad_corrections_not_applied = RadioButton()
         self._rad_corrections_not_applied.Text = "Not yet applied \u2014 I need to apply corrections in Tangra first"
-        self._rad_corrections_not_applied.Location = Point(5, 167)
+        self._rad_corrections_not_applied.Location = Point(5, 235)
         self._rad_corrections_not_applied.Size = Size(890, 22)
         self._rad_corrections_not_applied.CheckedChanged += self._on_timing_radio_changed
         self._pnl_timing_ntp.Controls.Add(self._rad_corrections_not_applied)
 
         self._rad_corrections_na = RadioButton()
         self._rad_corrections_na.Text = "Not applicable / no NTP data"
-        self._rad_corrections_na.Location = Point(5, 189)
+        self._rad_corrections_na.Location = Point(5, 257)
         self._rad_corrections_na.Size = Size(890, 22)
         self._rad_corrections_na.CheckedChanged += self._on_timing_radio_changed
         self._pnl_timing_ntp.Controls.Add(self._rad_corrections_na)
@@ -388,33 +453,48 @@ class ComprehensiveReportDialog(Form):
         self._lbl_net_heading.Text = "Net correction:"
         self._lbl_net_heading.Font = Font(self._lbl_net_heading.Font.FontFamily,
                                           self._lbl_net_heading.Font.Size, FontStyle.Bold)
-        self._lbl_net_heading.Location = Point(5, 220)
+        self._lbl_net_heading.Location = Point(5, 288)
         self._lbl_net_heading.Size = Size(120, 18)
         self._pnl_timing_ntp.Controls.Add(self._lbl_net_heading)
 
         self._lbl_net_correction = Label()
         self._lbl_net_correction.Text = "\u2014"
-        self._lbl_net_correction.Location = Point(130, 220)
+        self._lbl_net_correction.Location = Point(130, 288)
         self._lbl_net_correction.Size = Size(780, 18)
         self._pnl_timing_ntp.Controls.Add(self._lbl_net_correction)
 
         self._lbl_d_preview = Label()
         self._lbl_d_preview.Text = ""
-        self._lbl_d_preview.Location = Point(5, 242)
+        self._lbl_d_preview.Location = Point(5, 310)
         self._lbl_d_preview.Size = Size(450, 16)
         self._lbl_d_preview.ForeColor = Color.Gray
         self._pnl_timing_ntp.Controls.Add(self._lbl_d_preview)
 
         self._lbl_r_preview = Label()
         self._lbl_r_preview.Text = ""
-        self._lbl_r_preview.Location = Point(460, 242)
+        self._lbl_r_preview.Location = Point(460, 310)
         self._lbl_r_preview.Size = Size(450, 16)
         self._lbl_r_preview.ForeColor = Color.Gray
         self._pnl_timing_ntp.Controls.Add(self._lbl_r_preview)
 
+        self._lbl_plausibility_warning = Label()
+        self._lbl_plausibility_warning.Text = ''
+        self._lbl_plausibility_warning.Location = Point(5, 328)
+        self._lbl_plausibility_warning.Size = Size(782, 32)
+        self._lbl_plausibility_warning.ForeColor = Color.OrangeRed
+        self._pnl_timing_ntp.Controls.Add(self._lbl_plausibility_warning)
+
+        self._btn_plausibility_info = Button()
+        self._btn_plausibility_info.Text = "What happened?"
+        self._btn_plausibility_info.Location = Point(790, 330)
+        self._btn_plausibility_info.Size = Size(120, 24)
+        self._btn_plausibility_info.Visible = False
+        self._btn_plausibility_info.Click += self._on_plausibility_info_click
+        self._pnl_timing_ntp.Controls.Add(self._btn_plausibility_info)
+
         # --- Step-by-step guidance panel (visible when "Not yet applied" is selected) ---
         self._pnl_apply_guidance = Panel()
-        self._pnl_apply_guidance.Location = Point(0, 268)
+        self._pnl_apply_guidance.Location = Point(0, 336)
         self._pnl_apply_guidance.Size = Size(922, 118)
         self._pnl_apply_guidance.BackColor = Color.LightYellow
         self._pnl_apply_guidance.Visible = False
@@ -871,6 +951,13 @@ class ComprehensiveReportDialog(Form):
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
         
+        self._btn_why_blocked = Button()
+        self._btn_why_blocked.Text = "?"
+        self._btn_why_blocked.Location = Point(723, 975)
+        self._btn_why_blocked.Size = Size(24, 22)
+        self._btn_why_blocked.Click += self._on_why_blocked_click
+        self.Controls.Add(self._btn_why_blocked)
+
         self.btn_generate = Button()
         self.btn_generate.Text = "Generate Report"
         self.btn_generate.Location = Point(750, 971)
@@ -887,7 +974,9 @@ class ComprehensiveReportDialog(Form):
         btn_cancel.Click += self.cancel_click
         self.Controls.Add(btn_cancel)
         self.CancelButton = btn_cancel
-    
+
+        self._setup_tooltips()
+
     def load_preferences(self):
         """Load saved preferences and populate fields"""
         # Load report type preference
@@ -1002,6 +1091,8 @@ class ComprehensiveReportDialog(Form):
     
     def observation_type_changed(self, sender, e):
         """Handle observation type radio button change"""
+        if hasattr(self, '_lbl_plausibility_warning'):
+            self._check_dr_plausibility()
         self.update_button_state()
     
     def browse_folder_click(self, sender, e):
@@ -1379,6 +1470,7 @@ class ComprehensiveReportDialog(Form):
     def _pyote_event_selection_changed(self, sender, e):
         """Handle PyOTE event listbox selection change - update D/R preview"""
         self._update_pyote_preview()
+        self._update_timing_net_preview()
         self.update_button_state()
 
     def _update_pyote_preview(self):
@@ -1557,14 +1649,31 @@ class ComprehensiveReportDialog(Form):
                 and self._rad_corrections_not_applied.Checked):
             missing.append("timing corrections \u2014 apply in Tangra first (see \u00a73 guidance below)")
 
+        # Block generate if Applied selected but confirmation checkboxes not both ticked
+        if (hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
+                and hasattr(self, '_rad_corrections_applied')
+                and self._rad_corrections_applied.Checked):
+            cam_ok = hasattr(self, '_chk_confirm_cam_delay') and self._chk_confirm_cam_delay.Checked
+            ntp_ok = hasattr(self, '_chk_confirm_ntp') and self._chk_confirm_ntp.Checked
+            if not (cam_ok and ntp_ok):
+                missing.append("confirmation that both corrections were entered in Tangra (tick the boxes in \u00a73)")
+
+        # Block generate if D >= R plausibility check failed
+        if not getattr(self, '_plausibility_dr_ok', True):
+            missing.append("valid D/R times \u2014 D \u2265 R (see \u00a73 timing warning)")
+
         if missing:
             self.status_label.Text = "Missing: " + ", ".join(missing)
             self.status_label.ForeColor = Color.Red
             self.btn_generate.Enabled = False
+            if hasattr(self, '_btn_why_blocked'):
+                self._btn_why_blocked.Visible = True
         else:
             self.status_label.Text = "Ready to generate report"
             self.status_label.ForeColor = Color.Green
             self.btn_generate.Enabled = True
+            if hasattr(self, '_btn_why_blocked'):
+                self._btn_why_blocked.Visible = False
     
     def generate_click(self, sender, e):
         """Handle generate button click"""
@@ -1764,9 +1873,13 @@ class ComprehensiveReportDialog(Form):
             y_line = int(float(self._txt_y_line.Text.strip() or '0'))
         except (ValueError, TypeError):
             y_line = 0
+        corrections_confirmed = False
         if self._rad_corrections_applied.Checked:
             camera_delay_applied = True
             ntp_applied = True
+            cam_ok = hasattr(self, '_chk_confirm_cam_delay') and self._chk_confirm_cam_delay.Checked
+            ntp_ok = hasattr(self, '_chk_confirm_ntp') and self._chk_confirm_ntp.Checked
+            corrections_confirmed = cam_ok and ntp_ok
         elif self._rad_corrections_not_applied.Checked:
             # User will apply corrections in Tangra; no internal D/R correction applied by OM
             camera_delay_applied = None
@@ -1778,7 +1891,7 @@ class ComprehensiveReportDialog(Form):
             camera_delay_applied = None
             ntp_applied = None
         ntp_offset_ms = 0.0 if self._rad_corrections_na.Checked else self._ntp_offset_ms
-        return build_timing_data(
+        result = build_timing_data(
             timing_method='NTP',
             camera_delay_ms=camera_delay_ms,
             camera_delay_y_line=y_line,
@@ -1787,6 +1900,8 @@ class ComprehensiveReportDialog(Form):
             camera_delay_applied=camera_delay_applied,
             ntp_applied=ntp_applied,
         )
+        result['corrections_confirmed'] = corrections_confirmed
+        return result
 
     # ------------------------------------------------------------------
     # Timing section helpers
@@ -1964,14 +2079,39 @@ class ComprehensiveReportDialog(Form):
         delay_ms = self._calculate_camera_delay()
         ntp_ms = getattr(self, '_ntp_offset_ms', 0.0)
         if delay_ms is not None:
-            self._lbl_copy_cam_delay.Text = '{0:.1f} ms'.format(delay_ms)
+            delay_str = '{0:.1f} ms'.format(delay_ms)
+            self._lbl_copy_cam_delay.Text = delay_str
             self._copy_cam_delay_value = '{0:.1f}'.format(delay_ms)
         else:
+            delay_str = None
             self._lbl_copy_cam_delay.Text = '\u2014 (enter Y line above)'
             self._copy_cam_delay_value = None
         ntp_copy = '{0:.1f}'.format(ntp_ms)
         self._lbl_copy_ntp_off.Text = ntp_copy + ' ms'
         self._copy_ntp_off_value = ntp_copy
+
+        # Update confirmation checkbox labels with current calculated values;
+        # uncheck any checkbox whose value has changed since it was last ticked.
+        stale = False
+        if hasattr(self, '_chk_confirm_cam_delay'):
+            new_cam_text = ('Camera acquisition delay: {0}'.format(delay_str)
+                            if delay_str else 'Camera acquisition delay: \u2014 (calculate above first)')
+            if self._chk_confirm_cam_delay.Text != new_cam_text:
+                if self._chk_confirm_cam_delay.Checked:
+                    stale = True
+                self._chk_confirm_cam_delay.Checked = False
+                self._chk_confirm_cam_delay.Text = new_cam_text
+        if hasattr(self, '_chk_confirm_ntp'):
+            new_ntp_text = 'NTP clock offset: {0} ms'.format(ntp_copy)
+            if self._chk_confirm_ntp.Text != new_ntp_text:
+                if self._chk_confirm_ntp.Checked:
+                    stale = True
+                self._chk_confirm_ntp.Checked = False
+                self._chk_confirm_ntp.Text = new_ntp_text
+        if hasattr(self, '_lbl_confirm_head') and stale:
+            self._lbl_confirm_head.Text = u'\u26a0 Values changed \u2014 please re-confirm below:'
+            self._lbl_confirm_head.ForeColor = Color.OrangeRed
+
         # Toggle guidance panel visibility
         not_yet = (hasattr(self, '_rad_corrections_not_applied')
                    and self._rad_corrections_not_applied.Checked)
@@ -2052,13 +2192,17 @@ class ComprehensiveReportDialog(Form):
         when start time is unavailable.
         """
         if not folder or not os.path.isdir(folder):
+            print("[CameraSettings] folder invalid or missing:", repr(folder))
             return None
         candidates = []
         try:
-            for f in os.listdir(folder):
-                if f.lower().endswith('.camerasettings'):
+            all_files = os.listdir(folder)
+            for f in all_files:
+                fl = f.lower()
+                if fl.endswith('.camerasettings') or fl.endswith('.camerasettings.txt'):
                     candidates.append(os.path.join(folder, f))
-        except Exception:
+        except Exception as ex:
+            print("[CameraSettings] ERROR listing folder:", ex)
             return None
         if not candidates:
             return None
@@ -2156,6 +2300,21 @@ class ComprehensiveReportDialog(Form):
                 s = s.split('x')[0]
             return s
 
+        def _apply_binning_to_area(area_str, binning_str):
+            """Divide unbinned WxH area string by binning factor. Returns binned 'WxH' or None."""
+            try:
+                b = int(_norm_binning(binning_str))
+                if b < 2:
+                    return area_str
+                parts = str(area_str).strip().lower().split('x')
+                if len(parts) == 2:
+                    w = int(round(int(parts[0]) / b))
+                    h = int(round(int(parts[1]) / b))
+                    return '{0}x{1}'.format(w, h)
+            except (ValueError, TypeError, AttributeError):
+                pass
+            return area_str
+
         def _norm_int(v):
             """Convert a stored tilt/pan value (may be int, float string, or '') to int, or None."""
             try:
@@ -2168,8 +2327,11 @@ class ComprehensiveReportDialog(Form):
             for run in all_runs_sorted:
                 checks = []
                 if sc_area:
+                    # CameraSettings stores unbinned pixels; calibration run stores binned pixels
+                    binning_for_area = sc_binning or run.get('binning', '1')
+                    sc_area_binned = _apply_binning_to_area(sc_area, binning_for_area)
                     checks.append(
-                        str(run.get('camera_area', '')).strip() == str(sc_area).strip())
+                        str(run.get('camera_area', '')).strip().lower() == sc_area_binned.lower())
                 if sc_binning:
                     checks.append(
                         _norm_binning(run.get('binning', '')) == _norm_binning(sc_binning))
@@ -2200,20 +2362,31 @@ class ComprehensiveReportDialog(Form):
         if display_runs:
             self._combo_calib_run.SelectedIndex = 0
         if matched_runs:
-            match_detail = '{0} / {1}x / {2}'.format(sc_area, sc_binning, sc_colour)
+            sc_area_binned = _apply_binning_to_area(sc_area, sc_binning) if sc_area and sc_binning else sc_area
+            match_detail = '{0} / {1}x / {2}'.format(sc_area_binned, sc_binning, sc_colour)
             if sc_tilt is not None:
                 match_detail += ' / tilt {0}'.format(sc_tilt)
             if sc_pan is not None:
                 match_detail += ' / pan {0}'.format(sc_pan)
-            self._lbl_calib_match.Text = '\u2714 Auto-matched from SharpCap settings ({0})'.format(match_detail)
+            self._lbl_calib_match.Text = '\u2714 Auto-matched from SharpCap settings\n{0}'.format(match_detail)
             self._lbl_calib_match.ForeColor = Color.Green
         elif sc_area or sc_binning:
-            no_match_detail = '{0}/{1}x/{2}'.format(sc_area or '?', sc_binning or '?', sc_colour or '?')
+            # Show both what the file has (binned) and what the stored run has, for easy comparison
+            stored = all_runs_sorted[0] if all_runs_sorted else {}
+            binning_for_area = sc_binning or stored.get('binning', '1')
+            sc_area_binned = _apply_binning_to_area(sc_area, binning_for_area) if sc_area else '?'
+            file_detail = 'file: {0}(/{1}binned={2})/{3}x/{4}'.format(
+                sc_area or '?', _norm_binning(binning_for_area), sc_area_binned,
+                _norm_binning(sc_binning) if sc_binning else '?', sc_colour or '?')
+            run_detail = 'run: {0}/{1}x/{2}'.format(
+                stored.get('camera_area', '?'), stored.get('binning', '?'), stored.get('colour_space', '?'))
             if sc_tilt is not None:
-                no_match_detail += '/tilt {0}'.format(sc_tilt)
+                file_detail += '/tilt {0}'.format(sc_tilt)
+                run_detail += '/tilt {0}'.format(stored.get('tilt', '?'))
             if sc_pan is not None:
-                no_match_detail += '/pan {0}'.format(sc_pan)
-            self._lbl_calib_match.Text = '\u26a0 No match for {0} \u2014 showing all runs'.format(no_match_detail)
+                file_detail += '/pan {0}'.format(sc_pan)
+                run_detail += '/pan {0}'.format(stored.get('pan', '?'))
+            self._lbl_calib_match.Text = '\u26a0 No match \u2014 {0}  vs  {1} \u2014 showing all runs'.format(file_detail, run_detail)
             self._lbl_calib_match.ForeColor = Color.OrangeRed
         elif sc_file_found:
             self._lbl_calib_match.Text = '\u26a0 SharpCap settings found but fields unreadable \u2014 showing all runs'
@@ -2241,7 +2414,28 @@ class ComprehensiveReportDialog(Form):
             return
         if not self._suppress_correction_event:
             self._correction_user_set = True
+        applied = (hasattr(self, '_rad_corrections_applied')
+                   and self._rad_corrections_applied.Checked)
+        if hasattr(self, '_pnl_applied_confirm'):
+            self._pnl_applied_confirm.Visible = applied
+        if not applied:
+            if hasattr(self, '_chk_confirm_cam_delay'):
+                self._chk_confirm_cam_delay.Checked = False
+            if hasattr(self, '_chk_confirm_ntp'):
+                self._chk_confirm_ntp.Checked = False
+            if hasattr(self, '_lbl_confirm_head'):
+                self._lbl_confirm_head.Text = 'Confirm the values you entered in Tangra match:'
+                self._lbl_confirm_head.ForeColor = self.theme_manager.get_current_theme()['text_foreground']
         self._update_timing_net_preview()
+        self.update_button_state()
+
+    def _on_confirm_check_changed(self, sender, e):
+        # When both boxes are ticked again, clear any stale warning on the heading
+        cam_ok = hasattr(self, '_chk_confirm_cam_delay') and self._chk_confirm_cam_delay.Checked
+        ntp_ok = hasattr(self, '_chk_confirm_ntp') and self._chk_confirm_ntp.Checked
+        if cam_ok and ntp_ok and hasattr(self, '_lbl_confirm_head'):
+            self._lbl_confirm_head.Text = 'Confirm the values you entered in Tangra match:'
+            self._lbl_confirm_head.ForeColor = self.theme_manager.get_current_theme()['text_foreground']
         self.update_button_state()
 
     def _get_y_line_max(self):
@@ -2423,6 +2617,314 @@ class ComprehensiveReportDialog(Form):
         else:
             self._lbl_r_preview.Text = ''
         self._update_guidance_values()
+        self._check_dr_plausibility()
+
+    def _check_dr_plausibility(self):
+        """Check D/R time order and correction magnitude; update warning label and _plausibility_dr_ok."""
+        if not hasattr(self, '_lbl_plausibility_warning'):
+            return
+        if not self._rad_timing_ntp.Checked:
+            self._lbl_plausibility_warning.Text = ''
+            self._plausibility_dr_ok = True
+            if hasattr(self, '_btn_plausibility_info'):
+                self._btn_plausibility_info.Visible = False
+            return
+        # When corrections are not yet applied, the guidance panel is visible in the
+        # same y-space as this warning label.  Nothing meaningful to check yet.
+        if self._rad_corrections_not_applied.Checked:
+            self._lbl_plausibility_warning.Text = ''
+            self._plausibility_dr_ok = True
+            if hasattr(self, '_btn_plausibility_info'):
+                self._btn_plausibility_info.Visible = False
+            return
+        warnings = []
+        blocking = False
+        # Check 1 (blocking): D must precede R for positive/unsure observations
+        if self._rad_corrections_applied.Checked:
+            obs_needs_dr = ((hasattr(self, 'rb_positive') and self.rb_positive.Checked)
+                            or (hasattr(self, 'rb_unsure') and self.rb_unsure.Checked))
+            if (obs_needs_dr
+                    and self._d_time_seconds is not None
+                    and self._r_time_seconds is not None
+                    and self._d_time_seconds >= self._r_time_seconds):
+                warnings.insert(0, u'\u26a0 D \u2265 R: disappearance is not before reappearance \u2014 check the correction values you entered in Tangra')
+                blocking = True
+        # Check 2 (non-blocking): unusually large net correction
+        delay_ms = self._calculate_camera_delay() or 0.0
+        ntp_ms = 0.0 if self._rad_corrections_na.Checked else getattr(self, '_ntp_offset_ms', 0.0)
+        net_abs = abs(delay_ms + ntp_ms)
+        if net_abs > 500.0:
+            warnings.append(u'\u26a0 Net correction {0:.0f} ms is unusually large \u2014 verify inputs'.format(net_abs))
+        self._plausibility_dr_ok = not blocking
+        if warnings:
+            self._lbl_plausibility_warning.Text = u'\n'.join(warnings)
+            self._lbl_plausibility_warning.ForeColor = Color.OrangeRed if blocking else Color.DarkOrange
+            if hasattr(self, '_btn_plausibility_info'):
+                self._btn_plausibility_info.Visible = True
+        else:
+            self._lbl_plausibility_warning.Text = ''
+            if hasattr(self, '_btn_plausibility_info'):
+                self._btn_plausibility_info.Visible = False
+
+    def _setup_tooltips(self):
+        """Configure hover tooltips for NTP panel controls and observation type radios."""
+        self._tooltip = ToolTip()
+        self._tooltip.AutoPopDelay = 12000
+        self._tooltip.InitialDelay = 400
+        self._tooltip.ReshowDelay = 200
+        if hasattr(self, '_combo_calib_run'):
+            self._tooltip.SetToolTip(
+                self._combo_calib_run,
+                "Select the run whose area, binning, gain, and frame rate match\n"
+                "your occultation recording. If none match, use Tools \u2192 Camera Delay Calculator."
+            )
+        if hasattr(self, '_txt_y_line'):
+            self._tooltip.SetToolTip(
+                self._txt_y_line,
+                "The vertical pixel position of the star on the sensor in Tangra.\n"
+                "Right-click the aperture \u2192 Properties to read it."
+            )
+        if hasattr(self, '_lbl_net_correction'):
+            self._tooltip.SetToolTip(
+                self._lbl_net_correction,
+                "Camera delay + NTP offset combined. Positive \u2014 event is later\n"
+                "than the raw timestamp. Applied to both D and R times."
+            )
+        if hasattr(self, '_lbl_net_heading'):
+            self._tooltip.SetToolTip(
+                self._lbl_net_heading,
+                "Camera delay + NTP offset combined. Positive \u2014 event is later\n"
+                "than the raw timestamp. Applied to both D and R times."
+            )
+        if hasattr(self, '_chk_confirm_cam_delay'):
+            self._tooltip.SetToolTip(
+                self._chk_confirm_cam_delay,
+                "Confirm this is the exact value you entered in Tangra\u2019s\n"
+                "timing settings before finishing the light-curve reduction."
+            )
+        if hasattr(self, '_chk_confirm_ntp'):
+            self._tooltip.SetToolTip(
+                self._chk_confirm_ntp,
+                "Confirm this is the exact value you entered in Tangra\u2019s\n"
+                "timing settings before finishing the light-curve reduction."
+            )
+        if hasattr(self, '_rad_corrections_not_applied'):
+            self._tooltip.SetToolTip(
+                self._rad_corrections_not_applied,
+                "Choose this if you still need to enter the corrections in Tangra.\n"
+                "The guidance panel below shows the exact steps."
+            )
+        if hasattr(self, 'rb_positive'):
+            self._tooltip.SetToolTip(
+                self.rb_positive,
+                "Observed both disappearance and reappearance.\n"
+                "AOTA or PyOTE result required."
+            )
+        if hasattr(self, 'rb_negative'):
+            self._tooltip.SetToolTip(
+                self.rb_negative,
+                "No occultation was detected.\n"
+                "AOTA is optional; a light curve CSV is still required."
+            )
+        if hasattr(self, 'rb_unsure'):
+            self._tooltip.SetToolTip(
+                self.rb_unsure,
+                "A possible event occurred but the result is uncertain.\n"
+                "AOTA or PyOTE result required."
+            )
+
+    def _on_open_ntp_analyser_click(self, sender, e):
+        """Open the standalone NTP Analyser window from within the Generate Report dialog."""
+        try:
+            if getattr(self, '_ntp_gui_form', None) is not None:
+                try:
+                    if not self._ntp_gui_form.IsDisposed:
+                        self._ntp_gui_form.BringToFront()
+                        self._ntp_gui_form.Activate()
+                        self._ntp_gui_form.TopMost = True
+                        self._ntp_gui_form.TopMost = False
+                        return
+                except Exception:
+                    pass
+
+            import analyze_ntp_timing_accuracy as ntp_gui
+            self._ntp_gui_form = ntp_gui.AnalyzerForm()
+            self._ntp_gui_form.FormClosed += self._on_ntp_analyser_form_closed
+            try:
+                self._ntp_gui_form.Show(self)
+            except Exception:
+                self._ntp_gui_form.Show()
+            self._ntp_gui_form.BringToFront()
+            self._ntp_gui_form.Activate()
+            self._ntp_gui_form.TopMost = True
+            self._ntp_gui_form.TopMost = False
+
+            # Pre-populate with event context
+            stats_folder = None
+            loopstats_path = getattr(self.event, 'ntp_loopstats_path', None)
+            if loopstats_path:
+                stats_folder = os.path.dirname(loopstats_path)
+            event_dt = getattr(self.event, 'event_datetime', None)
+            obs_lat = getattr(self.event, 'latitude', None)
+            obs_lon = getattr(self.event, 'longitude', None)
+            self._ntp_gui_form.prefill_from_event(stats_folder, event_dt, obs_lat, obs_lon)
+        except Exception as ex:
+            MessageBox.Show(
+                "Unable to open NTP analyser:\n\n{0}".format(str(ex)),
+                "Open NTP Analyser Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error,
+            )
+
+    def _on_ntp_analyser_form_closed(self, sender, e):
+        """Handle NTP analyser form close — offer to apply PIT values to §3."""
+        self._ntp_gui_form = None
+        try:
+            pit_vals = sender.get_pit_result()
+            if pit_vals is None:
+                return
+            offset_ms, error_ms = pit_vals
+            answer = MessageBox.Show(
+                "Use the NTP PIT values calculated in the analyser?\n\n"
+                "  Offset:       {0:+.1f} ms\n"
+                "  Uncertainty:  \u00b1{1:.1f} ms  (95%)\n\n"
+                "Clicking Yes will update the NTP correction in \u00a73.".format(
+                    offset_ms, error_ms),
+                "Use NTP PIT Values?",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+            )
+            if answer == DialogResult.Yes:
+                self._apply_ntp_pit_result(offset_ms, error_ms)
+        except Exception:
+            pass
+
+    def _apply_ntp_pit_result(self, offset_ms, error_ms):
+        """Apply NTP PIT values from the analyser to the §3 NTP fields."""
+        self._ntp_offset_ms = offset_ms
+        self._ntp_uncertainty_ms = error_ms
+        self._lbl_ntp_section.Text = "NTP correction:  {0:+.1f} ms  (\u00b1{1:.1f} ms, 95%)".format(
+            offset_ms, error_ms)
+        self._lbl_ntp_warning.Text = "\u26a0  Not stored in Tangra CSV \u2014 cannot be auto-verified"
+        self._lbl_ntp_warning.ForeColor = Color.DarkOrange
+        # If the radio was previously stuck on N/A (no data), clear it so the
+        # user can consciously choose the right status now that values exist.
+        if hasattr(self, '_rad_corrections_na') and self._rad_corrections_na.Checked:
+            self._rad_corrections_na.Checked = False
+        self._update_guidance_values()
+        self._update_timing_net_preview()
+        self.update_button_state()
+
+    def _on_ntp_info_click(self, sender, e):
+        MessageBox.Show(
+            "NTP timing corrections account for two sources of error in event timestamps:\n\n"
+            "1.  Camera acquisition delay\n"
+            "    Rolling-shutter cameras do not capture all pixel rows at the same instant.\n"
+            "    The delay depends on which Y-line the star falls on, the frame rate,\n"
+            "    and the sensor readout speed. It is measured using LED flash calibration runs.\n\n"
+            "2.  NTP clock offset\n"
+            "    The computer clock may drift slightly from UTC. NTP corrects this\n"
+            "    continuously, but a small residual offset usually remains.\n\n"
+            "Both values are entered in Tangra\u2019s Video File Properties \u2192 Timing Correction\n"
+            "before exporting the timing CSV. The net correction is:\n"
+            "    net = camera_delay_ms + ntp_offset_ms\n\n"
+            "A positive net correction means the event happened later than the raw timestamp.",
+            "About NTP Timing Corrections",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+
+    def _on_calib_info_click(self, sender, e):
+        MessageBox.Show(
+            "A calibration run is a short video of LED flashes recorded before or\n"
+            "after your occultation session, using the same camera settings.\n\n"
+            "The flash timing determines the camera acquisition delay for each\n"
+            "Y-line position. For a valid match, the run must use the same:\n"
+            "  \u2022  Area / crop / region of interest\n"
+            "  \u2022  Binning\n"
+            "  \u2022  Gain\n"
+            "  \u2022  Frame rate\n\n"
+            "If no matching run is listed, use:\n"
+            "  Tools \u2192 Camera Delay Calculator\u2026\n"
+            "to process a new LED flash video and create a calibration run.",
+            "About Calibration Runs",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+
+    def _on_y_line_info_click(self, sender, e):
+        MessageBox.Show(
+            "The Y-line is the vertical pixel position of the target star on the sensor,\n"
+            "as shown in Tangra.\n\n"
+            "To find it in Tangra:\n"
+            "  1.  Open the occultation video in Tangra\n"
+            "  2.  Right-click the tracking aperture on the target star\n"
+            "  3.  Select Properties\n"
+            "  4.  Note the Y coordinate shown\n\n"
+            "Use the aperture position from your actual occultation recording,\n"
+            "not from the calibration run.\n\n"
+            "The Y-line determines where in the rolling-shutter readout cycle the star\n"
+            "was captured. A larger Y-line means a larger delay on bottom-read sensors.",
+            "Finding the Y-line in Tangra",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+
+    def _on_why_confirm_click(self, sender, e):
+        MessageBox.Show(
+            "OM calculates what the corrections should be, but cannot verify whether\n"
+            "you actually entered them in Tangra.\n\n"
+            "If the corrections were not entered but you select \u2018Applied in Tangra\u2019,\n"
+            "the exported D/R times will be uncorrected while the report states they\n"
+            "were corrected. This is a silent error that affects timing accuracy.\n\n"
+            "By ticking both boxes you confirm that:\n"
+            "  \u2022  The camera acquisition delay shown was entered in Tangra\u2019s\n"
+            "     Video File Properties \u2192 Timing Correction\n"
+            "  \u2022  The NTP clock offset was entered in the same section\n\n"
+            "If either value changes (e.g. you update the Y-line or calibration run),\n"
+            "the boxes are cleared automatically and the heading turns orange \u2014\n"
+            "re-confirm after reviewing the new values.\n\n"
+            "HOW TO VERIFY THE CORRECTIONS WERE APPLIED\n"
+            "Open the Tangra CSV in a text editor and check row 8 (the measurement\n"
+            "parameters row). The column \u2018Acquisition Delay (ms)\u2019 must show the camera\n"
+            "delay value, not 0. Because Tangra does not record the NTP offset in the\n"
+            "CSV header, verification of the NTP value relies on your own record-keeping\n"
+            "(the NTP analysis log from Step 2 is the authoritative source).",
+            "Why is Confirmation Required?",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+
+    def _on_plausibility_info_click(self, sender, e):
+        MessageBox.Show(
+            "Common causes of D \u2265 R:\n\n"
+            "1.  Wrong file selected\n"
+            "    The AOTA or PyOTE file may be from a different event than the\n"
+            "    Tangra CSV. Check that both files come from the same recording.\n\n"
+            "2.  Corrections overshot the window\n"
+            "    A large net correction may shift D past R.\n"
+            "    Review the calibration run, Y-line, and NTP offset values.\n\n"
+            "3.  Swapped D and R in AOTA\n"
+            "    If the event was misidentified, D and R may be reversed.\n"
+            "    Re-run the AOTA reduction and verify which time is disappearance.\n\n"
+            "4.  AOTA fitted a noise spike\n"
+            "    AOTA may have detected a noise event instead of the real occultation.\n"
+            "    Inspect the light curve and re-fit if necessary.",
+            "D \u2265 R \u2014 Common Causes",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning
+        )
+
+    def _on_why_blocked_click(self, sender, e):
+        text = getattr(self.status_label, 'Text', '')
+        if not text or text == "Ready to generate report":
+            return
+        MessageBox.Show(
+            text,
+            "Why is Generate blocked?",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
 
 
 class VTIDoubleCorrectConfirmDialog(Form):

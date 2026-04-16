@@ -384,7 +384,10 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
             other_info = camera.get('other_info', '')
             if other_info:
                 self._set_cell(worksheet, "D42", other_info)
-        
+        timing_note = self.build_timing_note(self._timing_data)
+        if timing_note:
+            self._set_cell(worksheet, "D43", timing_note)
+
         # AOTA TIMING DATA - populate if available from AOTA Report
         if self._aota_report_data:
             self._populate_aota_data(worksheet, self._aota_report_data)
