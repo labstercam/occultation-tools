@@ -1,5 +1,93 @@
 # Occultation Manager - Release Notes
 
+## Version 0.2.0-beta.8 (April 2026)
+
+**NTP Timing Corrections — Observer Verification Workflow**
+
+This release closes four safety gaps in the Option 1 (corrections applied in Tangra) NTP
+timing workflow, ensuring observers can confirm, record, and verify their timing corrections
+before generating a report.
+
+### Gap 1 — Confirmation Checkboxes (New)
+
+When "Applied in Tangra" is selected in §3 Timing, a confirmation sub-panel now expands
+inline showing two checkboxes:
+
+- **Camera acquisition delay: X.X ms** — populated from the calibrated Y-line calculation
+- **NTP clock offset: ±X.X ms** — populated from the loaded NTP log
+
+Both must be ticked before the **Generate Report** button becomes active. The panel heading
+reads *"Confirm the values you entered in Tangra match:"*
+
+### Gap 2 — Stale Correction Warning (New)
+
+If the observer ticks the confirmation checkboxes and then changes an input (edits the Y line,
+selects a different calibration run, or loads a different NTP log file), the affected checkbox
+is automatically **unticked** and the panel heading changes to:
+
+> ⚠ Values changed — please re-confirm below:   *(orange)*
+
+Re-ticking both checkboxes restores the normal heading. Navigating away from "Applied in Tangra"
+to another radio clears both checkboxes and resets the heading automatically.
+
+### Gap 3 — D/R Plausibility Check (New)
+
+After confirming, a new plausibility label (below the D/R preview rows) checks:
+
+1. **D ≥ R check** *(blocking)* — for Positive/Unsure observations with "Applied in Tangra"
+   selected, if the corrected disappearance time is not before the reappearance time, the label
+   shows a red ⚠ warning and Generate is blocked until the discrepancy is resolved.
+
+2. **Large correction warning** *(non-blocking)* — if the net correction (camera delay + NTP
+   offset) exceeds 500 ms, an orange ⚠ warning is shown as a prompt to double-check inputs.
+
+Both warnings are suppressed when "Not yet applied" is selected (the guidance panel occupies
+the same space). The D/R check also re-runs whenever a different PyOTE event is selected.
+
+### Gap 4 — Timing Corrections Written to Report Comments (New)
+
+All three report generators (NA, TT, SODIS) now write a human-readable timing note to their
+comments/notes section:
+
+| State | Comment text |
+|---|---|
+| Applied + confirmed | *"NTP timing corrections applied in Tangra: camera acq. delay 14.3 ms, NTP offset +5.2 ms (net +19.5 ms) — confirmed by observer"* |
+| Applied (not confirmed) | Same, without *"— confirmed by observer"* |
+| N/A | *"NTP system used; timing corrections not applicable"* |
+| Not yet applied | *"NTP timing: corrections not applied in this session"* |
+| GPS (dumb) | *"GPS timing (reference only); no OM timing correction applied"* |
+
+Implemented via `ReportGeneratorBase.build_timing_note(timing_data)`.
+
+### Contextual Help — Tooltips and Info Buttons (New)
+
+All key controls in §3 Timing (NTP) and §3 Observation Result now carry contextual guidance:
+
+**Hover tooltips** on:
+- Calibration run selector — match requirements (area, binning, gain, frame rate)
+- Y-line field — how to read the value from Tangra
+- Net correction label — definition and sign convention
+- Confirmation checkboxes — what exactly to verify in Tangra
+- "Not yet applied" radio — points to the guidance panel
+- Observation type radios — AOTA requirement reminder per type
+
+**Info/explain buttons** (click for a message box):
+- **ⓘ What is NTP correction?** — explains camera delay, NTP offset, and the net formula
+- **? (Calibration run)** — explains what a run is, what settings must match, and how to create a new one
+- **? (Y-line)** — step-by-step instructions for finding the Y coordinate in Tangra
+- **Why confirm?** — explains the silent-error risk and exactly where in Tangra to enter each value
+- **What happened?** — appears next to the D≥R plausibility warning; lists four common causes
+- **? (status bar)** — appears when Generate is blocked; shows the full blocking reason in a popup
+
+### `get_timing_data()` — `corrections_confirmed` field (New)
+
+`ComprehensiveReportDialog.get_timing_data()` now includes a `corrections_confirmed` boolean
+in the returned dict. `True` only when "Applied in Tangra" is selected **and** both confirmation
+checkboxes are ticked at the time the report is generated. Downstream code can use this field
+to distinguish confirmed vs. unconfirmed correction declarations.
+
+---
+
 ## Version 0.2.0-beta.7 (April 2026)
 
 **Multi-Format Light Curve Support and PyOTE Metrics Integration**

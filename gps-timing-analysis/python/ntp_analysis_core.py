@@ -665,7 +665,7 @@ def format_pit_section(pit):
         "  u_combined (k=1):  %s" % format_ms(pit["u_combined"]),
         "  U_expanded (~95%%): +/- %s  [sqrt((0.95*RTT/2)^2 + (2*u_stat)^2)]" % format_ms(pit["u_expanded"]),
         "",
-        "Corrected UTC time = PC time - (%s)" % format_ms(pit["best_offset"]),
+        "Corrected UTC time = PC time + (%s)" % format_ms(pit["best_offset"]),
         "Accuracy of corrected time: +/- %s (~95%%)" % format_ms(pit["u_expanded"]),
     ]
 

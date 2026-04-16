@@ -1,6 +1,6 @@
 # Create release ZIP for Occultation Manager (folder-based layout)
 
-$version = "0.2.0-beta.7"
+$version = "0.2.0-beta.8"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
@@ -103,8 +103,11 @@ $pythonFiles = @(
     "python\tangra_dialogs.py",
     "python\templates.py",
     "python\theme.py",
+    "python\timing_utils.py",
     "python\tt_report_openize.py",
-    "python\utils.py"
+    "python\utils.py",
+    "python\vizier_export.py",
+    "python\vizier_export_dialog.py"
 )
 
 # Sequencer template masters

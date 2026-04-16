@@ -528,6 +528,24 @@ class LineDelayCalculatorDialog(Form):
             self._lbl_formula_vals.Text = 'Y line must be a number.'
             return
 
+        # Range validation using camera_area from the calibration run (e.g. "440x411")
+        area = str(run.get('camera_area', '') or '')
+        y_max = None
+        try:
+            parts = area.lower().split('x')
+            if len(parts) >= 2:
+                y_max = int(parts[1])
+        except (ValueError, IndexError):
+            pass
+
+        if y_val < 0 or (y_max is not None and y_val > y_max):
+            if y_max is not None:
+                self._lbl_formula_vals.Text = (
+                    'Y must be 0\u2013{0} (camera area: {1}).'.format(y_max, area))
+            else:
+                self._lbl_formula_vals.Text = 'Y line must be \u22650.'
+            return
+
         delay = slope * y_val + intercept
         self._current_delay = delay
         self._lbl_result.Text = '{0:.3f} ms'.format(delay)

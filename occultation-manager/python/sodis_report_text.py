@@ -30,7 +30,7 @@ class SODISReportGeneratorText(ReportGeneratorBase):
 
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None,
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
-                       clouds=None, stability=None, other_conditions=None):
+                       clouds=None, stability=None, other_conditions=None, timing_data=None):
         """Generate SODIS text report.
 
         Args mirror existing Openize generator call pattern.
@@ -43,6 +43,7 @@ class SODISReportGeneratorText(ReportGeneratorBase):
         self._clouds = clouds
         self._stability = stability
         self._other_conditions = other_conditions
+        self._timing_data = timing_data
 
         template_path = self.get_template_path()
         if not os.path.exists(template_path):
@@ -134,6 +135,11 @@ class SODISReportGeneratorText(ReportGeneratorBase):
         transparency_code = self._map_transparency_code(self._clouds)
         stability_code = self._map_stability_code(self._stability)
 
+        timing_note = self.build_timing_note(self._timing_data)
+        comments_value = self._other_conditions or ''
+        if timing_note:
+            comments_value = (comments_value + '  ' + timing_note).strip() if comments_value else timing_note
+
         values = {
             'Occultation': (self._observation_type or '').upper(),
             'DATE': dt.strftime('%d %B %Y') if dt else '',
@@ -171,7 +177,7 @@ class SODISReportGeneratorText(ReportGeneratorBase):
             'Temperature': '',
             'Transparency': transparency_code,
             'Stability': stability_code,
-            'Comments': self._other_conditions or ''
+            'Comments': comments_value
         }
 
         return values

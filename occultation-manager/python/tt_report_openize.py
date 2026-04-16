@@ -69,7 +69,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
     
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
-                       clouds=None, stability=None, other_conditions=None):
+                       clouds=None, stability=None, other_conditions=None, timing_data=None):
         """Generate a Trans-Tasman report using Openize SDK
         
         Args:
@@ -83,6 +83,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
             clouds: Cloud conditions (e.g., "Clear", "Fog", etc.)
             stability: Atmospheric stability (e.g., "Steady", "Slight flickering", etc.)
             other_conditions: Free text for other observing conditions
+            timing_data: Optional dict from ComprehensiveReportDialog.get_timing_data()
         
         Returns:
             Path to generated report file, or None on error
@@ -97,6 +98,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         self._clouds = clouds
         self._stability = stability
         self._other_conditions = other_conditions
+        self._timing_data = timing_data
         
         print("\n" + "="*60)
         print("USING OPENIZE VERSION - TT Report Generator")
@@ -318,8 +320,14 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "P25", exposure_sec)
                 self._set_cell(worksheet, "S25", "Seconds")
         
-        # Camera delay correction from Tangra data
-        if self._tangra_data and 'acquisition_delay' in self._tangra_data:
+        # Camera delay / timing correction cell (P26)
+        # Prefer net_correction_s from timing_data when available; fall back to tangra acquisition_delay
+        if self._timing_data and self._timing_data.get('net_correction_s') is not None:
+            net_s = self._timing_data['net_correction_s']
+            print(f"\nSetting timing correction (net): {net_s}s")
+            self._set_cell(worksheet, "P26", net_s)
+            self._set_cell(worksheet, "O26", "yes")
+        elif self._tangra_data and 'acquisition_delay' in self._tangra_data:
             delay_ms = self._tangra_data['acquisition_delay']
             delay_sec = delay_ms / 1000.0
             print(f"\nSetting camera delay: {delay_ms}ms = {delay_sec}s")
@@ -376,7 +384,10 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
             other_info = camera.get('other_info', '')
             if other_info:
                 self._set_cell(worksheet, "D42", other_info)
-        
+        timing_note = self.build_timing_note(self._timing_data)
+        if timing_note:
+            self._set_cell(worksheet, "D43", timing_note)
+
         # AOTA TIMING DATA - populate if available from AOTA Report
         if self._aota_report_data:
             self._populate_aota_data(worksheet, self._aota_report_data)
@@ -517,26 +528,6 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         d_minutes_num = _to_int_or_none(d_minutes)
         d_seconds_num = _to_seconds_float_or_none(d_seconds)
 
-        if d_hours_num is not None or d_minutes_num is not None or d_seconds_num is not None:
-            if d_hours_num is not None:
-                self._set_cell(worksheet, "F33", d_hours_num)
-            if d_minutes_num is not None:
-                self._set_cell(worksheet, "H33", d_minutes_num)
-            if d_seconds_num is not None:
-                self._set_cell(worksheet, "J33", d_seconds_num)
-            
-            d_uncertainty = aota_report_summary.get('d_uncertainty')
-            if d_uncertainty is not None:
-                try:
-                    self._set_cell(worksheet, "M33", float(d_uncertainty))
-                except (ValueError, TypeError):
-                    print(f"Warning: Could not format d_uncertainty: {d_uncertainty}")
-        
-        # Reappearance (R) times - F, H, J columns for hours, minutes, seconds:
-        # Cell F35: AOTA_R_HOURS
-        # Cell H35: AOTA_R_MINUTES
-        # Cell J35: AOTA_R_SECONDS
-        # Cell M35: AOTA_R_ERROR
         r_hours = aota_report_summary.get('r_hours')
         r_minutes = aota_report_summary.get('r_minutes')
         r_seconds = aota_report_summary.get('r_seconds')
@@ -546,6 +537,22 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         r_minutes_num = _to_int_or_none(r_minutes)
         r_seconds_num = _to_seconds_float_or_none(r_seconds)
 
+        # Write D cells: F33=hours, H33=minutes, J33=seconds, M33=uncertainty
+        if d_hours_num is not None or d_minutes_num is not None or d_seconds_num is not None:
+            if d_hours_num is not None:
+                self._set_cell(worksheet, "F33", d_hours_num)
+            if d_minutes_num is not None:
+                self._set_cell(worksheet, "H33", d_minutes_num)
+            if d_seconds_num is not None:
+                self._set_cell(worksheet, "J33", d_seconds_num)
+            d_uncertainty = aota_report_summary.get('d_uncertainty')
+            if d_uncertainty is not None:
+                try:
+                    self._set_cell(worksheet, "M33", float(d_uncertainty))
+                except (ValueError, TypeError):
+                    print(f"Warning: Could not format d_uncertainty: {d_uncertainty}")
+
+        # Write R cells: F35=hours, H35=minutes, J35=seconds, M35=uncertainty
         if r_hours_num is not None or r_minutes_num is not None or r_seconds_num is not None:
             if r_hours_num is not None:
                 self._set_cell(worksheet, "F35", r_hours_num)
@@ -553,15 +560,12 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "H35", r_minutes_num)
             if r_seconds_num is not None:
                 self._set_cell(worksheet, "J35", r_seconds_num)
-            
             r_uncertainty = aota_report_summary.get('r_uncertainty')
             if r_uncertainty is not None:
                 try:
                     self._set_cell(worksheet, "M35", float(r_uncertainty))
                 except (ValueError, TypeError):
                     print(f"Warning: Could not format r_uncertainty: {r_uncertainty}")
-        
-        # SNR - Cell W40
         snr = aota_report_summary.get('snr')
         if snr is not None:
             try:

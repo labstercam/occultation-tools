@@ -620,6 +620,8 @@ class OccultationManagerGUI(Form):
         menu_tools.DropDownItems.Add(ToolStripMenuItem("NTP Clock Accuracy", None, self.open_ntp_timing_analysis_click))
         menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS vs NTP Testing", None, self.open_gps_pps_comparison_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Export VizieR Light Curve\u2026", None, self.open_vizier_export_standalone_click))
+        menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Night Mode", None, self.toggle_night_mode_click))
         menu_bar.Items.Add(menu_tools)
         
@@ -1986,6 +1988,10 @@ class OccultationManagerGUI(Form):
             event.elevation = location['elevation']
             event.obs_location = location['obs_location']
 
+            # Persist the confirmed location back to occultations.json so it
+            # is available next time the dialog opens without a second lookup.
+            self.manager.save_event_location(event)
+
             # Optional Step 2 NTP outputs from location dialog.
             event.ntp_loopstats_path = location_dialog.get_ntp_loopstats_path()
             event.ntp_peerstats_path = location_dialog.get_ntp_peerstats_path()
@@ -2013,6 +2019,7 @@ class OccultationManagerGUI(Form):
             clouds = comprehensive_dialog.get_clouds()
             stability = comprehensive_dialog.get_stability()
             other_conditions = comprehensive_dialog.get_other_conditions()
+            timing_data = comprehensive_dialog.get_timing_data()
             
             print(f"Report type: {report_type}")
             print(f"Telescope ID: {telescope_id}")
@@ -2310,7 +2317,8 @@ class OccultationManagerGUI(Form):
             self.update_status(f"Generating report for {event.get_asteroid_display_name()}...")
             output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, 
                                                           tangra_data, aota_report_data, aota_xml_used,
-                                                          clouds, stability, other_conditions)
+                                                          clouds, stability, other_conditions,
+                                                          timing_data=timing_data)
             
             # If AOTA.xml data exists but AOTA Report wasn't used, add AOTA.xml data to the report
             # (AOTA Report data is already included in generate_report if it was provided)
@@ -2423,7 +2431,12 @@ class OccultationManagerGUI(Form):
                     success_msg += f"\n\nCopies also saved to:\n{copies_list}"
 
                 self.update_status(status_msg)
-                MessageBox.Show(success_msg, "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                self._show_report_success_dialog(
+                    success_msg, output_path,
+                    tangra_csv_path,
+                    comprehensive_dialog.get_selected_folder(),
+                    timing_data
+                )
             else:
                 print(f"ERROR: Report generation failed (check log)")
                 self.update_status("Report generation failed")
@@ -2444,6 +2457,201 @@ class OccultationManagerGUI(Form):
             MessageBox.Show(f"Error generating report:\n\n{error_msg}", 
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
     
+    def _show_report_success_dialog(self, message, output_path, tangra_csv_path,
+                                    observation_folder, timing_data):
+        """Show a post-report dialog with Open Report and Export VizieR options."""
+        from System.Windows.Forms import (
+            Form as _Form, Button as _Button, Label as _Label
+        )
+
+        dlg = _Form()
+        dlg.Text = "Report Generated"
+        dlg.Width = 520
+        dlg.Height = 200
+        dlg.FormBorderStyle = dlg.FormBorderStyle.FixedDialog
+        dlg.MaximizeBox = False
+        dlg.MinimizeBox = False
+        dlg.StartPosition = FormStartPosition.CenterParent
+
+        lbl = _Label()
+        lbl.Text = message
+        lbl.AutoSize = False
+        lbl.Location = Point(12, 12)
+        lbl.Size = Size(490, 80)
+        lbl.MaximumSize = Size(490, 0)
+        lbl.AutoSize = True
+        dlg.Controls.Add(lbl)
+
+        btn_open = _Button()
+        btn_open.Text = "Open Report"
+        btn_open.AutoSize = True
+        dlg.Controls.Add(btn_open)
+
+        btn_vizier = _Button()
+        btn_vizier.Text = "Export VizieR .dat\u2026"
+        btn_vizier.AutoSize = True
+        btn_vizier.Enabled = tangra_csv_path is not None and os.path.isfile(tangra_csv_path)
+        dlg.Controls.Add(btn_vizier)
+
+        btn_close = _Button()
+        btn_close.Text = "Close"
+        btn_close.AutoSize = True
+        dlg.Controls.Add(btn_close)
+
+        # Resize dialog height after label auto-sizes.
+        # Wired AFTER all buttons are created so the closure can reference them
+        # without risk of an UnboundLocalError if Layout fires during Controls.Add.
+        def _layout(s, e):
+            btn_y = lbl.Bottom + 16
+            btn_open.Location = Point(12, btn_y)
+            btn_vizier.Location = Point(btn_open.Right + 8, btn_y)
+            btn_close.Location = Point(btn_vizier.Right + 8, btn_y)
+            dlg.ClientSize = Size(dlg.ClientSize.Width, btn_close.Bottom + 16)
+        dlg.Layout += _layout
+
+        def _open_report(s, e):
+            try:
+                Process.Start(output_path)
+            except Exception as ex:
+                MessageBox.Show(f"Could not open file:\n{ex}", "Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+        def _export_vizier(s, e):
+            dlg.Close()
+            self._launch_vizier_export(tangra_csv_path, observation_folder, timing_data)
+
+        def _close_dlg(s, e):
+            dlg.Close()
+
+        btn_open.Click += _open_report
+        btn_vizier.Click += _export_vizier
+        btn_close.Click += _close_dlg
+
+        dlg.ShowDialog()
+
+    def _launch_vizier_export(self, tangra_csv_path, observation_folder, timing_data=None):
+        """Open the VizieR export dialog for the given light curve path."""
+        try:
+            from vizier_export_dialog import VizierExportDialog
+        except ImportError as ex:
+            MessageBox.Show(f"VizieR export not available:\n{ex}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error)
+            return
+
+        selected_events = self.get_displayed_selected_events()
+        event = selected_events[0] if selected_events else None
+        if event is None:
+            MessageBox.Show("Please select an event in the list first.", "Export VizieR",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+
+        obs_folder = observation_folder or (
+            os.path.dirname(tangra_csv_path) if tangra_csv_path else '')
+
+        aota_report_data = getattr(self, '_last_aota_report_data', None)
+
+        viz_dlg = VizierExportDialog(
+            lc_path=tangra_csv_path,
+            event=event,
+            config=self.config,
+            theme_manager=self.theme_manager,
+            observation_folder=obs_folder,
+            aota_report_data=aota_report_data,
+            timing_data=timing_data,
+        )
+        viz_dlg.ShowDialog()
+
+    def open_vizier_export_standalone_click(self, sender, e):
+        """Standalone Tools menu handler — browse for a light curve CSV and open VizieR export dialog."""
+        ofd = FolderBrowserDialog()
+        ofd.Description = "Select the observation folder containing the Tangra light curve CSV"
+        if ofd.ShowDialog() != DialogResult.OK:
+            return
+
+        folder = ofd.SelectedPath
+        import glob
+        csv_files = glob.glob(os.path.join(folder, '*.csv'))
+        if not csv_files:
+            MessageBox.Show("No CSV files found in the selected folder.", "Export VizieR",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+
+        # Sort by most recently modified
+        csv_files.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+
+        if len(csv_files) == 1:
+            lc_path = csv_files[0]
+        else:
+            lc_path = self._pick_csv_dialog(csv_files)
+            if lc_path is None:
+                return
+
+        self._launch_vizier_export(lc_path, folder, timing_data=None)
+
+    def _pick_csv_dialog(self, csv_files):
+        """Show a ListBox picker for selecting one CSV from multiple candidates.
+
+        Args:
+            csv_files: List of full paths, sorted most-recent first.
+
+        Returns:
+            Selected path or None if cancelled.
+        """
+        from System.Windows.Forms import ListBox, SelectionMode as LBSelectMode
+
+        _result = [None]
+        dlg = Form()
+        dlg.Text = "Select Light Curve CSV"
+        dlg.Size = Size(560, 310)
+        dlg.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
+        dlg.MaximizeBox = False
+        dlg.MinimizeBox = False
+        dlg.StartPosition = FormStartPosition.CenterParent
+
+        lbl = Label()
+        lbl.Text = "Multiple CSV files found. Select the light curve to export:"
+        lbl.Location = Point(12, 12)
+        lbl.Size = Size(524, 20)
+        dlg.Controls.Add(lbl)
+
+        lb = ListBox()
+        lb.Location = Point(12, 36)
+        lb.Size = Size(524, 190)
+        lb.SelectionMode = LBSelectMode.One
+        for p in csv_files:
+            lb.Items.Add(os.path.basename(p))
+        lb.SelectedIndex = 0
+        dlg.Controls.Add(lb)
+
+        btn_ok = Button()
+        btn_ok.Text = "OK"
+        btn_ok.Location = Point(364, 238)
+        btn_ok.Size = Size(80, 28)
+        dlg.Controls.Add(btn_ok)
+        dlg.AcceptButton = btn_ok
+
+        btn_cancel = Button()
+        btn_cancel.Text = "Cancel"
+        btn_cancel.Location = Point(456, 238)
+        btn_cancel.Size = Size(80, 28)
+        dlg.Controls.Add(btn_cancel)
+        dlg.CancelButton = btn_cancel
+
+        def _ok(s, e):
+            if lb.SelectedIndex >= 0:
+                _result[0] = csv_files[lb.SelectedIndex]
+            dlg.Close()
+
+        def _cancel(s, e):
+            dlg.Close()
+
+        btn_ok.Click += _ok
+        btn_cancel.Click += _cancel
+        lb.DoubleClick += _ok
+
+        dlg.ShowDialog()
+        return _result[0]
+
     def _build_observer_data_for_xml(self, clouds, stability, other_conditions):
         """Build observer_data dictionary for Occult XML export with conditions mapping
         

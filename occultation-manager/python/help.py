@@ -1069,7 +1069,126 @@ timing for irregularities that could affect timing accuracy.
     Opens the Timestamp Inspector window (see below). Only enabled
     when a Tangra CSV has been successfully loaded.
 
-SECTION 5: CONDITIONS
+SECTION 5: TIMING METHOD
+------------------------
+Choose the method used to create accurate timestamps for this observation.
+The selected method determines which sub-panel is shown.
+
+Tip: most fields and buttons in this section have contextual help. Hover
+over a field for a brief tooltip, or click the ? and \u24d8 buttons for a
+full explanation. If the Generate Report button is disabled, click the ?
+button to the left of it to see exactly what is still required.
+
+NTP (Computer Clock)
+  Used when your computer clock was synchronised to a time server during
+  recording (e.g. using Meinberg NTP or Windows Time Service with a good
+  upstream pool server).
+
+  Y-line:
+    The vertical pixel position (in Tangra sensor coordinates) of the star
+    in the occultation video. Used to calculate the rolling-shutter
+    acquisition delay for your camera model.
+    You can get this from Tangra → [right-click aperture] → Properties.
+
+  Calibration Run:
+    Select the saved calibration run whose settings match the current
+    recording (area, binning, gain, frame rate). OM will calculate the
+    camera acquisition delay from the Y-line and calibration data.
+    If no run matches, use Tools → Camera Delay Calculator to find the
+    correct delay manually.
+
+  NTP Clock Offset:
+    Carried forward from the NTP timing analysis in Step 2 (Location
+    Confirm dialog). If no analysis was run, enter the offset manually.
+    The offset is the signed correction (ms) to add to the measured
+    event time — positive means the clock was running slow.
+
+  Correction Status:
+    Choose whether timing corrections were already applied in Tangra:
+
+    Applied in Tangra:
+      Both the camera delay and NTP offset have already been entered
+      in Tangra's light-curve settings. The timestamps in the exported
+      CSV already include these corrections.
+      You must tick both confirmation checkboxes to confirm the values
+      match what you entered. If either value changes (e.g. you update
+      the calibration run or Y-line), the checkboxes are automatically
+      cleared and the heading turns orange — re-tick after reviewing.
+
+    Not yet applied:
+      Corrections have NOT been entered in Tangra. A step-by-step
+      guidance panel is shown with the calculated values and Copy
+      buttons to transfer them to Tangra. After applying, re-open
+      this dialog and select "Applied in Tangra" to proceed.
+
+    Not applicable:
+      Used when the NTP system was used for clock sync but rolling-
+      shutter corrections are not relevant for this event type
+      (e.g. certain negative observations with short videos).
+
+  D/R times warning:
+    The corrected D and R preview times are shown below the correction
+    status. Two checks run automatically:
+    • D ≥ R (red, blocking): for Positive or Unsure observations, the
+      reappearance cannot be before or equal to the disappearance.
+      This prevents generation until corrected.
+    • Net correction > 500 ms (orange, non-blocking): an unusually
+      large combined correction that may warrant investigation, but
+      does not prevent generation.
+
+  Why OM does not modify the light curve CSV directly:
+    OM is designed as a report assembler — it collects results from
+    specialist tools (Tangra, AOTA, PyOTE) and produces the final
+    report. Keeping the correction step inside Tangra means:
+    • The Tangra CSV header is the authoritative record of what was
+      applied. Any downstream tool (AOTA, PyOTE, R-OTE, another
+      observer) can read the header and see the correction value.
+    • There is no risk of double-correction if habits change between
+      events (e.g. corrections entered in Tangra AND by OM).
+    • OM never needs to reproduce Tangra's internal timestamp
+      arithmetic, which handles edge cases (midnight wraparound,
+      variable frame rates) that OM does not have visibility of.
+
+  How to verify corrections were applied correctly:
+    Camera acquisition delay:
+      Open the Tangra CSV in a text editor. Row 8 (the measurement
+      parameters row) contains the column 'Acquisition Delay (ms)'.
+      The value must match the delay OM calculated — not 0.
+
+    NTP clock offset:
+      Tangra does not record the NTP offset in the CSV header, so
+      there is no automated way to verify it from the file alone.
+      Verification relies on your own record-keeping:
+      • The NTP analysis log saved by the gps-timing-analysis tool
+        is the authoritative source for the offset value.
+      • The timing note written to the report Comments field (by OM
+        at generation time) records what values were used.
+      • If you are unsure, re-run the NTP analysis for the
+        observation night and compare to the value you entered.
+
+    AOTA / PyOTE output:
+      AOTA and PyOTE derive D/R times from the timestamps in the
+      CSV they are given. If the camera delay is shown correctly
+      in the CSV header (above), and you gave AOTA/PyOTE that same
+      corrected CSV, the D/R times will be correct. If you re-ran
+      AOTA or PyOTE after regenerating the CSV, ensure the new
+      result file is the one selected in OM's §4 Observation Files.
+
+GPS (Reference Only — GPS_CMOS):
+  For cameras with hardware GPS timestamping (e.g. IOTA-VTI in pass-
+  through mode, or dedicated GPS-disciplined hardware). No software
+  corrections are needed or applied by OM.
+
+Analog VTI:
+  For cameras using a video time inserter. A safety check panel is
+  shown reminding you to verify the VTI was functioning correctly
+  before generating the report.
+
+Other:
+  Free-text description of the timing method. No corrections are
+  calculated by OM.
+
+SECTION 6: CONDITIONS
 ----------------------
   • Clouds: sky transparency (Clear / Fog / Thin cloud / etc.)
   • Stability: atmospheric seeing (Steady / Flickering)

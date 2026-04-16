@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.7
+# Release Package Instructions - v0.2.0-beta.8
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -17,7 +17,7 @@ This script automatically:
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
 - Pre-seeds `data/templates/` with working copies of the sequencer master templates
 - Seeds/creates data folders under `data/{config,events,templates,sequences,reports}/`
-- Generates `occultation-manager-v0.2.0-beta.7.zip`
+- Generates `occultation-manager-v0.2.0-beta.8.zip`
 
 ### Manual File List (if needed)
 
@@ -47,11 +47,15 @@ If you need to create the package manually, include these files from `occultatio
 - pyote_metrics_reader.py
 - report_generator_base.py
 - sequence_runner.py
+- sodis_report_text.py
 - tangra_dialogs.py
 - templates.py
 - theme.py
+- timing_utils.py
 - tt_report_openize.py
 - utils.py
+- vizier_export.py
+- vizier_export_dialog.py
 
 **Sequencer Master Templates (copied into `resources/templates_master/sequencer/`):**
 - python\SharpCap Minimal Local Time template.txt

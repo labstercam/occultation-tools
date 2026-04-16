@@ -68,7 +68,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
     
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
-                       clouds=None, stability=None, other_conditions=None):
+                       clouds=None, stability=None, other_conditions=None, timing_data=None):
         """Generate a North American report using Openize SDK
         
         Args:
@@ -82,6 +82,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
             clouds: Cloud conditions (e.g., "Clear", "Fog", etc.)
             stability: Atmospheric stability (e.g., "Steady", "Slight flickering", etc.)
             other_conditions: Free text for other observing conditions
+            timing_data: Optional dict from ComprehensiveReportDialog.get_timing_data()
         
         Returns:
             Path to generated report file, or None on error
@@ -96,8 +97,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         self._clouds = clouds
         self._stability = stability
         self._other_conditions = other_conditions
-        
-        print("\n" + "="*60)
+        self._timing_data = timing_data
         print("USING OPENIZE VERSION - NA Report Generator")
         print("Template: NorthAmerica_AstReportForm_V5.6.12r.xlsx")
         print("="*60 + "\n")
@@ -342,7 +342,10 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "D43", comments[1])
         
         self._set_cell(worksheet, "D44", "This report was pre-filled by Occultation Manager")
-        
+        timing_note = self.build_timing_note(self._timing_data)
+        if timing_note:
+            self._set_cell(worksheet, "D45", timing_note)
+
         # AOTA TIMING DATA - populate if available from AOTA Report
         if self._aota_report_data:
             self._populate_aota_data(worksheet, self._aota_report_data)
@@ -475,27 +478,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         d_hours_num = _to_int_or_none(d_hours)
         d_minutes_num = _to_int_or_none(d_minutes)
         d_seconds_num = _to_seconds_float_or_none(d_seconds)
-        
-        if d_hours_num is not None or d_minutes_num is not None or d_seconds_num is not None:
-            if d_hours_num is not None:
-                self._set_cell(worksheet, "F32", d_hours_num)
-            if d_minutes_num is not None:
-                self._set_cell(worksheet, "H32", d_minutes_num)
-            if d_seconds_num is not None:
-                self._set_cell(worksheet, "J32", d_seconds_num)
-            
-            d_uncertainty = aota_report_summary.get('d_uncertainty')
-            if d_uncertainty is not None:
-                try:
-                    self._set_cell(worksheet, "M33", float(d_uncertainty))
-                except (ValueError, TypeError):
-                    print(f"Warning: Could not format d_uncertainty: {d_uncertainty}")
-        
-        # Reappearance (R) times - F, H, J columns:
-        # Cell F36: AOTA_R_HOURS
-        # Cell H36: AOTA_R_MINUTES
-        # Cell J36: AOTA_R_SECONDS
-        # Cell M35: AOTA_R_ERROR
+
         r_hours = aota_report_summary.get('r_hours')
         r_minutes = aota_report_summary.get('r_minutes')
         r_seconds = aota_report_summary.get('r_seconds')
@@ -504,7 +487,23 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         r_hours_num = _to_int_or_none(r_hours)
         r_minutes_num = _to_int_or_none(r_minutes)
         r_seconds_num = _to_seconds_float_or_none(r_seconds)
-        
+
+        # Write D cells: F32=hours, H32=minutes, J32=seconds, M33=uncertainty
+        if d_hours_num is not None or d_minutes_num is not None or d_seconds_num is not None:
+            if d_hours_num is not None:
+                self._set_cell(worksheet, "F32", d_hours_num)
+            if d_minutes_num is not None:
+                self._set_cell(worksheet, "H32", d_minutes_num)
+            if d_seconds_num is not None:
+                self._set_cell(worksheet, "J32", d_seconds_num)
+            d_uncertainty = aota_report_summary.get('d_uncertainty')
+            if d_uncertainty is not None:
+                try:
+                    self._set_cell(worksheet, "M33", float(d_uncertainty))
+                except (ValueError, TypeError):
+                    print(f"Warning: Could not format d_uncertainty: {d_uncertainty}")
+
+        # Write R cells: F36=hours, H36=minutes, J36=seconds, M35=uncertainty
         if r_hours_num is not None or r_minutes_num is not None or r_seconds_num is not None:
             if r_hours_num is not None:
                 self._set_cell(worksheet, "F36", r_hours_num)
@@ -512,7 +511,6 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "H36", r_minutes_num)
             if r_seconds_num is not None:
                 self._set_cell(worksheet, "J36", r_seconds_num)
-            
             r_uncertainty = aota_report_summary.get('r_uncertainty')
             if r_uncertainty is not None:
                 try:
