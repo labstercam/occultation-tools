@@ -691,6 +691,8 @@ class ConfigManager:
     #   gain            - Gain value (float)
     #   per_line_delay  - ms/line to 3 dp (float)
     #   line_0_delay    - ms (float)
+    #   measurement_method - 'GPS' (GPS flash calibration) or 'FPS' (approximate via frame rate)
+    #   shutter_type    - 'Rolling' or 'Global'
     #   notes           - Optional free-text string
 
     def get_line_delay_calibrations(self, camera_id=None):

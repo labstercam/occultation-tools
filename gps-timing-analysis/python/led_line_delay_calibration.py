@@ -1652,6 +1652,7 @@ class LEDLineDelayCalibrationForm(Form):
         self._calib_fit_result = None
         self._calib_capture_settings = {}
         self._calib_saved = False
+        self._active_shutter_type = None
         self.InitializeComponent()
         # Force handle creation to avoid invoke errors from background threads
         handle = self.Handle
@@ -1710,49 +1711,87 @@ class LEDLineDelayCalibrationForm(Form):
         self.label_mode.Text = "Calibration Mode:"
         self.label_mode.Location = Point(20, 20)
         self.label_mode.AutoSize = True
+
+        self.panel_mode_group = Panel()
+        self.panel_mode_group.Location = Point(155, 16)
+        self.panel_mode_group.Size = Size(260, 24)
         
         self.radio_live = RadioButton()
         self.radio_live.Text = "Live Capture"
-        self.radio_live.Location = Point(140, 18)
+        self.radio_live.Location = Point(0, 2)
         self.radio_live.AutoSize = True
         self.radio_live.Checked = True
         self.radio_live.CheckedChanged += self.on_mode_changed
         
         self.radio_adv = RadioButton()
         self.radio_adv.Text = "Use ADV File"
-        self.radio_adv.Location = Point(260, 18)
+        self.radio_adv.Location = Point(120, 2)
         self.radio_adv.AutoSize = True
         self.radio_adv.Enabled = ADV_AVAILABLE
         self.radio_adv.CheckedChanged += self.on_mode_changed
         if not ADV_AVAILABLE:
             self.radio_adv.Text = "Use ADV File (not available)"
+
+        self.panel_mode_group.Controls.Add(self.radio_live)
+        self.panel_mode_group.Controls.Add(self.radio_adv)
+
+        # Shutter type selection (own row)
+        self.label_shutter_type = Label()
+        self.label_shutter_type.Text = "Shutter Type:"
+        self.label_shutter_type.Location = Point(20, 52)
+        self.label_shutter_type.AutoSize = True
+
+        self.panel_shutter_group = Panel()
+        self.panel_shutter_group.Location = Point(155, 48)
+        self.panel_shutter_group.Size = Size(180, 24)
+
+        self.radio_shutter_rolling = RadioButton()
+        self.radio_shutter_rolling.Text = "Rolling"
+        self.radio_shutter_rolling.Location = Point(0, 2)
+        self.radio_shutter_rolling.AutoSize = True
+        self.radio_shutter_rolling.Checked = True
+
+        self.radio_shutter_global = RadioButton()
+        self.radio_shutter_global.Text = "Global"
+        self.radio_shutter_global.Location = Point(80, 2)
+        self.radio_shutter_global.AutoSize = True
+
+        self.panel_shutter_group.Controls.Add(self.radio_shutter_rolling)
+        self.panel_shutter_group.Controls.Add(self.radio_shutter_global)
+
+        self.button_shutter_info = Button()
+        self.button_shutter_info.Text = "i"
+        self.button_shutter_info.Location = Point(376, 48)
+        self.button_shutter_info.Size = Size(22, 22)
+        self.button_shutter_info.Font = Font(self.button_shutter_info.Font.FontFamily, 8, FontStyle.Bold)
+        self.button_shutter_info.Click += self.show_shutter_type_info
         
         # Duration setting
         self.label_duration = Label()
         self.label_duration.Text = "Capture Duration (seconds):"
-        self.label_duration.Location = Point(20, 50)
+        self.label_duration.Location = Point(20, 82)
         self.label_duration.AutoSize = True
         
         self.textbox_duration = TextBox()
         self.textbox_duration.Text = "30"
-        self.textbox_duration.Location = Point(210, 48)
+        self.textbox_duration.Location = Point(210, 80)
         self.textbox_duration.Width = 60
         
         # Flash duration setting
         self.label_flash = Label()
         self.label_flash.Text = "GPS Flash Duration (ms):"
-        self.label_flash.Location = Point(300, 50)
+        self.label_flash.Location = Point(300, 82)
         self.label_flash.AutoSize = True
         
         self.textbox_flash = TextBox()
         self.textbox_flash.Text = "100"
-        self.textbox_flash.Location = Point(480, 48)
+        self.textbox_flash.Location = Point(480, 80)
         self.textbox_flash.Width = 60
         
         # Invert signal checkbox
         self.checkbox_invert = CheckBox()
         self.checkbox_invert.Text = "Invert Signal (for inverted PPS)"
-        self.checkbox_invert.Location = Point(560, 48)
+        self.checkbox_invert.Location = Point(560, 80)
         self.checkbox_invert.Width = 120
         self.checkbox_invert.AutoSize = True
         self.checkbox_invert.CheckedChanged += self.on_invert_changed
@@ -1760,14 +1799,14 @@ class LEDLineDelayCalibrationForm(Form):
         # Start button
         self.button_start = Button()
         self.button_start.Text = "Start Calibration"
-        self.button_start.Location = Point(20, 80)
+        self.button_start.Location = Point(20, 112)
         self.button_start.Size = Size(120, 30)
         self.button_start.Click += self.start_calibration
         
         # Stop button
         self.button_stop = Button()
         self.button_stop.Text = "Stop"
-        self.button_stop.Location = Point(160, 80)
+        self.button_stop.Location = Point(160, 112)
         self.button_stop.Size = Size(80, 30)
         self.button_stop.Enabled = False
         self.button_stop.Click += self.stop_calibration
@@ -1775,18 +1814,18 @@ class LEDLineDelayCalibrationForm(Form):
         # Status label
         self.label_status = Label()
         self.label_status.Text = "Ready"
-        self.label_status.Location = Point(260, 88)
+        self.label_status.Location = Point(260, 120)
         self.label_status.AutoSize = True
         self.label_status.Font = Font(self.label_status.Font.FontFamily, 9, FontStyle.Bold)
         
         # Results text box
         self.label_results = Label()
         self.label_results.Text = "Results:"
-        self.label_results.Location = Point(20, 120)
+        self.label_results.Location = Point(20, 152)
         self.label_results.AutoSize = True
         
         self.textbox_results = TextBox()
-        self.textbox_results.Location = Point(20, 140)
+        self.textbox_results.Location = Point(20, 172)
         self.textbox_results.Size = Size(660, 100)
         self.textbox_results.Multiline = True
         self.textbox_results.ReadOnly = True
@@ -1794,20 +1833,20 @@ class LEDLineDelayCalibrationForm(Form):
         
         # Plot view
         self.plot_view = OxyPlot.WindowsForms.PlotView()
-        self.plot_view.Location = Point(20, 250)
+        self.plot_view.Location = Point(20, 282)
         self.plot_view.Size = Size(660, 260)
         
         # Close button
         self.button_close = Button()
         self.button_close.Text = "Close"
-        self.button_close.Location = Point(600, 570)
+        self.button_close.Location = Point(600, 602)
         self.button_close.Size = Size(80, 25)
         self.button_close.Click += self.close_form
 
         # Save Result to Camera button (enabled only after a successful calibration)
         self.button_save_calibration = Button()
         self.button_save_calibration.Text = "Save Result to Camera..."
-        self.button_save_calibration.Location = Point(440, 570)
+        self.button_save_calibration.Location = Point(440, 602)
         self.button_save_calibration.Size = Size(150, 25)
         self.button_save_calibration.Enabled = False
         self.button_save_calibration.Click += self.save_calibration_click
@@ -1815,7 +1854,7 @@ class LEDLineDelayCalibrationForm(Form):
         # Approximate Delays button (no GPS flasher required)
         self.label_approx_delays = Label()
         self.label_approx_delays.Text = "Alternative if no GPS flasher available"
-        self.label_approx_delays.Location = Point(20, 550)
+        self.label_approx_delays.Location = Point(20, 582)
         self.label_approx_delays.AutoSize = True
         self.label_approx_delays.ForeColor = Color.Black
         self.label_approx_delays.Font = Font(self.label_approx_delays.Font.FontFamily,
@@ -1823,7 +1862,7 @@ class LEDLineDelayCalibrationForm(Form):
 
         self.button_approx_delays = Button()
         self.button_approx_delays.Text = "Approximate Delays"
-        self.button_approx_delays.Location = Point(20, 570)
+        self.button_approx_delays.Location = Point(20, 602)
         self.button_approx_delays.Size = Size(175, 25)
         self.button_approx_delays.Click += self.approximate_delays_click
 
@@ -1834,8 +1873,10 @@ class LEDLineDelayCalibrationForm(Form):
         self.tab_calibration.Controls.Add(self.textbox_flash)
         self.tab_calibration.Controls.Add(self.checkbox_invert)
         self.tab_calibration.Controls.Add(self.label_mode)
-        self.tab_calibration.Controls.Add(self.radio_live)
-        self.tab_calibration.Controls.Add(self.radio_adv)
+        self.tab_calibration.Controls.Add(self.panel_mode_group)
+        self.tab_calibration.Controls.Add(self.label_shutter_type)
+        self.tab_calibration.Controls.Add(self.panel_shutter_group)
+        self.tab_calibration.Controls.Add(self.button_shutter_info)
         self.tab_calibration.Controls.Add(self.button_start)
         self.tab_calibration.Controls.Add(self.button_stop)
         self.tab_calibration.Controls.Add(self.label_status)
@@ -1988,6 +2029,23 @@ class LEDLineDelayCalibrationForm(Form):
             self.button_start.Text = "Start Calibration"
             self.textbox_duration.Enabled = True
             self.label_duration.Enabled = True
+
+    def show_shutter_type_info(self, sender, event):
+        """Show help text describing rolling vs global shutter cameras."""
+        info_text = (
+            "Global Shutter exposes all sensor lines at the same time.\n\n"
+            "Rolling Shutter exposure each line at a slightly later time.\n\n"
+            "Most cameras are Rolling Shutter, all Sony STARVIS and STARVIS II series cameras are rolling shutter.\n\n"
+            "Global Shutter cameras are more expensive and are often sold as suitable for Solar imaging. "
+            "Global shutter sensors include IMX 174, 428, 429, 432 sensors. "
+            "All Sony PREGIUS sensors are global shutter."
+        )
+        MessageBox.Show(
+            info_text,
+            "Shutter Type Information",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
     
     def on_invert_changed(self, sender, event):
         """Handle invert checkbox change - show warning when enabled"""
@@ -2032,6 +2090,8 @@ class LEDLineDelayCalibrationForm(Form):
         self.label_status.Text = "Starting..."
         self.label_status.ForeColor = Color.Orange
         
+        # Capture shutter type on UI thread before handing off to background thread
+        self._active_shutter_type = self._get_selected_shutter_type()
         # Run calibration in separate thread to avoid blocking UI
         thread = Thread(ParameterizedThreadStart(self.run_calibration_thread))
         thread.SetApartmentState(ApartmentState.STA)
@@ -2296,10 +2356,14 @@ class LEDLineDelayCalibrationForm(Form):
             
             if not fit_result:
                 raise Exception("Linear fit failed. Please check data and try again.")
+            fit_result = self._apply_shutter_type_to_fit_result(fit_result, all_delays_filtered)
 
             # Store calibration result for "Save Result to Camera" feature
             self._calib_fit_result = fit_result
-            self._calib_capture_settings = self._collect_calibration_settings(camera)
+            capture_settings = self._collect_calibration_settings(camera)
+            capture_settings['shutter_type'] = fit_result.get('shutter_type', 'Rolling')
+            capture_settings['measurement_method'] = 'GPS'
+            self._calib_capture_settings = capture_settings
 
             # 8. Display results
             self.SafeInvoke(lambda: self.display_results(
@@ -2588,11 +2652,15 @@ class LEDLineDelayCalibrationForm(Form):
         
         if not fit_result:
             raise Exception("Linear fit failed. Please check data and try again.")
+        fit_result = self._apply_shutter_type_to_fit_result(fit_result, all_delays_filtered)
 
         # Store calibration result for "Save Result to Camera" feature
         self._calib_fit_result = fit_result
-        self._calib_capture_settings = self._collect_calibration_settings_from_adv(
+        capture_settings = self._collect_calibration_settings_from_adv(
             adv_file_name, frame_width, frame_height, exposure_ms)
+        capture_settings['shutter_type'] = fit_result.get('shutter_type', 'Rolling')
+        capture_settings['measurement_method'] = 'GPS'
+        self._calib_capture_settings = capture_settings
 
         # Display results
         self.SafeInvoke(lambda: self.display_results(
@@ -2701,6 +2769,39 @@ class LEDLineDelayCalibrationForm(Form):
             print("Error in close_form: " + str(ex))
             self.Close()  # Close anyway
 
+    def _get_selected_shutter_type(self):
+        """Return selected shutter type string for storage and fit behaviour."""
+        if hasattr(self, 'radio_shutter_global') and self.radio_shutter_global.Checked:
+            return 'Global'
+        return 'Rolling'
+
+    def _apply_shutter_type_to_fit_result(self, fit_result, all_delays):
+        """Force global shutter calibrations to slope=0 and fixed-delay intercept."""
+        shutter_type = self._active_shutter_type or self._get_selected_shutter_type()
+        fit_result['shutter_type'] = shutter_type
+        if shutter_type != 'Global':
+            return fit_result
+
+        offsets = []
+        for d in all_delays:
+            try:
+                offsets.append(float(d.get('time_offset', 0.0)))
+            except Exception:
+                pass
+
+        if offsets:
+            intercept = sum(offsets) / float(len(offsets))
+            ss_tot = sum((y - intercept) ** 2 for y in offsets)
+            ss_res = sum((y - intercept) ** 2 for y in offsets)
+            r_squared = 1.0 - (ss_res / ss_tot) if abs(ss_tot) > 1e-10 else 1.0
+            fit_result['intercept'] = intercept
+            fit_result['r_squared'] = r_squared
+
+        fit_result['slope'] = 0.0
+        fit_result['description'] = 'Global shutter fixed delay: {0:.3f} ms'.format(
+            float(fit_result.get('intercept', 0.0)))
+        return fit_result
+
     def approximate_delays_click(self, sender, event):
         """Start the approximate delays measurement in a background thread."""
         if self._sharpcap is None or self._sharpcap.SelectedCamera is None:
@@ -2713,6 +2814,7 @@ class LEDLineDelayCalibrationForm(Form):
             return
         self.button_approx_delays.Enabled = False
         self.button_start.Enabled = False
+        self._active_shutter_type = self._get_selected_shutter_type()
         thread = Thread(ParameterizedThreadStart(self._run_approximate_delays_thread))
         thread.SetApartmentState(ApartmentState.STA)
         thread.Start(self)
@@ -2790,10 +2892,16 @@ class LEDLineDelayCalibrationForm(Form):
             except Exception:
                 roi_height = 0
 
+            shutter_type = form._active_shutter_type or 'Rolling'
+
             # Per line delay: time per frame divided by number of lines (negative = rolling shutter)
             if roi_height > 0:
                 per_line_delay = -(1.0 / avg_fps) / roi_height * 1000.0
             else:
+                per_line_delay = 0.0
+
+            # Global shutter: all lines expose simultaneously — slope is zero
+            if shutter_type == 'Global':
                 per_line_delay = 0.0
 
             result_text = (
@@ -2801,7 +2909,8 @@ class LEDLineDelayCalibrationForm(Form):
                 "Average frame rate: {0:.3f} fps\r\n"
                 "Per line delay: {1:.6f} ms/line\r\n"
                 "ROI height: {2} lines\r\n"
-            ).format(avg_fps, per_line_delay, roi_height)
+                "Shutter type: {3}\r\n"
+            ).format(avg_fps, per_line_delay, roi_height, shutter_type)
             form.SafeInvoke(lambda: setattr(form.textbox_results, 'Text', result_text))
             form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Enter minimum delay...'))
 
@@ -2824,8 +2933,22 @@ class LEDLineDelayCalibrationForm(Form):
                 form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Gray))
                 return
 
-            # line_0_delay = min_delay + roi_height * (-1) * per_line_delay
-            line_0_delay = min_delay + roi_height * (-1.0) * per_line_delay
+            # For rolling shutter: line_0_delay accounts for the full-frame readout time.
+            # For global shutter: all lines expose simultaneously; the fixed delay is one
+            # full frame period (1/fps in ms) plus the user-entered additional hardware delay.
+            if shutter_type == 'Global':
+                line_0_delay = (1000.0 / avg_fps) + min_delay
+            else:
+                line_0_delay = min_delay + roi_height * (-1.0) * per_line_delay
+
+            if shutter_type == 'Global':
+                description = 'Approximate (Global): fixed delay {0:.3f} ms (avg {1:.2f} fps, {2} samples)'.format(
+                    line_0_delay, avg_fps, len(measurements))
+            else:
+                description = (
+                    'Approximate: {0:.6f} ms/line, Offset: {1:.3f} ms '
+                    '(avg {2:.2f} fps, {3} samples)'
+                ).format(per_line_delay, line_0_delay, avg_fps, len(measurements))
 
             # Build a synthetic fit_result matching the existing schema
             fit_result = {
@@ -2833,13 +2956,14 @@ class LEDLineDelayCalibrationForm(Form):
                 'intercept': line_0_delay,
                 'r_squared': None,
                 'n_measurements': len(measurements),
-                'description': (
-                    'Approximate: {0:.6f} ms/line, Offset: {1:.3f} ms '
-                    '(avg {2:.2f} fps, {3} samples)'
-                ).format(per_line_delay, line_0_delay, avg_fps, len(measurements)),
+                'shutter_type': shutter_type,
+                'measurement_method': 'FPS',
+                'description': description,
             }
 
             capture_settings = form._collect_calibration_settings(camera)
+            capture_settings['shutter_type'] = shutter_type
+            capture_settings['measurement_method'] = 'FPS'
 
             form._calib_fit_result = fit_result
             form._calib_capture_settings = capture_settings

@@ -51,8 +51,11 @@ class LineDelayCalibrationManagerDialog(Form):
         self._run_ids = []   # parallel list to DataGridView rows
         self.InitializeComponent()
         self._load_data()
+        self._apply_grid_selection_style()
         if theme_manager is not None and _THEME_AVAILABLE:
             apply_theme_to_control(self, theme_manager.get_current_theme())
+            # Theme application can override selection colors; re-apply for readability.
+            self._apply_grid_selection_style()
 
     # ------------------------------------------------------------------
     # UI setup
@@ -110,7 +113,9 @@ class LineDelayCalibrationManagerDialog(Form):
             ('gain',           'Gain',                45, True),
             ('per_line_delay', 'Per Line (ms)',        90, True),
             ('line_0_delay',   'Line 0 (ms)',          80, True),
+            ('shutter_type',   'Shutter',              70, True),
             ('notes',          'Notes',              160, False),   # editable
+            ('measurement_method', 'Method',           60, True),
         ]
         # Prepend Camera column when showing all cameras
         if self._camera_id is None:
@@ -170,6 +175,19 @@ class LineDelayCalibrationManagerDialog(Form):
         ]:
             self.Controls.Add(ctrl)
 
+    def _apply_grid_selection_style(self):
+        """Ensure selected rows remain visibly highlighted across themes."""
+        try:
+            self._grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(35, 109, 196)
+            self._grid.DefaultCellStyle.SelectionForeColor = Color.White
+            self._grid.RowsDefaultCellStyle.SelectionBackColor = Color.FromArgb(35, 109, 196)
+            self._grid.RowsDefaultCellStyle.SelectionForeColor = Color.White
+            self._grid.AlternatingRowsDefaultCellStyle.SelectionBackColor = Color.FromArgb(35, 109, 196)
+            self._grid.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.White
+        except Exception:
+            # Keep dialog resilient even if a style property is unavailable.
+            pass
+
     # ------------------------------------------------------------------
     # Data loading
     # ------------------------------------------------------------------
@@ -199,6 +217,14 @@ class LineDelayCalibrationManagerDialog(Form):
                         display = '{:.2f}'.format(float(val))
                     except (ValueError, TypeError):
                         display = str(val)
+                elif key == 'measurement_method':
+                    display = str(val).strip().upper() if val else 'GPS'
+                    if display not in ('GPS', 'FPS'):
+                        display = 'GPS'
+                elif key == 'shutter_type':
+                    display = str(val).strip().title() if val else 'Rolling'
+                    if display not in ('Rolling', 'Global'):
+                        display = 'Rolling'
                 else:
                     display = str(val)
                 self._grid.Rows[row_idx].Cells[col_idx].Value = display
@@ -247,8 +273,23 @@ class LineDelayCalibrationManagerDialog(Form):
         idx = current.Index
         if idx < 0 or idx >= len(self._run_ids):
             return
+        label_text = ''
+        try:
+            label_col_idx = self._col_keys.index('label')
+            label_val = self._grid.Rows[idx].Cells[label_col_idx].Value
+            label_text = str(label_val).strip() if label_val is not None else ''
+        except Exception:
+            label_text = ''
+
+        if label_text:
+            prompt = (
+                'Delete calibration run "{0}"?\n\n'
+                'This cannot be undone.'
+            ).format(label_text)
+        else:
+            prompt = 'Delete this calibration run?\n\nThis cannot be undone.'
         result = MessageBox.Show(
-            'Delete this calibration run?\n\nThis cannot be undone.',
+            prompt,
             'Confirm Delete',
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning
@@ -613,7 +654,7 @@ class ManualCalibrationEntryDialog(Form):
 
     def InitializeComponent(self):
         self.Text = 'Add Manual Calibration \u2014 ' + self._camera_name
-        self.ClientSize = Size(450, 440)
+        self.ClientSize = Size(450, 500)
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
         self.MinimizeBox = False
@@ -658,6 +699,32 @@ class ManualCalibrationEntryDialog(Form):
         self._txt_line0 = TextBox()
         self._txt_line0.Location = Point(TX, y)
         self._txt_line0.Size = Size(120, 22)
+        y += RH + 8
+
+        lbl_method = Label()
+        lbl_method.Text = 'Measurement Method:'
+        lbl_method.Location = Point(LX, y + 3)
+        lbl_method.AutoSize = True
+        self._combo_method = ComboBox()
+        self._combo_method.Location = Point(TX, y)
+        self._combo_method.Size = Size(90, 22)
+        self._combo_method.DropDownStyle = ComboBoxStyle.DropDownList
+        self._combo_method.Items.Add('GPS')
+        self._combo_method.Items.Add('FPS')
+        self._combo_method.SelectedIndex = 0
+        y += RH
+
+        lbl_shutter = Label()
+        lbl_shutter.Text = 'Shutter Type:'
+        lbl_shutter.Location = Point(LX, y + 3)
+        lbl_shutter.AutoSize = True
+        self._combo_shutter = ComboBox()
+        self._combo_shutter.Location = Point(TX, y)
+        self._combo_shutter.Size = Size(90, 22)
+        self._combo_shutter.DropDownStyle = ComboBoxStyle.DropDownList
+        self._combo_shutter.Items.Add('Rolling')
+        self._combo_shutter.Items.Add('Global')
+        self._combo_shutter.SelectedIndex = 0
         y += RH + 8
 
         # --- Camera Settings (optional) ---
@@ -774,6 +841,8 @@ class ManualCalibrationEntryDialog(Form):
         for ctrl in [
             lbl_cam,
             lbl_req_hdr, lbl_pld, self._txt_per_line, lbl_l0, self._txt_line0,
+            lbl_method, self._combo_method,
+            lbl_shutter, self._combo_shutter,
             lbl_cam_hdr,
             lbl_area, self._txt_area,
             lbl_bin, self._txt_binning,
@@ -880,11 +949,21 @@ class ManualCalibrationEntryDialog(Form):
                 return
 
         import datetime
+        measurement_method = str(self._combo_method.Text).strip().upper()
+        if measurement_method not in ('GPS', 'FPS'):
+            measurement_method = 'GPS'
+
+        shutter_type = str(self._combo_shutter.Text).strip().title()
+        if shutter_type not in ('Rolling', 'Global'):
+            shutter_type = 'Rolling'
+
         run_dict = {
             'camera_id':      self._camera_id,
             'run_datetime':   datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
             'per_line_delay': per_line_delay,
             'line_0_delay':   line_0_delay,
+            'measurement_method': measurement_method,
+            'shutter_type':   shutter_type,
             'camera_area':    self._txt_area.Text.strip() or None,
             'binning':        self._txt_binning.Text.strip() or None,
             'tilt':           tilt,
