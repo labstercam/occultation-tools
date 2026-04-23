@@ -1973,7 +1973,7 @@ class OccultationManagerGUI(Form):
             
             # Show location confirmation dialog FIRST (before comprehensive dialog)
             from gui_dialogs import LocationConfirmDialog
-            location_dialog = LocationConfirmDialog(event, self.theme_manager, ntp_context=ntp_context)
+            location_dialog = LocationConfirmDialog(event, self.theme_manager, config=self.config, ntp_context=ntp_context)
             if location_dialog.ShowDialog() != DialogResult.OK:
                 print("User cancelled location confirmation")
                 self.update_status("Report generation cancelled")
@@ -1992,14 +1992,20 @@ class OccultationManagerGUI(Form):
             # is available next time the dialog opens without a second lookup.
             self.manager.save_event_location(event)
 
-            # Optional Step 2 NTP outputs from location dialog.
-            event.ntp_loopstats_path = location_dialog.get_ntp_loopstats_path()
-            event.ntp_peerstats_path = location_dialog.get_ntp_peerstats_path()
-            event.ntp_analysis_result = location_dialog.get_ntp_analysis_result()
+            # Get equipment and report type selections from Dialog 1
+            telescope_id = location_dialog.get_telescope_id()
+            camera_id = location_dialog.get_camera_id()
+            report_type = location_dialog.get_report_type()
             
             # Show COMPREHENSIVE REPORT DIALOG - combines everything!
             from comprehensive_report_dialog import ComprehensiveReportDialog
-            comprehensive_dialog = ComprehensiveReportDialog(self.config, self.theme_manager, event)
+            comprehensive_dialog = ComprehensiveReportDialog(
+                self.config, self.theme_manager, event,
+                telescope_id=telescope_id,
+                camera_id=camera_id,
+                report_type=report_type,
+                ntp_context=ntp_context,
+            )
             
             if comprehensive_dialog.ShowDialog() != DialogResult.OK:
                 print("User cancelled report generation")
@@ -2483,7 +2489,7 @@ class OccultationManagerGUI(Form):
         dlg.Controls.Add(lbl)
 
         btn_open = _Button()
-        btn_open.Text = "Open Report"
+        btn_open.Text = "Open Report Folder"
         btn_open.AutoSize = True
         dlg.Controls.Add(btn_open)
 
@@ -2511,9 +2517,11 @@ class OccultationManagerGUI(Form):
 
         def _open_report(s, e):
             try:
-                Process.Start(output_path)
+                import subprocess
+                folder = os.path.dirname(output_path)
+                subprocess.Popen(['explorer', folder])
             except Exception as ex:
-                MessageBox.Show(f"Could not open file:\n{ex}", "Error",
+                MessageBox.Show("Could not open folder:\n{0}".format(ex), "Error",
                                 MessageBoxButtons.OK, MessageBoxIcon.Error)
 
         def _export_vizier(s, e):

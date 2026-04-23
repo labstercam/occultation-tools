@@ -10,7 +10,8 @@ from System.Windows.Forms import (
     Form, Label, TextBox, Button, MessageBox, MessageBoxButtons, MessageBoxIcon,
     DialogResult, FormStartPosition, FormBorderStyle, Panel, GroupBox, LinkLabel,
     TabControl, TabPage, ListBox, ScrollBars, SelectionMode, AnchorStyles,
-    CheckBox, FolderBrowserDialog, DockStyle, ToolTip, ComboBox, ComboBoxStyle
+    CheckBox, FolderBrowserDialog, DockStyle, ToolTip, ComboBox, ComboBoxStyle,
+    RadioButton
 )
 from theme import apply_theme_to_control
 from templates import TemplateManager
@@ -1748,23 +1749,19 @@ class TemplateSelectionDialog(Form):
 class LocationConfirmDialog(Form):
     """Dialog to confirm observer location before generating report"""
     
-    def __init__(self, event, theme_manager, ntp_context=None):
+    def __init__(self, event, theme_manager, config=None, ntp_context=None):
         Form.__init__(self)
         self.event = event
         self.theme_manager = theme_manager
+        self.config = config
         self.ntp_context = ntp_context or {}
         self.confirmed = False
-        self._ntp_gui_form = None
-        self.ntp_loopstats_path = None
-        self.ntp_peerstats_path = None
-        self.ntp_analysis_result = None
-        self.ntp_stats_folder = None
         self._sf = _detect_scale_factor()
         sf = self._sf
         
         # Form properties
         self.Text = "Confirm Observation Location"
-        self.Size = Size(int(550 * sf), int(760 * sf))
+        self.Size = Size(int(620 * sf), int(720 * sf))
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.StartPosition = FormStartPosition.CenterParent
         self.MaximizeBox = False
@@ -1922,125 +1919,115 @@ class LocationConfirmDialog(Form):
         
         y_pos += int(290 * sf)
 
-        # Optional NTP analyzer step
-        ntp_group = GroupBox()
-        ntp_group.Text = "Step 2 (Optional): NTP Analyser"
-        ntp_group.Location = Point(int(10 * sf), y_pos)
-        ntp_group.Size = Size(int(510 * sf), int(190 * sf))
-        panel.Controls.Add(ntp_group)
+        # ===== STEP 2: EQUIPMENT =====
+        equipment_group = GroupBox()
+        equipment_group.Text = "Step 2: Equipment"
+        equipment_group.Location = Point(int(10 * sf), y_pos)
+        equipment_group.Size = Size(int(580 * sf), int(90 * sf))
+        panel.Controls.Add(equipment_group)
 
-        lbl_ntp = Label()
-        lbl_ntp.Text = "Analyse offset/uncertainty at event time, or open full interactive analyser."
-        lbl_ntp.Location = Point(int(15 * sf), int(20 * sf))
-        lbl_ntp.Size = Size(int(470 * sf), int(20 * sf))
-        ntp_group.Controls.Add(lbl_ntp)
+        lbl_telescope = Label()
+        lbl_telescope.Text = "Telescope:"
+        lbl_telescope.Location = Point(int(15 * sf), int(28 * sf))
+        lbl_telescope.Size = Size(int(90 * sf), int(20 * sf))
+        equipment_group.Controls.Add(lbl_telescope)
 
-        lbl_folder = Label()
-        lbl_folder.Text = "NTP stats folder:"
-        lbl_folder.Location = Point(int(15 * sf), int(47 * sf))
-        lbl_folder.Size = Size(int(95 * sf), int(20 * sf))
-        ntp_group.Controls.Add(lbl_folder)
+        self.combo_telescope = ComboBox()
+        self.combo_telescope.Location = Point(int(115 * sf), int(26 * sf))
+        self.combo_telescope.Size = Size(int(340 * sf), int(25 * sf))
+        self.combo_telescope.DropDownStyle = ComboBoxStyle.DropDownList
+        equipment_group.Controls.Add(self.combo_telescope)
 
-        self.txt_ntp_stats_folder = TextBox()
-        self.txt_ntp_stats_folder.Location = Point(int(110 * sf), int(45 * sf))
-        self.txt_ntp_stats_folder.Size = Size(int(280 * sf), int(22 * sf))
-        ntp_group.Controls.Add(self.txt_ntp_stats_folder)
+        btn_manage_telescope = Button()
+        btn_manage_telescope.Text = "Manage..."
+        btn_manage_telescope.Location = Point(int(465 * sf), int(24 * sf))
+        btn_manage_telescope.Size = Size(int(100 * sf), int(25 * sf))
+        btn_manage_telescope.Click += self._manage_telescopes_click
+        equipment_group.Controls.Add(btn_manage_telescope)
 
-        btn_folder_browse = Button()
-        btn_folder_browse.Text = "Browse..."
-        btn_folder_browse.Location = Point(int(395 * sf), int(43 * sf))
-        btn_folder_browse.Size = Size(int(100 * sf), int(25 * sf))
-        btn_folder_browse.Click += self.browse_ntp_folder_click
-        ntp_group.Controls.Add(btn_folder_browse)
+        lbl_camera = Label()
+        lbl_camera.Text = "Camera:"
+        lbl_camera.Location = Point(int(15 * sf), int(57 * sf))
+        lbl_camera.Size = Size(int(90 * sf), int(20 * sf))
+        equipment_group.Controls.Add(lbl_camera)
 
-        self.lbl_ntp_dataset = Label()
-        self.lbl_ntp_dataset.Text = "dataset: auto-select by event date/time"
-        self.lbl_ntp_dataset.Location = Point(int(15 * sf), int(73 * sf))
-        self.lbl_ntp_dataset.Size = Size(int(480 * sf), int(24 * sf))
-        self.lbl_ntp_dataset.ForeColor = Color.Gray
-        ntp_group.Controls.Add(self.lbl_ntp_dataset)
+        self.combo_camera = ComboBox()
+        self.combo_camera.Location = Point(int(115 * sf), int(55 * sf))
+        self.combo_camera.Size = Size(int(340 * sf), int(25 * sf))
+        self.combo_camera.DropDownStyle = ComboBoxStyle.DropDownList
+        equipment_group.Controls.Add(self.combo_camera)
 
-        btn_analyse = Button()
-        btn_analyse.Text = "Analyse NTP"
-        btn_analyse.Location = Point(int(15 * sf), int(103 * sf))
-        btn_analyse.Size = Size(int(115 * sf), int(28 * sf))
-        btn_analyse.Click += self.analyse_ntp_click
-        ntp_group.Controls.Add(btn_analyse)
+        btn_manage_camera = Button()
+        btn_manage_camera.Text = "Manage..."
+        btn_manage_camera.Location = Point(int(465 * sf), int(53 * sf))
+        btn_manage_camera.Size = Size(int(100 * sf), int(25 * sf))
+        btn_manage_camera.Click += self._manage_cameras_click
+        equipment_group.Controls.Add(btn_manage_camera)
 
-        self.lbl_analysing = Label()
-        self.lbl_analysing.Text = ""
-        self.lbl_analysing.Location = Point(int(135 * sf), int(109 * sf))
-        self.lbl_analysing.Size = Size(int(235 * sf), int(18 * sf))
-        self.lbl_analysing.ForeColor = Color.Gray
-        ntp_group.Controls.Add(self.lbl_analysing)
+        self._load_equipment()
 
-        btn_ntp = Button()
-        btn_ntp.Text = "Open NTP Analyser"
-        btn_ntp.Location = Point(int(375 * sf), int(103 * sf))
-        btn_ntp.Size = Size(int(130 * sf), int(28 * sf))
-        btn_ntp.Click += self.open_ntp_analyser_click
-        ntp_group.Controls.Add(btn_ntp)
+        y_pos += int(100 * sf)
 
-        _results_font = Font("Microsoft Sans Serif", 9)
+        # ===== STEP 3: REPORT FORMAT =====
+        report_format_group = GroupBox()
+        report_format_group.Text = "Step 3: Report Format"
+        report_format_group.Location = Point(int(10 * sf), y_pos)
+        report_format_group.Size = Size(int(580 * sf), int(100 * sf))
+        panel.Controls.Add(report_format_group)
 
-        self.lbl_ntp_offset = Label()
-        self.lbl_ntp_offset.Text = "Offset: -"
-        self.lbl_ntp_offset.Location = Point(int(15 * sf), int(137 * sf))
-        self.lbl_ntp_offset.Size = Size(int(150 * sf), int(20 * sf))
-        self.lbl_ntp_offset.Font = _results_font
-        self.lbl_ntp_offset.ForeColor = Color.Gray
-        ntp_group.Controls.Add(self.lbl_ntp_offset)
+        self.rb_na = RadioButton()
+        self.rb_na.Text = "IOTA North America (V5.6.12r)"
+        self.rb_na.Location = Point(int(20 * sf), int(22 * sf))
+        self.rb_na.Size = Size(int(300 * sf), int(22 * sf))
+        self.rb_na.Checked = True
+        report_format_group.Controls.Add(self.rb_na)
 
-        self.lbl_ntp_uncertainty = Label()
-        self.lbl_ntp_uncertainty.Text = "Uncertainty: -"
-        self.lbl_ntp_uncertainty.Location = Point(int(170 * sf), int(137 * sf))
-        self.lbl_ntp_uncertainty.Size = Size(int(190 * sf), int(20 * sf))
-        self.lbl_ntp_uncertainty.Font = _results_font
-        self.lbl_ntp_uncertainty.ForeColor = Color.Gray
-        ntp_group.Controls.Add(self.lbl_ntp_uncertainty)
+        self.rb_tt = RadioButton()
+        self.rb_tt.Text = "Trans-Tasman / RASNZ (V4.1.2.G)"
+        self.rb_tt.Location = Point(int(20 * sf), int(47 * sf))
+        self.rb_tt.Size = Size(int(300 * sf), int(22 * sf))
+        report_format_group.Controls.Add(self.rb_tt)
 
-        self.lbl_ntp_age = Label()
-        self.lbl_ntp_age.Text = "Data age: -"
-        self.lbl_ntp_age.Location = Point(int(365 * sf), int(137 * sf))
-        self.lbl_ntp_age.Size = Size(int(130 * sf), int(20 * sf))
-        self.lbl_ntp_age.Font = _results_font
-        self.lbl_ntp_age.ForeColor = Color.Gray
-        ntp_group.Controls.Add(self.lbl_ntp_age)
+        self.rb_sodis = RadioButton()
+        self.rb_sodis.Text = "IOTA-ES / SODIS (Form 2.03)"
+        self.rb_sodis.Location = Point(int(20 * sf), int(72 * sf))
+        self.rb_sodis.Size = Size(int(300 * sf), int(22 * sf))
+        report_format_group.Controls.Add(self.rb_sodis)
 
-        self.lbl_ntp_server = Label()
-        self.lbl_ntp_server.Text = "Server: -"
-        self.lbl_ntp_server.Location = Point(int(15 * sf), int(161 * sf))
-        self.lbl_ntp_server.Size = Size(int(480 * sf), int(20 * sf))
-        self.lbl_ntp_server.Font = _results_font
-        self.lbl_ntp_server.ForeColor = Color.Gray
-        ntp_group.Controls.Add(self.lbl_ntp_server)
-
-        self.prefill_ntp_folder()
+        # Pre-select from saved preference
+        if self.config is not None:
+            last_type = self.config.get_last_report_type()
+            if last_type == 'trans_tasman':
+                self.rb_tt.Checked = True
+            elif last_type == 'sodis':
+                self.rb_sodis.Checked = True
+            else:
+                self.rb_na.Checked = True
 
         # Auto-trigger elevation lookup if elevation was not in the event data.
         if getattr(self, '_elevation_needs_lookup', False):
             self._auto_lookup_elevation(latitude, longitude)
 
-        y_pos += int(200 * sf)
-        
+        y_pos += int(110 * sf)
+
         # Buttons
         btn_panel = Panel()
         btn_panel.Height = int(40 * sf)
         btn_panel.Location = Point(0, y_pos)
-        btn_panel.Width = int(520 * sf)
+        btn_panel.Width = int(600 * sf)
         panel.Controls.Add(btn_panel)
-        
+
         btn_confirm = Button()
-        btn_confirm.Text = "Next (Step 3) - event D/R"
-        btn_confirm.Size = Size(int(180 * sf), int(28 * sf))
-        btn_confirm.Location = Point(int(240 * sf), int(6 * sf))
+        btn_confirm.Text = "Next →"
+        btn_confirm.Size = Size(int(100 * sf), int(28 * sf))
+        btn_confirm.Location = Point(int(380 * sf), int(6 * sf))
         btn_confirm.Click += self.confirm_click
         btn_panel.Controls.Add(btn_confirm)
-        
+
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
         btn_cancel.Size = Size(int(100 * sf), int(28 * sf))
-        btn_cancel.Location = Point(int(130 * sf), int(6 * sf))
+        btn_cancel.Location = Point(int(270 * sf), int(6 * sf))
         btn_cancel.Click += self.cancel_click
         btn_panel.Controls.Add(btn_cancel)
         
@@ -2139,7 +2126,7 @@ class LocationConfirmDialog(Form):
             sender.Enabled = True
     
     def confirm_click(self, sender, e):
-        """User confirmed the location"""
+        """User confirmed the location, equipment, and report format"""
         try:
             # Validate and store the entered values
             self.latitude = float(self.txt_latitude.Text)
@@ -2176,6 +2163,22 @@ class LocationConfirmDialog(Form):
                 if not self.obs_location:
                     self.obs_location = ''
 
+            # Store equipment IDs
+            self._telescope_id = self._get_selected_telescope_id()
+            self._camera_id = self._get_selected_camera_id()
+
+            # Store report type
+            if self.rb_tt.Checked:
+                self._report_type = 'trans_tasman'
+            elif self.rb_sodis.Checked:
+                self._report_type = 'sodis'
+            else:
+                self._report_type = 'north_america'
+
+            # Save report type preference
+            if self.config is not None:
+                self.config.set_last_report_type(self._report_type)
+
             self.confirmed = True
             self.DialogResult = DialogResult.OK
             self.Close()
@@ -2189,272 +2192,91 @@ class LocationConfirmDialog(Form):
         self.DialogResult = DialogResult.Cancel
         self.Close()
 
-    def prefill_ntp_folder(self):
-        """Prefill NTP stats folder from saved settings, else discover candidates."""
-        ntp_module = self.ntp_context.get('module')
-        if ntp_module is None:
-            return
-        try:
-            settings = ntp_module.load_folder_settings()
-            saved_folder = (settings.get('log_folder') or '').strip()
-            if saved_folder and os.path.isdir(saved_folder):
-                self.txt_ntp_stats_folder.Text = saved_folder
-                self.ntp_stats_folder = saved_folder
-                return
-
-            candidates = ntp_module.discover_candidate_dirs()
-            for folder in candidates:
-                options = ntp_module.build_day_options(folder)
-                if options:
-                    self.txt_ntp_stats_folder.Text = folder
-                    self.ntp_stats_folder = folder
-                    return
-        except Exception:
-            pass
-
-    def _save_ntp_folder_setting(self, folder_path):
-        """Persist selected NTP stats folder using shared NTP settings."""
-        ntp_module = self.ntp_context.get('module')
-        if ntp_module is None:
-            return
-        try:
-            settings = ntp_module.load_folder_settings()
-            export_folder = settings.get('export_folder', '')
-            observer_lat = settings.get('observer_lat', '')
-            observer_lon = settings.get('observer_lon', '')
-            ntp_module.save_folder_settings(folder_path, export_folder, observer_lat, observer_lon)
-        except Exception:
-            pass
-
-    def browse_ntp_folder_click(self, sender, e):
-        """Select NTP stats folder containing loopstats/peerstats files."""
-        dialog = FolderBrowserDialog()
-        current = (self.txt_ntp_stats_folder.Text or '').strip()
-        if current and os.path.isdir(current):
-            dialog.SelectedPath = current
-        if dialog.ShowDialog() == DialogResult.OK:
-            self.txt_ntp_stats_folder.Text = dialog.SelectedPath
-            self.ntp_stats_folder = dialog.SelectedPath
-            self._save_ntp_folder_setting(dialog.SelectedPath)
-
-    def _pick_dataset_for_event(self, ntp_module, stats_folder, event_dt):
-        """Pick the best loop/peer dataset for the event date/time."""
-        options = ntp_module.build_day_options(stats_folder)
-        if not options:
-            raise RuntimeError("No loopstats/peerstats dataset found in selected folder.")
-
-        event_mjd = (event_dt.date() - date(1858, 11, 17)).days
-        event_sec = (
-            event_dt.hour * 3600.0
-            + event_dt.minute * 60.0
-            + event_dt.second
-            + (event_dt.microsecond / 1000000.0)
-        )
-
-        best_option = None
-        best_gap = None
-        for option in options:
-            try:
-                loop_rows = ntp_module.parse_loopstats(option.loop_path, option.target_mjd)
-            except Exception:
-                continue
-            day_rows = [row for row in loop_rows if row.mjd == event_mjd]
-            if not day_rows:
-                continue
-            gap = min(abs(row.sec_of_day - event_sec) for row in day_rows)
-            if best_gap is None or gap < best_gap:
-                best_gap = gap
-                best_option = option
-
-        if best_option is not None:
-            return best_option, best_gap
-
-        for option in options:
-            if option.target_mjd == event_mjd:
-                return option, None
-
-        return options[0], None
-
-    def analyse_ntp_click(self, sender, e):
-        """Run point-in-time NTP estimate for current event time."""
-        ntp_module = self.ntp_context.get('module')
-        if ntp_module is None:
-            import_error = self.ntp_context.get('import_error') or 'ntp_analysis_core import failed.'
-            MessageBox.Show(
-                "NTP analysis core is not available in this environment.\n\n{0}".format(import_error),
-                "NTP Module Not Available",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning,
-            )
+    def _load_equipment(self):
+        """Load telescopes and cameras into dropdowns."""
+        if self.config is None:
+            self.combo_telescope.Items.Add("No config available")
+            self.combo_telescope.SelectedIndex = 0
+            self.combo_telescope.Enabled = False
+            self.combo_camera.Items.Add("No config available")
+            self.combo_camera.SelectedIndex = 0
+            self.combo_camera.Enabled = False
             return
 
-        stats_folder = (self.txt_ntp_stats_folder.Text or '').strip()
-        if not stats_folder or not os.path.isdir(stats_folder):
-            MessageBox.Show("Please select a valid NTP stats folder.", "Missing NTP Folder", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        telescopes = self.config.get_telescopes()
+        active_telescope = self.config.get_active_telescope()
+        active_tel_id = active_telescope.get('id') if active_telescope else None
+        if not telescopes:
+            self.combo_telescope.Items.Add("No telescopes configured - click Manage...")
+            self.combo_telescope.SelectedIndex = 0
+            self.combo_telescope.Enabled = False
+        else:
+            self.combo_telescope.Enabled = True
+            sel_idx = 0
+            for i, t in enumerate(telescopes):
+                name = t.get('name', 'Unnamed')
+                if t.get('id') == active_tel_id:
+                    name = "\u2605 " + name
+                    sel_idx = i
+                self.combo_telescope.Items.Add(name)
+            self.combo_telescope.SelectedIndex = sel_idx
+
+        cameras = self.config.get_cameras()
+        active_camera = self.config.get_active_camera()
+        active_cam_id = active_camera.get('id') if active_camera else None
+        if not cameras:
+            self.combo_camera.Items.Add("No cameras configured - click Manage...")
+            self.combo_camera.SelectedIndex = 0
+            self.combo_camera.Enabled = False
+        else:
+            self.combo_camera.Enabled = True
+            sel_idx = 0
+            for i, c in enumerate(cameras):
+                name = c.get('name', 'Unnamed')
+                if c.get('id') == active_cam_id:
+                    name = "\u2605 " + name
+                    sel_idx = i
+                self.combo_camera.Items.Add(name)
+            self.combo_camera.SelectedIndex = sel_idx
+
+    def _get_selected_telescope_id(self):
+        if self.config is None:
+            return None
+        idx = self.combo_telescope.SelectedIndex
+        telescopes = self.config.get_telescopes()
+        if 0 <= idx < len(telescopes):
+            return telescopes[idx].get('id')
+        return None
+
+    def _get_selected_camera_id(self):
+        if self.config is None:
+            return None
+        idx = self.combo_camera.SelectedIndex
+        cameras = self.config.get_cameras()
+        if 0 <= idx < len(cameras):
+            return cameras[idx].get('id')
+        return None
+
+    def _manage_telescopes_click(self, sender, e):
+        if self.config is None:
             return
+        from equipment_dialogs import TelescopeManagerDialog
+        dialog = TelescopeManagerDialog(self.config, self.theme_manager)
+        dialog.ShowDialog()
+        self.combo_telescope.Items.Clear()
+        self.combo_camera.Items.Clear()
+        self._load_equipment()
 
-        event_dt = getattr(self.event, 'event_datetime', None)
-        if event_dt is None:
-            MessageBox.Show("Selected event does not have a UTC event time.", "Missing Event Time", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+    def _manage_cameras_click(self, sender, e):
+        if self.config is None:
             return
+        from equipment_dialogs import CameraManagerDialog
+        dialog = CameraManagerDialog(self.config, self.theme_manager)
+        dialog.ShowDialog()
+        self.combo_telescope.Items.Clear()
+        self.combo_camera.Items.Clear()
+        self._load_equipment()
 
-        if hasattr(self, 'lbl_analysing'):
-            self.lbl_analysing.Text = "Analysing - please wait up to ~30s"
-            self.Refresh()
-
-        try:
-            option, sec_gap = self._pick_dataset_for_event(ntp_module, stats_folder, event_dt)
-            mjd = (event_dt.date() - date(1858, 11, 17)).days
-            sec = (
-                event_dt.hour * 3600.0
-                + event_dt.minute * 60.0
-                + event_dt.second
-                + (event_dt.microsecond / 1000000.0)
-            )
-
-            loop_rows = ntp_module.parse_loopstats(option.loop_path, option.target_mjd)
-            peer_rows = ntp_module.parse_peerstats(option.peer_path, option.target_mjd)
-            if not loop_rows:
-                raise RuntimeError("No loopstats rows available for event day in selected folder.")
-            if not peer_rows:
-                raise RuntimeError("No peerstats rows available for event day in selected folder.")
-
-            observer_lat = float(self.txt_latitude.Text)
-            observer_lon = float(self.txt_longitude.Text)
-            known_servers = self.ntp_context.get('known_servers')
-
-            result = ntp_module.estimate_offset_at_time(
-                mjd,
-                sec,
-                loop_rows,
-                peer_rows,
-                known_servers=known_servers,
-                observer_lat=observer_lat,
-                observer_lon=observer_lon,
-            )
-
-            self.ntp_stats_folder = stats_folder
-            self.ntp_loopstats_path = option.loop_path
-            self.ntp_peerstats_path = option.peer_path
-            self.ntp_analysis_result = result
-            self._save_ntp_folder_setting(stats_folder)
-
-            loop_name = os.path.basename(option.loop_path)
-            peer_name = os.path.basename(option.peer_path)
-            if sec_gap is None:
-                dataset_note = option.label
-            else:
-                dataset_note = "{0} (closest sample: {1:.0f}s)".format(option.label, sec_gap)
-            self.lbl_ntp_dataset.Text = "dataset: {0} | loop: {1} | peer: {2}".format(
-                dataset_note,
-                loop_name,
-                peer_name,
-            )
-
-            offset_ms = float(result.get('best_offset', 0.0)) * 1000.0
-            uncertainty_ms = float(result.get('u_expanded', 0.0)) * 1000.0
-            gap_before_s = float(result.get('gap_before_s', 0.0))
-            age_minutes = int(round(gap_before_s / 60.0))
-            server = result.get('active_server_at_T') or 'unknown'
-
-            delay_ms = float(result.get('mean_delay_near_T', 0.0)) * 1000.0
-            location_note = result.get('server_location_note') or ''
-
-            self.lbl_ntp_offset.Text = "Offset: {0:+.1f} ms".format(offset_ms)
-            self.lbl_ntp_uncertainty.Text = "Uncertainty: +/- {0:.1f} ms (95%)".format(uncertainty_ms)
-            self.lbl_ntp_age.Text = "Data age: {0} min".format(age_minutes)
-            if location_note:
-                self.lbl_ntp_server.Text = "Server: {0}  |  {1:.1f} ms  ({2})".format(server, delay_ms, location_note)
-            else:
-                self.lbl_ntp_server.Text = "Server: {0}  |  {1:.1f} ms".format(server, delay_ms)
-
-            theme_colors = self.theme_manager.get_current_theme()
-            text_fg = theme_colors['text_foreground']
-            self.lbl_ntp_offset.ForeColor = text_fg
-            self.lbl_ntp_uncertainty.ForeColor = text_fg
-            self.lbl_ntp_age.ForeColor = text_fg
-            self.lbl_ntp_server.ForeColor = text_fg
-            if hasattr(self, 'lbl_analysing'):
-                self.lbl_analysing.Text = ""
-        except Exception as ex:
-            self.ntp_analysis_result = None
-            self.lbl_ntp_dataset.Text = "dataset: -"
-            self.lbl_ntp_offset.Text = "Offset: -"
-            self.lbl_ntp_uncertainty.Text = "Uncertainty: -"
-            self.lbl_ntp_age.Text = "Data age: -"
-            self.lbl_ntp_server.Text = "Server: -"
-            self.lbl_ntp_offset.ForeColor = Color.Red
-            self.lbl_ntp_uncertainty.ForeColor = Color.Red
-            self.lbl_ntp_age.ForeColor = Color.Red
-            self.lbl_ntp_server.ForeColor = Color.Red
-            if hasattr(self, 'lbl_analysing'):
-                self.lbl_analysing.Text = ""
-            MessageBox.Show(
-                "NTP analysis failed:\n\n{0}".format(str(ex)),
-                "NTP Analysis Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error,
-            )
-
-    def open_ntp_analyser_click(self, sender, e):
-        """Open the NTP analyzer in a non-blocking peer window."""
-        ntp_module = self.ntp_context.get('module')
-        import_error = self.ntp_context.get('import_error')
-        if ntp_module is None and import_error:
-            MessageBox.Show(
-                "NTP analysis core was not loaded:\n\n{0}".format(import_error),
-                "NTP Module Not Available",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning,
-            )
-            return
-
-        try:
-            # Reuse an existing analyzer window if it is already open.
-            if getattr(self, '_ntp_gui_form', None) is not None:
-                try:
-                    if not self._ntp_gui_form.IsDisposed:
-                        self._ntp_gui_form.BringToFront()
-                        self._ntp_gui_form.Activate()
-                        self._ntp_gui_form.TopMost = True
-                        self._ntp_gui_form.TopMost = False
-                        return
-                except Exception:
-                    pass
-
-            import analyze_ntp_timing_accuracy as ntp_gui
-            self._ntp_gui_form = ntp_gui.AnalyzerForm()
-            try:
-                # Show as an owned window so it stays above this dialog.
-                self._ntp_gui_form.Show(self)
-            except Exception:
-                self._ntp_gui_form.Show()
-
-            self._ntp_gui_form.BringToFront()
-            self._ntp_gui_form.Activate()
-            self._ntp_gui_form.TopMost = True
-            self._ntp_gui_form.TopMost = False
-
-            # Pre-populate with event context.
-            stats_folder = (self.txt_ntp_stats_folder.Text or '').strip() or None
-            event_dt = getattr(self.event, 'event_datetime', None)
-            try:
-                obs_lat = float(self.txt_latitude.Text)
-            except (ValueError, AttributeError):
-                obs_lat = None
-            try:
-                obs_lon = float(self.txt_longitude.Text)
-            except (ValueError, AttributeError):
-                obs_lon = None
-            self._ntp_gui_form.prefill_from_event(stats_folder, event_dt, obs_lat, obs_lon)
-        except Exception as ex:
-            MessageBox.Show(
-                "Unable to open NTP analyser:\n\n{0}".format(str(ex)),
-                "Open NTP Analyser Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error,
-            )
-    
     def get_location(self):
         """Get the entered location values"""
         return {
@@ -2464,12 +2286,12 @@ class LocationConfirmDialog(Form):
             'obs_location': self.obs_location if hasattr(self, 'obs_location') else ''
         }
 
-    def get_ntp_loopstats_path(self):
-        return self.ntp_loopstats_path
+    def get_telescope_id(self):
+        return getattr(self, '_telescope_id', None)
 
-    def get_ntp_peerstats_path(self):
-        return self.ntp_peerstats_path
+    def get_camera_id(self):
+        return getattr(self, '_camera_id', None)
 
-    def get_ntp_analysis_result(self):
-        return self.ntp_analysis_result
+    def get_report_type(self):
+        return getattr(self, '_report_type', 'north_america')
     
