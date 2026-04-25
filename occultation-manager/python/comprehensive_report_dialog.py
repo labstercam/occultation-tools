@@ -1399,6 +1399,10 @@ class ComprehensiveReportDialog(Form):
         d3 = self._d3()
         return d3.ntp_comment if d3 else None
 
+    def get_include_station_name(self):
+        d3 = self._d3()
+        return d3.include_station_name if d3 else False
+
     def get_timing_data(self):
         """Return timing_data dict from §3 Timing inputs, or None if method needs no OM correction."""
         if not hasattr(self, '_rad_timing_ntp'):

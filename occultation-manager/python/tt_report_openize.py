@@ -70,7 +70,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
                        clouds=None, stability=None, other_conditions=None, timing_data=None,
-                       ntp_comment=None):
+                       ntp_comment=None, include_station_name=True):
         """Generate a Trans-Tasman report using Openize SDK
         
         Args:
@@ -101,6 +101,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         self._other_conditions = other_conditions
         self._timing_data = timing_data
         self._ntp_comment = ntp_comment
+        self._include_station_name = include_station_name
         
         print("\n" + "="*60)
         print("USING OPENIZE VERSION - TT Report Generator")
@@ -634,7 +635,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         
         # Station name
         station_name = ''
-        if hasattr(event, 'station_name') and event.station_name:
+        if self._include_station_name and hasattr(event, 'station_name') and event.station_name:
             station_name_raw = event.station_name
             # Remove observer surname prefix if present
             if station_name_raw.startswith(observer_surname + ' '):

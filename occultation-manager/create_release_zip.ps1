@@ -109,6 +109,7 @@ $pythonFiles = @(
     "python\timing_utils.py",
     "python\tt_report_openize.py",
     "python\utils.py",
+    "python\rename_files_dialog.py",
     "python\vizier_export.py",
     "python\vizier_export_dialog.py"
 )

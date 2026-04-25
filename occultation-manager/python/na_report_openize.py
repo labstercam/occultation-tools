@@ -69,7 +69,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
                        clouds=None, stability=None, other_conditions=None, timing_data=None,
-                       ntp_comment=None):
+                       ntp_comment=None, include_station_name=True):
         """Generate a North American report using Openize SDK
         
         Args:

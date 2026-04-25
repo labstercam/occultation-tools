@@ -81,6 +81,7 @@ class PhaseBDialog(Form):
         self.stability = None
         self.other_conditions = None
         self.observation_type = None
+        self.include_station_name = False
 
         self._setup_ui()
 
@@ -422,6 +423,19 @@ class PhaseBDialog(Form):
         grp_files.Size = Size(940, 346 + _grp_dr_height + 10)
         y_pos += 346 + _grp_dr_height + 20
 
+        # Compute the height consumed by the (mutually exclusive) section-4 timing info panel
+        _tc = self.timing_ctx
+        if _tc.get('is_gps_cmos', False):
+            _timing_panel_h = 55
+        elif _tc.get('is_gps', False):
+            _timing_panel_h = 45
+        elif _tc.get('is_analog_vti', False):
+            _timing_panel_h = 120
+        elif _tc.get('is_ntp', False):
+            _timing_panel_h = 4  # no info panel shown for NTP; small gap only
+        else:
+            _timing_panel_h = 40
+
         # ===== SECTION 4: PER-METHOD INFO PANELS (mutually exclusive) =====
         self._pnl_timing_gps_cmos = Panel()
         self._pnl_timing_gps_cmos.Location = Point(10, y_pos)
@@ -515,7 +529,7 @@ class PhaseBDialog(Form):
         lbl_other_info.ForeColor = Color.Gray
         self._pnl_timing_other.Controls.Add(lbl_other_info)
 
-        y_pos += 130
+        y_pos += _timing_panel_h + 10
 
         # ===== SECTION 5: OBSERVATION RESULT =====
         grp_obs_type = GroupBox()
@@ -601,9 +615,16 @@ class PhaseBDialog(Form):
         self.status_label = Label()
         self.status_label.Text = "Please complete all sections above"
         self.status_label.Location = Point(20, 880)
-        self.status_label.Size = Size(700, 20)
+        self.status_label.Size = Size(475, 20)
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
+
+        self.chk_include_station = CheckBox()
+        self.chk_include_station.Text = "Include Station Name in Filenames"
+        self.chk_include_station.Location = Point(500, 882)
+        self.chk_include_station.Size = Size(215, 20)
+        self.chk_include_station.Checked = False
+        self.Controls.Add(self.chk_include_station)
 
         self._btn_why_blocked = Button()
         self._btn_why_blocked.Text = "?"
@@ -841,6 +862,17 @@ class PhaseBDialog(Form):
             dec = s.split('.')[1]
             return len(dec) if dec else 0
         return 0
+
+    @staticmethod
+    def _fmt_unc(val):
+        """Format an uncertainty value to 2 significant figures, stripping trailing zeros.
+
+        Examples: 0.2000001 -> '0.2',  0.15 -> '0.15',  1.234 -> '1.2',  3.5 -> '3.5'
+        """
+        try:
+            return '{:.2g}'.format(float(val))
+        except (TypeError, ValueError):
+            return str(val)
 
     def _update_tangra_preview(self):
         try:
@@ -1197,9 +1229,9 @@ class PhaseBDialog(Form):
             d_combined = math.sqrt(d_unc ** 2 + ntp_unc_s ** 2) if d_unc is not None else ntp_unc_s
             r_combined = math.sqrt(r_unc ** 2 + ntp_unc_s ** 2) if r_unc is not None else ntp_unc_s
             self.lbl_dr_d_info.Text = "D: {0}  \u00b1{1}s".format(
-                d_time, "{0:.{1}f}".format(d_combined, d_dp))
+                d_time, self._fmt_unc(d_combined))
             self.lbl_dr_r_info.Text = "R: {0}  \u00b1{1}s".format(
-                r_time, "{0:.{1}f}".format(r_combined, r_dp))
+                r_time, self._fmt_unc(r_combined))
             self.ntp_comment = (
                 "NTP timing: offset {0:+.1f} ms, uncertainty \u00b1{1:.1f} ms (95%). "
                 "NTP offset uncertainty added in quadrature to D/R uncertainties."
@@ -1207,12 +1239,12 @@ class PhaseBDialog(Form):
         else:
             if d_unc is not None:
                 self.lbl_dr_d_info.Text = "D: {0}  \u00b1{1}s".format(
-                    d_time, "{0:.{1}f}".format(d_unc, d_dp))
+                    d_time, self._fmt_unc(d_unc))
             else:
                 self.lbl_dr_d_info.Text = "D: {0}".format(d_time)
             if r_unc is not None:
                 self.lbl_dr_r_info.Text = "R: {0}  \u00b1{1}s".format(
-                    r_time, "{0:.{1}f}".format(r_unc, r_dp))
+                    r_time, self._fmt_unc(r_unc))
             else:
                 self.lbl_dr_r_info.Text = "R: {0}".format(r_time)
             self.ntp_comment = None
@@ -1421,6 +1453,7 @@ class PhaseBDialog(Form):
             self.stability = str(self.combo_stability.SelectedItem)
         self.other_conditions = self.txt_other_conditions.Text.strip() or None
         self.observation_type = obs_type
+        self.include_station_name = self.chk_include_station.Checked
 
         if not self._check_analog_vti_before_generate():
             return

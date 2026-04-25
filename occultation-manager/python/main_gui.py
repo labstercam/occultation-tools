@@ -2029,6 +2029,7 @@ class OccultationManagerGUI(Form):
             other_conditions = comprehensive_dialog.get_other_conditions()
             timing_data = comprehensive_dialog.get_timing_data()
             ntp_comment = comprehensive_dialog.get_ntp_comment()
+            include_station_name = comprehensive_dialog.get_include_station_name()
             
             print(f"Report type: {report_type}")
             print(f"Telescope ID: {telescope_id}")
@@ -2342,7 +2343,8 @@ class OccultationManagerGUI(Form):
                                                           tangra_data, aota_report_data, aota_xml_used,
                                                           clouds, stability, other_conditions,
                                                           timing_data=timing_data,
-                                                          ntp_comment=ntp_comment)
+                                                          ntp_comment=ntp_comment,
+                                                          include_station_name=include_station_name)
             
             # If AOTA.xml data exists but AOTA Report wasn't used, add AOTA.xml data to the report
             # (AOTA Report data is already included in generate_report if it was provided)
@@ -2448,7 +2450,9 @@ class OccultationManagerGUI(Form):
                     output_path, xml_output_path,
                     copy_folder if copied_files else None,
                     tangra_csv_path,
-                    timing_data
+                    timing_data,
+                    aota_file_path=aota_file_path,
+                    aota_report_path=aota_report_path,
                 )
             else:
                 print(f"ERROR: Report generation failed (check log)")
@@ -2471,7 +2475,8 @@ class OccultationManagerGUI(Form):
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
     
     def _show_report_success_dialog(self, output_path, xml_output_path, copy_folder,
-                                    tangra_csv_path, timing_data):
+                                    tangra_csv_path, timing_data,
+                                    aota_file_path=None, aota_report_path=None):
         """Show a post-report dialog with filenames, folder paths, and Open/Export buttons."""
         from System.Windows.Forms import (
             Form as _Form, Button as _Button, Label as _Label
@@ -2562,6 +2567,11 @@ class OccultationManagerGUI(Form):
         btn_vizier.Enabled = tangra_csv_path is not None and os.path.isfile(tangra_csv_path)
         dlg.Controls.Add(btn_vizier)
 
+        btn_rename = _Button()
+        btn_rename.Text = "Rename Files to Match Report\u2026"
+        btn_rename.AutoSize = True
+        dlg.Controls.Add(btn_rename)
+
         btn_close = _Button()
         btn_close.Text = "Close"
         btn_close.AutoSize = True
@@ -2592,7 +2602,8 @@ class OccultationManagerGUI(Form):
                 y += btn_open_user.Height + 12
 
             btn_vizier.Location = Point(12, y)
-            btn_close.Location = Point(btn_vizier.Right + 8, y)
+            btn_rename.Location = Point(btn_vizier.Right + 8, y)
+            btn_close.Location = Point(btn_rename.Right + 8, y)
             dlg.ClientSize = Size(dlg.ClientSize.Width, btn_close.Bottom + 16)
 
         dlg.Layout += _layout
@@ -2617,6 +2628,23 @@ class OccultationManagerGUI(Form):
             dlg.Close()
             self._launch_vizier_export(tangra_csv_path, copy_folder, timing_data)
 
+        def _open_rename_dialog(s, e):
+            # Always derive obs_folder from source file locations (not copy_folder which is
+            # the report destination and won't contain the observation images)
+            obs_folder = None
+            for _f in [tangra_csv_path, aota_file_path, aota_report_path]:
+                if _f and os.path.isfile(_f):
+                    obs_folder = os.path.dirname(_f)
+                    break
+            from rename_files_dialog import RenameFilesDialog
+            rename_dlg = RenameFilesDialog(
+                report_path=output_path,
+                observation_folder=obs_folder,
+                selected_files=[tangra_csv_path, aota_file_path, aota_report_path],
+                theme_manager=self.theme_manager,
+            )
+            rename_dlg.ShowDialog(dlg)
+
         def _close_dlg(s, e):
             dlg.Close()
 
@@ -2624,6 +2652,7 @@ class OccultationManagerGUI(Form):
         if btn_open_user is not None:
             btn_open_user.Click += _open_user_folder
         btn_vizier.Click += _export_vizier
+        btn_rename.Click += _open_rename_dialog
         btn_close.Click += _close_dlg
 
         dlg.ShowDialog()
@@ -3302,8 +3331,32 @@ class OccultationManagerGUI(Form):
             else:
                 self.station_filter = ""
                 self.manager.clear_station_filter()
-            
+
+            # Remember the event currently in focus so we can restore the position
+            previously_focused_event = None
+            try:
+                current_row = self.events_grid.CurrentRow
+                if current_row is not None:
+                    previously_focused_event = current_row.Tag
+            except Exception:
+                pass
+
             self.refresh_display()
+
+            # After refresh, scroll to the previously focused row or fall back to row 0
+            try:
+                target_index = 0  # default to first row
+                if previously_focused_event is not None:
+                    for row in self.events_grid.Rows:
+                        if row.Tag is previously_focused_event:
+                            target_index = row.Index
+                            break
+                if self.events_grid.Rows.Count > 0:
+                    self.events_grid.CurrentCell = self.events_grid.Rows[target_index].Cells[0]
+                    self.events_grid.FirstDisplayedScrollingRowIndex = target_index
+                self.events_grid.Focus()
+            except Exception:
+                pass
     
    
     def get_displayed_selected_events(self):

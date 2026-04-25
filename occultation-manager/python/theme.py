@@ -29,6 +29,7 @@ class ThemeManager:
             'grid_background': SystemColors.Window,
             'grid_foreground': SystemColors.WindowText,
             'grid_selection': SystemColors.Highlight,
+            'grid_selection_text': SystemColors.HighlightText,
             'button_background': SystemColors.ButtonFace,
             'button_text': SystemColors.ControlText,
             'status_background': SystemColors.ControlDark,
@@ -50,6 +51,7 @@ class ThemeManager:
             'grid_background': Color.FromArgb(30, 25, 18),     # Dark background
             'grid_foreground': Color.FromArgb(255, 170, 70),   # Orange text
             'grid_selection': Color.FromArgb(150, 90, 30),     # Dark orange selection
+            'grid_selection_text': Color.FromArgb(255, 230, 160),  # Pale orange — contrasts on dark orange
             'button_background': Color.FromArgb(60, 45, 25),   # Medium dark button
             'button_text': Color.FromArgb(255, 190, 90),       # Bright orange text
             'status_background': Color.FromArgb(20, 15, 10),   # Nearly black
@@ -186,10 +188,8 @@ def apply_datagrid_theme(grid, theme_colors):
         grid.ForeColor = theme_colors['grid_foreground']
         grid.DefaultCellStyle.BackColor = theme_colors['grid_background']
         grid.DefaultCellStyle.ForeColor = theme_colors['grid_foreground']
-#        grid.DefaultCellStyle.SelectionBackColor = theme_colors['grid_selection']
-#        grid.DefaultCellStyle.SelectionForeColor = theme_colors['text_foreground']
-        grid.DefaultCellStyle.SelectionBackColor = theme_colors['grid_background']
-        grid.DefaultCellStyle.SelectionForeColor = theme_colors['grid_foreground']
+        grid.DefaultCellStyle.SelectionBackColor = theme_colors['grid_selection']
+        grid.DefaultCellStyle.SelectionForeColor = theme_colors.get('grid_selection_text', theme_colors['text_foreground'])
         grid.ColumnHeadersDefaultCellStyle.BackColor = theme_colors['button_background']
         grid.ColumnHeadersDefaultCellStyle.ForeColor = theme_colors['button_text']
         grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = theme_colors['button_background']
