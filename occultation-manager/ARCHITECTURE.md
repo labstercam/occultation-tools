@@ -430,6 +430,8 @@ Three specialized report generators create Excel-based observation reports by fi
 - `TTReportGeneratorOpenize` - RASNZ (Royal Astronomical Society NZ) format  
 - Template: `RASNZ_AstReporttForm_V4.1.2.G.xlsx`
 - Fields: Similar to NA with regional differences
+- Camera acquisition delay (cell P26) written to 4 decimal places
+- `ntp_comment` kwarg written to cell D44 (Additional Comments, third row) when provided
 - Uses Openize SDK for direct cell manipulation
 
 **Occult 4 XML Export (`occult4_export.py` - 944 lines):**
@@ -542,6 +544,7 @@ Three specialized report generators create Excel-based observation reports by fi
 #### AOTA Report Parser (`aota_report_parser.py`)
 - Parse plain-text AOTA Report `.txt` files
 - Extract D/R times, uncertainty, and SNR from formatted report text
+- SNR regex matches both `Ave:` and `Average:` label variants (case-insensitive)
 - Provides the same `aota_report_data` dict shape as the XML parser
 
 #### Light Curve Reader (`light_curve_reader.py`)

@@ -11,31 +11,54 @@ clr.AddReference("System")
 import os
 import System
 from System import Array
-from System.Drawing import Point, Size, Color, Font, FontStyle
+from System.Drawing import Point, Size, Color, Font, FontStyle, Image
 from System.Windows.Forms import (
     Form, Button, Label, ListBox, Panel, TextBox, GroupBox, RadioButton, ComboBox,
     CheckBox, Clipboard, AnchorStyles, DockStyle, Padding, DialogResult,
     FormStartPosition, MessageBox, MessageBoxButtons, MessageBoxIcon,
-    FolderBrowserDialog, SelectionMode, ComboBoxStyle, ToolTip
+    FolderBrowserDialog, SelectionMode, ComboBoxStyle, ToolTip,
+    PictureBox, PictureBoxSizeMode
 )
 from theme import apply_theme_to_control
+
+
+class _ComboProxy(object):
+    """Lightweight proxy that mimics a read-only ComboBox for equipment lookups."""
+    def __init__(self, index, count):
+        self.SelectedIndex = index
+        self.Enabled = (index >= 0 and count > 0)
+
+
+class _RadioProxy(object):
+    """Lightweight proxy that mimics a RadioButton.Checked for report type."""
+    def __init__(self, checked):
+        self.Checked = checked
 
 
 class ComprehensiveReportDialog(Form):
     """Single comprehensive dialog for all report generation settings"""
     
-    def __init__(self, config, theme_manager, event):
+    def __init__(self, config, theme_manager, event, telescope_id=None, camera_id=None,
+                 report_type=None, ntp_context=None):
         """Initialize the comprehensive dialog
         
         Args:
             config: ConfigManager instance
             theme_manager: Theme manager for consistent styling
             event: Event object for display
+            telescope_id: Pre-selected telescope ID from Dialog 1
+            camera_id: Pre-selected camera ID from Dialog 1
+            report_type: Pre-selected report type from Dialog 1
+            ntp_context: NTP module context dict passed from main_gui
         """
         Form.__init__(self)
         self.config = config
         self.theme_manager = theme_manager
         self.event = event
+        self._init_telescope_id = telescope_id
+        self._init_camera_id = camera_id
+        self._init_report_type = report_type
+        self.ntp_context = ntp_context or {}
         
         # Return values
         self.report_type = None
@@ -72,9 +95,21 @@ class ComprehensiveReportDialog(Form):
         self._last_cam_id = None          # guards _init_timing_section from spurious fires
         self._correction_user_set = False # True once user explicitly clicks a correction radio
         self._suppress_correction_event = False  # True during programmatic radio changes
-        self._plausibility_dr_ok = True   # False when D >= R for a positive/unsure observation
+
+        # NTP Analyser state (§2)
+        self._ntp_stats_folder = None
+        self._ntp_loopstats_path = None
+        self._ntp_peerstats_path = None
+        self._ntp_analysis_result_loc = None  # from §2 NTP Analyser panel
 
         self.setup_ui()
+
+        # Build equipment + report-type proxies from values passed by Dialog 1.
+        # These proxy objects let existing code (update_button_state, generate_click, etc.)
+        # continue reading .SelectedIndex, .Enabled, .Checked without modification.
+        self._rebuild_equipment_proxies(
+            self._init_telescope_id, self._init_camera_id, self._init_report_type
+        )
         
         # Load saved preferences
         self.load_preferences()
@@ -86,14 +121,16 @@ class ComprehensiveReportDialog(Form):
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
 
-        # Re-apply guidance panel highlight after theming (theme overwrites Panel BackColor)
-        if hasattr(self, '_pnl_apply_guidance'):
-            self._pnl_apply_guidance.BackColor = Color.LightYellow
+        # Re-apply custom panel highlights after theming (theme overwrites Panel BackColor)
+        if hasattr(self, '_pnl_step_a3'):
+            self._pnl_step_a3.BackColor = Color.LightYellow
+        if hasattr(self, '_pnl_step_a4'):
+            self._pnl_step_a4.BackColor = Color.FromArgb(240, 255, 240)
     
     def setup_ui(self):
         """Setup user interface"""
         self.Text = "Generate Report"
-        self.Size = Size(1000, 1071)
+        self.Size = Size(1000, 920)
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -102,12 +139,12 @@ class ComprehensiveReportDialog(Form):
         # Main scroll panel
         main_panel = Panel()
         main_panel.Location = Point(10, 10)
-        main_panel.Size = Size(970, 940)
+        main_panel.Size = Size(970, 770)
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
         
         y_pos = 10
-        
+
         # Event header
         lbl_event = Label()
         lbl_event.Text = f"Generating Report for: {self.event.get_asteroid_display_name()}"
@@ -116,860 +153,430 @@ class ComprehensiveReportDialog(Form):
         lbl_event.Size = Size(940, 30)
         main_panel.Controls.Add(lbl_event)
         y_pos += 40
-        
-        # ===== SECTION 1: EQUIPMENT =====
-        grp_equipment = GroupBox()
-        grp_equipment.Text = "1. Equipment"
-        grp_equipment.Location = Point(10, y_pos)
-        grp_equipment.Size = Size(940, 90)
-        main_panel.Controls.Add(grp_equipment)
 
-        # Telescope
-        lbl_telescope = Label()
-        lbl_telescope.Text = "Telescope:"
-        lbl_telescope.Location = Point(20, 30)
-        lbl_telescope.Size = Size(100, 20)
-        grp_equipment.Controls.Add(lbl_telescope)
+        # ===== SECTION 1: OBSERVATION FILES FOLDER (picker only) =====
+        grp_folder = GroupBox()
+        grp_folder.Text = "1. Observation Files Folder"
+        grp_folder.Location = Point(10, y_pos)
+        grp_folder.Size = Size(940, 70)
+        main_panel.Controls.Add(grp_folder)
 
-        self.combo_telescope = ComboBox()
-        self.combo_telescope.Location = Point(130, 28)
-        self.combo_telescope.Size = Size(350, 25)
-        self.combo_telescope.DropDownStyle = ComboBoxStyle.DropDownList
-        self.combo_telescope.SelectedIndexChanged += self.equipment_changed
-        grp_equipment.Controls.Add(self.combo_telescope)
-
-        btn_manage_telescope = Button()
-        btn_manage_telescope.Text = "Manage..."
-        btn_manage_telescope.Location = Point(490, 26)
-        btn_manage_telescope.Size = Size(100, 25)
-        btn_manage_telescope.Click += self.manage_telescopes_click
-        grp_equipment.Controls.Add(btn_manage_telescope)
-
-        # Camera
-        lbl_camera = Label()
-        lbl_camera.Text = "Camera:"
-        lbl_camera.Location = Point(20, 58)
-        lbl_camera.Size = Size(100, 20)
-        grp_equipment.Controls.Add(lbl_camera)
-
-        self.combo_camera = ComboBox()
-        self.combo_camera.Location = Point(130, 56)
-        self.combo_camera.Size = Size(350, 25)
-        self.combo_camera.DropDownStyle = ComboBoxStyle.DropDownList
-        self.combo_camera.SelectedIndexChanged += self.equipment_changed
-        grp_equipment.Controls.Add(self.combo_camera)
-
-        btn_manage_camera = Button()
-        btn_manage_camera.Text = "Manage..."
-        btn_manage_camera.Location = Point(490, 54)
-        btn_manage_camera.Size = Size(100, 25)
-        btn_manage_camera.Click += self.manage_cameras_click
-        grp_equipment.Controls.Add(btn_manage_camera)
-
-        y_pos += 100
-
-        # ===== SECTION 2: REPORT FORMAT AND OBSERVATION FOLDER =====
-        grp_report = GroupBox()
-        grp_report.Text = "2. Report Format and Observation Folder"
-        grp_report.Location = Point(10, y_pos)
-        grp_report.Size = Size(940, 135)
-        main_panel.Controls.Add(grp_report)
-
-        self.rb_na = RadioButton()
-        self.rb_na.Text = "IOTA North America (V5.6.12r)"
-        self.rb_na.Location = Point(20, 25)
-        self.rb_na.Size = Size(280, 25)
-        self.rb_na.CheckedChanged += self.report_type_changed
-        grp_report.Controls.Add(self.rb_na)
-
-        self.rb_tt = RadioButton()
-        self.rb_tt.Text = "Trans-Tasman / RASNZ (V4.1.2.G)"
-        self.rb_tt.Location = Point(20, 50)
-        self.rb_tt.Size = Size(280, 25)
-        self.rb_tt.CheckedChanged += self.report_type_changed
-        grp_report.Controls.Add(self.rb_tt)
-
-        self.rb_sodis = RadioButton()
-        self.rb_sodis.Text = "IOTA-ES / SODIS (Form 2.03)"
-        self.rb_sodis.Location = Point(20, 75)
-        self.rb_sodis.Size = Size(280, 25)
-        self.rb_sodis.CheckedChanged += self.report_type_changed
-        grp_report.Controls.Add(self.rb_sodis)
-
-        # Folder selection (right half of the §2 group)
         lbl_folder_info = Label()
         lbl_folder_info.Text = "Observation files folder:"
-        lbl_folder_info.Location = Point(320, 22)
-        lbl_folder_info.Size = Size(600, 20)
-        grp_report.Controls.Add(lbl_folder_info)
+        lbl_folder_info.Location = Point(15, 22)
+        lbl_folder_info.Size = Size(160, 20)
+        grp_folder.Controls.Add(lbl_folder_info)
 
         self.folder_textbox = TextBox()
-        self.folder_textbox.Location = Point(320, 44)
-        self.folder_textbox.Size = Size(500, 25)
+        self.folder_textbox.Location = Point(180, 20)
+        self.folder_textbox.Size = Size(620, 25)
         self.folder_textbox.ReadOnly = True
-        grp_report.Controls.Add(self.folder_textbox)
+        grp_folder.Controls.Add(self.folder_textbox)
 
         btn_browse = Button()
         btn_browse.Text = "Browse..."
-        btn_browse.Location = Point(826, 42)
-        btn_browse.Size = Size(100, 25)
+        btn_browse.Location = Point(810, 18)
+        btn_browse.Size = Size(100, 28)
         btn_browse.Click += self.browse_folder_click
-        grp_report.Controls.Add(btn_browse)
+        grp_folder.Controls.Add(btn_browse)
 
-        # File availability status indicator (updated by scan_folder)
         self._lbl_file_status = Label()
         self._lbl_file_status.Text = "No folder selected"
-        self._lbl_file_status.Location = Point(320, 73)
-        self._lbl_file_status.Size = Size(606, 52)
+        self._lbl_file_status.Location = Point(180, 47)
+        self._lbl_file_status.Size = Size(730, 18)
         self._lbl_file_status.ForeColor = Color.Gray
-        grp_report.Controls.Add(self._lbl_file_status)
+        grp_folder.Controls.Add(self._lbl_file_status)
 
-        y_pos += 145
-        
-        # ===== SECTION 3: TIMING =====
-        grp_timing = GroupBox()
-        grp_timing.Text = "3. Timing"
-        grp_timing.Location = Point(10, y_pos)
-        grp_timing.Size = Size(940, 475)
-        main_panel.Controls.Add(grp_timing)
+        y_pos += 80
 
-        lbl_timing_method = Label()
-        lbl_timing_method.Text = "Timing method:"
-        lbl_timing_method.Location = Point(15, 22)
-        lbl_timing_method.Size = Size(115, 22)
-        grp_timing.Controls.Add(lbl_timing_method)
+        # ===== SECTION 2: TIMING METHOD =====
+        grp_timing_method = GroupBox()
+        grp_timing_method.Text = "2. Timing Method"
+        grp_timing_method.Location = Point(10, y_pos)
+        grp_timing_method.Size = Size(940, 72)
+        main_panel.Controls.Add(grp_timing_method)
 
-        # Row 1: NTP and GPS flash
         self._rad_timing_ntp = RadioButton()
         self._rad_timing_ntp.Text = "NTP / GPS-disciplined clock"
-        self._rad_timing_ntp.Location = Point(135, 22)
-        self._rad_timing_ntp.Size = Size(215, 22)
+        self._rad_timing_ntp.Location = Point(15, 22)
+        self._rad_timing_ntp.Size = Size(220, 22)
         self._rad_timing_ntp.CheckedChanged += self._on_timing_method_changed
-        grp_timing.Controls.Add(self._rad_timing_ntp)
+        grp_timing_method.Controls.Add(self._rad_timing_ntp)
 
         self._rad_timing_gps = RadioButton()
         self._rad_timing_gps.Text = "GPS flash overlay (dumb)"
-        self._rad_timing_gps.Location = Point(360, 22)
-        self._rad_timing_gps.Size = Size(195, 22)
+        self._rad_timing_gps.Location = Point(245, 22)
+        self._rad_timing_gps.Size = Size(205, 22)
         self._rad_timing_gps.CheckedChanged += self._on_timing_method_changed
-        grp_timing.Controls.Add(self._rad_timing_gps)
+        grp_timing_method.Controls.Add(self._rad_timing_gps)
 
-        # Row 2: GPS-integrated CMOS, Analog video + VTI, Other
         self._rad_timing_gps_cmos = RadioButton()
         self._rad_timing_gps_cmos.Text = "GPS-integrated CMOS camera"
-        self._rad_timing_gps_cmos.Location = Point(135, 47)
+        self._rad_timing_gps_cmos.Location = Point(15, 47)
         self._rad_timing_gps_cmos.Size = Size(230, 22)
         self._rad_timing_gps_cmos.CheckedChanged += self._on_timing_method_changed
-        grp_timing.Controls.Add(self._rad_timing_gps_cmos)
+        grp_timing_method.Controls.Add(self._rad_timing_gps_cmos)
 
         self._rad_timing_analog_vti = RadioButton()
         self._rad_timing_analog_vti.Text = "Analog video + VTI"
-        self._rad_timing_analog_vti.Location = Point(375, 47)
+        self._rad_timing_analog_vti.Location = Point(255, 47)
         self._rad_timing_analog_vti.Size = Size(185, 22)
         self._rad_timing_analog_vti.CheckedChanged += self._on_timing_method_changed
-        grp_timing.Controls.Add(self._rad_timing_analog_vti)
+        grp_timing_method.Controls.Add(self._rad_timing_analog_vti)
 
         self._rad_timing_other = RadioButton()
         self._rad_timing_other.Text = "Other"
-        self._rad_timing_other.Location = Point(570, 47)
+        self._rad_timing_other.Location = Point(450, 47)
         self._rad_timing_other.Size = Size(80, 22)
         self._rad_timing_other.Checked = True
         self._rad_timing_other.CheckedChanged += self._on_timing_method_changed
-        grp_timing.Controls.Add(self._rad_timing_other)
+        grp_timing_method.Controls.Add(self._rad_timing_other)
 
-        # --- NTP panel (visible when NTP method selected) ---
-        self._pnl_timing_ntp = Panel()
-        self._pnl_timing_ntp.Location = Point(8, 76)
-        self._pnl_timing_ntp.Size = Size(922, 458)
-        self._pnl_timing_ntp.Visible = False
-        grp_timing.Controls.Add(self._pnl_timing_ntp)
+        y_pos += 82
 
+        # ===== PHASE A: PREPARE FOR TANGRA (NTP/GPS-disciplined and GPS Flash only) =====
+        # This panel is shown only for timing methods that require corrections entered into Tangra.
+        self._pnl_phase_a = Panel()
+        self._pnl_phase_a.Location = Point(10, y_pos)
+        self._pnl_phase_a.Size = Size(940, 496)
+        self._pnl_phase_a.BackColor = Color.FromArgb(235, 244, 255)  # light blue tint
+        self._pnl_phase_a.Visible = False
+        main_panel.Controls.Add(self._pnl_phase_a)
+
+        lbl_phase_a_head = Label()
+        lbl_phase_a_head.Text = "\u25b6  Phase A \u2014 Complete these steps to calculate time corrections for TANGRA"
+        lbl_phase_a_head.Font = Font(lbl_phase_a_head.Font.FontFamily, lbl_phase_a_head.Font.Size, FontStyle.Bold)
+        lbl_phase_a_head.Location = Point(8, 8)
+        lbl_phase_a_head.Size = Size(900, 18)
+        self._pnl_phase_a.Controls.Add(lbl_phase_a_head)
+
+        # --- Camera acquisition delay sub-section ---
         lbl_cam_section = Label()
-        lbl_cam_section.Text = "Camera acquisition delay"
+        lbl_cam_section.Text = "Step A1 \u2014 Camera acquisition delay"
         lbl_cam_section.Font = Font(lbl_cam_section.Font.FontFamily, lbl_cam_section.Font.Size, FontStyle.Bold)
-        lbl_cam_section.Location = Point(5, 5)
-        lbl_cam_section.Size = Size(270, 18)
-        self._pnl_timing_ntp.Controls.Add(lbl_cam_section)
+        lbl_cam_section.Location = Point(8, 34)
+        lbl_cam_section.Size = Size(350, 18)
+        self._pnl_phase_a.Controls.Add(lbl_cam_section)
 
         _btn_ntp_info = Button()
         _btn_ntp_info.Text = "\u24d8  What is NTP correction?"
-        _btn_ntp_info.Location = Point(462, 3)
-        _btn_ntp_info.Size = Size(195, 22)
+        _btn_ntp_info.Location = Point(680, 32)
+        _btn_ntp_info.Size = Size(195, 26)
         _btn_ntp_info.Click += self._on_ntp_info_click
-        self._pnl_timing_ntp.Controls.Add(_btn_ntp_info)
+        self._pnl_phase_a.Controls.Add(_btn_ntp_info)
 
         lbl_calib_run = Label()
         lbl_calib_run.Text = "Calibration run:"
-        lbl_calib_run.Location = Point(5, 28)
+        lbl_calib_run.Location = Point(8, 58)
         lbl_calib_run.Size = Size(110, 22)
-        self._pnl_timing_ntp.Controls.Add(lbl_calib_run)
+        self._pnl_phase_a.Controls.Add(lbl_calib_run)
 
         self._combo_calib_run = ComboBox()
-        self._combo_calib_run.Location = Point(118, 26)
+        self._combo_calib_run.Location = Point(120, 56)
         self._combo_calib_run.Size = Size(356, 22)
         self._combo_calib_run.DropDownStyle = ComboBoxStyle.DropDownList
         self._combo_calib_run.SelectedIndexChanged += self._on_calib_run_changed
-        self._pnl_timing_ntp.Controls.Add(self._combo_calib_run)
+        self._pnl_phase_a.Controls.Add(self._combo_calib_run)
 
         _btn_calib_info = Button()
         _btn_calib_info.Text = "?"
-        _btn_calib_info.Location = Point(477, 26)
-        _btn_calib_info.Size = Size(24, 22)
+        _btn_calib_info.Location = Point(479, 56)
+        _btn_calib_info.Size = Size(24, 26)
         _btn_calib_info.Click += self._on_calib_info_click
-        self._pnl_timing_ntp.Controls.Add(_btn_calib_info)
+        self._pnl_phase_a.Controls.Add(_btn_calib_info)
 
         self._lbl_calib_match = Label()
         self._lbl_calib_match.Text = ""
-        self._lbl_calib_match.Location = Point(514, 24)
-        self._lbl_calib_match.Size = Size(398, 34)
+        self._lbl_calib_match.Location = Point(516, 54)
+        self._lbl_calib_match.Size = Size(360, 34)
         self._lbl_calib_match.AutoSize = False
         self._lbl_calib_match.ForeColor = Color.Gray
-        self._pnl_timing_ntp.Controls.Add(self._lbl_calib_match)
+        self._pnl_phase_a.Controls.Add(self._lbl_calib_match)
 
         lbl_y_line = Label()
         lbl_y_line.Text = "Y line:"
-        lbl_y_line.Location = Point(5, 54)
+        lbl_y_line.Location = Point(8, 84)
         lbl_y_line.Size = Size(55, 22)
-        self._pnl_timing_ntp.Controls.Add(lbl_y_line)
+        self._pnl_phase_a.Controls.Add(lbl_y_line)
 
         self._txt_y_line = TextBox()
-        self._txt_y_line.Location = Point(63, 52)
+        self._txt_y_line.Location = Point(66, 82)
         self._txt_y_line.Size = Size(70, 22)
-        self._txt_y_line.Text = "0"
+        self._txt_y_line.Text = ""
         self._txt_y_line.TextChanged += self._on_y_line_changed
-        self._pnl_timing_ntp.Controls.Add(self._txt_y_line)
+        self._pnl_phase_a.Controls.Add(self._txt_y_line)
 
         _btn_y_line_info = Button()
         _btn_y_line_info.Text = "?"
-        _btn_y_line_info.Location = Point(136, 52)
-        _btn_y_line_info.Size = Size(24, 22)
+        _btn_y_line_info.Location = Point(139, 82)
+        _btn_y_line_info.Size = Size(24, 26)
         _btn_y_line_info.Click += self._on_y_line_info_click
-        self._pnl_timing_ntp.Controls.Add(_btn_y_line_info)
+        self._pnl_phase_a.Controls.Add(_btn_y_line_info)
 
         lbl_calc_label = Label()
         lbl_calc_label.Text = "Calculated delay:"
-        lbl_calc_label.Location = Point(163, 54)
+        lbl_calc_label.Location = Point(167, 84)
         lbl_calc_label.Size = Size(128, 22)
-        self._pnl_timing_ntp.Controls.Add(lbl_calc_label)
+        self._pnl_phase_a.Controls.Add(lbl_calc_label)
 
         self._lbl_calc_delay = Label()
         self._lbl_calc_delay.Text = "\u2014"
-        self._lbl_calc_delay.Location = Point(295, 54)
+        self._lbl_calc_delay.Location = Point(299, 84)
         self._lbl_calc_delay.Size = Size(200, 22)
-        self._pnl_timing_ntp.Controls.Add(self._lbl_calc_delay)
+        self._pnl_phase_a.Controls.Add(self._lbl_calc_delay)
 
-        lbl_csv_label = Label()
-        lbl_csv_label.Text = "Tangra CSV:"
-        lbl_csv_label.Location = Point(5, 78)
-        lbl_csv_label.Size = Size(100, 20)
-        lbl_csv_label.ForeColor = Color.Gray
-        self._pnl_timing_ntp.Controls.Add(lbl_csv_label)
+        # --- NTP analysis sub-section (hidden for GPS Flash) ---
+        self._pnl_ntp_analyse = Panel()
+        self._pnl_ntp_analyse.Location = Point(0, 108)
+        self._pnl_ntp_analyse.Size = Size(940, 124)
+        self._pnl_ntp_analyse.Visible = True  # shown for NTP method; hidden for GPS Flash
+        self._pnl_phase_a.Controls.Add(self._pnl_ntp_analyse)
+
+        lbl_step_a2 = Label()
+        lbl_step_a2.Text = "Step A2 \u2014 NTP Analysis"
+        lbl_step_a2.Font = Font(lbl_step_a2.Font.FontFamily, lbl_step_a2.Font.Size, FontStyle.Bold)
+        lbl_step_a2.Location = Point(8, 0)
+        lbl_step_a2.Size = Size(260, 18)
+        self._pnl_ntp_analyse.Controls.Add(lbl_step_a2)
+
+        lbl_ntp_folder = Label()
+        lbl_ntp_folder.Text = "NTP stats folder:"
+        lbl_ntp_folder.Location = Point(8, 22)
+        lbl_ntp_folder.Size = Size(155, 20)
+        self._pnl_ntp_analyse.Controls.Add(lbl_ntp_folder)
+
+        self.txt_ntp_stats_folder = TextBox()
+        self.txt_ntp_stats_folder.Location = Point(163, 20)
+        self.txt_ntp_stats_folder.Size = Size(280, 22)
+        self._pnl_ntp_analyse.Controls.Add(self.txt_ntp_stats_folder)
+
+        btn_ntp_folder_browse = Button()
+        btn_ntp_folder_browse.Text = "Browse..."
+        btn_ntp_folder_browse.Location = Point(451, 18)
+        btn_ntp_folder_browse.Size = Size(100, 28)
+        btn_ntp_folder_browse.Click += self._browse_ntp_folder_click
+        self._pnl_ntp_analyse.Controls.Add(btn_ntp_folder_browse)
+
+        btn_analyse_ntp = Button()
+        btn_analyse_ntp.Text = "Analyse NTP"
+        btn_analyse_ntp.Location = Point(8, 50)
+        btn_analyse_ntp.Size = Size(115, 26)
+        btn_analyse_ntp.Click += self._analyse_ntp_click
+        self._pnl_ntp_analyse.Controls.Add(btn_analyse_ntp)
+
+        self.lbl_ntp_analysing = Label()
+        self.lbl_ntp_analysing.Text = ""
+        self.lbl_ntp_analysing.Location = Point(132, 54)
+        self.lbl_ntp_analysing.Size = Size(400, 18)
+        self.lbl_ntp_analysing.ForeColor = Color.Gray
+        self._pnl_ntp_analyse.Controls.Add(self.lbl_ntp_analysing)
+
+        btn_open_ntp = Button()
+        btn_open_ntp.Text = "Open NTP Analyser"
+        btn_open_ntp.Location = Point(740, 50)
+        btn_open_ntp.Size = Size(150, 26)
+        btn_open_ntp.Click += self._on_open_ntp_analyser_location_click
+        self._pnl_ntp_analyse.Controls.Add(btn_open_ntp)
+
+        _ntp_results_font = Font("Microsoft Sans Serif", 9)
+
+        self.lbl_ntp_offset_loc = Label()
+        self.lbl_ntp_offset_loc.Text = "Offset: -"
+        self.lbl_ntp_offset_loc.Location = Point(8, 78)
+        self.lbl_ntp_offset_loc.Size = Size(200, 20)
+        self.lbl_ntp_offset_loc.Font = _ntp_results_font
+        self.lbl_ntp_offset_loc.ForeColor = Color.Gray
+        self._pnl_ntp_analyse.Controls.Add(self.lbl_ntp_offset_loc)
+
+        self.lbl_ntp_uncertainty_loc = Label()
+        self.lbl_ntp_uncertainty_loc.Text = "Uncertainty: -"
+        self.lbl_ntp_uncertainty_loc.Location = Point(218, 78)
+        self.lbl_ntp_uncertainty_loc.Size = Size(220, 20)
+        self.lbl_ntp_uncertainty_loc.Font = _ntp_results_font
+        self.lbl_ntp_uncertainty_loc.ForeColor = Color.Gray
+        self._pnl_ntp_analyse.Controls.Add(self.lbl_ntp_uncertainty_loc)
+
+        self.lbl_ntp_age_loc = Label()
+        self.lbl_ntp_age_loc.Text = "Data age: -"
+        self.lbl_ntp_age_loc.Location = Point(448, 78)
+        self.lbl_ntp_age_loc.Size = Size(200, 20)
+        self.lbl_ntp_age_loc.Font = _ntp_results_font
+        self.lbl_ntp_age_loc.ForeColor = Color.Gray
+        self._pnl_ntp_analyse.Controls.Add(self.lbl_ntp_age_loc)
+
+        self.lbl_ntp_server_loc = Label()
+        self.lbl_ntp_server_loc.Text = "Server: -"
+        self.lbl_ntp_server_loc.Location = Point(8, 100)
+        self.lbl_ntp_server_loc.Size = Size(900, 20)
+        self.lbl_ntp_server_loc.Font = _ntp_results_font
+        self.lbl_ntp_server_loc.ForeColor = Color.Gray
+        self._pnl_ntp_analyse.Controls.Add(self.lbl_ntp_server_loc)
+
+        self._prefill_ntp_folder()
+
+        # --- Step A3: Enter Total Delay in Tangra ---
+        self._pnl_step_a3 = Panel()
+        self._pnl_step_a3.Location = Point(0, 234)
+        self._pnl_step_a3.Size = Size(940, 128)
+        self._pnl_step_a3.BackColor = Color.LightYellow
+        self._pnl_phase_a.Controls.Add(self._pnl_step_a3)
+
+        lbl_a3_head = Label()
+        lbl_a3_head.Text = "Step A3 \u2014 Enter Total Delay in Tangra"
+        lbl_a3_head.Font = Font(lbl_a3_head.Font.FontFamily, lbl_a3_head.Font.Size, FontStyle.Bold)
+        lbl_a3_head.Location = Point(8, 4)
+        lbl_a3_head.Size = Size(500, 18)
+        self._pnl_step_a3.Controls.Add(lbl_a3_head)
+
+        lbl_a3_instr = Label()
+        lbl_a3_instr.Text = (
+            "\u270e  Open Tangra \u2192 Camera and Timing Corrections, enter the Total Delay "
+            "in the Acquisition Delay field only. Leave Reference Time unchecked.")
+        lbl_a3_instr.Location = Point(8, 24)
+        lbl_a3_instr.Size = Size(920, 18)
+        lbl_a3_instr.ForeColor = Color.Gray
+        self._pnl_step_a3.Controls.Add(lbl_a3_instr)
+
+        lbl_total_delay_prefix = Label()
+        lbl_total_delay_prefix.Text = "Total Delay for TANGRA:"
+        lbl_total_delay_prefix.Location = Point(8, 46)
+        lbl_total_delay_prefix.Size = Size(198, 22)
+        self._pnl_step_a3.Controls.Add(lbl_total_delay_prefix)
+
+        self._lbl_total_delay = Label()
+        self._lbl_total_delay.Text = "\u2014"
+        self._lbl_total_delay.Font = Font(self._lbl_total_delay.Font.FontFamily,
+                                          self._lbl_total_delay.Font.Size, FontStyle.Bold)
+        self._lbl_total_delay.ForeColor = Color.Gray
+        self._lbl_total_delay.Location = Point(210, 46)
+        self._lbl_total_delay.Size = Size(120, 22)
+        self._pnl_step_a3.Controls.Add(self._lbl_total_delay)
+
+        _btn_total_delay_info = Button()
+        _btn_total_delay_info.Text = "\u24d8  How to enter in Tangra"
+        _btn_total_delay_info.Location = Point(394, 44)
+        _btn_total_delay_info.Size = Size(190, 28)
+        _btn_total_delay_info.Click += self._on_total_delay_info_click
+        self._pnl_step_a3.Controls.Add(_btn_total_delay_info)
+
+        _tangra_img_path = os.path.join(
+            self.config.get_templates_master_root(), 'images', 'tangra_delay_entry.png')
+        self._pic_tangra = PictureBox()
+        self._pic_tangra.SizeMode = PictureBoxSizeMode.StretchImage
+        self._pic_tangra.Location = Point(594, 40)
+        self._pic_tangra.Size = Size(334, 54)
+        self._pic_tangra.BackColor = Color.White
+        try:
+            from System.Drawing import Bitmap
+            self._pic_tangra.Image = Bitmap(_tangra_img_path)
+        except Exception as _img_ex:
+            _lbl_img_err = Label()
+            _lbl_img_err.Text = 'img: ' + _tangra_img_path
+            _lbl_img_err.Location = Point(538, 44)
+            _lbl_img_err.Size = Size(390, 46)
+            _lbl_img_err.ForeColor = Color.OrangeRed
+            self._pnl_step_a3.Controls.Add(_lbl_img_err)
+        self._pnl_step_a3.Controls.Add(self._pic_tangra)
+
+        self._btn_copy_total_delay = Button()
+        self._btn_copy_total_delay.Text = "Copy"
+        self._btn_copy_total_delay.Location = Point(334, 44)
+        self._btn_copy_total_delay.Size = Size(55, 26)
+        self._btn_copy_total_delay.Click += self._on_copy_total_delay_click
+        self._pnl_step_a3.Controls.Add(self._btn_copy_total_delay)
+
+        # --- Step A4: Confirm TANGRA delays applied ---
+        self._pnl_step_a4 = Panel()
+        self._pnl_step_a4.Location = Point(0, 370)
+        self._pnl_step_a4.Size = Size(940, 120)
+        self._pnl_step_a4.BackColor = Color.FromArgb(240, 255, 240)  # pale green tint
+        self._pnl_phase_a.Controls.Add(self._pnl_step_a4)
+
+        lbl_a4_head = Label()
+        lbl_a4_head.Text = "Step A4 \u2014 Confirm TANGRA delays applied"
+        lbl_a4_head.Font = Font(lbl_a4_head.Font.FontFamily, lbl_a4_head.Font.Size, FontStyle.Bold)
+        lbl_a4_head.Location = Point(8, 4)
+        lbl_a4_head.Size = Size(500, 18)
+        self._pnl_step_a4.Controls.Add(lbl_a4_head)
+
+        lbl_a4_csv_prefix = Label()
+        lbl_a4_csv_prefix.Text = "Tangra CSV Acquisition Delay:"
+        lbl_a4_csv_prefix.Location = Point(8, 26)
+        lbl_a4_csv_prefix.Size = Size(210, 20)
+        lbl_a4_csv_prefix.ForeColor = Color.Gray
+        self._pnl_step_a4.Controls.Add(lbl_a4_csv_prefix)
 
         self._lbl_csv_delay = Label()
         self._lbl_csv_delay.Text = "\u2014"
-        self._lbl_csv_delay.Location = Point(108, 78)
-        self._lbl_csv_delay.Size = Size(480, 20)
+        self._lbl_csv_delay.Location = Point(222, 26)
+        self._lbl_csv_delay.Size = Size(540, 20)
         self._lbl_csv_delay.ForeColor = Color.Gray
-        self._pnl_timing_ntp.Controls.Add(self._lbl_csv_delay)
-
-        self._lbl_ntp_section = Label()
-        self._lbl_ntp_section.Text = "NTP correction:  \u2014"
-        self._lbl_ntp_section.Font = Font(self._lbl_ntp_section.Font.FontFamily,
-                                          self._lbl_ntp_section.Font.Size, FontStyle.Bold)
-        self._lbl_ntp_section.Location = Point(5, 103)
-        self._lbl_ntp_section.Size = Size(582, 18)
-        self._pnl_timing_ntp.Controls.Add(self._lbl_ntp_section)
-
-        _btn_open_ntp_analyser = Button()
-        _btn_open_ntp_analyser.Text = "Open NTP Analyser"
-        _btn_open_ntp_analyser.Location = Point(590, 101)
-        _btn_open_ntp_analyser.Size = Size(152, 22)
-        _btn_open_ntp_analyser.Click += self._on_open_ntp_analyser_click
-        self._pnl_timing_ntp.Controls.Add(_btn_open_ntp_analyser)
-
-        self._lbl_ntp_warning = Label()
-        self._lbl_ntp_warning.Text = "\u26a0  Not stored in Tangra CSV \u2014 cannot be auto-verified"
-        self._lbl_ntp_warning.Location = Point(5, 122)
-        self._lbl_ntp_warning.Size = Size(750, 18)
-        self._lbl_ntp_warning.ForeColor = Color.DarkOrange
-        self._pnl_timing_ntp.Controls.Add(self._lbl_ntp_warning)
-
-        self._rad_corrections_applied = RadioButton()
-        self._rad_corrections_applied.Text = "Applied in Tangra \u2014 I entered both corrections before generating the light curve"
-        self._rad_corrections_applied.Location = Point(5, 145)
-        self._rad_corrections_applied.Size = Size(890, 22)
-        self._rad_corrections_applied.CheckedChanged += self._on_timing_radio_changed
-        self._pnl_timing_ntp.Controls.Add(self._rad_corrections_applied)
-
-        # --- Confirmation sub-panel (visible when Applied in Tangra is selected) ---
-        self._pnl_applied_confirm = Panel()
-        self._pnl_applied_confirm.Location = Point(22, 167)
-        self._pnl_applied_confirm.Size = Size(890, 68)
-        self._pnl_applied_confirm.Visible = False
-        self._pnl_timing_ntp.Controls.Add(self._pnl_applied_confirm)
-
-        self._lbl_confirm_head = Label()
-        self._lbl_confirm_head.Text = "Confirm the values you entered in Tangra match:"
-        self._lbl_confirm_head.Location = Point(0, 0)
-        self._lbl_confirm_head.Size = Size(660, 18)
-        self._pnl_applied_confirm.Controls.Add(self._lbl_confirm_head)
-
-        _btn_why_confirm = Button()
-        _btn_why_confirm.Text = "Why confirm?"
-        _btn_why_confirm.Location = Point(664, 0)
-        _btn_why_confirm.Size = Size(100, 20)
-        _btn_why_confirm.Click += self._on_why_confirm_click
-        self._pnl_applied_confirm.Controls.Add(_btn_why_confirm)
-
-        self._chk_confirm_cam_delay = CheckBox()
-        self._chk_confirm_cam_delay.Text = "Camera acquisition delay: \u2014"
-        self._chk_confirm_cam_delay.Location = Point(0, 20)
-        self._chk_confirm_cam_delay.Size = Size(860, 20)
-        self._chk_confirm_cam_delay.CheckedChanged += self._on_confirm_check_changed
-        self._pnl_applied_confirm.Controls.Add(self._chk_confirm_cam_delay)
-
-        self._chk_confirm_ntp = CheckBox()
-        self._chk_confirm_ntp.Text = "NTP clock offset: \u2014"
-        self._chk_confirm_ntp.Location = Point(0, 44)
-        self._chk_confirm_ntp.Size = Size(860, 20)
-        self._chk_confirm_ntp.CheckedChanged += self._on_confirm_check_changed
-        self._pnl_applied_confirm.Controls.Add(self._chk_confirm_ntp)
-
-        self._rad_corrections_not_applied = RadioButton()
-        self._rad_corrections_not_applied.Text = "Not yet applied \u2014 I need to apply corrections in Tangra first"
-        self._rad_corrections_not_applied.Location = Point(5, 235)
-        self._rad_corrections_not_applied.Size = Size(890, 22)
-        self._rad_corrections_not_applied.CheckedChanged += self._on_timing_radio_changed
-        self._pnl_timing_ntp.Controls.Add(self._rad_corrections_not_applied)
-
-        self._rad_corrections_na = RadioButton()
-        self._rad_corrections_na.Text = "Not applicable / no NTP data"
-        self._rad_corrections_na.Location = Point(5, 257)
-        self._rad_corrections_na.Size = Size(890, 22)
-        self._rad_corrections_na.CheckedChanged += self._on_timing_radio_changed
-        self._pnl_timing_ntp.Controls.Add(self._rad_corrections_na)
-
-        self._lbl_net_heading = Label()
-        self._lbl_net_heading.Text = "Net correction:"
-        self._lbl_net_heading.Font = Font(self._lbl_net_heading.Font.FontFamily,
-                                          self._lbl_net_heading.Font.Size, FontStyle.Bold)
-        self._lbl_net_heading.Location = Point(5, 288)
-        self._lbl_net_heading.Size = Size(120, 18)
-        self._pnl_timing_ntp.Controls.Add(self._lbl_net_heading)
-
-        self._lbl_net_correction = Label()
-        self._lbl_net_correction.Text = "\u2014"
-        self._lbl_net_correction.Location = Point(130, 288)
-        self._lbl_net_correction.Size = Size(780, 18)
-        self._pnl_timing_ntp.Controls.Add(self._lbl_net_correction)
-
-        self._lbl_d_preview = Label()
-        self._lbl_d_preview.Text = ""
-        self._lbl_d_preview.Location = Point(5, 310)
-        self._lbl_d_preview.Size = Size(450, 16)
-        self._lbl_d_preview.ForeColor = Color.Gray
-        self._pnl_timing_ntp.Controls.Add(self._lbl_d_preview)
-
-        self._lbl_r_preview = Label()
-        self._lbl_r_preview.Text = ""
-        self._lbl_r_preview.Location = Point(460, 310)
-        self._lbl_r_preview.Size = Size(450, 16)
-        self._lbl_r_preview.ForeColor = Color.Gray
-        self._pnl_timing_ntp.Controls.Add(self._lbl_r_preview)
-
-        self._lbl_plausibility_warning = Label()
-        self._lbl_plausibility_warning.Text = ''
-        self._lbl_plausibility_warning.Location = Point(5, 328)
-        self._lbl_plausibility_warning.Size = Size(782, 32)
-        self._lbl_plausibility_warning.ForeColor = Color.OrangeRed
-        self._pnl_timing_ntp.Controls.Add(self._lbl_plausibility_warning)
-
-        self._btn_plausibility_info = Button()
-        self._btn_plausibility_info.Text = "What happened?"
-        self._btn_plausibility_info.Location = Point(790, 330)
-        self._btn_plausibility_info.Size = Size(120, 24)
-        self._btn_plausibility_info.Visible = False
-        self._btn_plausibility_info.Click += self._on_plausibility_info_click
-        self._pnl_timing_ntp.Controls.Add(self._btn_plausibility_info)
-
-        # --- Step-by-step guidance panel (visible when "Not yet applied" is selected) ---
-        self._pnl_apply_guidance = Panel()
-        self._pnl_apply_guidance.Location = Point(0, 336)
-        self._pnl_apply_guidance.Size = Size(922, 118)
-        self._pnl_apply_guidance.BackColor = Color.LightYellow
-        self._pnl_apply_guidance.Visible = False
-        self._pnl_timing_ntp.Controls.Add(self._pnl_apply_guidance)
-
-        lbl_g_head = Label()
-        lbl_g_head.Text = "\u270e  Apply these corrections in Tangra before generating the report:"
-        lbl_g_head.Font = Font(lbl_g_head.Font.FontFamily, lbl_g_head.Font.Size, FontStyle.Bold)
-        lbl_g_head.Location = Point(8, 6)
-        lbl_g_head.Size = Size(900, 18)
-        self._pnl_apply_guidance.Controls.Add(lbl_g_head)
-
-        lbl_g_cam = Label()
-        lbl_g_cam.Text = "Camera acquisition delay:"
-        lbl_g_cam.Location = Point(8, 28)
-        lbl_g_cam.Size = Size(175, 22)
-        self._pnl_apply_guidance.Controls.Add(lbl_g_cam)
-
-        self._lbl_copy_cam_delay = Label()
-        self._lbl_copy_cam_delay.Text = "\u2014"
-        self._lbl_copy_cam_delay.Font = Font(self._lbl_copy_cam_delay.Font.FontFamily,
-                                             self._lbl_copy_cam_delay.Font.Size, FontStyle.Bold)
-        self._lbl_copy_cam_delay.Location = Point(186, 28)
-        self._lbl_copy_cam_delay.Size = Size(130, 22)
-        self._pnl_apply_guidance.Controls.Add(self._lbl_copy_cam_delay)
-
-        self._btn_copy_cam_delay = Button()
-        self._btn_copy_cam_delay.Text = "Copy"
-        self._btn_copy_cam_delay.Location = Point(320, 26)
-        self._btn_copy_cam_delay.Size = Size(60, 26)
-        self._btn_copy_cam_delay.Click += self._on_copy_cam_delay_click
-        self._pnl_apply_guidance.Controls.Add(self._btn_copy_cam_delay)
-
-        lbl_g_ntp = Label()
-        lbl_g_ntp.Text = "NTP clock offset:"
-        lbl_g_ntp.Location = Point(8, 56)
-        lbl_g_ntp.Size = Size(175, 22)
-        self._pnl_apply_guidance.Controls.Add(lbl_g_ntp)
-
-        self._lbl_copy_ntp_off = Label()
-        self._lbl_copy_ntp_off.Text = "\u2014"
-        self._lbl_copy_ntp_off.Font = Font(self._lbl_copy_ntp_off.Font.FontFamily,
-                                           self._lbl_copy_ntp_off.Font.Size, FontStyle.Bold)
-        self._lbl_copy_ntp_off.Location = Point(186, 56)
-        self._lbl_copy_ntp_off.Size = Size(130, 22)
-        self._pnl_apply_guidance.Controls.Add(self._lbl_copy_ntp_off)
-
-        self._btn_copy_ntp_off = Button()
-        self._btn_copy_ntp_off.Text = "Copy"
-        self._btn_copy_ntp_off.Location = Point(320, 54)
-        self._btn_copy_ntp_off.Size = Size(60, 26)
-        self._btn_copy_ntp_off.Click += self._on_copy_ntp_offset_click
-        self._pnl_apply_guidance.Controls.Add(self._btn_copy_ntp_off)
-
-        lbl_g_instr = Label()
-        lbl_g_instr.Text = (
-            "After applying: re-run AOTA or PyOTE and save the result files to your observation folder."
-        )
-        lbl_g_instr.Location = Point(8, 86)
-        lbl_g_instr.Size = Size(555, 20)
-        lbl_g_instr.ForeColor = Color.Gray
-        self._pnl_apply_guidance.Controls.Add(lbl_g_instr)
+        self._pnl_step_a4.Controls.Add(self._lbl_csv_delay)
 
         self._btn_rescan_guidance = Button()
         self._btn_rescan_guidance.Text = "\u21bb  Rescan Folder"
-        self._btn_rescan_guidance.Location = Point(575, 83)
+        self._btn_rescan_guidance.Location = Point(772, 22)
         self._btn_rescan_guidance.Size = Size(135, 28)
         self._btn_rescan_guidance.Click += self._on_rescan_from_guidance_click
-        self._pnl_apply_guidance.Controls.Add(self._btn_rescan_guidance)
+        self._pnl_step_a4.Controls.Add(self._btn_rescan_guidance)
 
-        # --- GPS flash (dumb) panel ---
-        self._pnl_timing_gps = Panel()
-        self._pnl_timing_gps.Location = Point(8, 76)
-        self._pnl_timing_gps.Size = Size(922, 60)
-        self._pnl_timing_gps.Visible = False
-        grp_timing.Controls.Add(self._pnl_timing_gps)
+        self._rad_corrections_applied = RadioButton()
+        self._rad_corrections_applied.Text = "Applied \u2014 I have entered the Total Delay into Tangra\u2019s Acquisition Delay field"
+        self._rad_corrections_applied.Location = Point(8, 50)
+        self._rad_corrections_applied.Size = Size(910, 22)
+        self._rad_corrections_applied.CheckedChanged += self._on_timing_radio_changed
+        self._pnl_step_a4.Controls.Add(self._rad_corrections_applied)
 
-        lbl_gps_info = Label()
-        lbl_gps_info.Text = (
-            "\u24d8  GPS flash (Camilleri method) correction support is planned for Phase 2.\n"
-            "   The flash overlay delay measurement is performed in the gps-timing-analysis tool."
-        )
-        lbl_gps_info.Location = Point(5, 8)
-        lbl_gps_info.Size = Size(900, 40)
-        lbl_gps_info.ForeColor = Color.Gray
-        self._pnl_timing_gps.Controls.Add(lbl_gps_info)
+        self._pnl_applied_confirm = Panel()
+        self._pnl_applied_confirm.Location = Point(28, 72)
+        self._pnl_applied_confirm.Size = Size(900, 22)
+        self._pnl_applied_confirm.Visible = True
+        self._pnl_step_a4.Controls.Add(self._pnl_applied_confirm)
 
-        # --- GPS-integrated CMOS camera panel ---
-        self._pnl_timing_gps_cmos = Panel()
-        self._pnl_timing_gps_cmos.Location = Point(8, 76)
-        self._pnl_timing_gps_cmos.Size = Size(922, 55)
-        self._pnl_timing_gps_cmos.Visible = False
-        grp_timing.Controls.Add(self._pnl_timing_gps_cmos)
+        self._chk_confirm_total_delay = CheckBox()
+        self._chk_confirm_total_delay.Text = "Total Delay for TANGRA: \u2014  (tick to confirm value is correctly entered)"
+        self._chk_confirm_total_delay.Location = Point(0, 0)
+        self._chk_confirm_total_delay.Size = Size(880, 20)
+        self._chk_confirm_total_delay.CheckedChanged += self._on_confirm_check_changed
+        self._pnl_applied_confirm.Controls.Add(self._chk_confirm_total_delay)
 
-        lbl_gps_cmos_info1 = Label()
-        lbl_gps_cmos_info1.Text = (
-            "\u24d8  GPS-integrated cameras (QHY 174GPS, ASTRID, DVTI-cam, Touptek GPS) "
-            "embed accurate GPS-synchronized timestamps."
-        )
-        lbl_gps_cmos_info1.Location = Point(5, 5)
-        lbl_gps_cmos_info1.Size = Size(910, 20)
-        self._pnl_timing_gps_cmos.Controls.Add(lbl_gps_cmos_info1)
+        self._rad_corrections_not_applied = RadioButton()
+        self._rad_corrections_not_applied.Text = "Not yet applied \u2014 I need to enter the Total Delay in Tangra before generating the light curve"
+        self._rad_corrections_not_applied.Location = Point(8, 94)
+        self._rad_corrections_not_applied.Size = Size(910, 22)
+        self._rad_corrections_not_applied.Checked = True
+        self._rad_corrections_not_applied.CheckedChanged += self._on_timing_radio_changed
+        self._pnl_step_a4.Controls.Add(self._rad_corrections_not_applied)
 
-        lbl_gps_cmos_info2 = Label()
-        lbl_gps_cmos_info2.Text = (
-            "\u2714  No timing corrections are required. "
-            "Any report form (NA, TT, SODIS) is compatible with these cameras."
-        )
-        lbl_gps_cmos_info2.Location = Point(5, 28)
-        lbl_gps_cmos_info2.Size = Size(910, 20)
-        lbl_gps_cmos_info2.ForeColor = Color.Green
-        self._pnl_timing_gps_cmos.Controls.Add(lbl_gps_cmos_info2)
+        y_pos += 506  # Phase A height (496) + 10px gap
 
-        # --- Analog video + VTI panel ---
-        self._pnl_timing_analog_vti = Panel()
-        self._pnl_timing_analog_vti.Location = Point(8, 76)
-        self._pnl_timing_analog_vti.Size = Size(922, 120)
-        self._pnl_timing_analog_vti.Visible = False
-        grp_timing.Controls.Add(self._pnl_timing_analog_vti)
-
-        lbl_analog_tool = Label()
-        lbl_analog_tool.Text = "Analysis tool used to determine D and R times:"
-        lbl_analog_tool.Location = Point(5, 5)
-        lbl_analog_tool.Size = Size(360, 22)
-        self._pnl_timing_analog_vti.Controls.Add(lbl_analog_tool)
-
-        self._rad_analog_aota = RadioButton()
-        self._rad_analog_aota.Text = "AOTA"
-        self._rad_analog_aota.Location = Point(370, 3)
-        self._rad_analog_aota.Size = Size(75, 22)
-        self._rad_analog_aota.Checked = True
-        self._rad_analog_aota.CheckedChanged += self._on_analog_tool_changed
-        self._pnl_timing_analog_vti.Controls.Add(self._rad_analog_aota)
-
-        self._rad_analog_pyote = RadioButton()
-        self._rad_analog_pyote.Text = "PyOTE"
-        self._rad_analog_pyote.Location = Point(455, 3)
-        self._rad_analog_pyote.Size = Size(80, 22)
-        self._rad_analog_pyote.CheckedChanged += self._on_analog_tool_changed
-        self._pnl_timing_analog_vti.Controls.Add(self._rad_analog_pyote)
-
-        # Dynamic info/warning label — updated by _update_analog_vti_warnings()
-        self._lbl_vti_info = Label()
-        self._lbl_vti_info.Text = ""
-        self._lbl_vti_info.Location = Point(5, 32)
-        self._lbl_vti_info.Size = Size(910, 82)
-        self._pnl_timing_analog_vti.Controls.Add(self._lbl_vti_info)
-
-        # --- Other panel ---
-        self._pnl_timing_other = Panel()
-        self._pnl_timing_other.Location = Point(8, 76)
-        self._pnl_timing_other.Size = Size(922, 40)
-        self._pnl_timing_other.Visible = True
-        grp_timing.Controls.Add(self._pnl_timing_other)
-
-        lbl_other_info = Label()
-        lbl_other_info.Text = (
-            "\u24d8  Timing corrections are not applied by OM for this method. "
-            "Apply corrections in Tangra/PyOTE, PyMovie, or the NA reporting form "
-            "before generating this report."
-        )
-        lbl_other_info.Location = Point(5, 8)
-        lbl_other_info.Size = Size(900, 30)
-        lbl_other_info.ForeColor = Color.Gray
-        self._pnl_timing_other.Controls.Add(lbl_other_info)
-
-        y_pos += 485
-
-        # ===== SECTION 4: OBSERVATION FILES =====
-        grp_files = GroupBox()
-        grp_files.Text = "4. Observation Files"
-        grp_files.Location = Point(10, y_pos)
-        grp_files.Size = Size(940, 365)
-        main_panel.Controls.Add(grp_files)
-
-        # Three-column layout for file lists
-        # Tangra CSV files (left)
-        lbl_csv = Label()
-        lbl_csv.Text = "Light Curve File:"
-        lbl_csv.Location = Point(15, 25)
-        lbl_csv.Size = Size(130, 20)
-        grp_files.Controls.Add(lbl_csv)
-
-        self.csv_count_label = Label()
-        self.csv_count_label.Text = "No folder"
-        self.csv_count_label.Location = Point(145, 25)
-        self.csv_count_label.Size = Size(155, 20)
-        self.csv_count_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.csv_count_label)
-
-        self.csv_listbox = ListBox()
-        self.csv_listbox.Location = Point(15, 48)
-        self.csv_listbox.Size = Size(285, 65)
-        self.csv_listbox.SelectionMode = SelectionMode.One
-        self.csv_listbox.SelectedIndexChanged += self.selection_changed
-        grp_files.Controls.Add(self.csv_listbox)
-
-        self.csv_preview_label = Label()
-        self.csv_preview_label.Text = "Observing times: -"
-        self.csv_preview_label.Location = Point(15, 116)
-        self.csv_preview_label.Size = Size(285, 40)
-        self.csv_preview_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.csv_preview_label)
-
-        # AOTA files (middle)
-        lbl_aota = Label()
-        lbl_aota.Text = "AOTA Files:"
-        lbl_aota.Location = Point(315, 25)
-        lbl_aota.Size = Size(120, 20)
-        grp_files.Controls.Add(lbl_aota)
-
-        self.aota_count_label = Label()
-        self.aota_count_label.Text = "No folder"
-        self.aota_count_label.Location = Point(435, 25)
-        self.aota_count_label.Size = Size(165, 20)
-        self.aota_count_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.aota_count_label)
-
-        self.aota_listbox = ListBox()
-        self.aota_listbox.Location = Point(315, 48)
-        self.aota_listbox.Size = Size(285, 65)
-        self.aota_listbox.SelectionMode = SelectionMode.One
-        self.aota_listbox.SelectedIndexChanged += self.selection_changed
-        grp_files.Controls.Add(self.aota_listbox)
-
-        self.aota_preview_label = Label()
-        self.aota_preview_label.Text = "D/R: -"
-        self.aota_preview_label.Location = Point(315, 116)
-        self.aota_preview_label.Size = Size(285, 40)
-        self.aota_preview_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.aota_preview_label)
-
-        # AOTA Report files (right)
-        lbl_report = Label()
-        lbl_report.Text = "AOTA Report:"
-        lbl_report.Location = Point(615, 25)
-        lbl_report.Size = Size(120, 20)
-        grp_files.Controls.Add(lbl_report)
-
-        self.report_count_label = Label()
-        self.report_count_label.Text = "No folder"
-        self.report_count_label.Location = Point(735, 25)
-        self.report_count_label.Size = Size(185, 20)
-        self.report_count_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.report_count_label)
-
-        self.report_listbox = ListBox()
-        self.report_listbox.Location = Point(615, 48)
-        self.report_listbox.Size = Size(305, 65)
-        self.report_listbox.SelectionMode = SelectionMode.One
-        self.report_listbox.SelectedIndexChanged += self.selection_changed
-        grp_files.Controls.Add(self.report_listbox)
-
-        self.report_preview_label = Label()
-        self.report_preview_label.Text = "D/R: -"
-        self.report_preview_label.Location = Point(615, 116)
-        self.report_preview_label.Size = Size(305, 40)
-        self.report_preview_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.report_preview_label)
-
-        # PyOTE Metrics row (full-width, below the three columns)
-        lbl_pyote = Label()
-        lbl_pyote.Text = "PyOTE Metrics:"
-        lbl_pyote.Location = Point(15, 165)
-        lbl_pyote.Size = Size(120, 20)
-        grp_files.Controls.Add(lbl_pyote)
-
-        self.pyote_count_label = Label()
-        self.pyote_count_label.Text = "No folder"
-        self.pyote_count_label.Location = Point(135, 165)
-        self.pyote_count_label.Size = Size(200, 20)
-        self.pyote_count_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.pyote_count_label)
-
-        lbl_pyote_event = Label()
-        lbl_pyote_event.Text = "Events:"
-        lbl_pyote_event.Location = Point(460, 165)
-        lbl_pyote_event.Size = Size(60, 20)
-        grp_files.Controls.Add(lbl_pyote_event)
-
-        self.pyote_event_count_label = Label()
-        self.pyote_event_count_label.Text = "-"
-        self.pyote_event_count_label.Location = Point(525, 165)
-        self.pyote_event_count_label.Size = Size(210, 20)
-        self.pyote_event_count_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.pyote_event_count_label)
-
-        self.pyote_listbox = ListBox()
-        self.pyote_listbox.Location = Point(15, 185)
-        self.pyote_listbox.Size = Size(430, 55)
-        self.pyote_listbox.SelectionMode = SelectionMode.One
-        self.pyote_listbox.SelectedIndexChanged += self._pyote_file_selection_changed
-        grp_files.Controls.Add(self.pyote_listbox)
-
-        self.pyote_event_listbox = ListBox()
-        self.pyote_event_listbox.Location = Point(460, 185)
-        self.pyote_event_listbox.Size = Size(460, 55)
-        self.pyote_event_listbox.SelectionMode = SelectionMode.One
-        self.pyote_event_listbox.SelectedIndexChanged += self._pyote_event_selection_changed
-        grp_files.Controls.Add(self.pyote_event_listbox)
-
-        self.pyote_preview_label = Label()
-        self.pyote_preview_label.Text = "D/R: -"
-        self.pyote_preview_label.Location = Point(15, 244)
-        self.pyote_preview_label.Size = Size(905, 22)
-        self.pyote_preview_label.ForeColor = Color.Gray
-        grp_files.Controls.Add(self.pyote_preview_label)
-
-        # ===== TIMESTAMP CHECK SUBPANEL =====
-        grp_ts_check = GroupBox()
-        grp_ts_check.Text = "Timestamp Check"
-        grp_ts_check.Location = Point(15, 271)
-        grp_ts_check.Size = Size(910, 80)
-        grp_files.Controls.Add(grp_ts_check)
-
-        self.lbl_ts_delayed = Label()
-        self.lbl_ts_delayed.Text = "Delayed frames: -"
-        self.lbl_ts_delayed.Location = Point(15, 22)
-        self.lbl_ts_delayed.Size = Size(165, 20)
-        self.lbl_ts_delayed.ForeColor = Color.Gray
-        grp_ts_check.Controls.Add(self.lbl_ts_delayed)
-
-        self.lbl_ts_late = Label()
-        self.lbl_ts_late.Text = "Late frames: -"
-        self.lbl_ts_late.Location = Point(190, 22)
-        self.lbl_ts_late.Size = Size(140, 20)
-        self.lbl_ts_late.ForeColor = Color.Gray
-        grp_ts_check.Controls.Add(self.lbl_ts_late)
-
-        self.lbl_ts_status = Label()
-        self.lbl_ts_status.Text = "Status: -"
-        self.lbl_ts_status.Location = Point(340, 22)
-        self.lbl_ts_status.Size = Size(200, 20)
-        self.lbl_ts_status.ForeColor = Color.Gray
-        grp_ts_check.Controls.Add(self.lbl_ts_status)
-
-        self.lbl_ts_minmax = Label()
-        self.lbl_ts_minmax.Text = "Deviation: -"
-        self.lbl_ts_minmax.Location = Point(550, 22)
-        self.lbl_ts_minmax.Size = Size(345, 20)
-        self.lbl_ts_minmax.ForeColor = Color.Gray
-        grp_ts_check.Controls.Add(self.lbl_ts_minmax)
-
-        btn_ts_explain = Button()
-        btn_ts_explain.Text = "Explain..."
-        btn_ts_explain.Location = Point(15, 48)
-        btn_ts_explain.Size = Size(80, 25)
-        btn_ts_explain.Click += self._ts_explain_click
-        grp_ts_check.Controls.Add(btn_ts_explain)
-
-        self.btn_ts_inspect = Button()
-        self.btn_ts_inspect.Text = "Inspect Timestamps..."
-        self.btn_ts_inspect.Location = Point(105, 48)
-        self.btn_ts_inspect.Size = Size(160, 25)
-        self.btn_ts_inspect.Enabled = False
-        self.btn_ts_inspect.Click += self._ts_inspect_click
-        grp_ts_check.Controls.Add(self.btn_ts_inspect)
-
-        self.lbl_ts_event_warning = Label()
-        self.lbl_ts_event_warning.Text = ""
-        self.lbl_ts_event_warning.Location = Point(275, 52)
-        self.lbl_ts_event_warning.Size = Size(620, 20)
-        self.lbl_ts_event_warning.ForeColor = Color.OrangeRed
-        self.lbl_ts_event_warning.Visible = False
-        grp_ts_check.Controls.Add(self.lbl_ts_event_warning)
-
-        y_pos += 365
-
-        # ===== SECTION 5: OBSERVATION RESULT =====
-        grp_obs_type = GroupBox()
-        grp_obs_type.Text = "5. Observation Result"
-        grp_obs_type.Location = Point(10, y_pos)
-        grp_obs_type.Size = Size(940, 120)
-        main_panel.Controls.Add(grp_obs_type)
-
-        self.rb_positive = RadioButton()
-        self.rb_positive.Text = "Positive - Observed disappearance and reappearance (AOTA required)"
-        self.rb_positive.Location = Point(20, 25)
-        self.rb_positive.Size = Size(500, 25)
-        self.rb_positive.Checked = True
-        self.rb_positive.CheckedChanged += self.observation_type_changed
-        grp_obs_type.Controls.Add(self.rb_positive)
-
-        self.rb_negative = RadioButton()
-        self.rb_negative.Text = "Negative - No occultation occurred (AOTA optional)"
-        self.rb_negative.Location = Point(20, 50)
-        self.rb_negative.Size = Size(500, 25)
-        self.rb_negative.CheckedChanged += self.observation_type_changed
-        grp_obs_type.Controls.Add(self.rb_negative)
-
-        self.rb_unsure = RadioButton()
-        self.rb_unsure.Text = "Unsure - Possible event but uncertain (AOTA required)"
-        self.rb_unsure.Location = Point(20, 75)
-        self.rb_unsure.Size = Size(500, 25)
-        self.rb_unsure.CheckedChanged += self.observation_type_changed
-        grp_obs_type.Controls.Add(self.rb_unsure)
-
-        y_pos += 130
-
-        # ===== SECTION 6: CONDITIONS =====
-        grp_conditions = GroupBox()
-        grp_conditions.Text = "6. Conditions"
-        grp_conditions.Location = Point(10, y_pos)
-        grp_conditions.Size = Size(940, 80)
-        main_panel.Controls.Add(grp_conditions)
-        
-        # Clouds
-        lbl_clouds = Label()
-        lbl_clouds.Text = "Clouds:"
-        lbl_clouds.Location = Point(20, 30)
-        lbl_clouds.Size = Size(80, 20)
-        grp_conditions.Controls.Add(lbl_clouds)
-        
-        self.combo_clouds = ComboBox()
-        self.combo_clouds.Location = Point(110, 28)
-        self.combo_clouds.Size = Size(180, 25)
-        self.combo_clouds.DropDownStyle = ComboBoxStyle.DropDownList
-        self.combo_clouds.Items.AddRange(Array[object](["Clear", "Fog", "Thin cloud < 2", "Thick cloud > 2", "Broken cloud", "Star faint", "Averted vision"]))
-        self.combo_clouds.SelectedIndex = 0
-        grp_conditions.Controls.Add(self.combo_clouds)
-        
-        # Stability
-        lbl_stability = Label()
-        lbl_stability.Text = "Stability:"
-        lbl_stability.Location = Point(310, 30)
-        lbl_stability.Size = Size(80, 20)
-        grp_conditions.Controls.Add(lbl_stability)
-        
-        self.combo_stability = ComboBox()
-        self.combo_stability.Location = Point(400, 28)
-        self.combo_stability.Size = Size(180, 25)
-        self.combo_stability.DropDownStyle = ComboBoxStyle.DropDownList
-        self.combo_stability.Items.AddRange(Array[object](["Steady", "Slight flickering", "Strong flickering"]))
-        self.combo_stability.SelectedIndex = 0
-        grp_conditions.Controls.Add(self.combo_stability)
-        
-        # Other Conditions
-        lbl_other = Label()
-        lbl_other.Text = "Other Conditions:"
-        lbl_other.Location = Point(600, 30)
-        lbl_other.Size = Size(130, 20)
-        grp_conditions.Controls.Add(lbl_other)
-        
-        self.txt_other_conditions = TextBox()
-        self.txt_other_conditions.Location = Point(730, 28)
-        self.txt_other_conditions.Size = Size(190, 25)
-        grp_conditions.Controls.Add(self.txt_other_conditions)
-        
-        # ===== BOTTOM BUTTONS =====
+        # ===== BOTTOM BUTTONS (D2 — "Next →") =====
         self.status_label = Label()
         self.status_label.Text = "Please complete all sections above"
-        self.status_label.Location = Point(20, 976)
+        self.status_label.Location = Point(20, 790)
         self.status_label.Size = Size(700, 20)
         self.status_label.ForeColor = Color.Gray
         self.Controls.Add(self.status_label)
-        
+
         self._btn_why_blocked = Button()
         self._btn_why_blocked.Text = "?"
-        self._btn_why_blocked.Location = Point(723, 975)
-        self._btn_why_blocked.Size = Size(24, 22)
+        self._btn_why_blocked.Location = Point(723, 789)
+        self._btn_why_blocked.Size = Size(24, 26)
         self._btn_why_blocked.Click += self._on_why_blocked_click
         self.Controls.Add(self._btn_why_blocked)
 
-        self.btn_generate = Button()
-        self.btn_generate.Text = "Generate Report"
-        self.btn_generate.Location = Point(750, 971)
-        self.btn_generate.Size = Size(140, 35)
-        self.btn_generate.Enabled = False
-        self.btn_generate.Click += self.generate_click
-        self.Controls.Add(self.btn_generate)
-        self.AcceptButton = self.btn_generate
-        
+        self._btn_next = Button()
+        self._btn_next.Text = "Next  \u2192"
+        self._btn_next.Location = Point(750, 785)
+        self._btn_next.Size = Size(140, 35)
+        self._btn_next.Enabled = False
+        self._btn_next.Click += self._next_click
+        self.Controls.Add(self._btn_next)
+        self.AcceptButton = self._btn_next
+
         btn_cancel = Button()
         btn_cancel.Text = "Cancel"
-        btn_cancel.Location = Point(900, 971)
+        btn_cancel.Location = Point(900, 785)
         btn_cancel.Size = Size(80, 35)
         btn_cancel.Click += self.cancel_click
         self.Controls.Add(btn_cancel)
@@ -978,19 +585,8 @@ class ComprehensiveReportDialog(Form):
         self._setup_tooltips()
 
     def load_preferences(self):
-        """Load saved preferences and populate fields"""
-        # Load report type preference
-        last_report_type = self.config.get_last_report_type()
-        if last_report_type == 'trans_tasman':
-            self.rb_tt.Checked = True
-        elif last_report_type == 'sodis':
-            self.rb_sodis.Checked = True
-        else:
-            self.rb_na.Checked = True
-        
-        # Load equipment
-        self.load_equipment()
-        
+        """Load saved preferences and populate fields.
+        Equipment and report type come pre-selected from Dialog 1; only load folder."""
         # Try to browse to last folder's parent
         last_folder = self.config.get_last_report_folder()
         if last_folder and os.path.exists(last_folder):
@@ -1002,82 +598,73 @@ class ComprehensiveReportDialog(Form):
         # Pre-select timing method from camera config
         self._init_timing_section()
     
-    def load_equipment(self):
-        """Load telescopes and cameras into dropdowns"""
-        # Remember current telescope/camera selections so they survive a reload
-        current_tel_id = self._get_current_telescope_id()
-        current_cam_id = self._get_current_camera_id()
-
-        # Load telescopes
-        self.combo_telescope.Items.Clear()
+    def _rebuild_equipment_proxies(self, telescope_id, camera_id, report_type):
+        """Build proxy objects from pre-selected Dialog 1 values.
+        Allows existing code referencing combo_telescope/camera/rb_na/tt/sodis to continue working."""
         telescopes = self.config.get_telescopes()
-        active_telescope = self.config.get_active_telescope()
-        active_tel_id = active_telescope.get('id') if active_telescope else None
-
-        if not telescopes:
-            self.combo_telescope.Items.Add("No telescopes configured - click Manage...")
-            self.combo_telescope.SelectedIndex = 0
-            self.combo_telescope.Enabled = False
-        else:
-            self.combo_telescope.Enabled = True
-            restore_idx = 0
-            for i, telescope in enumerate(telescopes):
-                name = telescope.get('name', 'Unnamed')
-                if telescope.get('id') == active_tel_id:
-                    name = "★ " + name
-                self.combo_telescope.Items.Add(name)
-                tel_id = telescope.get('id')
-                if current_tel_id and tel_id == current_tel_id:
-                    restore_idx = i
-                elif not current_tel_id and tel_id == active_tel_id:
-                    restore_idx = i
-            self.combo_telescope.SelectedIndex = restore_idx
-
-        # Load cameras - show ALL cameras so the user can pick any
-        self.combo_camera.Items.Clear()
         cameras = self.config.get_cameras()
-        active_camera = self.config.get_active_camera()
-        active_cam_id = active_camera.get('id') if active_camera else None
 
-        if not cameras:
-            self.combo_camera.Items.Add("No cameras configured - click Manage...")
-            self.combo_camera.SelectedIndex = 0
-            self.combo_camera.Enabled = False
-        else:
-            self.combo_camera.Enabled = True
-            restore_idx = 0
-            for i, camera in enumerate(cameras):
-                name = camera.get('name', 'Unnamed')
-                if camera.get('id') == active_cam_id:
-                    name = "★ " + name
-                self.combo_camera.Items.Add(name)
-                cam_id = camera.get('id')
-                if current_cam_id and cam_id == current_cam_id:
-                    restore_idx = i
-                elif not current_cam_id and cam_id == active_cam_id:
-                    restore_idx = i
-            self.combo_camera.SelectedIndex = restore_idx
-    
+        # Find index of selected telescope
+        tel_idx = -1
+        for i, t in enumerate(telescopes):
+            if t.get('id') == telescope_id:
+                tel_idx = i
+                break
+        if tel_idx < 0 and telescopes:
+            # Fall back to active telescope
+            active = self.config.get_active_telescope()
+            active_id = active.get('id') if active else None
+            for i, t in enumerate(telescopes):
+                if t.get('id') == active_id:
+                    tel_idx = i
+                    break
+            if tel_idx < 0:
+                tel_idx = 0
+
+        # Find index of selected camera
+        cam_idx = -1
+        for i, c in enumerate(cameras):
+            if c.get('id') == camera_id:
+                cam_idx = i
+                break
+        if cam_idx < 0 and cameras:
+            active = self.config.get_active_camera()
+            active_id = active.get('id') if active else None
+            for i, c in enumerate(cameras):
+                if c.get('id') == active_id:
+                    cam_idx = i
+                    break
+            if cam_idx < 0:
+                cam_idx = 0
+
+        self.combo_telescope = _ComboProxy(tel_idx, len(telescopes))
+        self.combo_camera = _ComboProxy(cam_idx, len(cameras))
+
+        rt = report_type or 'north_america'
+        self.rb_na = _RadioProxy(rt == 'north_america')
+        self.rb_tt = _RadioProxy(rt == 'trans_tasman')
+        self.rb_sodis = _RadioProxy(rt == 'sodis')
+
+        # Cache camera id for _init_timing_section
+        if 0 <= cam_idx < len(cameras):
+            self._last_cam_id = cameras[cam_idx].get('id')
+
+    def load_equipment(self):
+        """No-op: equipment was selected in Dialog 1."""
+        pass
+
     def manage_telescopes_click(self, sender, e):
-        """Open telescope management dialog"""
-        from equipment_dialogs import TelescopeManagerDialog
-        dialog = TelescopeManagerDialog(self.config, self.theme_manager)
-        dialog.ShowDialog()
-        self.load_equipment()
-    
+        """No-op: equipment is managed from the Settings dialog."""
+        pass
+
     def manage_cameras_click(self, sender, e):
-        """Open camera management dialog"""
-        from equipment_dialogs import CameraManagerDialog
-        dialog = CameraManagerDialog(self.config, self.theme_manager)
-        dialog.ShowDialog()
-        self.load_equipment()
-    
+        """No-op: equipment is managed from the Settings dialog."""
+        pass
+
     def report_type_changed(self, sender, e):
-        """Handle report type radio button change"""
-        self.load_equipment()  # Reload to filter cameras by report type
-        self._update_analog_vti_warnings()
-        self.update_button_state()
-    
+        """No-op: report type was selected in Dialog 1."""
+        pass
+
     def equipment_changed(self, sender, e):
         """Handle equipment dropdown change"""
         if sender is self.combo_camera:
@@ -1091,8 +678,6 @@ class ComprehensiveReportDialog(Form):
     
     def observation_type_changed(self, sender, e):
         """Handle observation type radio button change"""
-        if hasattr(self, '_lbl_plausibility_warning'):
-            self._check_dr_plausibility()
         self.update_button_state()
     
     def browse_folder_click(self, sender, e):
@@ -1118,8 +703,10 @@ class ComprehensiveReportDialog(Form):
             parent_folder = os.path.dirname(folder_path)
             self.config.set_last_report_folder(parent_folder)
             
-            self.scan_folder(folder_path)
-    
+            # Store folder; D3 (PhaseBDialog) will scan it when opened via _next_click
+            self._update_file_status_labels()
+            self.update_button_state()
+
     def scan_folder(self, folder_path):
         """Scan folder for AOTA, CSV, AOTA Report, and PyOTE metrics files"""
         self.aota_files = []
@@ -1252,7 +839,6 @@ class ComprehensiveReportDialog(Form):
         self._update_aota_xml_preview()
         self._update_aota_report_preview()
         self._update_pyote_preview()
-        self._update_timing_net_preview()
 
     def _format_time_value(self, value):
         """Format time value for preview with sensible precision"""
@@ -1470,7 +1056,6 @@ class ComprehensiveReportDialog(Form):
     def _pyote_event_selection_changed(self, sender, e):
         """Handle PyOTE event listbox selection change - update D/R preview"""
         self._update_pyote_preview()
-        self._update_timing_net_preview()
         self.update_button_state()
 
     def _update_pyote_preview(self):
@@ -1602,33 +1187,12 @@ class ComprehensiveReportDialog(Form):
             )
 
     def update_button_state(self):
-        """Update generate button state and status message"""
-        # Check all requirements
+        """Update Next button state — blocks until timing is confirmed (or N/A)."""
         has_report_type = self.rb_na.Checked or self.rb_tt.Checked or self.rb_sodis.Checked
-        
-        # Check if equipment is configured (not just selected)
-        # Use .Enabled as proxy: combo is disabled when no equipment exists for the current filter
+
         has_telescope = self.combo_telescope.Enabled and self.combo_telescope.SelectedIndex >= 0
         has_camera = self.combo_camera.Enabled and self.combo_camera.SelectedIndex >= 0
-        
-        aota_selected = self.aota_listbox.SelectedIndex >= 0
-        csv_selected = self.csv_listbox.SelectedIndex >= 0
-        report_selected = self.report_listbox.SelectedIndex >= 0
-        pyote_selected = (self.pyote_listbox.SelectedIndex >= 0
-                          and self.pyote_event_listbox.SelectedIndex >= 0
-                          and bool(self.pyote_events))
-        
-        # Determine observation type
-        if self.rb_positive.Checked:
-            obs_type = "Positive"
-        elif self.rb_negative.Checked:
-            obs_type = "Negative"
-        elif self.rb_unsure.Checked:
-            obs_type = "Unsure"
-        else:
-            obs_type = None
-        
-        # Build status message
+
         missing = []
         if not has_report_type:
             missing.append("report format")
@@ -1636,49 +1200,36 @@ class ComprehensiveReportDialog(Form):
             missing.append("telescope")
         if not has_camera:
             missing.append("camera")
-        if not csv_selected:
-            missing.append("light curve CSV file")
-        
-        # AOTA requirement depends on observation type - either AOTA.xml, AOTA Report, or PyOTE Metrics is needed
-        if obs_type in ["Positive", "Unsure"] and not aota_selected and not report_selected and not pyote_selected:
-            missing.append("AOTA file, AOTA Report, or PyOTE Metrics")
 
-        # Block generate if NTP timing selected but corrections not yet applied in Tangra
+        # Block if NTP timing selected but corrections not yet applied in Tangra
         if (hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
                 and hasattr(self, '_rad_corrections_not_applied')
                 and self._rad_corrections_not_applied.Checked):
-            missing.append("timing corrections \u2014 apply in Tangra first (see \u00a73 guidance below)")
+            missing.append("timing corrections \u2014 apply in Tangra first (see Phase A guidance)")
 
-        # Block generate if Applied selected but confirmation checkboxes not both ticked
+        # Block if Applied selected but confirmation checkbox not ticked
         if (hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
                 and hasattr(self, '_rad_corrections_applied')
                 and self._rad_corrections_applied.Checked):
-            cam_ok = hasattr(self, '_chk_confirm_cam_delay') and self._chk_confirm_cam_delay.Checked
-            ntp_ok = hasattr(self, '_chk_confirm_ntp') and self._chk_confirm_ntp.Checked
-            if not (cam_ok and ntp_ok):
-                missing.append("confirmation that both corrections were entered in Tangra (tick the boxes in \u00a73)")
-
-        # Block generate if D >= R plausibility check failed
-        if not getattr(self, '_plausibility_dr_ok', True):
-            missing.append("valid D/R times \u2014 D \u2265 R (see \u00a73 timing warning)")
+            confirmed = hasattr(self, '_chk_confirm_total_delay') and self._chk_confirm_total_delay.Checked
+            if not confirmed:
+                missing.append("confirmation that the Total Delay was entered in Tangra (tick the checkbox in Step A4)")
 
         if missing:
             self.status_label.Text = "Missing: " + ", ".join(missing)
             self.status_label.ForeColor = Color.Red
-            self.btn_generate.Enabled = False
+            self._btn_next.Enabled = False
             if hasattr(self, '_btn_why_blocked'):
                 self._btn_why_blocked.Visible = True
         else:
-            self.status_label.Text = "Ready to generate report"
+            self.status_label.Text = "Ready \u2014 click Next to select observation files"
             self.status_label.ForeColor = Color.Green
-            self.btn_generate.Enabled = True
+            self._btn_next.Enabled = True
             if hasattr(self, '_btn_why_blocked'):
                 self._btn_why_blocked.Visible = False
     
-    def generate_click(self, sender, e):
-        """Handle generate button click"""
-        # Collect all selections
-        
+    def _next_click(self, sender, e):
+        """Collect D2 selections, build timing_context, open PhaseBDialog (D3)."""
         # Report type
         if self.rb_na.Checked:
             self.report_type = 'north_america'
@@ -1686,80 +1237,53 @@ class ComprehensiveReportDialog(Form):
             self.report_type = 'trans_tasman'
         elif self.rb_sodis.Checked:
             self.report_type = 'sodis'
-        
-        # Save report type preference
         self.config.set_last_report_type(self.report_type)
-        
-        # Equipment
+
+        # Equipment IDs
         telescopes = self.config.get_telescopes()
         cameras = self.config.get_cameras()
-
         if self.combo_telescope.SelectedIndex >= 0 and self.combo_telescope.SelectedIndex < len(telescopes):
-            telescope = telescopes[self.combo_telescope.SelectedIndex]
-            self.telescope_id = telescope.get('id')
-        
+            self.telescope_id = telescopes[self.combo_telescope.SelectedIndex].get('id')
         if self.combo_camera.SelectedIndex >= 0 and self.combo_camera.SelectedIndex < len(cameras):
-            camera = cameras[self.combo_camera.SelectedIndex]
-            self.camera_id = camera.get('id')
-        
-        # Observation type
-        if self.rb_positive.Checked:
-            self.observation_type = "Positive"
-        elif self.rb_negative.Checked:
-            self.observation_type = "Negative"
-        elif self.rb_unsure.Checked:
-            self.observation_type = "Unsure"
-        
-        # Files
-        if self.csv_listbox.SelectedIndex >= 0:
-            self.selected_tangra_path = self.csv_files[self.csv_listbox.SelectedIndex]
-        else:
-            MessageBox.Show(
-                "Please select a light curve CSV file.",
-                "No CSV File",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning
-            )
-            return
-        
-        # AOTA or AOTA Report - at least one required for Positive/Unsure
-        if self.aota_listbox.SelectedIndex >= 0:
-            self.selected_aota_path = self.aota_files[self.aota_listbox.SelectedIndex]
-        
-        if self.report_listbox.SelectedIndex >= 0:
-            self.selected_aota_report_path = self.aota_report_files[self.report_listbox.SelectedIndex]
+            self.camera_id = cameras[self.combo_camera.SelectedIndex].get('id')
 
-        # PyOTE metrics
-        self.selected_pyote_path = None
-        self.selected_pyote_event_index = -1
-        if self.pyote_listbox.SelectedIndex >= 0:
-            self.selected_pyote_path = self.pyote_files[self.pyote_listbox.SelectedIndex]
-            self.selected_pyote_event_index = self.pyote_event_listbox.SelectedIndex
+        # Build timing context to pass to D3
+        is_ntp = hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
+        is_gps = hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked
+        is_gps_cmos = hasattr(self, '_rad_timing_gps_cmos') and self._rad_timing_gps_cmos.Checked
+        is_analog_vti = hasattr(self, '_rad_timing_analog_vti') and self._rad_timing_analog_vti.Checked
+        rb_na_checked = hasattr(self, 'rb_na') and self.rb_na.Checked
+        rb_tt_checked = hasattr(self, 'rb_tt') and self.rb_tt.Checked
+        rb_sodis_checked = hasattr(self, 'rb_sodis') and self.rb_sodis.Checked
 
-        # For Positive/Unsure, need at least one of AOTA.xml, AOTA Report, or PyOTE Metrics
-        if self.observation_type in ["Positive", "Unsure"]:
-            if not self.selected_aota_path and not self.selected_aota_report_path and not self.selected_pyote_path:
-                MessageBox.Show(
-                    f"Either AOTA file, AOTA Report, or PyOTE Metrics is required for {self.observation_type} observations.",
-                    "Missing Event Data",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                )
-                return
-        
-        # Conditions
-        if self.combo_clouds.SelectedIndex >= 0 and self.combo_clouds.SelectedItem:
-            self.clouds = str(self.combo_clouds.SelectedItem)
-        if self.combo_stability.SelectedIndex >= 0 and self.combo_stability.SelectedItem:
-            self.stability = str(self.combo_stability.SelectedItem)
-        self.other_conditions = self.txt_other_conditions.Text.strip() if self.txt_other_conditions.Text else None
+        total_delay_str = getattr(self, '_copy_total_delay_value', None)
+        total_delay_ms = float(total_delay_str) if total_delay_str else None
 
-        # VTI safety check — may show a blocking or confirmation dialog
-        if not self._check_analog_vti_before_generate():
-            return
+        timing_context = {
+            'is_ntp': is_ntp,
+            'is_gps': is_gps,
+            'is_gps_cmos': is_gps_cmos,
+            'is_analog_vti': is_analog_vti,
+            'rb_na_checked': rb_na_checked,
+            'rb_tt_checked': rb_tt_checked,
+            'rb_sodis_checked': rb_sodis_checked,
+            'total_delay_ms': total_delay_ms,
+            'ntp_offset_ms': self._ntp_offset_ms if is_ntp else 0.0,
+            'ntp_uncertainty_ms': self._ntp_uncertainty_ms if is_ntp else 0.0,
+            # rad_analog_aota_checked intentionally omitted — D3 defaults to AOTA (True)
+        }
 
-        self.DialogResult = DialogResult.OK
-        self.Close()
+        from phase_b_dialog import PhaseBDialog
+        self._dlg3 = PhaseBDialog(
+            self.config,
+            self.theme_manager,
+            self.event,
+            timing_context=timing_context,
+            current_folder=getattr(self, 'current_folder', None),
+        )
+        if self._dlg3.ShowDialog(self) == DialogResult.OK:
+            self.DialogResult = DialogResult.OK
+            self.Close()
     
     def _check_analog_vti_before_generate(self):
         """Show dialog warnings for Analog+VTI timing combinations.
@@ -1815,35 +1339,65 @@ class ComprehensiveReportDialog(Form):
     def get_camera_id(self):
         return self.camera_id
     
+    # ------------------------------------------------------------------
+    # Phase B delegation getters — data lives in D3 after _next_click
+    # ------------------------------------------------------------------
+
+    def _d3(self):
+        """Return the PhaseBDialog instance, or None if not yet opened."""
+        return getattr(self, '_dlg3', None)
+
     def get_observation_type(self):
-        return self.observation_type
-    
+        d3 = self._d3()
+        return d3.observation_type if d3 else None
+
     def get_selected_aota_path(self):
-        return self.selected_aota_path
-    
+        d3 = self._d3()
+        return d3.selected_aota_path if d3 else None
+
     def get_selected_tangra_path(self):
-        return self.selected_tangra_path
-    
+        d3 = self._d3()
+        return d3.selected_tangra_path if d3 else None
+
     def get_selected_aota_report_path(self):
-        return self.selected_aota_report_path
-    
+        d3 = self._d3()
+        return d3.selected_aota_report_path if d3 else None
+
     def get_clouds(self):
-        return self.clouds
-    
+        d3 = self._d3()
+        return d3.clouds if d3 else None
+
     def get_stability(self):
-        return self.stability
-    
+        d3 = self._d3()
+        return d3.stability if d3 else None
+
     def get_other_conditions(self):
-        return self.other_conditions
+        d3 = self._d3()
+        return d3.other_conditions if d3 else None
 
     def get_selected_folder(self):
-        return self.current_folder
+        d3 = self._d3()
+        return d3.current_folder if d3 else getattr(self, 'current_folder', None)
 
     def get_selected_pyote_path(self):
-        return self.selected_pyote_path
+        d3 = self._d3()
+        return d3.selected_pyote_path if d3 else None
 
     def get_selected_pyote_event_index(self):
-        return self.selected_pyote_event_index
+        d3 = self._d3()
+        return d3.selected_pyote_event_index if d3 else -1
+
+    def get_selected_aota_event_index(self):
+        d3 = self._d3()
+        return d3.selected_aota_event_index if d3 else -1
+
+    def get_selected_aota_report_event_index(self):
+        d3 = self._d3()
+        return d3.selected_aota_report_event_index if d3 else -1
+
+    def get_ntp_comment(self):
+        d3 = self._d3()
+        return d3.ntp_comment if d3 else None
 
     def get_timing_data(self):
         """Return timing_data dict from §3 Timing inputs, or None if method needs no OM correction."""
@@ -1877,20 +1431,16 @@ class ComprehensiveReportDialog(Form):
         if self._rad_corrections_applied.Checked:
             camera_delay_applied = True
             ntp_applied = True
-            cam_ok = hasattr(self, '_chk_confirm_cam_delay') and self._chk_confirm_cam_delay.Checked
-            ntp_ok = hasattr(self, '_chk_confirm_ntp') and self._chk_confirm_ntp.Checked
-            corrections_confirmed = cam_ok and ntp_ok
+            confirmed = hasattr(self, '_chk_confirm_total_delay') and self._chk_confirm_total_delay.Checked
+            corrections_confirmed = confirmed
         elif self._rad_corrections_not_applied.Checked:
             # User will apply corrections in Tangra; no internal D/R correction applied by OM
             camera_delay_applied = None
             ntp_applied = None
-        elif self._rad_corrections_na.Checked:
-            camera_delay_applied = None
-            ntp_applied = True  # No corrections to apply
         else:
             camera_delay_applied = None
             ntp_applied = None
-        ntp_offset_ms = 0.0 if self._rad_corrections_na.Checked else self._ntp_offset_ms
+        ntp_offset_ms = self._ntp_offset_ms
         result = build_timing_data(
             timing_method='NTP',
             camera_delay_ms=camera_delay_ms,
@@ -1906,6 +1456,198 @@ class ComprehensiveReportDialog(Form):
     # ------------------------------------------------------------------
     # Timing section helpers
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # NTP Analyser (§1) helpers -- counterpart of LocationConfirmDialog NTP methods
+    # ------------------------------------------------------------------
+
+    def _prefill_ntp_folder(self):
+        """Prefill NTP stats folder from saved settings, else discover candidates."""
+        ntp_module = self.ntp_context.get('module')
+        if ntp_module is None:
+            return
+        try:
+            settings = ntp_module.load_folder_settings()
+            saved_folder = (settings.get('log_folder') or '').strip()
+            if saved_folder and os.path.isdir(saved_folder):
+                self.txt_ntp_stats_folder.Text = saved_folder
+                self._ntp_stats_folder = saved_folder
+                return
+            candidates = ntp_module.discover_candidate_dirs()
+            for folder in candidates:
+                options = ntp_module.build_day_options(folder)
+                if options:
+                    self.txt_ntp_stats_folder.Text = folder
+                    self._ntp_stats_folder = folder
+                    return
+        except Exception:
+            pass
+
+    def _save_ntp_folder_setting(self, folder_path):
+        ntp_module = self.ntp_context.get('module')
+        if ntp_module is None:
+            return
+        try:
+            settings = ntp_module.load_folder_settings()
+            export_folder = settings.get('export_folder', '')
+            observer_lat = settings.get('observer_lat', '')
+            observer_lon = settings.get('observer_lon', '')
+            ntp_module.save_folder_settings(folder_path, export_folder, observer_lat, observer_lon)
+        except Exception:
+            pass
+
+    def _browse_ntp_folder_click(self, sender, e):
+        dialog = FolderBrowserDialog()
+        current = (self.txt_ntp_stats_folder.Text or '').strip()
+        if current and os.path.isdir(current):
+            dialog.SelectedPath = current
+        if dialog.ShowDialog() == DialogResult.OK:
+            self.txt_ntp_stats_folder.Text = dialog.SelectedPath
+            self._ntp_stats_folder = dialog.SelectedPath
+            self._save_ntp_folder_setting(dialog.SelectedPath)
+
+    def _pick_ntp_dataset_for_event(self, ntp_module, stats_folder, event_dt):
+        from datetime import date as _date
+        options = ntp_module.build_day_options(stats_folder)
+        if not options:
+            raise RuntimeError("No loopstats/peerstats dataset found in selected folder.")
+        event_mjd = (event_dt.date() - _date(1858, 11, 17)).days
+        event_sec = (event_dt.hour * 3600.0 + event_dt.minute * 60.0
+                     + event_dt.second + event_dt.microsecond / 1000000.0)
+        best_option = None
+        best_gap = None
+        for option in options:
+            try:
+                loop_rows = ntp_module.parse_loopstats(option.loop_path, option.target_mjd)
+            except Exception:
+                continue
+            day_rows = [r for r in loop_rows if r.mjd == event_mjd]
+            if not day_rows:
+                continue
+            gap = min(abs(r.sec_of_day - event_sec) for r in day_rows)
+            if best_gap is None or gap < best_gap:
+                best_gap = gap
+                best_option = option
+        if best_option is not None:
+            return best_option, best_gap
+        for option in options:
+            if option.target_mjd == event_mjd:
+                return option, None
+        return options[0], None
+
+    def _analyse_ntp_click(self, sender, e):
+        from datetime import date as _date
+        ntp_module = self.ntp_context.get('module')
+        if ntp_module is None:
+            import_err = self.ntp_context.get('import_error') or 'ntp_analysis_core import failed.'
+            MessageBox.Show(
+                "NTP analysis core is not available.\n\n{0}".format(import_err),
+                "NTP Module Not Available", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        stats_folder = (self.txt_ntp_stats_folder.Text or '').strip()
+        if not stats_folder or not os.path.isdir(stats_folder):
+            MessageBox.Show("Please select a valid NTP stats folder.", "Missing NTP Folder",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        event_dt = getattr(self.event, 'event_datetime', None)
+        if event_dt is None:
+            MessageBox.Show("Selected event does not have a UTC event time.", "Missing Event Time",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        self.lbl_ntp_analysing.Text = "Analysing - please wait up to ~30s"
+        self.Refresh()
+        try:
+            option, sec_gap = self._pick_ntp_dataset_for_event(ntp_module, stats_folder, event_dt)
+            mjd = (event_dt.date() - _date(1858, 11, 17)).days
+            sec = (event_dt.hour * 3600.0 + event_dt.minute * 60.0
+                   + event_dt.second + event_dt.microsecond / 1000000.0)
+            loop_rows = ntp_module.parse_loopstats(option.loop_path, option.target_mjd)
+            peer_rows = ntp_module.parse_peerstats(option.peer_path, option.target_mjd)
+            if not loop_rows:
+                raise RuntimeError("No loopstats rows available for event day in selected folder.")
+            if not peer_rows:
+                raise RuntimeError("No peerstats rows available for event day in selected folder.")
+            known_servers = self.ntp_context.get('known_servers')
+            result = ntp_module.estimate_offset_at_time(
+                mjd, sec, loop_rows, peer_rows, known_servers=known_servers)
+            self._ntp_stats_folder = stats_folder
+            self._ntp_loopstats_path = option.loop_path
+            self._ntp_peerstats_path = option.peer_path
+            self._ntp_analysis_result_loc = result
+            self._save_ntp_folder_setting(stats_folder)
+            loop_name = os.path.basename(option.loop_path)
+            peer_name = os.path.basename(option.peer_path)
+            dataset_note = option.label if sec_gap is None else "{0} (closest: {1:.0f}s)".format(option.label, sec_gap)
+            offset_ms = float(result.get('best_offset', 0.0)) * 1000.0
+            uncertainty_ms = float(result.get('u_expanded', 0.0)) * 1000.0
+            age_minutes = int(round(float(result.get('gap_before_s', 0.0)) / 60.0))
+            server = result.get('active_server_at_T') or 'unknown'
+            delay_ms = float(result.get('mean_delay_near_T', 0.0)) * 1000.0
+            location_note = result.get('server_location_note') or ''
+            self.lbl_ntp_offset_loc.Text = "Offset: {0:+.1f} ms".format(offset_ms)
+            self.lbl_ntp_uncertainty_loc.Text = "Uncertainty: +/- {0:.1f} ms (95%)".format(uncertainty_ms)
+            self.lbl_ntp_age_loc.Text = "Data age: {0} min".format(age_minutes)
+            if location_note:
+                self.lbl_ntp_server_loc.Text = "Server: {0}  |  {1:.1f} ms  ({2})".format(server, delay_ms, location_note)
+            else:
+                self.lbl_ntp_server_loc.Text = "Server: {0}  |  {1:.1f} ms".format(server, delay_ms)
+            theme_colors = self.theme_manager.get_current_theme()
+            text_fg = theme_colors['text_foreground']
+            for lbl in (self.lbl_ntp_offset_loc, self.lbl_ntp_uncertainty_loc,
+                        self.lbl_ntp_age_loc, self.lbl_ntp_server_loc):
+                lbl.ForeColor = text_fg
+            self.lbl_ntp_analysing.Text = ""
+            # Forward result to event so §3 NTP correction panel can read it
+            self.event.ntp_loopstats_path = option.loop_path
+            self.event.ntp_peerstats_path = option.peer_path
+            self.event.ntp_analysis_result = result
+            self._populate_ntp_offset_label()
+        except Exception as ex:
+            self._ntp_analysis_result_loc = None
+            for lbl in (self.lbl_ntp_offset_loc, self.lbl_ntp_uncertainty_loc,
+                        self.lbl_ntp_age_loc, self.lbl_ntp_server_loc):
+                lbl.Text = lbl.Text.split(':')[0] + ': -'
+                lbl.ForeColor = Color.Red
+            self.lbl_ntp_analysing.Text = ""
+            MessageBox.Show("NTP analysis failed:\n\n{0}".format(str(ex)),
+                            "NTP Analysis Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+    def _on_open_ntp_analyser_location_click(self, sender, e):
+        """Open the NTP analyser window from the §1 NTP Analyser panel."""
+        ntp_module = self.ntp_context.get('module')
+        import_error = self.ntp_context.get('import_error')
+        if ntp_module is None and import_error:
+            MessageBox.Show("NTP analysis core was not loaded:\n\n{0}".format(import_error),
+                            "NTP Module Not Available", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        try:
+            if getattr(self, '_ntp_gui_form', None) is not None:
+                try:
+                    if not self._ntp_gui_form.IsDisposed:
+                        self._ntp_gui_form.BringToFront()
+                        self._ntp_gui_form.Activate()
+                        self._ntp_gui_form.TopMost = True
+                        self._ntp_gui_form.TopMost = False
+                        return
+                except Exception:
+                    pass
+            import analyze_ntp_timing_accuracy as ntp_gui
+            self._ntp_gui_form = ntp_gui.AnalyzerForm()
+            self._ntp_gui_form.FormClosed += self._on_ntp_analyser_form_closed
+            try:
+                self._ntp_gui_form.Show(self)
+            except Exception:
+                self._ntp_gui_form.Show()
+            self._ntp_gui_form.BringToFront()
+            self._ntp_gui_form.Activate()
+            self._ntp_gui_form.TopMost = True
+            self._ntp_gui_form.TopMost = False
+            stats_folder = (self.txt_ntp_stats_folder.Text or '').strip() or None
+            event_dt = getattr(self.event, 'event_datetime', None)
+            self._ntp_gui_form.prefill_from_event(stats_folder, event_dt, None, None)
+        except Exception as ex:
+            MessageBox.Show("Unable to open NTP analyser:\n\n{0}".format(str(ex)),
+                            "Open NTP Analyser Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
 
     def _get_current_camera_id(self):
         """Return the camera ID currently selected in §1, or None."""
@@ -1965,42 +1707,37 @@ class ComprehensiveReportDialog(Form):
         self._populate_ntp_offset_label()
 
     def _populate_ntp_offset_label(self):
-        """Fill the NTP correction label from event.ntp_analysis_result."""
-        if not hasattr(self, '_lbl_ntp_section'):
-            return
+        """Load NTP offset state from event.ntp_analysis_result."""
         ntp_result = getattr(self.event, 'ntp_analysis_result', None)
         if ntp_result:
             self._ntp_offset_ms = float(ntp_result.get('best_offset', 0.0)) * 1000.0
             self._ntp_uncertainty_ms = float(ntp_result.get('u_expanded', 0.0)) * 1000.0
-            self._lbl_ntp_section.Text = "NTP correction:  {0:+.1f} ms  (\u00b1{1:.1f} ms, 95%)".format(
-                self._ntp_offset_ms, self._ntp_uncertainty_ms)
-            self._lbl_ntp_warning.Text = "\u26a0  Not stored in Tangra CSV \u2014 cannot be auto-verified"
-            self._lbl_ntp_warning.ForeColor = Color.DarkOrange
         else:
             self._ntp_offset_ms = 0.0
             self._ntp_uncertainty_ms = 0.0
-            self._lbl_ntp_section.Text = "NTP correction:  no analysis data available"
-            self._lbl_ntp_warning.Text = ""
-            self._rad_corrections_na.Checked = True
+            if hasattr(self, '_rad_corrections_not_applied'):
+                self._rad_corrections_not_applied.Checked = True
         self._update_guidance_values()
 
     def _on_timing_method_changed(self, sender, e):
-        """Show/hide timing sub-panels when method radio changes."""
+        """Show/hide Phase A and timing sub-panels when method radio changes."""
         if not sender.Checked:
             return
         is_ntp = self._rad_timing_ntp.Checked
         is_gps = self._rad_timing_gps.Checked
         is_gps_cmos = self._rad_timing_gps_cmos.Checked
         is_analog_vti = self._rad_timing_analog_vti.Checked
-        self._pnl_timing_ntp.Visible = is_ntp
-        self._pnl_timing_gps.Visible = is_gps
-        self._pnl_timing_gps_cmos.Visible = is_gps_cmos
-        self._pnl_timing_analog_vti.Visible = is_analog_vti
-        self._pnl_timing_other.Visible = not (is_ntp or is_gps or is_gps_cmos or is_analog_vti)
+
+        # Phase A is only relevant for methods that need corrections entered into Tangra
+        phase_a_visible = is_ntp or is_gps
+        self._pnl_phase_a.Visible = phase_a_visible
+
+        # Inside Phase A: only show the NTP analysis sub-section for the NTP method, not GPS flash
+        if hasattr(self, '_pnl_ntp_analyse'):
+            self._pnl_ntp_analyse.Visible = is_ntp
+
         if is_ntp:
             self._populate_calib_runs()
-        if is_analog_vti:
-            self._update_analog_vti_warnings()
         self.update_button_state()
 
     def _on_analog_tool_changed(self, sender, e):
@@ -2044,11 +1781,11 @@ class ComprehensiveReportDialog(Form):
             )
             self._lbl_vti_info.ForeColor = Color.Red
         else:
-            self._lbl_vti_info.Text = "Select a report format in \u00a72 above to see guidance."
+            self._lbl_vti_info.Text = "Report format was selected in Step 3 of the previous dialog."
             self._lbl_vti_info.ForeColor = Color.Gray
 
     def _update_file_status_labels(self):
-        """Update file availability status label in \u00a72 Report Format section."""
+        """Update folder status label in §1 Folder section."""
         if not hasattr(self, '_lbl_file_status'):
             return
         folder = self.current_folder
@@ -2056,67 +1793,45 @@ class ComprehensiveReportDialog(Form):
             self._lbl_file_status.Text = "No folder selected"
             self._lbl_file_status.ForeColor = Color.Gray
             return
-        cs_path = self._find_sharpCap_settings_file(folder)
-        cs_sym = '\u2714' if cs_path else '\u2014'
-        n_csv = len(self.csv_files)
-        n_aota = len(self.aota_files)
-        n_report = len(self.aota_report_files)
-        n_pyote = len(self.pyote_files)
-        parts = [
-            "CameraSettings: {0}".format(cs_sym),
-            "CSV: {0}".format(n_csv),
-            "AOTA: {0}".format(n_aota),
-            "AOTA Report: {0}".format(n_report),
-            "PyOTE: {0}".format(n_pyote),
-        ]
-        self._lbl_file_status.Text = "  |  ".join(parts)
-        self._lbl_file_status.ForeColor = Color.Green if (n_csv > 0 or n_aota > 0) else Color.Gray
+        self._lbl_file_status.Text = "Folder selected \u2014 files will be loaded in the next step"
+        self._lbl_file_status.ForeColor = Color.DarkGreen
 
     def _update_guidance_values(self):
-        """Refresh the copy-value labels in the NTP step-by-step guidance panel."""
-        if not hasattr(self, '_lbl_copy_cam_delay'):
+        """Refresh the Total Delay label and copy controls in Phase A."""
+        if not hasattr(self, '_lbl_total_delay'):
             return
         delay_ms = self._calculate_camera_delay()
         ntp_ms = getattr(self, '_ntp_offset_ms', 0.0)
         if delay_ms is not None:
             delay_str = '{0:.1f} ms'.format(delay_ms)
-            self._lbl_copy_cam_delay.Text = delay_str
             self._copy_cam_delay_value = '{0:.1f}'.format(delay_ms)
         else:
             delay_str = None
-            self._lbl_copy_cam_delay.Text = '\u2014 (enter Y line above)'
             self._copy_cam_delay_value = None
         ntp_copy = '{0:.1f}'.format(ntp_ms)
-        self._lbl_copy_ntp_off.Text = ntp_copy + ' ms'
         self._copy_ntp_off_value = ntp_copy
 
-        # Update confirmation checkbox labels with current calculated values;
-        # uncheck any checkbox whose value has changed since it was last ticked.
-        stale = False
-        if hasattr(self, '_chk_confirm_cam_delay'):
-            new_cam_text = ('Camera acquisition delay: {0}'.format(delay_str)
-                            if delay_str else 'Camera acquisition delay: \u2014 (calculate above first)')
-            if self._chk_confirm_cam_delay.Text != new_cam_text:
-                if self._chk_confirm_cam_delay.Checked:
-                    stale = True
-                self._chk_confirm_cam_delay.Checked = False
-                self._chk_confirm_cam_delay.Text = new_cam_text
-        if hasattr(self, '_chk_confirm_ntp'):
-            new_ntp_text = 'NTP clock offset: {0} ms'.format(ntp_copy)
-            if self._chk_confirm_ntp.Text != new_ntp_text:
-                if self._chk_confirm_ntp.Checked:
-                    stale = True
-                self._chk_confirm_ntp.Checked = False
-                self._chk_confirm_ntp.Text = new_ntp_text
-        if hasattr(self, '_lbl_confirm_head') and stale:
-            self._lbl_confirm_head.Text = u'\u26a0 Values changed \u2014 please re-confirm below:'
-            self._lbl_confirm_head.ForeColor = Color.OrangeRed
-
-        # Toggle guidance panel visibility
-        not_yet = (hasattr(self, '_rad_corrections_not_applied')
-                   and self._rad_corrections_not_applied.Checked)
-        if hasattr(self, '_pnl_apply_guidance'):
-            self._pnl_apply_guidance.Visible = not_yet
+        # Total Delay = camera acquisition delay + NTP clock offset (both shift timestamps forward)
+        if delay_ms is not None:
+            total_ms = delay_ms + ntp_ms
+            self._lbl_total_delay.Text = '{0:.1f} ms'.format(total_ms)
+            self._lbl_total_delay.ForeColor = Color.DarkGreen
+            self._copy_total_delay_value = '{0:.1f}'.format(total_ms)
+        else:
+            total_ms = None
+            self._lbl_total_delay.Text = '\u2014'
+            self._lbl_total_delay.ForeColor = Color.Gray
+            self._copy_total_delay_value = None
+        # Update confirmation checkbox with current total delay value;
+        # uncheck if the value has changed since it was last confirmed.
+        if hasattr(self, '_chk_confirm_total_delay'):
+            new_chk_text = (
+                'Total Delay for TANGRA: {0:.1f} ms  \u2014 tick to confirm value is correctly entered'
+                .format(total_ms) if total_ms is not None
+                else 'Total Delay for TANGRA: \u2014  (tick to confirm value is correctly entered)')
+            if self._chk_confirm_total_delay.Text != new_chk_text:
+                self._chk_confirm_total_delay.Checked = False
+                self._chk_confirm_total_delay.Text = new_chk_text
 
     def _on_copy_cam_delay_click(self, sender, e):
         """Copy calculated camera delay value to clipboard."""
@@ -2144,25 +1859,57 @@ class ComprehensiveReportDialog(Form):
                 MessageBoxIcon.Information
             )
 
-    def _on_rescan_from_guidance_click(self, sender, e):
-        """Re-scan the observation folder after applying corrections in Tangra."""
-        if self.current_folder and os.path.isdir(self.current_folder):
-            self.scan_folder(self.current_folder)
+    def _on_total_delay_info_click(self, sender, e):
+        """Show information about entering the Total Delay into Tangra."""
+        MessageBox.Show(
+            'Copy the Total Delay into the Tangra "Camera and Timing Corrections" dialog.\n\n'
+            'Enter it in the Acquisition Delay field only.\n'
+            'Leave the Reference Time unchecked \u2014 the Total Delay is the combined '
+            'NTP offset and camera acquisition delay.',
+            'Tangra Acquisition Delay Entry',
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information
+        )
+
+    def _on_copy_total_delay_click(self, sender, e):
+        """Copy the combined Total Delay (cam delay + NTP offset) to clipboard."""
+        val = getattr(self, '_copy_total_delay_value', None)
+        if val is not None:
+            Clipboard.SetText(val)
+        else:
             MessageBox.Show(
-                "Folder rescanned.\n\n"
-                "If your corrected AOTA or PyOTE files are now visible in the \u00a74 file lists,\n"
-                "select 'Applied in Tangra' in \u00a73 above to confirm and enable report generation.",
-                "Rescan Complete",
+                'Total Delay not yet calculated.\nEnter a Y line value in Step A1 above.',
+                'Nothing to Copy',
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information
             )
-        else:
-            MessageBox.Show(
-                "No observation folder selected.\nBrowse to your folder in \u00a72 first.",
-                "No Folder Selected",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning
-            )
+
+    def _on_rescan_from_guidance_click(self, sender, e):
+        """Read the first Tangra CSV in the folder and update the Step A4 acquisition delay label."""
+        folder = self.current_folder
+        if not folder or not os.path.isdir(folder):
+            self._lbl_csv_delay.Text = 'No folder selected'
+            self._lbl_csv_delay.ForeColor = Color.Gray
+            return
+        try:
+            csv_path = None
+            for filename in sorted(os.listdir(folder)):
+                if filename.lower().endswith('.csv'):
+                    csv_path = os.path.join(folder, filename)
+                    break
+            if csv_path is None:
+                self._ts_summary = None
+                self._lbl_csv_delay.Text = 'No CSV found in folder'
+                self._lbl_csv_delay.ForeColor = Color.Gray
+                return
+            import light_curve_reader as lcr
+            summary = lcr.get_observation_summary(csv_path, percentiles=[1, 99])
+            self._ts_summary = summary
+            delay_ms = self._calculate_camera_delay()
+            self._auto_detect_camera_delay(delay_ms)
+        except Exception as ex:
+            self._lbl_csv_delay.Text = 'Error reading CSV'
+            self._lbl_csv_delay.ForeColor = Color.OrangeRed
 
     def _parse_sharpCap_settings(self, filepath):
         """Parse a SharpCap .CameraSettings file.
@@ -2368,7 +2115,7 @@ class ComprehensiveReportDialog(Form):
                 match_detail += ' / tilt {0}'.format(sc_tilt)
             if sc_pan is not None:
                 match_detail += ' / pan {0}'.format(sc_pan)
-            self._lbl_calib_match.Text = '\u2714 Auto-matched from SharpCap settings\n{0}'.format(match_detail)
+            self._lbl_calib_match.Text = '\u2714 Auto-matched from SharpCap settings'
             self._lbl_calib_match.ForeColor = Color.Green
         elif sc_area or sc_binning:
             # Show both what the file has (binned) and what the stored run has, for easy comparison
@@ -2416,26 +2163,13 @@ class ComprehensiveReportDialog(Form):
             self._correction_user_set = True
         applied = (hasattr(self, '_rad_corrections_applied')
                    and self._rad_corrections_applied.Checked)
-        if hasattr(self, '_pnl_applied_confirm'):
-            self._pnl_applied_confirm.Visible = applied
-        if not applied:
-            if hasattr(self, '_chk_confirm_cam_delay'):
-                self._chk_confirm_cam_delay.Checked = False
-            if hasattr(self, '_chk_confirm_ntp'):
-                self._chk_confirm_ntp.Checked = False
-            if hasattr(self, '_lbl_confirm_head'):
-                self._lbl_confirm_head.Text = 'Confirm the values you entered in Tangra match:'
-                self._lbl_confirm_head.ForeColor = self.theme_manager.get_current_theme()['text_foreground']
-        self._update_timing_net_preview()
+        if hasattr(self, '_chk_confirm_total_delay'):
+            self._chk_confirm_total_delay.Enabled = applied
+            if not applied:
+                self._chk_confirm_total_delay.Checked = False
         self.update_button_state()
 
     def _on_confirm_check_changed(self, sender, e):
-        # When both boxes are ticked again, clear any stale warning on the heading
-        cam_ok = hasattr(self, '_chk_confirm_cam_delay') and self._chk_confirm_cam_delay.Checked
-        ntp_ok = hasattr(self, '_chk_confirm_ntp') and self._chk_confirm_ntp.Checked
-        if cam_ok and ntp_ok and hasattr(self, '_lbl_confirm_head'):
-            self._lbl_confirm_head.Text = 'Confirm the values you entered in Tangra match:'
-            self._lbl_confirm_head.ForeColor = self.theme_manager.get_current_theme()['text_foreground']
         self.update_button_state()
 
     def _get_y_line_max(self):
@@ -2462,7 +2196,6 @@ class ComprehensiveReportDialog(Form):
             self._lbl_calc_delay.Text = '\u2014'
             self._lbl_calc_delay.ForeColor = normal_color
             self._auto_detect_camera_delay(None)
-            self._update_timing_net_preview()
             return
         try:
             y = float(text)
@@ -2470,7 +2203,6 @@ class ComprehensiveReportDialog(Form):
             self._lbl_calc_delay.Text = '\u2014 (not a valid number)'
             self._lbl_calc_delay.ForeColor = Color.OrangeRed
             self._auto_detect_camera_delay(None)
-            self._update_timing_net_preview()
             return
         y_max = self._get_y_line_max()
         if y < 0 or (y_max is not None and y > y_max):
@@ -2480,7 +2212,6 @@ class ComprehensiveReportDialog(Form):
                 self._lbl_calc_delay.Text = '\u2014 (must be \u22650)'
             self._lbl_calc_delay.ForeColor = Color.OrangeRed
             self._auto_detect_camera_delay(None)
-            self._update_timing_net_preview()
             return
         delay_ms = self._calculate_camera_delay()
         if delay_ms is not None:
@@ -2489,7 +2220,7 @@ class ComprehensiveReportDialog(Form):
             self._lbl_calc_delay.Text = '\u2014'
         self._lbl_calc_delay.ForeColor = normal_color
         self._auto_detect_camera_delay(delay_ms)
-        self._update_timing_net_preview()
+        self._update_guidance_values()
 
     def _calculate_camera_delay(self):
         """Return camera_delay_ms from selected calibration run + Y line, or None."""
@@ -2508,7 +2239,7 @@ class ComprehensiveReportDialog(Form):
             return None
 
     def _auto_detect_camera_delay(self, calculated_ms):
-        """Compare Tangra CSV acquisition_delay with calculated_ms, auto-select camera radio."""
+        """Compare Tangra CSV acquisition_delay with Total Delay (cam + NTP), auto-select radio."""
         if not hasattr(self, '_lbl_csv_delay'):
             return
         if self._ts_summary is None:
@@ -2516,18 +2247,20 @@ class ComprehensiveReportDialog(Form):
             self._lbl_csv_delay.ForeColor = Color.Gray
             return
         csv_delay = self._ts_summary.get('acquisition_delay')  # ms, float or None
+        # Compare against Total Delay (cam acquisition + NTP offset)
+        ntp_ms = getattr(self, '_ntp_offset_ms', 0.0)
+        compare_ms = (calculated_ms + ntp_ms) if calculated_ms is not None else None
         if csv_delay is None:
             self._lbl_csv_delay.Text = 'not present in CSV'
             self._lbl_csv_delay.ForeColor = Color.Gray
-            if calculated_ms is not None:
+            if compare_ms is not None:
                 if not (self._rad_corrections_applied.Checked
-                        or self._rad_corrections_not_applied.Checked
-                        or self._rad_corrections_na.Checked):
+                        or self._rad_corrections_not_applied.Checked):
                     self._rad_corrections_not_applied.Checked = True
             return
         csv_val = float(csv_delay)
-        if calculated_ms is not None:
-            diff = abs(csv_val - calculated_ms)
+        if compare_ms is not None:
+            diff = abs(csv_val - compare_ms)
             if csv_val < 0.1:
                 self._lbl_csv_delay.Text = '{0:.1f} ms (zero \u2014 not applied in Tangra)'.format(csv_val)
                 self._lbl_csv_delay.ForeColor = Color.Gray
@@ -2535,7 +2268,7 @@ class ComprehensiveReportDialog(Form):
                     self._suppress_correction_event = True
                     self._rad_corrections_not_applied.Checked = True
                     self._suppress_correction_event = False
-            elif diff <= 5.0:
+            elif diff <= 1.0:
                 self._lbl_csv_delay.Text = '{0:.1f} ms \u2714 close match \u2014 delay was applied'.format(csv_val)
                 self._lbl_csv_delay.ForeColor = Color.Green
                 if not self._correction_user_set:
@@ -2544,127 +2277,12 @@ class ComprehensiveReportDialog(Form):
                     self._suppress_correction_event = False
             else:
                 self._lbl_csv_delay.Text = (
-                    '{0:.1f} ms  \u26a0 differs from calculated by {1:.1f} ms \u2014 verify'.format(
+                    '{0:.1f} ms  \u26a0 differs from Total Delay by {1:.1f} ms \u2014 verify'.format(
                         csv_val, diff))
                 self._lbl_csv_delay.ForeColor = Color.OrangeRed
         else:
             self._lbl_csv_delay.Text = '{0:.1f} ms'.format(csv_val)
             self._lbl_csv_delay.ForeColor = Color.Gray
-
-    def _update_timing_net_preview(self):
-        """Recompute net correction and update the D/R preview labels in \u00a75 Timing."""
-        if not hasattr(self, '_lbl_net_correction'):
-            return
-        if not self._rad_timing_ntp.Checked:
-            self._lbl_net_correction.Text = '\u2014'
-            self._lbl_d_preview.Text = ''
-            self._lbl_r_preview.Text = ''
-            return
-        not_yet = self._rad_corrections_not_applied.Checked
-        delay_ms = self._calculate_camera_delay()
-        if not_yet:
-            cam_ms = delay_ms if delay_ms is not None else 0.0
-            ntp_ms = self._ntp_offset_ms
-        elif self._rad_corrections_applied.Checked or self._rad_corrections_na.Checked:
-            cam_ms = 0.0
-            ntp_ms = 0.0
-        else:
-            cam_ms = None
-            ntp_ms = None
-        if cam_ms is None or ntp_ms is None:
-            self._lbl_net_correction.Text = '(select a correction option above)'
-            self._lbl_net_correction.ForeColor = Color.Gray
-            self._lbl_d_preview.Text = ''
-            self._lbl_r_preview.Text = ''
-            self._update_guidance_values()
-            return
-        net_ms = cam_ms + ntp_ms
-        preview_color = Color.SteelBlue if not_yet else Color.DarkOrange
-        if abs(net_ms) < 0.05:
-            self._lbl_net_correction.Text = '0.0 ms (no correction needed)' if not_yet else '0.0 ms (all corrections already applied)'
-            self._lbl_net_correction.ForeColor = Color.Gray
-        else:
-            if not_yet:
-                self._lbl_net_correction.Text = '{0:+.1f} ms to apply in Tangra (reference)'.format(net_ms)
-            else:
-                self._lbl_net_correction.Text = '{0:+.1f} ms applied to D/R times'.format(net_ms)
-            self._lbl_net_correction.ForeColor = preview_color
-        # D/R preview
-        from timing_utils import seconds_to_hms
-        net_s = net_ms / 1000.0
-        if self._d_time_seconds is not None:
-            dh, dm, ds = seconds_to_hms(self._d_time_seconds)
-            if abs(net_ms) >= 0.05:
-                ndh, ndm, nds = seconds_to_hms(self._d_time_seconds + net_s)
-                self._lbl_d_preview.Text = 'D  {0}:{1:02d}:{2:06.3f}  \u2192  {3}:{4:02d}:{5:06.3f}'.format(
-                    dh, dm, ds, ndh, ndm, nds)
-                self._lbl_d_preview.ForeColor = preview_color
-            else:
-                self._lbl_d_preview.Text = 'D  {0}:{1:02d}:{2:06.3f}'.format(dh, dm, ds)
-                self._lbl_d_preview.ForeColor = Color.Gray
-        else:
-            self._lbl_d_preview.Text = ''
-        if self._r_time_seconds is not None:
-            rh, rm, rs = seconds_to_hms(self._r_time_seconds)
-            if abs(net_ms) >= 0.05:
-                nrh, nrm, nrs = seconds_to_hms(self._r_time_seconds + net_s)
-                self._lbl_r_preview.Text = 'R  {0}:{1:02d}:{2:06.3f}  \u2192  {3}:{4:02d}:{5:06.3f}'.format(
-                    rh, rm, rs, nrh, nrm, nrs)
-                self._lbl_r_preview.ForeColor = preview_color
-            else:
-                self._lbl_r_preview.Text = 'R  {0}:{1:02d}:{2:06.3f}'.format(rh, rm, rs)
-                self._lbl_r_preview.ForeColor = Color.Gray
-        else:
-            self._lbl_r_preview.Text = ''
-        self._update_guidance_values()
-        self._check_dr_plausibility()
-
-    def _check_dr_plausibility(self):
-        """Check D/R time order and correction magnitude; update warning label and _plausibility_dr_ok."""
-        if not hasattr(self, '_lbl_plausibility_warning'):
-            return
-        if not self._rad_timing_ntp.Checked:
-            self._lbl_plausibility_warning.Text = ''
-            self._plausibility_dr_ok = True
-            if hasattr(self, '_btn_plausibility_info'):
-                self._btn_plausibility_info.Visible = False
-            return
-        # When corrections are not yet applied, the guidance panel is visible in the
-        # same y-space as this warning label.  Nothing meaningful to check yet.
-        if self._rad_corrections_not_applied.Checked:
-            self._lbl_plausibility_warning.Text = ''
-            self._plausibility_dr_ok = True
-            if hasattr(self, '_btn_plausibility_info'):
-                self._btn_plausibility_info.Visible = False
-            return
-        warnings = []
-        blocking = False
-        # Check 1 (blocking): D must precede R for positive/unsure observations
-        if self._rad_corrections_applied.Checked:
-            obs_needs_dr = ((hasattr(self, 'rb_positive') and self.rb_positive.Checked)
-                            or (hasattr(self, 'rb_unsure') and self.rb_unsure.Checked))
-            if (obs_needs_dr
-                    and self._d_time_seconds is not None
-                    and self._r_time_seconds is not None
-                    and self._d_time_seconds >= self._r_time_seconds):
-                warnings.insert(0, u'\u26a0 D \u2265 R: disappearance is not before reappearance \u2014 check the correction values you entered in Tangra')
-                blocking = True
-        # Check 2 (non-blocking): unusually large net correction
-        delay_ms = self._calculate_camera_delay() or 0.0
-        ntp_ms = 0.0 if self._rad_corrections_na.Checked else getattr(self, '_ntp_offset_ms', 0.0)
-        net_abs = abs(delay_ms + ntp_ms)
-        if net_abs > 500.0:
-            warnings.append(u'\u26a0 Net correction {0:.0f} ms is unusually large \u2014 verify inputs'.format(net_abs))
-        self._plausibility_dr_ok = not blocking
-        if warnings:
-            self._lbl_plausibility_warning.Text = u'\n'.join(warnings)
-            self._lbl_plausibility_warning.ForeColor = Color.OrangeRed if blocking else Color.DarkOrange
-            if hasattr(self, '_btn_plausibility_info'):
-                self._btn_plausibility_info.Visible = True
-        else:
-            self._lbl_plausibility_warning.Text = ''
-            if hasattr(self, '_btn_plausibility_info'):
-                self._btn_plausibility_info.Visible = False
 
     def _setup_tooltips(self):
         """Configure hover tooltips for NTP panel controls and observation type radios."""
@@ -2684,29 +2302,11 @@ class ComprehensiveReportDialog(Form):
                 "The vertical pixel position of the star on the sensor in Tangra.\n"
                 "Right-click the aperture \u2192 Properties to read it."
             )
-        if hasattr(self, '_lbl_net_correction'):
+        if hasattr(self, '_chk_confirm_total_delay'):
             self._tooltip.SetToolTip(
-                self._lbl_net_correction,
-                "Camera delay + NTP offset combined. Positive \u2014 event is later\n"
-                "than the raw timestamp. Applied to both D and R times."
-            )
-        if hasattr(self, '_lbl_net_heading'):
-            self._tooltip.SetToolTip(
-                self._lbl_net_heading,
-                "Camera delay + NTP offset combined. Positive \u2014 event is later\n"
-                "than the raw timestamp. Applied to both D and R times."
-            )
-        if hasattr(self, '_chk_confirm_cam_delay'):
-            self._tooltip.SetToolTip(
-                self._chk_confirm_cam_delay,
-                "Confirm this is the exact value you entered in Tangra\u2019s\n"
-                "timing settings before finishing the light-curve reduction."
-            )
-        if hasattr(self, '_chk_confirm_ntp'):
-            self._tooltip.SetToolTip(
-                self._chk_confirm_ntp,
-                "Confirm this is the exact value you entered in Tangra\u2019s\n"
-                "timing settings before finishing the light-curve reduction."
+                self._chk_confirm_total_delay,
+                "Confirm this is the exact Total Delay value you entered in Tangra\u2019s\n"
+                "Camera and Timing Corrections dialog, Acquisition Delay field."
             )
         if hasattr(self, '_rad_corrections_not_applied'):
             self._tooltip.SetToolTip(
@@ -2800,19 +2400,10 @@ class ComprehensiveReportDialog(Form):
             pass
 
     def _apply_ntp_pit_result(self, offset_ms, error_ms):
-        """Apply NTP PIT values from the analyser to the §3 NTP fields."""
+        """Apply NTP PIT values from the analyser."""
         self._ntp_offset_ms = offset_ms
         self._ntp_uncertainty_ms = error_ms
-        self._lbl_ntp_section.Text = "NTP correction:  {0:+.1f} ms  (\u00b1{1:.1f} ms, 95%)".format(
-            offset_ms, error_ms)
-        self._lbl_ntp_warning.Text = "\u26a0  Not stored in Tangra CSV \u2014 cannot be auto-verified"
-        self._lbl_ntp_warning.ForeColor = Color.DarkOrange
-        # If the radio was previously stuck on N/A (no data), clear it so the
-        # user can consciously choose the right status now that values exist.
-        if hasattr(self, '_rad_corrections_na') and self._rad_corrections_na.Checked:
-            self._rad_corrections_na.Checked = False
         self._update_guidance_values()
-        self._update_timing_net_preview()
         self.update_button_state()
 
     def _on_ntp_info_click(self, sender, e):
@@ -2893,26 +2484,6 @@ class ComprehensiveReportDialog(Form):
             "Why is Confirmation Required?",
             MessageBoxButtons.OK,
             MessageBoxIcon.Information
-        )
-
-    def _on_plausibility_info_click(self, sender, e):
-        MessageBox.Show(
-            "Common causes of D \u2265 R:\n\n"
-            "1.  Wrong file selected\n"
-            "    The AOTA or PyOTE file may be from a different event than the\n"
-            "    Tangra CSV. Check that both files come from the same recording.\n\n"
-            "2.  Corrections overshot the window\n"
-            "    A large net correction may shift D past R.\n"
-            "    Review the calibration run, Y-line, and NTP offset values.\n\n"
-            "3.  Swapped D and R in AOTA\n"
-            "    If the event was misidentified, D and R may be reversed.\n"
-            "    Re-run the AOTA reduction and verify which time is disappearance.\n\n"
-            "4.  AOTA fitted a noise spike\n"
-            "    AOTA may have detected a noise event instead of the real occultation.\n"
-            "    Inspect the light curve and re-fit if necessary.",
-            "D \u2265 R \u2014 Common Causes",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Warning
         )
 
     def _on_why_blocked_click(self, sender, e):
@@ -3062,7 +2633,7 @@ class TimestampInspectorForm(Form):
 
     def _setup_ui(self):
         self.Text = "Timestamp Inspector"
-        self.Size = Size(900, 720)
+        self.Size = Size(900, 780)
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle
         self.MaximizeBox = False
@@ -3093,7 +2664,7 @@ class TimestampInspectorForm(Form):
 
         self._lbl_info = Label()
         self._lbl_info.Location = Point(10, 545)
-        self._lbl_info.Size = Size(770, 52)
+        self._lbl_info.Size = Size(770, 68)
         self._lbl_info.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         self._lbl_info.Text = (
             "Delayed frames: deviation > +10% of median.  Late frames: deviation > +90% of median (dropped frame likely).\n"
@@ -3104,7 +2675,7 @@ class TimestampInspectorForm(Form):
 
         btn_close = Button()
         btn_close.Text = "Close"
-        btn_close.Location = Point(793, 603)
+        btn_close.Location = Point(793, 620)
         btn_close.Size = Size(85, 28)
         btn_close.Anchor = AnchorStyles.Bottom | AnchorStyles.Right
         btn_close.Click += self._close_click
@@ -3162,9 +2733,9 @@ class TimestampInspectorForm(Form):
 
             # Populate stats label
             self._lbl_stats.Text = (
-                "Median exposure: {0:.2f} ms   |   "
-                "Min deviation: {1:+.2f} ms   |   "
-                "Max deviation: {2:+.2f} ms"
+                "Median exposure: {0:.0f} ms   |   "
+                "Min deviation: {1:+.0f} ms   |   "
+                "Max deviation: {2:+.0f} ms"
             ).format(median_ms, min_dev, max_dev)
 
             # Find D/R frame numbers by closest timestamp
@@ -3192,6 +2763,7 @@ class TimestampInspectorForm(Form):
             ya1.Minimum = y_min_axis
             ya1.Maximum = y_max_axis
             model1.Axes.Add(ya1)
+            model1.PlotMargins = OxyPlot.OxyThickness(75.0, 10.0, 20.0, 30.0)
 
             s1 = OxySeries.LineSeries()
             s1.Title = "Deviation"
@@ -3224,7 +2796,9 @@ class TimestampInspectorForm(Form):
             ya2 = OxyAxes.LinearAxis()
             ya2.Position = OxyAxes.AxisPosition.Left
             ya2.Title = "Signal"
+            ya2.StringFormat = "0.00E+0"
             model2.Axes.Add(ya2)
+            model2.PlotMargins = OxyPlot.OxyThickness(75.0, 10.0, 20.0, 30.0)
 
             s2 = OxySeries.LineSeries()
             s2.Title = "Signal"
@@ -3260,7 +2834,7 @@ class TimestampInspectorForm(Form):
         event_frame = self._nearest_frame(
             self._cached_times, self._cached_frame_nos, self.event_time_seconds
         ) if hasattr(self, '_cached_times') else None
-        if event_frame is not None:
+        if event_frame is not None and not (d_frame is not None or r_frame is not None):
             ann = OxyAnn.LineAnnotation()
             ann.Type = OxyAnn.LineAnnotationType.Vertical
             ann.X = float(event_frame)
@@ -3276,6 +2850,8 @@ class TimestampInspectorForm(Form):
             ann.Color = OxyPlot.OxyColors.Red
             ann.LineStyle = OxyPlot.LineStyle.Dash
             ann.Text = "D"
+            ann.TextHorizontalAlignment = OxyPlot.HorizontalAlignment.Right
+            ann.TextOrientation = OxyAnn.AnnotationTextOrientation.Horizontal
             model.Annotations.Add(ann)
         if r_frame is not None:
             ann = OxyAnn.LineAnnotation()
@@ -3284,5 +2860,6 @@ class TimestampInspectorForm(Form):
             ann.Color = OxyPlot.OxyColors.Green
             ann.LineStyle = OxyPlot.LineStyle.Dash
             ann.Text = "R"
+            ann.TextOrientation = OxyAnn.AnnotationTextOrientation.Horizontal
             model.Annotations.Add(ann)
 

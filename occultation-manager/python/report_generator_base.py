@@ -114,7 +114,7 @@ class ReportGeneratorBase:
         cam_applied = timing_data.get('camera_delay_applied')
         ntp_applied = timing_data.get('ntp_applied')
         if lc_corrected is True:
-            net_ms = (net_s * 1000.0) if net_s is not None else (cam_ms + ntp_ms)
+            net_ms = cam_ms + ntp_ms
             note = ('NTP timing corrections applied in Tangra: '
                     'camera acq. delay {0:.1f} ms, NTP offset {1:+.1f} ms (net {2:+.1f} ms)'.format(
                         cam_ms, ntp_ms, net_ms))

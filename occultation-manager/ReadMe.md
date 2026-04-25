@@ -142,7 +142,8 @@ occultation-manager/
 - Sequences use calculated or custom exposure, gain, and duration values
 
 **Report Generation (Under Development)**
-- ⚠️ **Not Approved**: Report generation is still under development and has not been approved by North America, Trans-Tasman, or SODIS reporting coordinators
+- ⚠️ **Not Approved**: Report generation is still under development and has not been approved by the NA, TT, or SODIS reporting coordinators
+- ⚠️ Only TANGRA and AOTA outputs are currently supported
 - Single comprehensive dialog for workflow efficiency
 - Report flow now includes **Confirm Observer Location** with optional **Step 2 NTP timing analysis**
 - Optional NTP actions:
@@ -530,7 +531,7 @@ This provides the best of both worlds: automated multi-sequence execution with f
 
 ## Report Generation (Under Development - Not Approved)
 
-⚠️ **CRITICAL WARNING**: Report generation is still under development and **has NOT been approved** by the North America, Trans-Tasman, or SODIS reporting coordinators. All generated reports must be carefully verified before submission to any reporting organization. Use with extreme caution.
+⚠️ **CRITICAL WARNING**: Report generation is still under development and **has NOT been approved** by the NA, TT, or SODIS reporting coordinators. Only TANGRA and AOTA outputs are currently supported. All generated reports must be carefully verified before submission to any reporting organization. Use with extreme caution.
 
 Reports are generated using a streamlined single-dialog workflow that combines:
 - Report format selection (North America / Trans-Tasman / SODIS)
@@ -565,19 +566,20 @@ Reports are generated using a streamlined single-dialog workflow that combines:
 - Observation start time (HH:MM:SS.SS)
 - Observation end time (HH:MM:SS.SS)
 - Exposure time in seconds (3 decimal places)
-- Camera acquisition delay in seconds (from measurement parameters table)
+- Camera acquisition delay in seconds — 4 decimal places (from measurement parameters table)
 
 **GPS Flash Timing Analysis Status**:
 ⚠️ **Not Yet Integrated**: GPS flash timing analysis functions are available in the `gps-timing-analysis` toolkit but are not yet integrated into Occultation Manager. These advanced functions (GPS 1PPS flash detection, timestamp offset calculation, rolling shutter characterization) are currently available as standalone tools for expert users who can write custom Python code. Plans exist to integrate these capabilities into the report generation workflow in a future release.
 
 ### Workflow Improvements
 - **Settings Persistence**: Remembers last report type and folder location
-- **Auto-Selection**: Automatically selects first available AOTA and Tangra files
+- **Auto-Selection**: Automatically selects first available AOTA and Tangra files; AOTA Report events are listed first in the D/R event combo
 - **Smart Validation**: AOTA file (XML or Report) required for Positive/Unsure observations, optional for Negative
 - **Flexible Timing**: Accepts either AOTA.xml OR AOTA_Report.txt (or both for validation)
 - **Time Verification**: Compares D/R times when both AOTA sources provided
 - **Multi-Event Support**: Select specific event from AOTA Reports with multiple events
 - **One-Click Generation**: Single dialog replaces 5 separate dialogs
+- **NTP Uncertainty Note**: When the NTP uncertainty checkbox is ticked, the note is written to the Additional Comments section of the TT report (cell D44), separate from Other Conditions
 
 ### File Organization
 For efficient workflow, organize files in folders by event:

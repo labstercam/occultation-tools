@@ -68,7 +68,8 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
     
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
-                       clouds=None, stability=None, other_conditions=None, timing_data=None):
+                       clouds=None, stability=None, other_conditions=None, timing_data=None,
+                       ntp_comment=None):
         """Generate a North American report using Openize SDK
         
         Args:
@@ -226,13 +227,13 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         station_elev = getattr(event, 'elevation', 0.0)
         
         if station_lat != 0.0:
-            self._set_cell(worksheet, "E17", "deg.ddddd")
-            self._set_cell(worksheet, "E18", abs(station_lat))
+            self._set_cell(worksheet, "E17", "deg.ddddddd")
+            self._set_cell(worksheet, "E18", round(abs(station_lat), 7))
             self._set_cell(worksheet, "J18", 'S' if station_lat < 0 else 'N')
         
         if station_lon != 0.0:
-            self._set_cell(worksheet, "N17", "deg.ddddd")
-            self._set_cell(worksheet, "N18", abs(station_lon))
+            self._set_cell(worksheet, "N17", "deg.ddddddd")
+            self._set_cell(worksheet, "N18", round(abs(station_lon), 7))
             self._set_cell(worksheet, "R18", 'W' if station_lon < 0 else 'E')
         
         if station_elev != 0.0:

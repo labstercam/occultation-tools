@@ -1,5 +1,46 @@
 # Occultation Manager - Release Notes
 
+## Version 0.2.0-beta.9 (April 2026)
+
+**Report Generation Bug Fixes and UX Improvements**
+
+### SNR Fix — AOTA Report Parser (Bug Fix)
+
+The SNR (Signal-to-Noise Ratio) field was not populating in the TT Excel report when an AOTA
+Report text file was used as the timing source. The parser's regex was matching only `Ave:` but
+some AOTA Report versions label the average as `Average:`.
+
+- Regex updated from `r'Ave:\s*([\d.]+)'` to `r'(?:Ave|Average)\s*:\s*([\d.]+)'` with `re.IGNORECASE`
+- SNR now correctly populates cell W40 in the RASNZ TT report for both label variants
+
+### Camera Acquisition Delay — 4 Decimal Places (Bug Fix)
+
+The camera acquisition delay written to the TT report (cell P26) was rounding to 3 or fewer
+decimal places, losing precision for delays calculated from the rolling-shutter calibration.
+
+- `total_delay_s` and `delay_sec` in `tt_report_openize.py` now rounded to 4 decimal places
+- Consistent with the precision provided by Tangra's measurement parameters
+
+### NTP Timing Comment — Correct Cell (Bug Fix)
+
+The NTP timing uncertainty note (generated when the NTP uncertainty checkbox is ticked in the
+D/R info panel) was being merged into the "Other Conditions" field and written to the wrong
+cell in the TT report. It is now written to its own row in Additional Comments.
+
+- `ntp_comment` is no longer merged into `other_conditions` in `main_gui.py`
+- Passed as a separate `ntp_comment=` kwarg to all three report generators
+- In the TT report: written to cell **D44** (Additional Comments, third row)
+- `na_report_openize.py` and `sodis_report_text.py` accept the kwarg (unused — those formats
+  handle their own comment layout)
+
+### AOTA Report — Default First in D/R Event Combo (UX)
+
+When AOTA Report events are available in the D/R event combo of the Phase B report dialog,
+they are now listed first (before AOTA XML events and PyOTE events), making the most commonly
+used source the default selection.
+
+---
+
 ## Version 0.2.0-beta.8 (April 2026)
 
 **NTP Timing Corrections — Observer Verification Workflow**
@@ -519,7 +560,7 @@ observations. These handle midnight, next-day events, and DST correctly.
 
 ### Report Generation (Under Development - Not Approved)
 
-⚠️ **CRITICAL WARNING**: Report generation is still under development and has **NOT** been approved by North America (IOTA), Trans-Tasman (RASNZ), or SODIS reporting coordinators. Use with extreme caution and verify all generated data before submission.
+⚠️ **CRITICAL WARNING**: Report generation is still under development and has **NOT** been approved by the NA, TT, or SODIS reporting coordinators. Only TANGRA and AOTA outputs are currently supported. Use with extreme caution and verify all generated data before submission.
 
 #### Current Report Capabilities
 - Single comprehensive dialog for workflow efficiency

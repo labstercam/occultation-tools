@@ -86,7 +86,8 @@ def parse_aota_report(file_path):
             event_data['r_uncertainty'] = float(r_match.group(2))
         
         # Extract SNR average from "SN at event locations" section
-        snr_match = re.search(r'Ave:\s*([\d.]+)', event_content)
+        # Match "Ave: 5.0" or "Average: 5.0" (case-insensitive)
+        snr_match = re.search(r'(?:Ave|Average)\s*:\s*([\d.]+)', event_content, re.IGNORECASE)
         if snr_match:
             event_data['snr_ave'] = float(snr_match.group(1))
         

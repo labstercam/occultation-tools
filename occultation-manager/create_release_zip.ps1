@@ -32,6 +32,7 @@ $resourcesDir = "$targetDir\resources"
 $masterRoot = "$resourcesDir\templates_master"
 $masterSequencerDir = "$masterRoot\sequencer"
 $masterReportsDir = "$masterRoot\reports"
+$masterImagesDir = "$masterRoot\images"
 $dataDir = "$targetDir\data"
 $dataConfigDir = "$dataDir\config"
 $dataEventsDir = "$dataDir\events"
@@ -52,6 +53,7 @@ Write-Host "Creating folder structure..." -ForegroundColor Cyan
     $appLibDir,
     $masterSequencerDir,
     $masterReportsDir,
+    $masterImagesDir,
     $dataConfigDir,
     $dataEventsDir,
     $dataTemplatesDir,
@@ -80,6 +82,7 @@ $pythonFiles = @(
     "python\aota_parser.py",
     "python\aota_report_parser.py",
     "python\comprehensive_report_dialog.py",
+    "python\phase_b_dialog.py",
     "python\config.py",
     "python\dummy_event_generator.py",
     "python\equipment_dialogs.py",
@@ -228,6 +231,9 @@ foreach ($file in $reportMasterFiles) {
     $dest = Join-Path $masterReportsDir (Split-Path $file -Leaf)
     Copy-ExistingFile -Source $file -Destination $dest
 }
+
+Write-Host "`nCopying images to resources/templates_master/images/..." -ForegroundColor Cyan
+Copy-ExistingFile -Source "resources\templates_master\images\tangra_delay_entry.png" -Destination "$masterImagesDir\tangra_delay_entry.png"
 
 Write-Host "`nCopying gps-timing-analysis root files..." -ForegroundColor Cyan
 foreach ($file in $gpsRootFiles) {
