@@ -69,7 +69,8 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
     
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
-                       clouds=None, stability=None, other_conditions=None, timing_data=None):
+                       clouds=None, stability=None, other_conditions=None, timing_data=None,
+                       ntp_comment=None):
         """Generate a Trans-Tasman report using Openize SDK
         
         Args:
@@ -99,6 +100,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         self._stability = stability
         self._other_conditions = other_conditions
         self._timing_data = timing_data
+        self._ntp_comment = ntp_comment
         
         print("\n" + "="*60)
         print("USING OPENIZE VERSION - TT Report Generator")
@@ -249,13 +251,13 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         station_elev = getattr(event, 'elevation', 0.0)
         
         if station_lat != 0.0:
-            self._set_cell(worksheet, "E17", "deg.ddddd")
-            self._set_cell(worksheet, "E18", abs(station_lat))
+            self._set_cell(worksheet, "E17", "deg.ddddddd")
+            self._set_cell(worksheet, "E18", round(abs(station_lat), 7))
             self._set_cell(worksheet, "J18", 'S' if station_lat < 0 else 'N')
         
         if station_lon != 0.0:
-            self._set_cell(worksheet, "N17", "deg.ddddd")
-            self._set_cell(worksheet, "N18", abs(station_lon))
+            self._set_cell(worksheet, "N17", "deg.ddddddd")
+            self._set_cell(worksheet, "N18", round(abs(station_lon), 7))
             self._set_cell(worksheet, "R18", 'W' if station_lon < 0 else 'E')
         
         if station_elev != 0.0:
@@ -321,15 +323,18 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "S25", "Seconds")
         
         # Camera delay / timing correction cell (P26)
-        # Prefer net_correction_s from timing_data when available; fall back to tangra acquisition_delay
-        if self._timing_data and self._timing_data.get('net_correction_s') is not None:
-            net_s = self._timing_data['net_correction_s']
-            print(f"\nSetting timing correction (net): {net_s}s")
-            self._set_cell(worksheet, "P26", net_s)
+        # Use total delay (cam + ntp) so the value is non-zero even when both were applied in Tangra;
+        # fall back to tangra acquisition_delay when timing_data is not available.
+        if self._timing_data:
+            cam_ms = self._timing_data.get('camera_delay_ms') or 0.0
+            ntp_ms = self._timing_data.get('ntp_offset_ms') or 0.0
+            total_delay_s = round((cam_ms + ntp_ms) / 1000.0, 4)
+            print(f"\nSetting timing correction (total delay): {cam_ms + ntp_ms:.3f} ms = {total_delay_s}s")
+            self._set_cell(worksheet, "P26", total_delay_s)
             self._set_cell(worksheet, "O26", "yes")
         elif self._tangra_data and 'acquisition_delay' in self._tangra_data:
             delay_ms = self._tangra_data['acquisition_delay']
-            delay_sec = delay_ms / 1000.0
+            delay_sec = round(delay_ms / 1000.0, 4)
             print(f"\nSetting camera delay: {delay_ms}ms = {delay_sec}s")
             self._set_cell(worksheet, "P26", delay_sec)
             self._set_cell(worksheet, "O26", "yes")
@@ -387,6 +392,8 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         timing_note = self.build_timing_note(self._timing_data)
         if timing_note:
             self._set_cell(worksheet, "D43", timing_note)
+        if self._ntp_comment:
+            self._set_cell(worksheet, "D44", self._ntp_comment)
 
         # AOTA TIMING DATA - populate if available from AOTA Report
         if self._aota_report_data:

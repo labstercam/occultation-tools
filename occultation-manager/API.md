@@ -582,19 +582,26 @@ report_path = generator.generate_report(
     telescope_id='telescope_uuid',
     camera_id='camera_uuid',
     observation_type='Positive',  # 'Positive', 'Negative', 'Unsure'
-    tangra_data={  # Optional: Tangra light curve data
-        'snr': 8.5,
-        'd_time': '2025-12-23 14:30:42.345',
-        'r_time': '2025-12-23 14:30:50.678',
-        'event_grade': 'A'
+    tangra_data={              # Optional: from Tangra CSV via light_curve_reader
+        'start_time': 52242.0,
+        'end_time': 52362.0,
+        'tdelta_median': 80.0,
+        'acquisition_delay': 0.0143,
+        'video_format': 'AVI'
     },
-    aota_report_data={  # Optional: AOTA timing/SNR data
-        'snr': 9.2,
-        'disappearance': '14:30:42.123',
-        'reappearance': '14:30:50.456',
-        'duration': 8.333
+    aota_report_data={         # Optional: from AOTA Report/XML/PyOTE; shared dict shape
+        'd_hours': '14', 'd_minutes': '30', 'd_seconds': '42.345',
+        'd_uncertainty': 0.04,
+        'r_hours': '14', 'r_minutes': '30', 'r_seconds': '50.678',
+        'r_uncertainty': 0.04,
+        'snr': 9.2
     },
-    aota_xml_used=False  # True if AOTA XML file was source
+    aota_xml_used=False,       # True if AOTA XML (not Report) was source
+    clouds='Clear',            # Optional: sky conditions
+    stability='Good',          # Optional: atmospheric stability
+    other_conditions='',       # Optional: free-text conditions notes
+    timing_data=timing_data,   # Optional: from build_timing_data()
+    ntp_comment=None           # Optional: NTP uncertainty note for Additional Comments
 )
 
 print(f"Report saved to: {report_path}")
@@ -625,9 +632,14 @@ report_path = generator.generate_report(
     telescope_id='telescope_uuid',
     camera_id='camera_uuid',
     observation_type='Positive',
-    tangra_data=tangra_data,  # Optional
-    aota_report_data=aota_data,  # Optional
-    aota_xml_used=False
+    tangra_data=tangra_data,   # Optional
+    aota_report_data=aota_data, # Optional
+    aota_xml_used=False,
+    clouds='Clear',
+    stability='Good',
+    other_conditions='',
+    timing_data=timing_data,   # Optional
+    ntp_comment=None           # Optional: written to D44 Additional Comments
 )
 ```
 
@@ -700,7 +712,9 @@ report_path = generator.generate_report(
     aota_xml_used=False,
     clouds='Clear',                # Optional: sky conditions
     stability='Good',              # Optional: atmospheric stability
-    other_conditions=''            # Optional: free-text conditions notes
+    other_conditions='',           # Optional: free-text conditions notes
+    timing_data=timing_data,       # Optional: from build_timing_data()
+    ntp_comment=None               # Optional: accepted but unused by SODIS generator
 )
 ```
 

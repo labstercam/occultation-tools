@@ -176,7 +176,7 @@ class ComprehensiveReportDialog(Form):
         btn_browse = Button()
         btn_browse.Text = "Browse..."
         btn_browse.Location = Point(810, 18)
-        btn_browse.Size = Size(100, 25)
+        btn_browse.Size = Size(100, 28)
         btn_browse.Click += self.browse_folder_click
         grp_folder.Controls.Add(btn_browse)
 
@@ -196,43 +196,37 @@ class ComprehensiveReportDialog(Form):
         grp_timing_method.Size = Size(940, 72)
         main_panel.Controls.Add(grp_timing_method)
 
-        lbl_timing_method = Label()
-        lbl_timing_method.Text = "Timing method:"
-        lbl_timing_method.Location = Point(15, 22)
-        lbl_timing_method.Size = Size(115, 22)
-        grp_timing_method.Controls.Add(lbl_timing_method)
-
         self._rad_timing_ntp = RadioButton()
         self._rad_timing_ntp.Text = "NTP / GPS-disciplined clock"
-        self._rad_timing_ntp.Location = Point(135, 22)
-        self._rad_timing_ntp.Size = Size(215, 22)
+        self._rad_timing_ntp.Location = Point(15, 22)
+        self._rad_timing_ntp.Size = Size(220, 22)
         self._rad_timing_ntp.CheckedChanged += self._on_timing_method_changed
         grp_timing_method.Controls.Add(self._rad_timing_ntp)
 
         self._rad_timing_gps = RadioButton()
         self._rad_timing_gps.Text = "GPS flash overlay (dumb)"
-        self._rad_timing_gps.Location = Point(360, 22)
-        self._rad_timing_gps.Size = Size(195, 22)
+        self._rad_timing_gps.Location = Point(245, 22)
+        self._rad_timing_gps.Size = Size(205, 22)
         self._rad_timing_gps.CheckedChanged += self._on_timing_method_changed
         grp_timing_method.Controls.Add(self._rad_timing_gps)
 
         self._rad_timing_gps_cmos = RadioButton()
         self._rad_timing_gps_cmos.Text = "GPS-integrated CMOS camera"
-        self._rad_timing_gps_cmos.Location = Point(135, 47)
+        self._rad_timing_gps_cmos.Location = Point(15, 47)
         self._rad_timing_gps_cmos.Size = Size(230, 22)
         self._rad_timing_gps_cmos.CheckedChanged += self._on_timing_method_changed
         grp_timing_method.Controls.Add(self._rad_timing_gps_cmos)
 
         self._rad_timing_analog_vti = RadioButton()
         self._rad_timing_analog_vti.Text = "Analog video + VTI"
-        self._rad_timing_analog_vti.Location = Point(375, 47)
+        self._rad_timing_analog_vti.Location = Point(255, 47)
         self._rad_timing_analog_vti.Size = Size(185, 22)
         self._rad_timing_analog_vti.CheckedChanged += self._on_timing_method_changed
         grp_timing_method.Controls.Add(self._rad_timing_analog_vti)
 
         self._rad_timing_other = RadioButton()
         self._rad_timing_other.Text = "Other"
-        self._rad_timing_other.Location = Point(570, 47)
+        self._rad_timing_other.Location = Point(450, 47)
         self._rad_timing_other.Size = Size(80, 22)
         self._rad_timing_other.Checked = True
         self._rad_timing_other.CheckedChanged += self._on_timing_method_changed
@@ -244,7 +238,7 @@ class ComprehensiveReportDialog(Form):
         # This panel is shown only for timing methods that require corrections entered into Tangra.
         self._pnl_phase_a = Panel()
         self._pnl_phase_a.Location = Point(10, y_pos)
-        self._pnl_phase_a.Size = Size(940, 536)
+        self._pnl_phase_a.Size = Size(940, 496)
         self._pnl_phase_a.BackColor = Color.FromArgb(235, 244, 255)  # light blue tint
         self._pnl_phase_a.Visible = False
         main_panel.Controls.Add(self._pnl_phase_a)
@@ -267,7 +261,7 @@ class ComprehensiveReportDialog(Form):
         _btn_ntp_info = Button()
         _btn_ntp_info.Text = "\u24d8  What is NTP correction?"
         _btn_ntp_info.Location = Point(680, 32)
-        _btn_ntp_info.Size = Size(195, 22)
+        _btn_ntp_info.Size = Size(195, 26)
         _btn_ntp_info.Click += self._on_ntp_info_click
         self._pnl_phase_a.Controls.Add(_btn_ntp_info)
 
@@ -287,7 +281,7 @@ class ComprehensiveReportDialog(Form):
         _btn_calib_info = Button()
         _btn_calib_info.Text = "?"
         _btn_calib_info.Location = Point(479, 56)
-        _btn_calib_info.Size = Size(24, 22)
+        _btn_calib_info.Size = Size(24, 26)
         _btn_calib_info.Click += self._on_calib_info_click
         self._pnl_phase_a.Controls.Add(_btn_calib_info)
 
@@ -315,7 +309,7 @@ class ComprehensiveReportDialog(Form):
         _btn_y_line_info = Button()
         _btn_y_line_info.Text = "?"
         _btn_y_line_info.Location = Point(139, 82)
-        _btn_y_line_info.Size = Size(24, 22)
+        _btn_y_line_info.Size = Size(24, 26)
         _btn_y_line_info.Click += self._on_y_line_info_click
         self._pnl_phase_a.Controls.Add(_btn_y_line_info)
 
@@ -334,7 +328,7 @@ class ComprehensiveReportDialog(Form):
         # --- NTP analysis sub-section (hidden for GPS Flash) ---
         self._pnl_ntp_analyse = Panel()
         self._pnl_ntp_analyse.Location = Point(0, 108)
-        self._pnl_ntp_analyse.Size = Size(940, 138)
+        self._pnl_ntp_analyse.Size = Size(940, 124)
         self._pnl_ntp_analyse.Visible = True  # shown for NTP method; hidden for GPS Flash
         self._pnl_phase_a.Controls.Add(self._pnl_ntp_analyse)
 
@@ -348,45 +342,38 @@ class ComprehensiveReportDialog(Form):
         lbl_ntp_folder = Label()
         lbl_ntp_folder.Text = "NTP stats folder:"
         lbl_ntp_folder.Location = Point(8, 22)
-        lbl_ntp_folder.Size = Size(110, 20)
+        lbl_ntp_folder.Size = Size(155, 20)
         self._pnl_ntp_analyse.Controls.Add(lbl_ntp_folder)
 
         self.txt_ntp_stats_folder = TextBox()
-        self.txt_ntp_stats_folder.Location = Point(122, 20)
-        self.txt_ntp_stats_folder.Size = Size(498, 22)
+        self.txt_ntp_stats_folder.Location = Point(163, 20)
+        self.txt_ntp_stats_folder.Size = Size(280, 22)
         self._pnl_ntp_analyse.Controls.Add(self.txt_ntp_stats_folder)
 
         btn_ntp_folder_browse = Button()
         btn_ntp_folder_browse.Text = "Browse..."
-        btn_ntp_folder_browse.Location = Point(628, 18)
-        btn_ntp_folder_browse.Size = Size(100, 25)
+        btn_ntp_folder_browse.Location = Point(451, 18)
+        btn_ntp_folder_browse.Size = Size(100, 28)
         btn_ntp_folder_browse.Click += self._browse_ntp_folder_click
         self._pnl_ntp_analyse.Controls.Add(btn_ntp_folder_browse)
 
-        self.lbl_ntp_dataset = Label()
-        self.lbl_ntp_dataset.Text = "dataset: auto-select by event date/time"
-        self.lbl_ntp_dataset.Location = Point(8, 46)
-        self.lbl_ntp_dataset.Size = Size(500, 18)
-        self.lbl_ntp_dataset.ForeColor = Color.Gray
-        self._pnl_ntp_analyse.Controls.Add(self.lbl_ntp_dataset)
-
         btn_analyse_ntp = Button()
         btn_analyse_ntp.Text = "Analyse NTP"
-        btn_analyse_ntp.Location = Point(8, 64)
+        btn_analyse_ntp.Location = Point(8, 50)
         btn_analyse_ntp.Size = Size(115, 26)
         btn_analyse_ntp.Click += self._analyse_ntp_click
         self._pnl_ntp_analyse.Controls.Add(btn_analyse_ntp)
 
         self.lbl_ntp_analysing = Label()
         self.lbl_ntp_analysing.Text = ""
-        self.lbl_ntp_analysing.Location = Point(132, 68)
+        self.lbl_ntp_analysing.Location = Point(132, 54)
         self.lbl_ntp_analysing.Size = Size(400, 18)
         self.lbl_ntp_analysing.ForeColor = Color.Gray
         self._pnl_ntp_analyse.Controls.Add(self.lbl_ntp_analysing)
 
         btn_open_ntp = Button()
         btn_open_ntp.Text = "Open NTP Analyser"
-        btn_open_ntp.Location = Point(740, 64)
+        btn_open_ntp.Location = Point(740, 50)
         btn_open_ntp.Size = Size(150, 26)
         btn_open_ntp.Click += self._on_open_ntp_analyser_location_click
         self._pnl_ntp_analyse.Controls.Add(btn_open_ntp)
@@ -395,7 +382,7 @@ class ComprehensiveReportDialog(Form):
 
         self.lbl_ntp_offset_loc = Label()
         self.lbl_ntp_offset_loc.Text = "Offset: -"
-        self.lbl_ntp_offset_loc.Location = Point(8, 92)
+        self.lbl_ntp_offset_loc.Location = Point(8, 78)
         self.lbl_ntp_offset_loc.Size = Size(200, 20)
         self.lbl_ntp_offset_loc.Font = _ntp_results_font
         self.lbl_ntp_offset_loc.ForeColor = Color.Gray
@@ -403,7 +390,7 @@ class ComprehensiveReportDialog(Form):
 
         self.lbl_ntp_uncertainty_loc = Label()
         self.lbl_ntp_uncertainty_loc.Text = "Uncertainty: -"
-        self.lbl_ntp_uncertainty_loc.Location = Point(218, 92)
+        self.lbl_ntp_uncertainty_loc.Location = Point(218, 78)
         self.lbl_ntp_uncertainty_loc.Size = Size(220, 20)
         self.lbl_ntp_uncertainty_loc.Font = _ntp_results_font
         self.lbl_ntp_uncertainty_loc.ForeColor = Color.Gray
@@ -411,7 +398,7 @@ class ComprehensiveReportDialog(Form):
 
         self.lbl_ntp_age_loc = Label()
         self.lbl_ntp_age_loc.Text = "Data age: -"
-        self.lbl_ntp_age_loc.Location = Point(448, 92)
+        self.lbl_ntp_age_loc.Location = Point(448, 78)
         self.lbl_ntp_age_loc.Size = Size(200, 20)
         self.lbl_ntp_age_loc.Font = _ntp_results_font
         self.lbl_ntp_age_loc.ForeColor = Color.Gray
@@ -419,7 +406,7 @@ class ComprehensiveReportDialog(Form):
 
         self.lbl_ntp_server_loc = Label()
         self.lbl_ntp_server_loc.Text = "Server: -"
-        self.lbl_ntp_server_loc.Location = Point(8, 114)
+        self.lbl_ntp_server_loc.Location = Point(8, 100)
         self.lbl_ntp_server_loc.Size = Size(900, 20)
         self.lbl_ntp_server_loc.Font = _ntp_results_font
         self.lbl_ntp_server_loc.ForeColor = Color.Gray
@@ -429,7 +416,7 @@ class ComprehensiveReportDialog(Form):
 
         # --- Step A3: Enter Total Delay in Tangra ---
         self._pnl_step_a3 = Panel()
-        self._pnl_step_a3.Location = Point(0, 254)
+        self._pnl_step_a3.Location = Point(0, 234)
         self._pnl_step_a3.Size = Size(940, 128)
         self._pnl_step_a3.BackColor = Color.LightYellow
         self._pnl_phase_a.Controls.Add(self._pnl_step_a3)
@@ -468,7 +455,7 @@ class ComprehensiveReportDialog(Form):
         _btn_total_delay_info = Button()
         _btn_total_delay_info.Text = "\u24d8  How to enter in Tangra"
         _btn_total_delay_info.Location = Point(394, 44)
-        _btn_total_delay_info.Size = Size(190, 24)
+        _btn_total_delay_info.Size = Size(190, 28)
         _btn_total_delay_info.Click += self._on_total_delay_info_click
         self._pnl_step_a3.Controls.Add(_btn_total_delay_info)
 
@@ -494,14 +481,14 @@ class ComprehensiveReportDialog(Form):
         self._btn_copy_total_delay = Button()
         self._btn_copy_total_delay.Text = "Copy"
         self._btn_copy_total_delay.Location = Point(334, 44)
-        self._btn_copy_total_delay.Size = Size(55, 22)
+        self._btn_copy_total_delay.Size = Size(55, 26)
         self._btn_copy_total_delay.Click += self._on_copy_total_delay_click
         self._pnl_step_a3.Controls.Add(self._btn_copy_total_delay)
 
         # --- Step A4: Confirm TANGRA delays applied ---
         self._pnl_step_a4 = Panel()
-        self._pnl_step_a4.Location = Point(0, 390)
-        self._pnl_step_a4.Size = Size(940, 138)
+        self._pnl_step_a4.Location = Point(0, 370)
+        self._pnl_step_a4.Size = Size(940, 120)
         self._pnl_step_a4.BackColor = Color.FromArgb(240, 255, 240)  # pale green tint
         self._pnl_phase_a.Controls.Add(self._pnl_step_a4)
 
@@ -528,8 +515,8 @@ class ComprehensiveReportDialog(Form):
 
         self._btn_rescan_guidance = Button()
         self._btn_rescan_guidance.Text = "\u21bb  Rescan Folder"
-        self._btn_rescan_guidance.Location = Point(772, 23)
-        self._btn_rescan_guidance.Size = Size(135, 24)
+        self._btn_rescan_guidance.Location = Point(772, 22)
+        self._btn_rescan_guidance.Size = Size(135, 28)
         self._btn_rescan_guidance.Click += self._on_rescan_from_guidance_click
         self._pnl_step_a4.Controls.Add(self._btn_rescan_guidance)
 
@@ -543,7 +530,7 @@ class ComprehensiveReportDialog(Form):
         self._pnl_applied_confirm = Panel()
         self._pnl_applied_confirm.Location = Point(28, 72)
         self._pnl_applied_confirm.Size = Size(900, 22)
-        self._pnl_applied_confirm.Visible = False
+        self._pnl_applied_confirm.Visible = True
         self._pnl_step_a4.Controls.Add(self._pnl_applied_confirm)
 
         self._chk_confirm_total_delay = CheckBox()
@@ -557,17 +544,11 @@ class ComprehensiveReportDialog(Form):
         self._rad_corrections_not_applied.Text = "Not yet applied \u2014 I need to enter the Total Delay in Tangra before generating the light curve"
         self._rad_corrections_not_applied.Location = Point(8, 94)
         self._rad_corrections_not_applied.Size = Size(910, 22)
+        self._rad_corrections_not_applied.Checked = True
         self._rad_corrections_not_applied.CheckedChanged += self._on_timing_radio_changed
         self._pnl_step_a4.Controls.Add(self._rad_corrections_not_applied)
 
-        self._rad_corrections_na = RadioButton()
-        self._rad_corrections_na.Text = "Not applicable \u2014 no corrections required"
-        self._rad_corrections_na.Location = Point(8, 116)
-        self._rad_corrections_na.Size = Size(910, 22)
-        self._rad_corrections_na.CheckedChanged += self._on_timing_radio_changed
-        self._pnl_step_a4.Controls.Add(self._rad_corrections_na)
-
-        y_pos += 546  # Phase A height (536) + 10px gap
+        y_pos += 506  # Phase A height (496) + 10px gap
 
         # ===== BOTTOM BUTTONS (D2 — "Next →") =====
         self.status_label = Label()
@@ -580,7 +561,7 @@ class ComprehensiveReportDialog(Form):
         self._btn_why_blocked = Button()
         self._btn_why_blocked.Text = "?"
         self._btn_why_blocked.Location = Point(723, 789)
-        self._btn_why_blocked.Size = Size(24, 22)
+        self._btn_why_blocked.Size = Size(24, 26)
         self._btn_why_blocked.Click += self._on_why_blocked_click
         self.Controls.Add(self._btn_why_blocked)
 
@@ -1287,6 +1268,8 @@ class ComprehensiveReportDialog(Form):
             'rb_tt_checked': rb_tt_checked,
             'rb_sodis_checked': rb_sodis_checked,
             'total_delay_ms': total_delay_ms,
+            'ntp_offset_ms': self._ntp_offset_ms if is_ntp else 0.0,
+            'ntp_uncertainty_ms': self._ntp_uncertainty_ms if is_ntp else 0.0,
             # rad_analog_aota_checked intentionally omitted — D3 defaults to AOTA (True)
         }
 
@@ -1404,6 +1387,18 @@ class ComprehensiveReportDialog(Form):
         d3 = self._d3()
         return d3.selected_pyote_event_index if d3 else -1
 
+    def get_selected_aota_event_index(self):
+        d3 = self._d3()
+        return d3.selected_aota_event_index if d3 else -1
+
+    def get_selected_aota_report_event_index(self):
+        d3 = self._d3()
+        return d3.selected_aota_report_event_index if d3 else -1
+
+    def get_ntp_comment(self):
+        d3 = self._d3()
+        return d3.ntp_comment if d3 else None
+
     def get_timing_data(self):
         """Return timing_data dict from §3 Timing inputs, or None if method needs no OM correction."""
         if not hasattr(self, '_rad_timing_ntp'):
@@ -1442,13 +1437,10 @@ class ComprehensiveReportDialog(Form):
             # User will apply corrections in Tangra; no internal D/R correction applied by OM
             camera_delay_applied = None
             ntp_applied = None
-        elif self._rad_corrections_na.Checked:
-            camera_delay_applied = None
-            ntp_applied = True  # No corrections to apply
         else:
             camera_delay_applied = None
             ntp_applied = None
-        ntp_offset_ms = 0.0 if self._rad_corrections_na.Checked else self._ntp_offset_ms
+        ntp_offset_ms = self._ntp_offset_ms
         result = build_timing_data(
             timing_method='NTP',
             camera_delay_ms=camera_delay_ms,
@@ -1586,7 +1578,6 @@ class ComprehensiveReportDialog(Form):
             loop_name = os.path.basename(option.loop_path)
             peer_name = os.path.basename(option.peer_path)
             dataset_note = option.label if sec_gap is None else "{0} (closest: {1:.0f}s)".format(option.label, sec_gap)
-            self.lbl_ntp_dataset.Text = "dataset: {0} | loop: {1} | peer: {2}".format(dataset_note, loop_name, peer_name)
             offset_ms = float(result.get('best_offset', 0.0)) * 1000.0
             uncertainty_ms = float(result.get('u_expanded', 0.0)) * 1000.0
             age_minutes = int(round(float(result.get('gap_before_s', 0.0)) / 60.0))
@@ -1613,7 +1604,6 @@ class ComprehensiveReportDialog(Form):
             self._populate_ntp_offset_label()
         except Exception as ex:
             self._ntp_analysis_result_loc = None
-            self.lbl_ntp_dataset.Text = "dataset: -"
             for lbl in (self.lbl_ntp_offset_loc, self.lbl_ntp_uncertainty_loc,
                         self.lbl_ntp_age_loc, self.lbl_ntp_server_loc):
                 lbl.Text = lbl.Text.split(':')[0] + ': -'
@@ -1725,8 +1715,8 @@ class ComprehensiveReportDialog(Form):
         else:
             self._ntp_offset_ms = 0.0
             self._ntp_uncertainty_ms = 0.0
-            if hasattr(self, '_rad_corrections_na'):
-                self._rad_corrections_na.Checked = True
+            if hasattr(self, '_rad_corrections_not_applied'):
+                self._rad_corrections_not_applied.Checked = True
         self._update_guidance_values()
 
     def _on_timing_method_changed(self, sender, e):
@@ -2125,7 +2115,7 @@ class ComprehensiveReportDialog(Form):
                 match_detail += ' / tilt {0}'.format(sc_tilt)
             if sc_pan is not None:
                 match_detail += ' / pan {0}'.format(sc_pan)
-            self._lbl_calib_match.Text = '\u2714 Auto-matched from SharpCap settings\n{0}'.format(match_detail)
+            self._lbl_calib_match.Text = '\u2714 Auto-matched from SharpCap settings'
             self._lbl_calib_match.ForeColor = Color.Green
         elif sc_area or sc_binning:
             # Show both what the file has (binned) and what the stored run has, for easy comparison
@@ -2173,10 +2163,9 @@ class ComprehensiveReportDialog(Form):
             self._correction_user_set = True
         applied = (hasattr(self, '_rad_corrections_applied')
                    and self._rad_corrections_applied.Checked)
-        if hasattr(self, '_pnl_applied_confirm'):
-            self._pnl_applied_confirm.Visible = applied
-        if not applied:
-            if hasattr(self, '_chk_confirm_total_delay'):
+        if hasattr(self, '_chk_confirm_total_delay'):
+            self._chk_confirm_total_delay.Enabled = applied
+            if not applied:
                 self._chk_confirm_total_delay.Checked = False
         self.update_button_state()
 
@@ -2231,6 +2220,7 @@ class ComprehensiveReportDialog(Form):
             self._lbl_calc_delay.Text = '\u2014'
         self._lbl_calc_delay.ForeColor = normal_color
         self._auto_detect_camera_delay(delay_ms)
+        self._update_guidance_values()
 
     def _calculate_camera_delay(self):
         """Return camera_delay_ms from selected calibration run + Y line, or None."""
@@ -2265,8 +2255,7 @@ class ComprehensiveReportDialog(Form):
             self._lbl_csv_delay.ForeColor = Color.Gray
             if compare_ms is not None:
                 if not (self._rad_corrections_applied.Checked
-                        or self._rad_corrections_not_applied.Checked
-                        or self._rad_corrections_na.Checked):
+                        or self._rad_corrections_not_applied.Checked):
                     self._rad_corrections_not_applied.Checked = True
             return
         csv_val = float(csv_delay)
@@ -2414,10 +2403,6 @@ class ComprehensiveReportDialog(Form):
         """Apply NTP PIT values from the analyser."""
         self._ntp_offset_ms = offset_ms
         self._ntp_uncertainty_ms = error_ms
-        # If the radio was previously stuck on N/A (no data), clear it so the
-        # user can consciously choose the right status now that values exist.
-        if hasattr(self, '_rad_corrections_na') and self._rad_corrections_na.Checked:
-            self._rad_corrections_na.Checked = False
         self._update_guidance_values()
         self.update_button_state()
 
@@ -2748,9 +2733,9 @@ class TimestampInspectorForm(Form):
 
             # Populate stats label
             self._lbl_stats.Text = (
-                "Median exposure: {0:.2f} ms   |   "
-                "Min deviation: {1:+.2f} ms   |   "
-                "Max deviation: {2:+.2f} ms"
+                "Median exposure: {0:.0f} ms   |   "
+                "Min deviation: {1:+.0f} ms   |   "
+                "Max deviation: {2:+.0f} ms"
             ).format(median_ms, min_dev, max_dev)
 
             # Find D/R frame numbers by closest timestamp
@@ -2778,6 +2763,7 @@ class TimestampInspectorForm(Form):
             ya1.Minimum = y_min_axis
             ya1.Maximum = y_max_axis
             model1.Axes.Add(ya1)
+            model1.PlotMargins = OxyPlot.OxyThickness(75.0, 10.0, 20.0, 30.0)
 
             s1 = OxySeries.LineSeries()
             s1.Title = "Deviation"
@@ -2810,7 +2796,9 @@ class TimestampInspectorForm(Form):
             ya2 = OxyAxes.LinearAxis()
             ya2.Position = OxyAxes.AxisPosition.Left
             ya2.Title = "Signal"
+            ya2.StringFormat = "0.00E+0"
             model2.Axes.Add(ya2)
+            model2.PlotMargins = OxyPlot.OxyThickness(75.0, 10.0, 20.0, 30.0)
 
             s2 = OxySeries.LineSeries()
             s2.Title = "Signal"
@@ -2846,7 +2834,7 @@ class TimestampInspectorForm(Form):
         event_frame = self._nearest_frame(
             self._cached_times, self._cached_frame_nos, self.event_time_seconds
         ) if hasattr(self, '_cached_times') else None
-        if event_frame is not None:
+        if event_frame is not None and not (d_frame is not None or r_frame is not None):
             ann = OxyAnn.LineAnnotation()
             ann.Type = OxyAnn.LineAnnotationType.Vertical
             ann.X = float(event_frame)
@@ -2862,6 +2850,8 @@ class TimestampInspectorForm(Form):
             ann.Color = OxyPlot.OxyColors.Red
             ann.LineStyle = OxyPlot.LineStyle.Dash
             ann.Text = "D"
+            ann.TextHorizontalAlignment = OxyPlot.HorizontalAlignment.Right
+            ann.TextOrientation = OxyAnn.AnnotationTextOrientation.Horizontal
             model.Annotations.Add(ann)
         if r_frame is not None:
             ann = OxyAnn.LineAnnotation()
@@ -2870,5 +2860,6 @@ class TimestampInspectorForm(Form):
             ann.Color = OxyPlot.OxyColors.Green
             ann.LineStyle = OxyPlot.LineStyle.Dash
             ann.Text = "R"
+            ann.TextOrientation = OxyAnn.AnnotationTextOrientation.Horizontal
             model.Annotations.Add(ann)
 

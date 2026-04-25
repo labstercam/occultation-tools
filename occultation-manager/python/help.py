@@ -493,8 +493,9 @@ After recording:
 STEP 8: GENERATE REPORT (UNDER DEVELOPMENT - NOT APPROVED)
 ----------------------------------------------------------
 ⚠ CRITICAL WARNING: Report generation is still under development and 
-has NOT been approved by reporting coordinators. All generated reports 
-must be carefully verified before submission.
+has NOT been approved by reporting coordinators. Only TANGRA and AOTA
+outputs are currently supported. All generated reports must be carefully
+verified before submission.
 
 See the dedicated "Report Generation" help topic for full details of
 the Generate Report form, Timestamp Check tools, and Inspect Timestamps
@@ -985,8 +986,9 @@ WORKFLOW — FIRST TIME SETUP
 ==================
 
 ⚠ CRITICAL WARNING: Report generation is under development and has NOT
-been approved by reporting coordinators. All generated reports must be
-carefully verified before submission. Do not submit without checking.
+been approved by reporting coordinators. Only TANGRA and AOTA outputs
+are currently supported. All generated reports must be carefully
+verified before submission. Do not submit without checking.
 
 OPENING THE FORM
 ----------------

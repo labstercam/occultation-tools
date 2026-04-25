@@ -1919,11 +1919,52 @@ class LocationConfirmDialog(Form):
         
         y_pos += int(290 * sf)
 
-        # ===== STEP 2: EQUIPMENT =====
+        # ===== STEP 2: REPORT FORMAT =====
+        report_format_group = GroupBox()
+        report_format_group.Text = "Step 2: Report Format"
+        report_format_group.Location = Point(int(10 * sf), y_pos)
+        report_format_group.Size = Size(int(580 * sf), int(100 * sf))
+        panel.Controls.Add(report_format_group)
+
+        self.rb_na = RadioButton()
+        self.rb_na.Text = "IOTA North America (V5.6.12r)"
+        self.rb_na.Location = Point(int(20 * sf), int(22 * sf))
+        self.rb_na.Size = Size(int(300 * sf), int(22 * sf))
+        self.rb_na.Checked = True
+        self.rb_na.CheckedChanged += self._on_report_format_changed
+        report_format_group.Controls.Add(self.rb_na)
+
+        self.rb_tt = RadioButton()
+        self.rb_tt.Text = "Trans-Tasman / RASNZ (V4.1.2.G)"
+        self.rb_tt.Location = Point(int(20 * sf), int(47 * sf))
+        self.rb_tt.Size = Size(int(300 * sf), int(22 * sf))
+        self.rb_tt.CheckedChanged += self._on_report_format_changed
+        report_format_group.Controls.Add(self.rb_tt)
+
+        self.rb_sodis = RadioButton()
+        self.rb_sodis.Text = "IOTA-ES / SODIS (Form 2.03)"
+        self.rb_sodis.Location = Point(int(20 * sf), int(72 * sf))
+        self.rb_sodis.Size = Size(int(300 * sf), int(22 * sf))
+        self.rb_sodis.CheckedChanged += self._on_report_format_changed
+        report_format_group.Controls.Add(self.rb_sodis)
+
+        # Pre-select from saved preference
+        if self.config is not None:
+            last_type = self.config.get_last_report_type()
+            if last_type == 'trans_tasman':
+                self.rb_tt.Checked = True
+            elif last_type == 'sodis':
+                self.rb_sodis.Checked = True
+            else:
+                self.rb_na.Checked = True
+
+        y_pos += int(110 * sf)
+
+        # ===== STEP 3: EQUIPMENT =====
         equipment_group = GroupBox()
-        equipment_group.Text = "Step 2: Equipment"
+        equipment_group.Text = "Step 3: Equipment"
         equipment_group.Location = Point(int(10 * sf), y_pos)
-        equipment_group.Size = Size(int(580 * sf), int(90 * sf))
+        equipment_group.Size = Size(int(580 * sf), int(115 * sf))
         panel.Controls.Add(equipment_group)
 
         lbl_telescope = Label()
@@ -1964,51 +2005,20 @@ class LocationConfirmDialog(Form):
         btn_manage_camera.Click += self._manage_cameras_click
         equipment_group.Controls.Add(btn_manage_camera)
 
+        lbl_camera_note = Label()
+        lbl_camera_note.Text = "Cameras must be configured for each report format separately."
+        lbl_camera_note.Location = Point(int(15 * sf), int(88 * sf))
+        lbl_camera_note.Size = Size(int(550 * sf), int(18 * sf))
+        lbl_camera_note.ForeColor = Color.Gray
+        equipment_group.Controls.Add(lbl_camera_note)
+
         self._load_equipment()
-
-        y_pos += int(100 * sf)
-
-        # ===== STEP 3: REPORT FORMAT =====
-        report_format_group = GroupBox()
-        report_format_group.Text = "Step 3: Report Format"
-        report_format_group.Location = Point(int(10 * sf), y_pos)
-        report_format_group.Size = Size(int(580 * sf), int(100 * sf))
-        panel.Controls.Add(report_format_group)
-
-        self.rb_na = RadioButton()
-        self.rb_na.Text = "IOTA North America (V5.6.12r)"
-        self.rb_na.Location = Point(int(20 * sf), int(22 * sf))
-        self.rb_na.Size = Size(int(300 * sf), int(22 * sf))
-        self.rb_na.Checked = True
-        report_format_group.Controls.Add(self.rb_na)
-
-        self.rb_tt = RadioButton()
-        self.rb_tt.Text = "Trans-Tasman / RASNZ (V4.1.2.G)"
-        self.rb_tt.Location = Point(int(20 * sf), int(47 * sf))
-        self.rb_tt.Size = Size(int(300 * sf), int(22 * sf))
-        report_format_group.Controls.Add(self.rb_tt)
-
-        self.rb_sodis = RadioButton()
-        self.rb_sodis.Text = "IOTA-ES / SODIS (Form 2.03)"
-        self.rb_sodis.Location = Point(int(20 * sf), int(72 * sf))
-        self.rb_sodis.Size = Size(int(300 * sf), int(22 * sf))
-        report_format_group.Controls.Add(self.rb_sodis)
-
-        # Pre-select from saved preference
-        if self.config is not None:
-            last_type = self.config.get_last_report_type()
-            if last_type == 'trans_tasman':
-                self.rb_tt.Checked = True
-            elif last_type == 'sodis':
-                self.rb_sodis.Checked = True
-            else:
-                self.rb_na.Checked = True
 
         # Auto-trigger elevation lookup if elevation was not in the event data.
         if getattr(self, '_elevation_needs_lookup', False):
             self._auto_lookup_elevation(latitude, longitude)
 
-        y_pos += int(110 * sf)
+        y_pos += int(125 * sf)
 
         # Buttons
         btn_panel = Panel()
@@ -2193,7 +2203,7 @@ class LocationConfirmDialog(Form):
         self.Close()
 
     def _load_equipment(self):
-        """Load telescopes and cameras into dropdowns."""
+        """Load telescopes and cameras into dropdowns. Cameras are filtered by selected report format."""
         if self.config is None:
             self.combo_telescope.Items.Add("No config available")
             self.combo_telescope.SelectedIndex = 0
@@ -2221,17 +2231,27 @@ class LocationConfirmDialog(Form):
                 self.combo_telescope.Items.Add(name)
             self.combo_telescope.SelectedIndex = sel_idx
 
-        cameras = self.config.get_cameras()
+        # Determine current report format for camera filtering
+        if hasattr(self, 'rb_tt') and self.rb_tt.Checked:
+            fmt_key = 'TT'
+        elif hasattr(self, 'rb_sodis') and self.rb_sodis.Checked:
+            fmt_key = 'SODIS'
+        else:
+            fmt_key = 'NA'
+
+        all_cameras = self.config.get_cameras()
+        # Filter to cameras matching the selected report format
+        self._filtered_cameras = [c for c in all_cameras if c.get('report_type', 'NA') == fmt_key]
         active_camera = self.config.get_active_camera()
         active_cam_id = active_camera.get('id') if active_camera else None
-        if not cameras:
-            self.combo_camera.Items.Add("No cameras configured - click Manage...")
+        if not self._filtered_cameras:
+            self.combo_camera.Items.Add("No cameras configured for this format - click Manage...")
             self.combo_camera.SelectedIndex = 0
             self.combo_camera.Enabled = False
         else:
             self.combo_camera.Enabled = True
             sel_idx = 0
-            for i, c in enumerate(cameras):
+            for i, c in enumerate(self._filtered_cameras):
                 name = c.get('name', 'Unnamed')
                 if c.get('id') == active_cam_id:
                     name = "\u2605 " + name
@@ -2252,10 +2272,55 @@ class LocationConfirmDialog(Form):
         if self.config is None:
             return None
         idx = self.combo_camera.SelectedIndex
+        filtered = getattr(self, '_filtered_cameras', None)
+        if filtered is not None:
+            if 0 <= idx < len(filtered):
+                return filtered[idx].get('id')
+            return None
+        # Fallback: unfiltered list (shouldn't normally be reached)
         cameras = self.config.get_cameras()
         if 0 <= idx < len(cameras):
             return cameras[idx].get('id')
         return None
+
+    def _on_report_format_changed(self, sender, e):
+        """Refresh the camera dropdown when the report format selection changes."""
+        if not sender.Checked:
+            return
+        if not hasattr(self, 'combo_camera'):
+            return
+        self.combo_camera.Items.Clear()
+        self._load_equipment_cameras_only()
+
+    def _load_equipment_cameras_only(self):
+        """Refresh only the camera dropdown based on the current report format."""
+        if self.config is None:
+            return
+        if hasattr(self, 'rb_tt') and self.rb_tt.Checked:
+            fmt_key = 'TT'
+        elif hasattr(self, 'rb_sodis') and self.rb_sodis.Checked:
+            fmt_key = 'SODIS'
+        else:
+            fmt_key = 'NA'
+
+        all_cameras = self.config.get_cameras()
+        self._filtered_cameras = [c for c in all_cameras if c.get('report_type', 'NA') == fmt_key]
+        active_camera = self.config.get_active_camera()
+        active_cam_id = active_camera.get('id') if active_camera else None
+        if not self._filtered_cameras:
+            self.combo_camera.Items.Add("No cameras configured for this format - click Manage...")
+            self.combo_camera.SelectedIndex = 0
+            self.combo_camera.Enabled = False
+        else:
+            self.combo_camera.Enabled = True
+            sel_idx = 0
+            for i, c in enumerate(self._filtered_cameras):
+                name = c.get('name', 'Unnamed')
+                if c.get('id') == active_cam_id:
+                    name = "\u2605 " + name
+                    sel_idx = i
+                self.combo_camera.Items.Add(name)
+            self.combo_camera.SelectedIndex = sel_idx
 
     def _manage_telescopes_click(self, sender, e):
         if self.config is None:

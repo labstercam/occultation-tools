@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.8
+# Release Package Instructions - v0.2.0-beta.9
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -17,7 +17,7 @@ This script automatically:
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
 - Pre-seeds `data/templates/` with working copies of the sequencer master templates
 - Seeds/creates data folders under `data/{config,events,templates,sequences,reports}/`
-- Generates `occultation-manager-v0.2.0-beta.8.zip`
+- Generates `occultation-manager-v0.2.0-beta.9.zip`
 
 ### Manual File List (if needed)
 
@@ -125,7 +125,7 @@ occultation-manager/
 │   ├── sequences/
 │   └── reports/
 ├── ReadMe.md                                      <-- User documentation
-├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.6 features
+├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.9 features
 └── RELEASE_INSTRUCTIONS.md
 ```
 
@@ -139,29 +139,29 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.2.0-beta.6`
+   - Tag: `v0.2.0-beta.9`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.6 - Report Enhancements & Help Documentation`
+   - Release title: `Occultation Manager v0.2.0-beta.9 - Report Generation Bug Fixes`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.6 - Report Enhancements & Help Documentation
+   # Occultation Manager v0.2.0-beta.9 - Report Generation Bug Fixes
    
-   **Report Enhancements & Help Documentation** — new Timestamp Inspector window with deviation charts, and expanded help documentation including Equipment Setup topic.
+   **Report Generation Bug Fixes** — SNR fix for AOTA Report parser, camera delay 4 d.p. in TT report, NTP comment written to correct Additional Comments cell, and AOTA Report as default first entry in D/R combo.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
 
    ## 🧹 Maintenance
 
-   - Updated release-facing documentation and version references for Beta.6.
+   - Updated release-facing documentation and version references for Beta.9.
    - Updated release packaging/version pointers (ZIP naming and instructions).
    
    ## 📦 Installation
    
-   **Download:** [occultation-manager-v0.2.0-beta.6.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.6/occultation-manager-v0.2.0-beta.6.zip)
+   **Download:** [occultation-manager-v0.2.0-beta.9.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip)
    
    ### Quick Start:
    1. Download and extract the ZIP file to a location with read/write access
@@ -188,30 +188,26 @@ occultation-manager/
    
    See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
    
-   ## ✨ What's New in Beta.6
+   ## ✨ What's New in Beta.9
    
-   ### Timestamp Inspector — New Window
+   ### SNR Fix — AOTA Report Parser
    
-   A new Timestamp Inspector window accessible from the Generate Report dialog shows frame timing analysis for Tangra CSV imports.
+   SNR now correctly populates the TT report when an AOTA Report text file is the timing source.
+   Regex updated to match both `Ave:` and `Average:` label variants (case-insensitive).
    
-   - **Chart 1**: Frame interval deviation from median (ms); Y-axis always shows ≥ ±5 ms range
-   - **Chart 2**: Signal level (ADU) for the primary aperture
-   - **Stats line**: median interval, min deviation, max deviation
-   - **Vertical reference lines**: blue solid = predicted event, red dashed = D time, green dashed = R time
+   ### Camera Delay — 4 Decimal Places (TT Report)
    
-   ### Timestamp Check Subpanel (Generate Report)
+   Camera acquisition delay written to cell P26 of the TT report is now rounded to 4 d.p.,
+   preserving the precision provided by the rolling-shutter calibration.
    
-   - Colour-coded status label: **OK** / **Check** / **Issues** based on delayed/late frame counts
-   - Min/max deviation values (ms from median) displayed
-   - Event-time window warning when predicted event falls outside CSV coverage
-   - **Explain...** and **Inspect Timestamps...** buttons
+   ### NTP Comment — Written to Correct Cell
    
-   ### Help Documentation Expanded
+   The NTP uncertainty note is now written to cell D44 (Additional Comments) in the TT report,
+   not merged into the Other Conditions field.
    
-   - New **Equipment Setup** topic: full Telescope Manager and Camera Manager field-level documentation
-   - Quick Start: Observer/Telescope tab documented; User Settings expanded (Sync Mount, Display UTC, Debug Logs)
-   - Quick Filters: On/Off checkbox toggle documented
-   - About dialog: version updated to 0.2.0-beta.6, features list expanded
+   ### AOTA Report — Default First in Combo
+   
+   When AOTA Report events are available, they appear first in the D/R event combo.
    
    ## 🎯 Key Features
    
@@ -267,7 +263,7 @@ occultation-manager/
    
    - Cannot pause sequences (stop and restart only)
    - Single sequence execution at a time
-   - Report generation not approved - use with caution
+   - Report generation not approved — only TANGRA and AOTA outputs supported; use with caution
    
    ## 📖 Documentation
    
@@ -289,10 +285,10 @@ occultation-manager/
    ```
 
 5. **Upload ZIP file:**
-   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.5.zip`
+   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.9.zip`
    - Drag and drop ZIP to "Attach binaries" section in GitHub release
    - GitHub does **not** auto-update markdown links in release notes; paste this URL manually in the notes:
-     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip`
+     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip`
 
 6. **Set release options:**
    - ✅ Check "Set as a pre-release" (this is a beta version)
@@ -302,7 +298,7 @@ occultation-manager/
 ### After Publishing
 
 The release will be available at:
-- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.5`
+- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.9`
 - Latest release: `https://github.com/labstercam/occultation-tools/releases/latest`
 
 ## Version Control Best Practices
@@ -325,14 +321,14 @@ The release will be available at:
 3. **Commit all changes**:
    ```bash
    git add .
-   git commit -m "Release v0.2.0-beta.5"
+   git commit -m "Release v0.2.0-beta.9"
    git push
    ```
 
 4. **Create and push tag**:
    ```bash
-   git tag v0.2.0-beta.5
-   git push origin v0.2.0-beta.5
+   git tag v0.2.0-beta.9
+   git push origin v0.2.0-beta.9
    ```
 
 ### After Release
@@ -341,7 +337,7 @@ The release will be available at:
 2. **Test installation** from GitHub release ZIP
 3. **Update documentation** if any installation issues found
 - Direct link: `https://github.com/labstercam/occultation-tools/releases/latest`
-- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.5/occultation-manager-v0.2.0-beta.5.zip`
+- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip`
 
 Update README.md with this download link.
 

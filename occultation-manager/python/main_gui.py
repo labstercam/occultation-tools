@@ -1951,7 +1951,7 @@ class OccultationManagerGUI(Form):
         
         # Show warning about report generation being under development
         warning_result = MessageBox.Show(
-            "Report generation is still under development and has not been approved by the NA, TT, or SODIS reporting coordinators. Use with caution.\n\nDo you want to continue?",
+            "Report generation is still under development and has not been approved by the NA, TT, or SODIS reporting coordinators. Use with caution.\nOnly TANGRA and AOTA outputs are currently supported\nDo you want to continue?",
             "Report Generation Warning",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning)
@@ -2022,10 +2022,13 @@ class OccultationManagerGUI(Form):
             aota_report_path = comprehensive_dialog.get_selected_aota_report_path()
             pyote_path = comprehensive_dialog.get_selected_pyote_path()
             pyote_event_index = comprehensive_dialog.get_selected_pyote_event_index()
+            aota_event_index = comprehensive_dialog.get_selected_aota_event_index()
+            aota_report_event_index = comprehensive_dialog.get_selected_aota_report_event_index()
             clouds = comprehensive_dialog.get_clouds()
             stability = comprehensive_dialog.get_stability()
             other_conditions = comprehensive_dialog.get_other_conditions()
             timing_data = comprehensive_dialog.get_timing_data()
+            ntp_comment = comprehensive_dialog.get_ntp_comment()
             
             print(f"Report type: {report_type}")
             print(f"Telescope ID: {telescope_id}")
@@ -2082,8 +2085,18 @@ class OccultationManagerGUI(Form):
                     aota_result = parse_aota_file(aota_file_path)
                     
                     if aota_result:
-                        # Check if multiple valid events exist
-                        if aota_result.has_multiple_valid_events():
+                        # Use event pre-selected in Phase B dialog if available
+                        if aota_event_index >= 0:
+                            _valid = aota_result.get_valid_events()
+                            if aota_event_index < len(_valid):
+                                aota_event = _valid[aota_event_index]
+                                print(f"Using pre-selected AOTA event {aota_event_index}: {aota_event}")
+                            else:
+                                aota_event = aota_result.get_single_valid_event()
+                                if aota_event:
+                                    print(f"Pre-selected index out of range, using single event: {aota_event}")
+                        # Check if multiple valid events exist (no pre-selection)
+                        elif aota_result.has_multiple_valid_events():
                             from aota_dialogs import AOTAEventSelectionDialog
                             event_selector = AOTAEventSelectionDialog(
                                 self.theme_manager, 
@@ -2180,8 +2193,12 @@ class OccultationManagerGUI(Form):
                             MessageBoxIcon.Error
                         )
                     elif parsed_report and parsed_report['events']:
-                        # Check if multiple events exist
-                        if len(parsed_report['events']) > 1:
+                        # Use event pre-selected in Phase B dialog if available
+                        if aota_report_event_index >= 0:
+                            aota_report_data = arp.get_event_summary(parsed_report, aota_report_event_index)
+                            print(f"Using pre-selected AOTA Report event {aota_report_event_index}")
+                        # Check if multiple events exist (no pre-selection)
+                        elif len(parsed_report['events']) > 1:
                             from System.Windows.Forms import Form, Label, ListBox, Button, FormStartPosition
                             from System.Drawing import Point, Size
                             
@@ -2324,7 +2341,8 @@ class OccultationManagerGUI(Form):
             output_path = report_generator.generate_report(event, telescope_id, camera_id, observation_type, 
                                                           tangra_data, aota_report_data, aota_xml_used,
                                                           clouds, stability, other_conditions,
-                                                          timing_data=timing_data)
+                                                          timing_data=timing_data,
+                                                          ntp_comment=ntp_comment)
             
             # If AOTA.xml data exists but AOTA Report wasn't used, add AOTA.xml data to the report
             # (AOTA Report data is already included in generate_report if it was provided)
@@ -2420,27 +2438,16 @@ class OccultationManagerGUI(Form):
                         copied_files = []
 
                 # Build success message
-                generated_files = [output_path]
-                if xml_output_path:
-                    generated_files.append(xml_output_path)
-                files_list = "\n".join(generated_files)
-                
                 if xml_output_path:
                     status_msg = "Report and XML generated successfully"
-                    success_msg = f"Report and Occult4 XML generated successfully.\n\nFiles saved to:\n{files_list}"
                 else:
                     status_msg = "Report generated successfully"
-                    success_msg = f"Report generated successfully.\n\nFile saved to:\n{output_path}"
-
-                if copied_files:
-                    copies_list = "\n".join(copied_files)
-                    success_msg += f"\n\nCopies also saved to:\n{copies_list}"
 
                 self.update_status(status_msg)
                 self._show_report_success_dialog(
-                    success_msg, output_path,
+                    output_path, xml_output_path,
+                    copy_folder if copied_files else None,
                     tangra_csv_path,
-                    comprehensive_dialog.get_selected_folder(),
                     timing_data
                 )
             else:
@@ -2463,36 +2470,92 @@ class OccultationManagerGUI(Form):
             MessageBox.Show(f"Error generating report:\n\n{error_msg}", 
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
     
-    def _show_report_success_dialog(self, message, output_path, tangra_csv_path,
-                                    observation_folder, timing_data):
-        """Show a post-report dialog with Open Report and Export VizieR options."""
+    def _show_report_success_dialog(self, output_path, xml_output_path, copy_folder,
+                                    tangra_csv_path, timing_data):
+        """Show a post-report dialog with filenames, folder paths, and Open/Export buttons."""
         from System.Windows.Forms import (
             Form as _Form, Button as _Button, Label as _Label
         )
 
+        reports_folder = os.path.dirname(output_path)
+        report_filenames = [os.path.basename(output_path)]
+        if xml_output_path:
+            report_filenames.append(os.path.basename(xml_output_path))
+
+        show_user = copy_folder is not None
+
         dlg = _Form()
         dlg.Text = "Report Generated"
-        dlg.Width = 520
-        dlg.Height = 200
+        dlg.Width = 600
+        dlg.Height = 300
         dlg.FormBorderStyle = dlg.FormBorderStyle.FixedDialog
         dlg.MaximizeBox = False
         dlg.MinimizeBox = False
         dlg.StartPosition = FormStartPosition.CenterParent
 
-        lbl = _Label()
-        lbl.Text = message
-        lbl.AutoSize = False
-        lbl.Location = Point(12, 12)
-        lbl.Size = Size(490, 80)
-        lbl.MaximumSize = Size(490, 0)
-        lbl.AutoSize = True
-        dlg.Controls.Add(lbl)
+        # Heading
+        heading_text = "Report and Occult4 XML generated." if xml_output_path else "Report generated."
+        lbl_heading = _Label()
+        lbl_heading.Text = heading_text
+        lbl_heading.AutoSize = True
+        lbl_heading.Location = Point(12, 12)
+        dlg.Controls.Add(lbl_heading)
 
-        btn_open = _Button()
-        btn_open.Text = "Open Report Folder"
-        btn_open.AutoSize = True
-        dlg.Controls.Add(btn_open)
+        # ── Reports folder section ──
+        lbl_rep_title = _Label()
+        lbl_rep_title.Text = "Reports folder:"
+        lbl_rep_title.AutoSize = True
+        dlg.Controls.Add(lbl_rep_title)
 
+        lbl_rep_path = _Label()
+        lbl_rep_path.Text = reports_folder
+        lbl_rep_path.AutoSize = False
+        lbl_rep_path.Size = Size(540, 16)
+        lbl_rep_path.ForeColor = Color.Gray
+        lbl_rep_path.AutoEllipsis = True
+        dlg.Controls.Add(lbl_rep_path)
+
+        lbl_rep_files = _Label()
+        lbl_rep_files.Text = "\n".join(report_filenames)
+        lbl_rep_files.AutoSize = True
+        dlg.Controls.Add(lbl_rep_files)
+
+        btn_open_reports = _Button()
+        btn_open_reports.Text = "Open Reports Folder"
+        btn_open_reports.AutoSize = True
+        dlg.Controls.Add(btn_open_reports)
+
+        # ── User folder section (only when files were copied) ──
+        lbl_user_title = None
+        lbl_user_path = None
+        lbl_user_files = None
+        btn_open_user = None
+
+        if show_user:
+            lbl_user_title = _Label()
+            lbl_user_title.Text = "User folder:"
+            lbl_user_title.AutoSize = True
+            dlg.Controls.Add(lbl_user_title)
+
+            lbl_user_path = _Label()
+            lbl_user_path.Text = copy_folder
+            lbl_user_path.AutoSize = False
+            lbl_user_path.Size = Size(540, 16)
+            lbl_user_path.ForeColor = Color.Gray
+            lbl_user_path.AutoEllipsis = True
+            dlg.Controls.Add(lbl_user_path)
+
+            lbl_user_files = _Label()
+            lbl_user_files.Text = "\n".join(report_filenames)
+            lbl_user_files.AutoSize = True
+            dlg.Controls.Add(lbl_user_files)
+
+            btn_open_user = _Button()
+            btn_open_user.Text = "Open User Folder"
+            btn_open_user.AutoSize = True
+            dlg.Controls.Add(btn_open_user)
+
+        # ── Bottom action buttons ──
         btn_vizier = _Button()
         btn_vizier.Text = "Export VizieR .dat\u2026"
         btn_vizier.AutoSize = True
@@ -2504,34 +2567,62 @@ class OccultationManagerGUI(Form):
         btn_close.AutoSize = True
         dlg.Controls.Add(btn_close)
 
-        # Resize dialog height after label auto-sizes.
-        # Wired AFTER all buttons are created so the closure can reference them
-        # without risk of an UnboundLocalError if Layout fires during Controls.Add.
+        _indent = 28
+
         def _layout(s, e):
-            btn_y = lbl.Bottom + 16
-            btn_open.Location = Point(12, btn_y)
-            btn_vizier.Location = Point(btn_open.Right + 8, btn_y)
-            btn_close.Location = Point(btn_vizier.Right + 8, btn_y)
+            y = lbl_heading.Bottom + 14
+
+            lbl_rep_title.Location = Point(12, y)
+            y += lbl_rep_title.Height + 2
+            lbl_rep_path.Location = Point(_indent, y)
+            y += lbl_rep_path.Height + 2
+            lbl_rep_files.Location = Point(_indent, y)
+            y += lbl_rep_files.Height + 4
+            btn_open_reports.Location = Point(_indent, y)
+            y += btn_open_reports.Height + 12
+
+            if show_user:
+                lbl_user_title.Location = Point(12, y)
+                y += lbl_user_title.Height + 2
+                lbl_user_path.Location = Point(_indent, y)
+                y += lbl_user_path.Height + 2
+                lbl_user_files.Location = Point(_indent, y)
+                y += lbl_user_files.Height + 4
+                btn_open_user.Location = Point(_indent, y)
+                y += btn_open_user.Height + 12
+
+            btn_vizier.Location = Point(12, y)
+            btn_close.Location = Point(btn_vizier.Right + 8, y)
             dlg.ClientSize = Size(dlg.ClientSize.Width, btn_close.Bottom + 16)
+
         dlg.Layout += _layout
 
-        def _open_report(s, e):
+        def _open_reports_folder(s, e):
             try:
                 import subprocess
-                folder = os.path.dirname(output_path)
-                subprocess.Popen(['explorer', folder])
+                subprocess.Popen(['explorer', reports_folder])
+            except Exception as ex:
+                MessageBox.Show("Could not open folder:\n{0}".format(ex), "Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+        def _open_user_folder(s, e):
+            try:
+                import subprocess
+                subprocess.Popen(['explorer', copy_folder])
             except Exception as ex:
                 MessageBox.Show("Could not open folder:\n{0}".format(ex), "Error",
                                 MessageBoxButtons.OK, MessageBoxIcon.Error)
 
         def _export_vizier(s, e):
             dlg.Close()
-            self._launch_vizier_export(tangra_csv_path, observation_folder, timing_data)
+            self._launch_vizier_export(tangra_csv_path, copy_folder, timing_data)
 
         def _close_dlg(s, e):
             dlg.Close()
 
-        btn_open.Click += _open_report
+        btn_open_reports.Click += _open_reports_folder
+        if btn_open_user is not None:
+            btn_open_user.Click += _open_user_folder
         btn_vizier.Click += _export_vizier
         btn_close.Click += _close_dlg
 

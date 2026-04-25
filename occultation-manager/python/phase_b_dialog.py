@@ -21,7 +21,7 @@ from System import Array
 from System.Drawing import Point, Size, Color, Font, FontStyle
 from System.Windows.Forms import (
     Form, Button, Label, ListBox, Panel, TextBox, GroupBox, RadioButton, ComboBox,
-    DialogResult, FormStartPosition, MessageBox,
+    CheckBox, DialogResult, FormStartPosition, MessageBox,
     MessageBoxButtons, MessageBoxIcon, FolderBrowserDialog, SelectionMode,
     ComboBoxStyle, ToolTip
 )
@@ -59,13 +59,19 @@ class PhaseBDialog(Form):
         self.aota_report_files = []
         self.pyote_files = []
         self.pyote_events = []
+        self._dr_events = []
         self.selected_pyote_path = None
         self.selected_pyote_event_index = -1
+        self.selected_aota_event_index = -1
+        self.selected_aota_report_event_index = -1
 
         # D/R times for inspector
         self._d_time_seconds = None
         self._r_time_seconds = None
         self._ts_summary = None
+
+        # NTP comment to include in report (set when NTP uncertainty checkbox is checked)
+        self.ntp_comment = None
 
         # Output values
         self.selected_tangra_path = None
@@ -128,24 +134,24 @@ class PhaseBDialog(Form):
         grp_files = GroupBox()
         grp_files.Text = "3. Observation Files"
         grp_files.Location = Point(10, y_pos)
-        grp_files.Size = Size(940, 470)
+        # Size set later once _grp_dr_height is known
         main_panel.Controls.Add(grp_files)
 
         lbl_csv = Label()
         lbl_csv.Text = "Light Curve File:"
-        lbl_csv.Location = Point(15, 25)
+        lbl_csv.Location = Point(15, 89)
         lbl_csv.Size = Size(130, 20)
         grp_files.Controls.Add(lbl_csv)
 
         self.csv_count_label = Label()
         self.csv_count_label.Text = "No folder"
-        self.csv_count_label.Location = Point(145, 25)
+        self.csv_count_label.Location = Point(145, 89)
         self.csv_count_label.Size = Size(155, 20)
         self.csv_count_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.csv_count_label)
 
         self.csv_listbox = ListBox()
-        self.csv_listbox.Location = Point(15, 48)
+        self.csv_listbox.Location = Point(15, 112)
         self.csv_listbox.Size = Size(285, 65)
         self.csv_listbox.SelectionMode = SelectionMode.One
         self.csv_listbox.SelectedIndexChanged += self.selection_changed
@@ -153,26 +159,26 @@ class PhaseBDialog(Form):
 
         self.csv_preview_label = Label()
         self.csv_preview_label.Text = "Observing times: -"
-        self.csv_preview_label.Location = Point(15, 116)
+        self.csv_preview_label.Location = Point(15, 180)
         self.csv_preview_label.Size = Size(285, 40)
         self.csv_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.csv_preview_label)
 
         lbl_aota = Label()
         lbl_aota.Text = "AOTA Files:"
-        lbl_aota.Location = Point(315, 25)
+        lbl_aota.Location = Point(315, 89)
         lbl_aota.Size = Size(120, 20)
         grp_files.Controls.Add(lbl_aota)
 
         self.aota_count_label = Label()
         self.aota_count_label.Text = "No folder"
-        self.aota_count_label.Location = Point(435, 25)
+        self.aota_count_label.Location = Point(435, 89)
         self.aota_count_label.Size = Size(165, 20)
         self.aota_count_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.aota_count_label)
 
         self.aota_listbox = ListBox()
-        self.aota_listbox.Location = Point(315, 48)
+        self.aota_listbox.Location = Point(315, 112)
         self.aota_listbox.Size = Size(285, 65)
         self.aota_listbox.SelectionMode = SelectionMode.One
         self.aota_listbox.SelectedIndexChanged += self.selection_changed
@@ -180,26 +186,26 @@ class PhaseBDialog(Form):
 
         self.aota_preview_label = Label()
         self.aota_preview_label.Text = "D/R: -"
-        self.aota_preview_label.Location = Point(315, 116)
+        self.aota_preview_label.Location = Point(315, 180)
         self.aota_preview_label.Size = Size(285, 40)
         self.aota_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.aota_preview_label)
 
         lbl_report = Label()
         lbl_report.Text = "AOTA Report:"
-        lbl_report.Location = Point(615, 25)
+        lbl_report.Location = Point(615, 89)
         lbl_report.Size = Size(120, 20)
         grp_files.Controls.Add(lbl_report)
 
         self.report_count_label = Label()
         self.report_count_label.Text = "No folder"
-        self.report_count_label.Location = Point(735, 25)
+        self.report_count_label.Location = Point(735, 89)
         self.report_count_label.Size = Size(185, 20)
         self.report_count_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.report_count_label)
 
         self.report_listbox = ListBox()
-        self.report_listbox.Location = Point(615, 48)
+        self.report_listbox.Location = Point(615, 112)
         self.report_listbox.Size = Size(305, 65)
         self.report_listbox.SelectionMode = SelectionMode.One
         self.report_listbox.SelectedIndexChanged += self.selection_changed
@@ -207,7 +213,7 @@ class PhaseBDialog(Form):
 
         self.report_preview_label = Label()
         self.report_preview_label.Text = "D/R: -"
-        self.report_preview_label.Location = Point(615, 116)
+        self.report_preview_label.Location = Point(615, 180)
         self.report_preview_label.Size = Size(305, 40)
         self.report_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.report_preview_label)
@@ -216,26 +222,32 @@ class PhaseBDialog(Form):
         lbl_pyote.Text = "PyOTE Metrics:"
         lbl_pyote.Location = Point(15, 165)
         lbl_pyote.Size = Size(120, 20)
+        lbl_pyote.Visible = False
         grp_files.Controls.Add(lbl_pyote)
+        self._lbl_pyote_header = lbl_pyote
 
         self.pyote_count_label = Label()
         self.pyote_count_label.Text = "No folder"
         self.pyote_count_label.Location = Point(135, 165)
         self.pyote_count_label.Size = Size(200, 20)
         self.pyote_count_label.ForeColor = Color.Gray
+        self.pyote_count_label.Visible = False
         grp_files.Controls.Add(self.pyote_count_label)
 
         lbl_pyote_event = Label()
         lbl_pyote_event.Text = "Events:"
         lbl_pyote_event.Location = Point(460, 165)
         lbl_pyote_event.Size = Size(60, 20)
+        lbl_pyote_event.Visible = False
         grp_files.Controls.Add(lbl_pyote_event)
+        self._lbl_pyote_event_header = lbl_pyote_event
 
         self.pyote_event_count_label = Label()
         self.pyote_event_count_label.Text = "-"
         self.pyote_event_count_label.Location = Point(525, 165)
         self.pyote_event_count_label.Size = Size(210, 20)
         self.pyote_event_count_label.ForeColor = Color.Gray
+        self.pyote_event_count_label.Visible = False
         grp_files.Controls.Add(self.pyote_event_count_label)
 
         self.pyote_listbox = ListBox()
@@ -243,6 +255,7 @@ class PhaseBDialog(Form):
         self.pyote_listbox.Size = Size(430, 55)
         self.pyote_listbox.SelectionMode = SelectionMode.One
         self.pyote_listbox.SelectedIndexChanged += self._pyote_file_selection_changed
+        self.pyote_listbox.Visible = False
         grp_files.Controls.Add(self.pyote_listbox)
 
         self.pyote_event_listbox = ListBox()
@@ -250,6 +263,7 @@ class PhaseBDialog(Form):
         self.pyote_event_listbox.Size = Size(460, 55)
         self.pyote_event_listbox.SelectionMode = SelectionMode.One
         self.pyote_event_listbox.SelectedIndexChanged += self._pyote_event_selection_changed
+        self.pyote_event_listbox.Visible = False
         grp_files.Controls.Add(self.pyote_event_listbox)
 
         self.pyote_preview_label = Label()
@@ -257,12 +271,13 @@ class PhaseBDialog(Form):
         self.pyote_preview_label.Location = Point(15, 244)
         self.pyote_preview_label.Size = Size(905, 22)
         self.pyote_preview_label.ForeColor = Color.Gray
+        self.pyote_preview_label.Visible = False
         grp_files.Controls.Add(self.pyote_preview_label)
 
         # Timestamp Check sub-panel
         grp_ts_check = GroupBox()
         grp_ts_check.Text = "Timestamp Check"
-        grp_ts_check.Location = Point(15, 271)
+        grp_ts_check.Location = Point(15, 231)
         grp_ts_check.Size = Size(910, 105)
         grp_files.Controls.Add(grp_ts_check)
 
@@ -270,41 +285,37 @@ class PhaseBDialog(Form):
         self.lbl_ts_delayed.Text = "Delayed frames: -"
         self.lbl_ts_delayed.Location = Point(15, 22)
         self.lbl_ts_delayed.Size = Size(165, 20)
-        self.lbl_ts_delayed.ForeColor = Color.Gray
         grp_ts_check.Controls.Add(self.lbl_ts_delayed)
 
         self.lbl_ts_late = Label()
         self.lbl_ts_late.Text = "Late frames: -"
         self.lbl_ts_late.Location = Point(190, 22)
         self.lbl_ts_late.Size = Size(140, 20)
-        self.lbl_ts_late.ForeColor = Color.Gray
         grp_ts_check.Controls.Add(self.lbl_ts_late)
 
         self.lbl_ts_status = Label()
         self.lbl_ts_status.Text = "Status: -"
         self.lbl_ts_status.Location = Point(340, 22)
         self.lbl_ts_status.Size = Size(200, 20)
-        self.lbl_ts_status.ForeColor = Color.Gray
         grp_ts_check.Controls.Add(self.lbl_ts_status)
 
         self.lbl_ts_minmax = Label()
         self.lbl_ts_minmax.Text = "Deviation: -"
         self.lbl_ts_minmax.Location = Point(550, 22)
         self.lbl_ts_minmax.Size = Size(345, 20)
-        self.lbl_ts_minmax.ForeColor = Color.Gray
         grp_ts_check.Controls.Add(self.lbl_ts_minmax)
 
         btn_ts_explain = Button()
         btn_ts_explain.Text = "Explain..."
         btn_ts_explain.Location = Point(15, 48)
-        btn_ts_explain.Size = Size(80, 25)
+        btn_ts_explain.Size = Size(80, 28)
         btn_ts_explain.Click += self._ts_explain_click
         grp_ts_check.Controls.Add(btn_ts_explain)
 
         self.btn_ts_inspect = Button()
         self.btn_ts_inspect.Text = "Inspect Timestamps..."
         self.btn_ts_inspect.Location = Point(105, 48)
-        self.btn_ts_inspect.Size = Size(160, 25)
+        self.btn_ts_inspect.Size = Size(160, 28)
         self.btn_ts_inspect.Enabled = False
         self.btn_ts_inspect.Click += self._ts_inspect_click
         grp_ts_check.Controls.Add(self.btn_ts_inspect)
@@ -321,45 +332,95 @@ class PhaseBDialog(Form):
         self.lbl_delay_check.Text = "Tangra delay: -"
         self.lbl_delay_check.Location = Point(15, 80)
         self.lbl_delay_check.Size = Size(880, 22)
-        self.lbl_delay_check.ForeColor = Color.Gray
         grp_ts_check.Controls.Add(self.lbl_delay_check)
 
         # --- Folder picker row ---
         lbl_folder_info2 = Label()
         lbl_folder_info2.Text = "Observation files folder:"
-        lbl_folder_info2.Location = Point(15, 383)
+        lbl_folder_info2.Location = Point(15, 28)
         lbl_folder_info2.Size = Size(160, 20)
         grp_files.Controls.Add(lbl_folder_info2)
 
         self.folder_textbox = TextBox()
-        self.folder_textbox.Location = Point(180, 381)
+        self.folder_textbox.Location = Point(180, 25)
         self.folder_textbox.Size = Size(490, 22)
         self.folder_textbox.ReadOnly = True
         grp_files.Controls.Add(self.folder_textbox)
 
         btn_browse = Button()
         btn_browse.Text = "Browse..."
-        btn_browse.Location = Point(680, 379)
-        btn_browse.Size = Size(85, 24)
+        btn_browse.Location = Point(680, 23)
+        btn_browse.Size = Size(85, 28)
         btn_browse.Click += self._browse_folder_click
         grp_files.Controls.Add(btn_browse)
 
         # --- Rescan row ---
         lbl_rescan = Label()
         lbl_rescan.Text = "After saving corrected files to the folder, refresh the lists:"
-        lbl_rescan.Location = Point(15, 415)
+        lbl_rescan.Location = Point(15, 56)
         lbl_rescan.Size = Size(580, 20)
         lbl_rescan.ForeColor = Color.Gray
         grp_files.Controls.Add(lbl_rescan)
 
         btn_rescan = Button()
         btn_rescan.Text = "\u21bb  Rescan Folder"
-        btn_rescan.Location = Point(603, 412)
+        btn_rescan.Location = Point(603, 53)
         btn_rescan.Size = Size(135, 26)
         btn_rescan.Click += self._on_rescan_click
         grp_files.Controls.Add(btn_rescan)
 
-        y_pos += 480
+        # --- D/R event selector sub-panel ---
+        _is_ntp_timing = self.timing_ctx.get('is_ntp', False) or self.timing_ctx.get('is_gps', False)
+        _grp_dr_height = 110 if _is_ntp_timing else 80
+
+        grp_dr = GroupBox()
+        grp_dr.Text = "Select Event to Report"
+        grp_dr.Location = Point(15, 346)
+        grp_dr.Size = Size(910, _grp_dr_height)
+        grp_files.Controls.Add(grp_dr)
+
+        lbl_dr_select = Label()
+        lbl_dr_select.Text = "D/R Event:"
+        lbl_dr_select.Location = Point(10, 22)
+        lbl_dr_select.Size = Size(95, 20)
+        grp_dr.Controls.Add(lbl_dr_select)
+
+        self.combo_dr_event = ComboBox()
+        self.combo_dr_event.Location = Point(110, 20)
+        self.combo_dr_event.Size = Size(790, 25)
+        self.combo_dr_event.DropDownStyle = ComboBoxStyle.DropDownList
+        self.combo_dr_event.SelectedIndexChanged += self._dr_event_selected
+        grp_dr.Controls.Add(self.combo_dr_event)
+
+        self.lbl_dr_d_info = Label()
+        self.lbl_dr_d_info.Text = "D: -"
+        self.lbl_dr_d_info.Location = Point(10, 52)
+        self.lbl_dr_d_info.Size = Size(440, 20)
+        grp_dr.Controls.Add(self.lbl_dr_d_info)
+
+        self.lbl_dr_r_info = Label()
+        self.lbl_dr_r_info.Text = "R: -"
+        self.lbl_dr_r_info.Location = Point(460, 52)
+        self.lbl_dr_r_info.Size = Size(440, 20)
+        grp_dr.Controls.Add(self.lbl_dr_r_info)
+
+        if _is_ntp_timing:
+            self.chk_ntp_uncertainty = CheckBox()
+            self.chk_ntp_uncertainty.Text = "Include NTP Offset Uncertainty"
+            self.chk_ntp_uncertainty.Location = Point(10, 80)
+            self.chk_ntp_uncertainty.Size = Size(280, 22)
+            self.chk_ntp_uncertainty.CheckedChanged += self._on_ntp_uncertainty_changed
+            grp_dr.Controls.Add(self.chk_ntp_uncertainty)
+
+            self.lbl_ntp_info = Label()
+            self.lbl_ntp_info.Text = "NTP: not yet analysed"
+            self.lbl_ntp_info.Location = Point(300, 82)
+            self.lbl_ntp_info.Size = Size(600, 20)
+            self.lbl_ntp_info.ForeColor = Color.Gray
+            grp_dr.Controls.Add(self.lbl_ntp_info)
+
+        grp_files.Size = Size(940, 346 + _grp_dr_height + 10)
+        y_pos += 346 + _grp_dr_height + 20
 
         # ===== SECTION 4: PER-METHOD INFO PANELS (mutually exclusive) =====
         self._pnl_timing_gps_cmos = Panel()
@@ -458,13 +519,13 @@ class PhaseBDialog(Form):
 
         # ===== SECTION 5: OBSERVATION RESULT =====
         grp_obs_type = GroupBox()
-        grp_obs_type.Text = "5. Observation Result"
+        grp_obs_type.Text = "4. Observation Result"
         grp_obs_type.Location = Point(10, y_pos)
         grp_obs_type.Size = Size(940, 120)
         main_panel.Controls.Add(grp_obs_type)
 
         self.rb_positive = RadioButton()
-        self.rb_positive.Text = "Positive - Observed disappearance and reappearance (AOTA required)"
+        self.rb_positive.Text = "Positive - Observed occultation (D/R source required)"
         self.rb_positive.Location = Point(20, 25)
         self.rb_positive.Size = Size(500, 25)
         self.rb_positive.Checked = True
@@ -472,14 +533,14 @@ class PhaseBDialog(Form):
         grp_obs_type.Controls.Add(self.rb_positive)
 
         self.rb_negative = RadioButton()
-        self.rb_negative.Text = "Negative - No occultation occurred (AOTA optional)"
+        self.rb_negative.Text = "Negative - No occultation occurred (D/R not required)"
         self.rb_negative.Location = Point(20, 50)
         self.rb_negative.Size = Size(500, 25)
         self.rb_negative.CheckedChanged += self._obs_type_changed
         grp_obs_type.Controls.Add(self.rb_negative)
 
         self.rb_unsure = RadioButton()
-        self.rb_unsure.Text = "Unsure - Possible event but uncertain (AOTA required)"
+        self.rb_unsure.Text = "Unsure - Possible event but uncertain (D/R source required)"
         self.rb_unsure.Location = Point(20, 75)
         self.rb_unsure.Size = Size(500, 25)
         self.rb_unsure.CheckedChanged += self._obs_type_changed
@@ -489,7 +550,7 @@ class PhaseBDialog(Form):
 
         # ===== SECTION 6: CONDITIONS =====
         grp_conditions = GroupBox()
-        grp_conditions.Text = "6. Conditions"
+        grp_conditions.Text = "5. Conditions"
         grp_conditions.Location = Point(10, y_pos)
         grp_conditions.Size = Size(940, 80)
         main_panel.Controls.Add(grp_conditions)
@@ -663,6 +724,8 @@ class PhaseBDialog(Form):
         self.pyote_event_count_label.Text = "-"
         self._d_time_seconds = None
         self._r_time_seconds = None
+        self._dr_events = []
+        self.combo_dr_event.Items.Clear()
         self._reset_timestamp_check()
 
         if not os.path.exists(folder_path):
@@ -748,6 +811,7 @@ class PhaseBDialog(Form):
         self._update_aota_xml_preview()
         self._update_aota_report_preview()
         self._update_pyote_preview()
+        self._populate_dr_combo()
 
     def _format_time_value(self, value):
         if value is None:
@@ -767,6 +831,16 @@ class PhaseBDialog(Form):
             self._format_time_value(hours),
             self._format_time_value(minutes),
             self._format_time_value(seconds))
+
+    def _count_dp(self, val):
+        """Return number of decimal places in val (str or float), preserving trailing zeros in strings."""
+        if val is None:
+            return 2
+        s = str(val).strip()
+        if '.' in s:
+            dec = s.split('.')[1]
+            return len(dec) if dec else 0
+        return 0
 
     def _update_tangra_preview(self):
         try:
@@ -827,8 +901,6 @@ class PhaseBDialog(Form):
             self._reset_timestamp_check()
 
     def _update_aota_xml_preview(self):
-        self._d_time_seconds = None
-        self._r_time_seconds = None
         try:
             if self.aota_listbox.SelectedIndex < 0:
                 self.aota_preview_label.Text = "D/R: -"
@@ -843,24 +915,16 @@ class PhaseBDialog(Form):
             if not valid_events:
                 self.aota_preview_label.Text = "D/R: not found"
                 return
+            n = len(valid_events)
             evt = valid_events[0]
             d_seconds = evt.d_seconds_str if evt.d_seconds_str is not None else evt.d_seconds
             r_seconds = evt.r_seconds_str if evt.r_seconds_str is not None else evt.r_seconds
             d_time = self._format_hms(evt.d_hours, evt.d_minutes, d_seconds)
             r_time = self._format_hms(evt.r_hours, evt.r_minutes, r_seconds)
-            self.aota_preview_label.Text = "D: {0}\nR: {1}".format(d_time, r_time)
-            try:
-                d_h = int(evt.d_hours or 0)
-                d_m = int(evt.d_minutes or 0)
-                d_s = float(d_seconds) if d_seconds is not None else 0.0
-                self._d_time_seconds = d_h * 3600.0 + d_m * 60.0 + d_s
-                r_h = int(evt.r_hours or 0)
-                r_m = int(evt.r_minutes or 0)
-                r_s = float(r_seconds) if r_seconds is not None else 0.0
-                self._r_time_seconds = r_h * 3600.0 + r_m * 60.0 + r_s
-            except Exception:
-                self._d_time_seconds = None
-                self._r_time_seconds = None
+            if n == 1:
+                self.aota_preview_label.Text = "D: {0}\nR: {1}".format(d_time, r_time)
+            else:
+                self.aota_preview_label.Text = "{0} events\nFirst: D {1}  R {2}".format(n, d_time, r_time)
         except Exception:
             self.aota_preview_label.Text = "D/R: unable to extract"
 
@@ -882,24 +946,6 @@ class PhaseBDialog(Form):
             d_time = self._format_hms(summary.get('d_hours'), summary.get('d_minutes'), summary.get('d_seconds'))
             r_time = self._format_hms(summary.get('r_hours'), summary.get('r_minutes'), summary.get('r_seconds'))
             self.report_preview_label.Text = "D: {0}\nR: {1}".format(d_time, r_time)
-            if self._d_time_seconds is None:
-                try:
-                    dh = int(summary.get('d_hours') or 0)
-                    dm = int(summary.get('d_minutes') or 0)
-                    ds = float(summary.get('d_seconds') or 0.0)
-                    if dh or dm or ds:
-                        self._d_time_seconds = dh * 3600.0 + dm * 60.0 + ds
-                except Exception:
-                    pass
-            if self._r_time_seconds is None:
-                try:
-                    rh = int(summary.get('r_hours') or 0)
-                    rm = int(summary.get('r_minutes') or 0)
-                    rs = float(summary.get('r_seconds') or 0.0)
-                    if rh or rm or rs:
-                        self._r_time_seconds = rh * 3600.0 + rm * 60.0 + rs
-                except Exception:
-                    pass
         except Exception:
             self.report_preview_label.Text = "D/R: unable to extract"
 
@@ -927,6 +973,7 @@ class PhaseBDialog(Form):
         except Exception:
             self.pyote_event_count_label.Text = "Error reading file"
             self.pyote_preview_label.Text = "D/R: unable to read"
+        self._populate_dr_combo()
         self.update_button_state()
 
     def _pyote_event_selection_changed(self, sender, e):
@@ -952,20 +999,235 @@ class PhaseBDialog(Form):
         if snr is not None:
             preview += "  SNR(DNR):{0}".format(snr)
         self.pyote_preview_label.Text = preview
-        if self._d_time_seconds is None and d_time and d_time != '?':
+
+    def _populate_dr_combo(self):
+        """Rebuild the D/R event combo from all currently selected source files."""
+        self.combo_dr_event.Items.Clear()
+        self._dr_events = []
+
+        # Events from the selected AOTA Report file (listed first — preferred source)
+        if self.report_listbox.SelectedIndex >= 0:
+            report_file_idx = self.report_listbox.SelectedIndex
+            report_path = self.aota_report_files[report_file_idx]
             try:
-                parts = str(d_time).split(':')
-                if len(parts) == 3:
-                    self._d_time_seconds = int(parts[0]) * 3600.0 + int(parts[1]) * 60.0 + float(parts[2])
+                import aota_report_parser as arp
+                parsed_report = arp.parse_aota_report(report_path)
+                if parsed_report and parsed_report.get('events'):
+                    n = len(parsed_report['events'])
+                    for ev_idx in range(n):
+                        summary = arp.get_event_summary(parsed_report, ev_idx)
+                        if not summary:
+                            continue
+                        try:
+                            d_time = self._format_hms(
+                                summary.get('d_hours'), summary.get('d_minutes'), summary.get('d_seconds'))
+                            r_time = self._format_hms(
+                                summary.get('r_hours'), summary.get('r_minutes'), summary.get('r_seconds'))
+                            dh = int(summary.get('d_hours') or 0)
+                            dm = int(summary.get('d_minutes') or 0)
+                            ds = float(summary.get('d_seconds') or 0.0)
+                            d_sec = dh * 3600.0 + dm * 60.0 + ds if (dh or dm or ds) else None
+                            rh = int(summary.get('r_hours') or 0)
+                            rm = int(summary.get('r_minutes') or 0)
+                            rs = float(summary.get('r_seconds') or 0.0)
+                            r_sec = rh * 3600.0 + rm * 60.0 + rs if (rh or rm or rs) else None
+                        except Exception:
+                            d_time = r_time = '?'
+                            d_sec = r_sec = None
+                        prefix = 'AOTA Report' if n == 1 else 'AOTA Report ev.{0}'.format(ev_idx + 1)
+                        d_unc_rpt = summary.get('d_uncertainty')
+                        r_unc_rpt = summary.get('r_uncertainty')
+                        self._dr_events.append({
+                            'source': 'aota_report',
+                            'report_file_idx': report_file_idx,
+                            'event_idx': ev_idx,
+                            'd_seconds': d_sec,
+                            'r_seconds': r_sec,
+                            'd_time_str': d_time,
+                            'r_time_str': r_time,
+                            'd_uncertainty': float(d_unc_rpt) if d_unc_rpt is not None else None,
+                            'r_uncertainty': float(r_unc_rpt) if r_unc_rpt is not None else None,
+                            'd_unc_dp': self._count_dp(d_unc_rpt),
+                            'r_unc_dp': self._count_dp(r_unc_rpt),
+                        })
+                        self.combo_dr_event.Items.Add(
+                            '{0}  D {1}  R {2}'.format(prefix, d_time, r_time))
             except Exception:
                 pass
-        if self._r_time_seconds is None and r_time and r_time != '?':
+
+        # Events from the selected AOTA XML file
+        if self.aota_listbox.SelectedIndex >= 0:
+            aota_file_idx = self.aota_listbox.SelectedIndex
+            aota_path = self.aota_files[aota_file_idx]
             try:
-                parts = str(r_time).split(':')
-                if len(parts) == 3:
-                    self._r_time_seconds = int(parts[0]) * 3600.0 + int(parts[1]) * 60.0 + float(parts[2])
+                from aota_parser import parse_aota_file
+                aota_result = parse_aota_file(aota_path)
+                if aota_result:
+                    valid_events = aota_result.get_valid_events()
+                    n = len(valid_events)
+                    for ev_idx, evt in enumerate(valid_events):
+                        try:
+                            d_s = evt.d_seconds_str if evt.d_seconds_str is not None else evt.d_seconds
+                            r_s = evt.r_seconds_str if evt.r_seconds_str is not None else evt.r_seconds
+                            d_time = self._format_hms(evt.d_hours, evt.d_minutes, d_s)
+                            r_time = self._format_hms(evt.r_hours, evt.r_minutes, r_s)
+                            d_s_f = float(d_s) if d_s is not None else 0.0
+                            r_s_f = float(r_s) if r_s is not None else 0.0
+                            d_sec = int(evt.d_hours or 0) * 3600.0 + int(evt.d_minutes or 0) * 60.0 + d_s_f
+                            r_sec = int(evt.r_hours or 0) * 3600.0 + int(evt.r_minutes or 0) * 60.0 + r_s_f
+                        except Exception:
+                            d_time = r_time = '?'
+                            d_sec = r_sec = None
+                        prefix = 'AOTA' if n == 1 else 'AOTA ev.{0}'.format(ev_idx + 1)
+                        d_unc = float(evt.d_error) if evt.d_error is not None else None
+                        r_unc = float(evt.r_error) if evt.r_error is not None else None
+                        self._dr_events.append({
+                            'source': 'aota',
+                            'aota_file_idx': aota_file_idx,
+                            'event_idx': ev_idx,
+                            'd_seconds': d_sec,
+                            'r_seconds': r_sec,
+                            'd_time_str': d_time,
+                            'r_time_str': r_time,
+                            'd_uncertainty': d_unc,
+                            'r_uncertainty': r_unc,
+                            'd_unc_dp': self._count_dp(evt.d_error_str if evt.d_error_str is not None else evt.d_error),
+                            'r_unc_dp': self._count_dp(evt.r_error_str if evt.r_error_str is not None else evt.r_error),
+                        })
+                        self.combo_dr_event.Items.Add(
+                            '{0}  D {1}  R {2}'.format(prefix, d_time, r_time))
             except Exception:
                 pass
+
+        # Events from PyOTE metrics (uses already-loaded self.pyote_events)
+        if self.pyote_events and self.pyote_listbox.SelectedIndex >= 0:
+            pyote_file_idx = self.pyote_listbox.SelectedIndex
+            for ev_idx, record in enumerate(self.pyote_events):
+                d_time = record.get('D time', '?')
+                r_time = record.get('R time', '?')
+                uncertainty = record.get('time err +/-secs', None)
+                d_sec = r_sec = None
+                try:
+                    parts = str(d_time).split(':')
+                    if len(parts) == 3:
+                        d_sec = int(parts[0]) * 3600.0 + int(parts[1]) * 60.0 + float(parts[2])
+                except Exception:
+                    pass
+                try:
+                    parts = str(r_time).split(':')
+                    if len(parts) == 3:
+                        r_sec = int(parts[0]) * 3600.0 + int(parts[1]) * 60.0 + float(parts[2])
+                except Exception:
+                    pass
+                display = 'PyOTE  D {0}  R {1}'.format(d_time, r_time)
+                if uncertainty is not None:
+                    display += '  \u00b1{0}s'.format(uncertainty)
+                unc_f = float(uncertainty) if uncertainty is not None else None
+                unc_dp = self._count_dp(uncertainty)
+                # Strip brackets from PyOTE bracketed time strings for display in info panel
+                def _strip_brackets(t):
+                    return str(t).strip().strip('[]')
+                self._dr_events.append({
+                    'source': 'pyote',
+                    'pyote_file_idx': pyote_file_idx,
+                    'pyote_event_idx': ev_idx,
+                    'd_seconds': d_sec,
+                    'r_seconds': r_sec,
+                    'd_time_str': _strip_brackets(d_time),
+                    'r_time_str': _strip_brackets(r_time),
+                    'd_uncertainty': unc_f,
+                    'r_uncertainty': unc_f,
+                    'd_unc_dp': unc_dp,
+                    'r_unc_dp': unc_dp,
+                })
+                self.combo_dr_event.Items.Add(display)
+
+        if self._dr_events:
+            self.combo_dr_event.SelectedIndex = 0
+        else:
+            self._d_time_seconds = None
+            self._r_time_seconds = None
+        self.update_button_state()
+
+    def _dr_event_selected(self, sender, e):
+        idx = self.combo_dr_event.SelectedIndex
+        if idx < 0 or idx >= len(self._dr_events):
+            self._d_time_seconds = None
+            self._r_time_seconds = None
+            self._update_dr_info_panel()
+            return
+        rec = self._dr_events[idx]
+        self._d_time_seconds = rec.get('d_seconds')
+        self._r_time_seconds = rec.get('r_seconds')
+        self._update_dr_info_panel()
+        self.update_button_state()
+
+    def _on_ntp_uncertainty_changed(self, sender, e):
+        self._update_dr_info_panel()
+
+    def _update_dr_info_panel(self):
+        """Refresh the D/R time display labels, optionally combining NTP uncertainty in quadrature."""
+        import math
+
+        idx = self.combo_dr_event.SelectedIndex
+        if idx < 0 or idx >= len(self._dr_events):
+            self.lbl_dr_d_info.Text = "D: -"
+            self.lbl_dr_r_info.Text = "R: -"
+            if hasattr(self, 'lbl_ntp_info'):
+                self.lbl_ntp_info.ForeColor = Color.Gray
+            self.ntp_comment = None
+            return
+
+        rec = self._dr_events[idx]
+        d_time = rec.get('d_time_str') or '-'
+        r_time = rec.get('r_time_str') or '-'
+        d_unc = rec.get('d_uncertainty')
+        r_unc = rec.get('r_uncertainty')
+        d_dp = rec.get('d_unc_dp', 2)
+        r_dp = rec.get('r_unc_dp', 2)
+
+        is_ntp = self.timing_ctx.get('is_ntp', False) or self.timing_ctx.get('is_gps', False)
+        ntp_off_ms = self.timing_ctx.get('ntp_offset_ms', 0.0) or 0.0
+        ntp_unc_ms = self.timing_ctx.get('ntp_uncertainty_ms', 0.0) or 0.0
+        use_ntp = (is_ntp and hasattr(self, 'chk_ntp_uncertainty')
+                   and self.chk_ntp_uncertainty.Checked)
+
+        if use_ntp and ntp_unc_ms > 0:
+            ntp_unc_s = ntp_unc_ms / 1000.0
+            d_combined = math.sqrt(d_unc ** 2 + ntp_unc_s ** 2) if d_unc is not None else ntp_unc_s
+            r_combined = math.sqrt(r_unc ** 2 + ntp_unc_s ** 2) if r_unc is not None else ntp_unc_s
+            self.lbl_dr_d_info.Text = "D: {0}  \u00b1{1}s".format(
+                d_time, "{0:.{1}f}".format(d_combined, d_dp))
+            self.lbl_dr_r_info.Text = "R: {0}  \u00b1{1}s".format(
+                r_time, "{0:.{1}f}".format(r_combined, r_dp))
+            self.ntp_comment = (
+                "NTP timing: offset {0:+.1f} ms, uncertainty \u00b1{1:.1f} ms (95%). "
+                "NTP offset uncertainty added in quadrature to D/R uncertainties."
+            ).format(ntp_off_ms, ntp_unc_ms)
+        else:
+            if d_unc is not None:
+                self.lbl_dr_d_info.Text = "D: {0}  \u00b1{1}s".format(
+                    d_time, "{0:.{1}f}".format(d_unc, d_dp))
+            else:
+                self.lbl_dr_d_info.Text = "D: {0}".format(d_time)
+            if r_unc is not None:
+                self.lbl_dr_r_info.Text = "R: {0}  \u00b1{1}s".format(
+                    r_time, "{0:.{1}f}".format(r_unc, r_dp))
+            else:
+                self.lbl_dr_r_info.Text = "R: {0}".format(r_time)
+            self.ntp_comment = None
+
+        if hasattr(self, 'lbl_ntp_info'):
+            if is_ntp and ntp_unc_ms > 0:
+                self.lbl_ntp_info.Text = "NTP: {0:+.1f} ms  \u00b1{1:.1f} ms (95%)".format(
+                    ntp_off_ms, ntp_unc_ms)
+                self.lbl_ntp_info.ForeColor = Color.Gray
+                self.chk_ntp_uncertainty.Enabled = True
+            elif is_ntp:
+                self.lbl_ntp_info.Text = "NTP: not yet analysed \u2014 run NTP analysis in the previous dialog"
+                self.lbl_ntp_info.ForeColor = Color.OrangeRed
+                self.chk_ntp_uncertainty.Enabled = False
+                self.chk_ntp_uncertainty.Checked = False
 
     # ------------------------------------------------------------------
     # Timestamp check helpers
@@ -1093,18 +1355,14 @@ class PhaseBDialog(Form):
 
     def update_button_state(self):
         csv_selected = self.csv_listbox.SelectedIndex >= 0
-        aota_selected = self.aota_listbox.SelectedIndex >= 0
-        report_selected = self.report_listbox.SelectedIndex >= 0
-        pyote_selected = (self.pyote_listbox.SelectedIndex >= 0
-                          and self.pyote_event_listbox.SelectedIndex >= 0
-                          and bool(self.pyote_events))
+        dr_selected = (self.combo_dr_event.SelectedIndex >= 0 and bool(self._dr_events))
         obs_type = self._get_obs_type()
 
         missing = []
         if not csv_selected:
             missing.append("light curve CSV file")
-        if obs_type in ("Positive", "Unsure") and not aota_selected and not report_selected and not pyote_selected:
-            missing.append("AOTA file, AOTA Report, or PyOTE Metrics")
+        if obs_type in ("Positive", "Unsure") and not dr_selected:
+            missing.append("D/R event source (select an AOTA, AOTA Report, or PyOTE file)")
 
         if missing:
             self.status_label.Text = "Missing: " + ", ".join(missing)
@@ -1131,16 +1389,24 @@ class PhaseBDialog(Form):
                             "No CSV File", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             return
 
-        if self.aota_listbox.SelectedIndex >= 0:
-            self.selected_aota_path = self.aota_files[self.aota_listbox.SelectedIndex]
-        if self.report_listbox.SelectedIndex >= 0:
-            self.selected_aota_report_path = self.aota_report_files[self.report_listbox.SelectedIndex]
-
+        self.selected_aota_path = None
+        self.selected_aota_event_index = -1
+        self.selected_aota_report_path = None
+        self.selected_aota_report_event_index = -1
         self.selected_pyote_path = None
         self.selected_pyote_event_index = -1
-        if self.pyote_listbox.SelectedIndex >= 0:
-            self.selected_pyote_path = self.pyote_files[self.pyote_listbox.SelectedIndex]
-            self.selected_pyote_event_index = self.pyote_event_listbox.SelectedIndex
+        if self.combo_dr_event.SelectedIndex >= 0 and self._dr_events:
+            rec = self._dr_events[self.combo_dr_event.SelectedIndex]
+            src = rec.get('source')
+            if src == 'aota':
+                self.selected_aota_path = self.aota_files[rec['aota_file_idx']]
+                self.selected_aota_event_index = rec['event_idx']
+            elif src == 'aota_report':
+                self.selected_aota_report_path = self.aota_report_files[rec['report_file_idx']]
+                self.selected_aota_report_event_index = rec['event_idx']
+            elif src == 'pyote':
+                self.selected_pyote_path = self.pyote_files[rec['pyote_file_idx']]
+                self.selected_pyote_event_index = rec['pyote_event_idx']
 
         if obs_type in ("Positive", "Unsure"):
             if not self.selected_aota_path and not self.selected_aota_report_path and not self.selected_pyote_path:
@@ -1214,8 +1480,8 @@ class PhaseBDialog(Form):
         self._tooltip.InitialDelay = 400
         self._tooltip.ReshowDelay = 200
         self._tooltip.SetToolTip(self.rb_positive,
-            "Observed both disappearance and reappearance.\nAOTA or PyOTE result required.")
+            "Observed both disappearance and reappearance.\nAOTA, AOTA Report, or PyOTE result required.")
         self._tooltip.SetToolTip(self.rb_negative,
             "No occultation was detected.\nAOTA is optional; a light curve CSV is still required.")
         self._tooltip.SetToolTip(self.rb_unsure,
-            "A possible event occurred but the result is uncertain.\nAOTA or PyOTE result required.")
+            "A possible event occurred but the result is uncertain.\nAOTA, AOTA Report, or PyOTE result required.")

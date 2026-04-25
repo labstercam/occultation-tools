@@ -1,13 +1,14 @@
 # light_curve_reader.py
 # IronPython 3.4 compatible
 #
-# Auto-detecting light curve reader for Tangra, R-OTE/PyOTE, and Limovie formats.
+# Auto-detecting light curve reader for Tangra, PyOTE, R-OTE, and Limovie formats.
 # Tangra files are delegated to light_curves_iron.get_observation_summary() unchanged.
 # All formats return a dict with the same keys as light_curves_iron.analyse_timestamps_iron().
 #
 # Supported formats:
 #   - Tangra  (delegated to light_curves_iron)
-#   - R-OTE   (includes PyOTE files which share the same format)
+#   - PyOTE   (CSV files with '#' comment header containing 'PyOTE' or 'PyMovie')
+#   - R-OTE   (CSV files with '#' comment header; same data layout as PyOTE)
 #   - Limovie
 
 import os
@@ -15,18 +16,34 @@ from datetime import datetime
 
 
 def detect_format(filepath):
-    """Detect the light curve CSV format by reading only the first line.
+    """Detect the light curve CSV format by reading the first few lines.
 
-    Returns: 'Tangra', 'Limovie', 'R-OTE', or 'unknown'
+    PyOTE/PyMovie files begin with '#' comment lines before the 'FrameNum'
+    header; R-OTE files also use '#' but lack 'PyOTE'/'PyMovie' markers.
+    Read up to 20 lines so the PyOTE/PyMovie identifier is found even when
+    it appears after the first comment line.
+
+    Returns: 'Tangra', 'Limovie', 'PyOTE', 'R-OTE', or 'unknown'
     """
     try:
+        header_lines = []
         with open(filepath, 'r') as f:
-            line = f.readline()
-        if 'Tangra' in line:
+            for _ in range(20):
+                line = f.readline()
+                if not line:
+                    break
+                header_lines.append(line)
+
+        combined = ''.join(header_lines)
+        first_line = header_lines[0] if header_lines else ''
+
+        if 'Tangra' in first_line:
             return 'Tangra'
-        elif 'Limovie' in line:
+        elif 'Limovie' in first_line:
             return 'Limovie'
-        elif 'R-OTE' in line or (len(line) > 0 and line[0] == '#'):
+        elif 'PyOTE' in combined or 'PyMovie' in combined:
+            return 'PyOTE'
+        elif 'R-OTE' in combined or (header_lines and header_lines[0].startswith('#')):
             return 'R-OTE'
         else:
             return 'unknown'
@@ -331,7 +348,7 @@ def read_light_curve(filepath):
         values = [r.get('signal_1') for r in light_curve]
         return frames, times, values
 
-    elif fmt == 'R-OTE':
+    elif fmt in ('PyOTE', 'R-OTE'):
         return _read_rote_data(filepath)
 
     elif fmt == 'Limovie':
@@ -367,9 +384,9 @@ def get_observation_summary(filepath, percentiles=None):
         result['source_format'] = 'Tangra'
         return result
 
-    elif fmt == 'R-OTE':
+    elif fmt in ('PyOTE', 'R-OTE'):
         frames, times, values = _read_rote_data(filepath)
-        return _compute_summary(frames, times, values, filepath, 'R-OTE', percentiles)
+        return _compute_summary(frames, times, values, filepath, fmt, percentiles)
 
     elif fmt == 'Limovie':
         frames, times, values = _read_limovie_data(filepath)
