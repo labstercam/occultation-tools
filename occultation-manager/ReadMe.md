@@ -1,6 +1,6 @@
 # Occultation Manager
 
-**Version 0.2.0-beta.7** - SharpCap add-in for automated occultation observations
+**Version 0.2.0-beta.9** - SharpCap add-in for automated occultation observations
 
 SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences. Sequences can be run interactively or unattended for fully automated recordings for an entire nights observations. The sequences can be run on remote PCs without internet connection for multiple station deployments.
 
@@ -34,7 +34,7 @@ The workflow can be as simple as announce stations in Occult Watcher Cloud, open
 
 ### Quick Start
 
-1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.7.zip` [https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.7/occultation-manager-v0.2.0-beta.7.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.7/occultation-manager-v0.2.0-beta.7.zip)
+1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.9.zip` [https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip)
 2. **Extract**: Unzip to a location with read/write access (e.g., `Documents\SharpCap`)
    - ⚠️ **Avoid Program Files** - Windows may restrict write access
    - ✅ **Recommended**: `Documents\SharpCap`
@@ -162,6 +162,9 @@ occultation-manager/
 - Automatic Occult 4 XML export with matching filename
 - Observing conditions capture (clouds, stability, other notes)
 - Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
+- **Include Station Name in Filenames**: optional checkbox in the Generate Report dialog (unchecked by default) appends the station name to the TT report filename
+- **Rename Files dialog**: after report generation, optionally rename the observation files (CSV, AOTA XML/Report, image files, `.lc` files) to share the same stem as the report; proposed names are editable; `_AOTA_…` and `_Bin{N}` suffixes are preserved automatically
+- **D/R uncertainty display**: uncertainty shown in the D/R event info panel is formatted to 1–2 significant figures
 - Use with caution and verify all generated data before submission
 
 **Tools Menu**

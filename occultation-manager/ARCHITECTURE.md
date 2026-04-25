@@ -11,7 +11,7 @@ Occultation Manager is a Windows desktop application that automates the workflow
 - OccultWatcher Cloud (OWCloud) REST API for event data
 - Excel/XML for report generation
 
-**Total Code Size:** ~25,000 lines of Python across 29 top-level modules
+**Total Code Size:** ~25,000 lines of Python across 30 top-level modules
 
 ---
 
@@ -432,6 +432,7 @@ Three specialized report generators create Excel-based observation reports by fi
 - Fields: Similar to NA with regional differences
 - Camera acquisition delay (cell P26) written to 4 decimal places
 - `ntp_comment` kwarg written to cell D44 (Additional Comments, third row) when provided
+- `include_station_name` kwarg controls whether station name is appended to the generated filename
 - Uses Openize SDK for direct cell manipulation
 
 **Occult 4 XML Export (`occult4_export.py` - 944 lines):**
@@ -482,6 +483,7 @@ Three specialized report generators create Excel-based observation reports by fi
    - timing_method, camera_delay_ms, ntp_offset_ms, net_correction_s
    - camera_delay_applied, ntp_applied, lc_timestamps_corrected
    - corrections_confirmed (True only when both confirmation checkboxes ticked)
+   - include_station_name (from ComprehensiveReportDialog.get_include_station_name())
 6. Generator uses Openize SDK to:
    a. Load Excel template workbook
    b. Access Data worksheet directly
@@ -491,6 +493,9 @@ Three specialized report generators create Excel-based observation reports by fi
 7. Saves to data/reports/
 8. Generates matching Occult 4 XML file
 9. Opens report in Excel
+10. RenameFilesDialog opens (post-report): offers to rename observation input files
+    (CSV, AOTA XML/Report, image files, .lc files) to match the report stem;
+    proposed names are editable; _AOTA_… and _Bin{N} suffixes preserved automatically
 ```
 
 **Data Sources:**
@@ -514,6 +519,7 @@ Three specialized report generators create Excel-based observation reports by fi
 - Equipment selection dropdowns
 - Observation type radio buttons with tooltips (AOTA/PyOTE requirement per type)
 - Observing conditions section (clouds, stability, other)
+- **"Include Station Name in Filenames" checkbox** (unchecked by default) in PhaseBDialog (dialog 3); value exposed via `get_include_station_name()`; wired to `TTReportGeneratorOpenize._generate_filename()`
 - **Section 4 — Observation Files**: four file pickers loaded from the observation folder:
   - CSV light curve files (Tangra / R-OTE / Limovie; format shown in brackets)
   - AOTA XML files
@@ -534,6 +540,18 @@ Three specialized report generators create Excel-based observation reports by fi
 - `_setup_tooltips()` — configures all `ToolTip` instances after controls are built
 - `get_timing_data()` — returns timing_data dict (see `timing_utils.py`)
 - Validation and report generation coordination
+
+#### Rename Files Dialog (`rename_files_dialog.py`)
+- `RenameFilesDialog` - Post-report dialog that offers to rename observation input files
+  to share the same stem as the generated report
+- Two sections: *Selected Observation Files* (CSV, AOTA XML/Report, PyOTE metrics) and
+  *Image and Light Curve Files in Observation Folder* (auto-scanned: `.jpg`, `.jpeg`,
+  `.png`, `.bmp`, `.tif`, `.tiff`, `.gif`, `.lc`)
+- Editable TextBox per row shows the proposed new name; user can adjust before confirming
+- `_build_target_stem()` — static method that preserves `_AOTA_…` and `_Bin{N}` suffixes
+  when building the proposed rename target
+- Skips files already named correctly; reports collisions and errors in a summary MessageBox
+- Rename button disabled until at least one file is checked
 
 #### AOTA Integration (`aota_dialogs.py` - 466 lines, `aota_parser.py` - 297 lines)
 - Parse AOTA (Asteroidal Occultation Timing Analysis) XML files
@@ -888,7 +906,7 @@ The tradeoff (a manual copy-paste step into Tangra's dialog) is mitigated by OM'
 
 ## Version History Context
 
-Current version: **0.2.0-beta.6** (Sixth Public Beta - April 2026)
+Current version: **0.2.0-beta.9** (Ninth Public Beta - April 2026)
 
 Key capabilities implemented:
 - Automatic folder structure creation
@@ -898,6 +916,9 @@ Key capabilities implemented:
 - Report generation for NA, TT, and SODIS formats
 - Equipment management
 - AOTA/Tangra integration
+- D/R uncertainty displayed to 1–2 significant figures
+- Rename Files dialog for post-report file organisation
+- "Include Station Name in Filenames" checkbox in TT report workflow
 - NTP timing analysis and GPS PPS comparison tools
 - GPS flash line delay calibration with integrated save, manage, and calculate workflow
 

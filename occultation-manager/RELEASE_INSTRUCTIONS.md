@@ -45,6 +45,7 @@ If you need to create the package manually, include these files from `occultatio
 - na_report_openize.py
 - occult4_export.py
 - pyote_metrics_reader.py
+- rename_files_dialog.py
 - report_generator_base.py
 - sequence_runner.py
 - sodis_report_text.py
@@ -141,16 +142,16 @@ occultation-manager/
 3. **Tag and title:**
    - Tag: `v0.2.0-beta.9`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.9 - Report Generation Bug Fixes`
+   - Release title: `Occultation Manager v0.2.0-beta.9 - Bug Fixes, Rename Dialog, and UX Improvements`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.9 - Report Generation Bug Fixes
+   # Occultation Manager v0.2.0-beta.9 - Bug Fixes, Rename Dialog, and UX Improvements
    
-   **Report Generation Bug Fixes** — SNR fix for AOTA Report parser, camera delay 4 d.p. in TT report, NTP comment written to correct Additional Comments cell, and AOTA Report as default first entry in D/R combo.
+   **Report Generation Bug Fixes and new features** — SNR fix for AOTA Report parser, camera delay 4 d.p. in TT report, NTP comment written to correct Additional Comments cell, AOTA Report as default first entry in D/R combo, D/R uncertainty displayed to 1–2 sig fig, new Rename Files dialog, "Include Station Name in Filenames" checkbox, and layout fix for blank space in Generate Report dialog.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
 
@@ -208,6 +209,28 @@ occultation-manager/
    ### AOTA Report — Default First in Combo
    
    When AOTA Report events are available, they appear first in the D/R event combo.
+   
+   ### D/R Uncertainty — 1–2 Significant Figures
+   
+   Uncertainty values in the event info panel now display as `±0.2s`, `±0.04s` etc.
+   instead of `±0.2000001s`.
+   
+   ### Rename Files Dialog (New)
+   
+   After report generation a new dialog offers to rename the observation files (CSV, AOTA XML,
+   AOTA Report, image files, `.lc` files) so they share the same stem as the generated report.
+   Filenames are editable before confirming. `_AOTA_…` and `_Bin{N}` suffixes are preserved
+   automatically.
+   
+   ### Include Station Name in Filenames (New)
+   
+   A new checkbox in the Generate Report dialog (unchecked by default) appends the observer's
+   station name to the TT report filename when checked.
+   
+   ### Generate Report Dialog — Layout Fix
+   
+   The large blank space below section 3 when a compact timing method is selected has been
+   removed. Sections 4 and 5 now follow immediately below section 3.
    
    ## 🎯 Key Features
    

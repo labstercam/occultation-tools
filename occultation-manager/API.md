@@ -17,6 +17,7 @@ This document describes the public interfaces and reusable components for develo
 6. [Utility Functions](#utility-functions)
 7. [Light Curve Reader API](#light-curve-reader-api)
 8. [PyOTE Metrics Reader API](#pyote-metrics-reader-api)
+9. [Rename Files Dialog API](#rename-files-dialog-api)
 
 ---
 
@@ -601,7 +602,8 @@ report_path = generator.generate_report(
     stability='Good',          # Optional: atmospheric stability
     other_conditions='',       # Optional: free-text conditions notes
     timing_data=timing_data,   # Optional: from build_timing_data()
-    ntp_comment=None           # Optional: NTP uncertainty note for Additional Comments
+    ntp_comment=None,          # Optional: NTP uncertainty note for Additional Comments
+    include_station_name=False # Optional: append station name to TT filename (default False)
 )
 
 print(f"Report saved to: {report_path}")
@@ -639,7 +641,8 @@ report_path = generator.generate_report(
     stability='Good',
     other_conditions='',
     timing_data=timing_data,   # Optional
-    ntp_comment=None           # Optional: written to D44 Additional Comments
+    ntp_comment=None,          # Optional: written to D44 Additional Comments
+    include_station_name=False # Optional: append station name to generated filename
 )
 ```
 
@@ -714,7 +717,8 @@ report_path = generator.generate_report(
     stability='Good',              # Optional: atmospheric stability
     other_conditions='',           # Optional: free-text conditions notes
     timing_data=timing_data,       # Optional: from build_timing_data()
-    ntp_comment=None               # Optional: accepted but unused by SODIS generator
+    ntp_comment=None,              # Optional: accepted but unused by SODIS generator
+    include_station_name=False     # Optional: accepted for API compatibility (unused by SODIS)
 )
 ```
 
@@ -847,6 +851,7 @@ result = dlg.ShowDialog()
 
 - `get_report_type()` → str: `'NA'` | `'TT'` | `'SODIS'`
 - `get_selected_aota_report_path()` → str | None: full path to selected AOTA XML/Report file
+- `get_include_station_name()` → bool: value of the "Include Station Name in Filenames" checkbox in PhaseBDialog; `False` if dialog not shown
 - `get_timing_data()` → dict: timing_data dict (see schema above); includes `corrections_confirmed`
 
 **`get_timing_data()` — Generate button preconditions for NTP:**
@@ -1054,6 +1059,55 @@ display = pmr.format_record_display(records[0])
     'snr': float          # Signal-to-noise ratio (DNR for PyOTE source)
 }
 ```
+
+---
+
+## Rename Files Dialog API
+
+Module: `rename_files_dialog.py`
+
+Presents a post-report dialog that offers to rename the observation files used as inputs
+so they share the same stem as the generated report.
+
+```python
+from rename_files_dialog import RenameFilesDialog
+
+dlg = RenameFilesDialog(
+    report_path=output_path,          # Full path to the generated report file
+    observation_folder=obs_folder,    # Folder to scan for image/.lc files; may be None
+    selected_files=selected_files,    # List of absolute paths used as inputs (CSV, AOTA XML/Report, PyOTE)
+    theme_manager=theme_manager       # Optional: theme manager for styling
+)
+dlg.ShowDialog()
+```
+
+**Behaviour:**
+
+- Groups files into two sections:
+  - *Selected Observation Files*: the CSV, AOTA XML, AOTA Report, and PyOTE metrics files
+    that were loaded in the report dialog
+  - *Image and Light Curve Files in Observation Folder*: auto-scanned from
+    `observation_folder`; `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tif`, `.tiff`, `.gif`, `.lc`
+- Each row shows the current filename (left) and an editable TextBox with the proposed new
+  name (right)
+- All rows are checked by default; uncheck to skip individual files
+- Files already named correctly are excluded from the list
+- The **Rename** button is disabled when no files are checked
+- On rename: each checked file is renamed to the value in its TextBox; filename collisions are
+  skipped and reported; errors are collected and shown in a summary MessageBox
+
+**Suffix preservation (`_build_target_stem`):**
+
+| Condition | Preserved portion |
+|---|---|
+| Stem contains `_AOTA` | `_AOTA_…` suffix from that point onwards |
+| Stem also contains `_Bin{N}` before `_AOTA` | `_Bin{N}` tag inserted before the `_AOTA…` suffix |
+| Neither | Stem replaced entirely with `report_stem` |
+
+Examples: given `report_stem = "20250523_778_Theobalda"`:
+- `event_Bin2_AOTA_Report.txt` → `20250523_778_Theobalda_Bin2_AOTA_Report.txt`
+- `event_AOTA_Event1.xml` → `20250523_778_Theobalda_AOTA_Event1.xml`
+- `event_lightcurve.csv` → `20250523_778_Theobalda.csv`
 
 ---
 

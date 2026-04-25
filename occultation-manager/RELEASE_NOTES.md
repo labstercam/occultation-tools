@@ -2,7 +2,7 @@
 
 ## Version 0.2.0-beta.9 (April 2026)
 
-**Report Generation Bug Fixes and UX Improvements**
+**Report Generation Bug Fixes, File Rename Dialog, and UX Improvements**
 
 ### SNR Fix — AOTA Report Parser (Bug Fix)
 
@@ -38,6 +38,58 @@ cell in the TT report. It is now written to its own row in Additional Comments.
 When AOTA Report events are available in the D/R event combo of the Phase B report dialog,
 they are now listed first (before AOTA XML events and PyOTE events), making the most commonly
 used source the default selection.
+
+### D/R Uncertainty — 1–2 Significant Figures (UX)
+
+The uncertainty shown next to D and R times in the "Select Event to Report" panel was
+displaying excessive precision (e.g. `±0.2000001s`).
+
+- New `_fmt_unc()` static method in `PhaseBDialog` applies Python's `{:.2g}` format
+- Result is now `±0.2s`, `±0.04s`, `±1.1s` etc. — 1 or 2 significant figures
+
+### Rename Files Dialog — New Post-Report Workflow (New)
+
+A new **Rename Files** dialog (`rename_files_dialog.py`) appears after successful report
+generation, offering to rename the observation files so they share the same stem as the report.
+
+**Features:**
+- Shows two groups: *Selected Observation Files* (CSV, AOTA XML/Report, PyOTE metrics) and
+  *Image and Light Curve Files in Observation Folder* (scanned automatically)
+- Supported image/light-curve extensions: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tif`, `.tiff`,
+  `.gif`, `.lc`
+- All files are checked by default; individual files can be unchecked to skip them
+- **Editable target names**: the proposed new filename is shown in a TextBox to the right of
+  each source filename and can be edited before renaming
+- **Suffix preservation**: files containing `_AOTA` in the stem keep the `_AOTA_…` suffix;
+  files also carrying `_Bin{N}` keep that tag too (e.g. `_Bin2_AOTA_Report` preserved intact)
+- Files already named correctly are skipped silently; an informational message is shown when
+  nothing needs renaming
+- Existing target names that would collide are skipped and reported
+- The **Rename** button is disabled until at least one file is checked
+
+### Include Station Name in Filenames (New)
+
+A new **"Include Station Name in Filenames"** checkbox (unchecked by default) has been added
+to the lower-right area of the Generate Report dialog (dialog 3).
+
+- When checked, the observer's station name is appended to the TT report filename
+  (e.g. `20250523_778_Theobalda_Gaia_DR3_…+Smith_HomeObservatory.xlsx`)
+- When unchecked (default), filenames are generated without the station suffix — consistent
+  with previous behaviour
+- Wired through `PhaseBDialog → ComprehensiveReportDialog.get_include_station_name() →
+  main_gui → TTReportGeneratorOpenize._generate_filename()`
+- `NAReportGeneratorOpenize` and `SODISReportGeneratorText` accept the `include_station_name`
+  kwarg for API compatibility (station name is not used in their filename formats)
+
+### Generate Report Dialog — Layout Fix (UX)
+
+The large blank space that appeared after the *3. Observation Files* section when a compact
+timing method (GPS, GPS-CMOS, or NTP) was selected has been removed.
+
+- The vertical gap below the timing panels is now computed dynamically based on the actual
+  height of whichever timing sub-panel is visible
+- GPS-CMOS: 55 px, GPS-dumb: 45 px, Analog-VTI: 120 px, NTP: 4 px (no visible panel)
+- Sections 4 and 5 now sit immediately below section 3 as intended
 
 ---
 

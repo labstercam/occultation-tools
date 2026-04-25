@@ -226,7 +226,7 @@ Installation and first-time setup for Occultation Manager.
 
 INSTALLATION
 ------------
-1. Download occultation-manager-v0.2.0-beta.5.zip from GitHub
+1. Download occultation-manager-v0.2.0-beta.9.zip from GitHub
 2. Extract to a folder with read/write access
    ⚠️ AVOID Program Files - Windows may restrict write access
    ✅ RECOMMENDED: Documents\\SharpCap
@@ -1021,16 +1021,29 @@ SECTION 3: OBSERVATION RESULT
 
 SECTION 4: OBSERVATION FILES
 -----------------------------
-Browse to the folder containing your observation files. The three file
+Browse to the folder containing your observation files. The file
 lists are populated automatically when a folder is selected.
 
-Column order (left to right):
-  1. Tangra CSV  - Tangra light-curve CSV export
-  2. AOTA Files  - AOTA prediction files (.aota.xml)
-  3. AOTA Report - AOTA report text files (_aota_report.txt)
+File sources:
+  1. Light-curve CSV  - Tangra, R-OTE, or Limovie CSV export
+                        (format is auto-detected from the file content)
+  2. AOTA XML         - AOTA prediction/analysis files (.aota.xml)
+  3. AOTA Report      - AOTA report text files; listed FIRST in the
+                        D/R event combo when available
+  4. PyOTE metrics    - PyOTE fit_metrics.txt files (detected by content,
+                        not filename); a second list lets you pick the
+                        aperture/event row within the metrics file
 
-Select one file in each column. A short preview appears below each
-list showing extracted times or D/R values for quick verification.
+Select one file in each column as needed. A short preview appears below
+each list showing extracted times or D/R values for quick verification.
+
+D/R event source priority:
+  AOTA Report events are listed first in the event combo, followed by
+  AOTA XML events and PyOTE events. The first entry in the list is
+  selected by default.
+
+The D and R uncertainty values shown in the event info label are
+formatted to 1–2 significant figures (e.g. ±0.2s, ±0.04s).
 
 TIMESTAMP CHECK SUBPANEL
 -------------------------
@@ -1196,12 +1209,54 @@ SECTION 6: CONDITIONS
   • Stability: atmospheric seeing (Steady / Flickering)
   • Other Conditions: free-text field for additional notes
 
+INCLUDE STATION NAME IN FILENAMES
+----------------------------------
+A checkbox at the bottom-right of the dialog (unchecked by default).
+When checked, the observer's station name is appended to the Trans-Tasman
+(RASNZ) report filename:
+  e.g. 20250523_778_Theobalda_Gaia_DR3_12345+Smith_HomeObservatory.xlsx
+
+Leave unchecked to generate filenames without the station suffix — the
+default behaviour and consistent with earlier releases. This checkbox has
+no effect on NA or SODIS report filenames.
+
 GENERATE REPORT BUTTON
 -----------------------
 Active when all required fields are complete. Click to generate the
 pre-filled Excel report and save it to data/reports/.
 
 Manually verify all data in the generated report before submitting.
+
+AFTER REPORT GENERATION — RENAME FILES DIALOG
+----------------------------------------------
+After a report is successfully saved, a Rename Files dialog appears
+offering to rename the observation files so they share the same stem
+as the report.
+
+Two sections are shown:
+  Selected Observation Files
+    The CSV, AOTA XML, AOTA Report, and PyOTE metrics files that were
+    loaded in the report dialog.
+  Image and Light Curve Files in Observation Folder
+    Image files and .lc files discovered in the observation folder
+    (.jpg, .jpeg, .png, .bmp, .tif, .tiff, .gif, .lc).
+
+How it works:
+  • Each row shows the current filename on the left and an editable
+    text box with the proposed new name on the right
+  • You can edit any proposed name before confirming
+  • All files are checked by default; uncheck any file to skip it
+  • Files already named correctly are excluded from the list
+  • Click Rename to apply; collisions are skipped and reported
+  • Close the dialog without clicking Rename to skip all renames
+
+Suffix preservation:
+  Files containing _AOTA in the stem keep the _AOTA_… portion.
+  If the filename also contains _Bin{N} before _AOTA, that tag is
+  preserved too. For example:
+    event_Bin2_AOTA_Report.txt → 20250523_778_..._Bin2_AOTA_Report.txt
+    event_AOTA_Event1.xml      → 20250523_778_..._AOTA_Event1.xml
+    event_lightcurve.csv       → 20250523_778_....csv
 
 
 TIMESTAMP INSPECTOR WINDOW
@@ -1375,7 +1430,7 @@ class HelpManager:
     def show_about(self):
         """Show about dialog with author information"""
         about_text = """OCCULTATION MANAGER FOR SHARPCAP
-Version 0.2.0-beta.6
+Version 0.2.0-beta.9
 
 Author: Michael Camilleri
 
@@ -1406,8 +1461,11 @@ Download \u2192 Filter \u2192 Prepare \u2192 Customize \u2192 Generate Sequence 
 OPTIONAL FEATURES:
 \u2022 Excel report generation (NA / Trans-Tasman / SODIS)
   \u26a0 Experimental - Not approved by reporting coordinators
-\u2022 Tangra CSV import with frame-timing analysis and Timestamp Inspector
-\u2022 AOTA file import for D/R times in reports
+\u2022 Tangra / R-OTE / Limovie CSV import with frame-timing analysis and Timestamp Inspector
+\u2022 AOTA XML and AOTA Report file import for D/R times in reports
+\u2022 PyOTE fit_metrics.txt import for D/R times in reports
+\u2022 Post-report Rename Files dialog to match observation files to report stem
+\u2022 Optional station name suffix in Trans-Tasman report filenames
 
 This tool emphasizes giving you complete control through SharpCap sequences.
 Customize templates to match your equipment and automate as much or as little
