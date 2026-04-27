@@ -2648,19 +2648,36 @@ class OccultationManagerGUI(Form):
                 reports_folder = os.path.dirname(output_path)
 
                 # Determine the primary observation folder (source of input files).
-                obs_folder = None
-                for _src in [tangra_csv_path, aota_file_path, aota_report_path]:
-                    if _src and os.path.isfile(_src):
-                        obs_folder = os.path.dirname(_src)
-                        break
-                if obs_folder is None and copy_folder:
+                # Always prefer copy_folder (the user folder) as the source for the ZIP.
+                if copy_folder and os.path.isdir(copy_folder):
                     obs_folder = copy_folder
+                else:
+                    obs_folder = None
+                    for _src in [tangra_csv_path, aota_file_path, aota_report_path]:
+                        if _src and os.path.isfile(_src):
+                            obs_folder = os.path.dirname(_src)
+                            break
 
                 def _resolve(original_path):
-                    """Return renamed version if it exists in obs_folder, else original."""
+                    """Return renamed version if it exists in obs_folder, else original.
+
+                    Uses the same suffix-preservation logic as RenameFilesDialog so that
+                    files like foo_AOTA_Report.txt are found as {report_stem}_AOTA_Report.txt.
+                    """
                     if original_path and obs_folder:
-                        ext = os.path.splitext(original_path)[1]
-                        renamed = os.path.join(obs_folder, report_stem + ext)
+                        import re as _re
+                        src_stem, ext = os.path.splitext(os.path.basename(original_path))
+                        # Build the expected renamed stem (mirrors _build_target_stem)
+                        aota_idx = src_stem.lower().find('_aota')
+                        if aota_idx != -1:
+                            aota_suffix  = src_stem[aota_idx:]   # e.g. _AOTA_Report
+                            before_aota  = src_stem[:aota_idx]
+                            bin_match    = _re.search(r'_[Bb]in\d+', before_aota)
+                            bin_suffix   = bin_match.group(0) if bin_match else ''
+                            target_stem  = report_stem + bin_suffix + aota_suffix
+                        else:
+                            target_stem  = report_stem
+                        renamed = os.path.join(obs_folder, target_stem + ext)
                         if os.path.isfile(renamed):
                             return renamed
                     if original_path and os.path.isfile(original_path):
@@ -2694,16 +2711,28 @@ class OccultationManagerGUI(Form):
                                 if _p not in attach_files:
                                     attach_files.append(_p)
 
-                    # VizieR .dat files — check reports folder then obs folder
+                    # VizieR .dat files — check reports folder then obs folder.
+                    # VizieR filenames: ({asteroid})_{yyyymmdd}_HHMMSS_FF.dat
+                    # Filter to files matching this event's asteroid number and date so that
+                    # .dat files from previous events in the same folder are not included.
+                    _stem_parts = report_stem.split('_')
+                    _dat_prefix = None
+                    if len(_stem_parts) >= 2:
+                        _date_part   = _stem_parts[0]   # e.g. "20260427"
+                        _ast_num     = _stem_parts[1]   # e.g. "778"
+                        _dat_prefix  = '({0})_{1}'.format(_ast_num, _date_part)
                     _seen_dat = set()
                     for _dat_folder in [reports_folder, obs_folder]:
                         if _dat_folder and os.path.isdir(_dat_folder):
                             for _fname in sorted(os.listdir(_dat_folder)):
-                                if _fname.endswith('.dat') and _fname.startswith('('):
-                                    _p = os.path.join(_dat_folder, _fname)
-                                    if _p not in attach_files and _p not in _seen_dat:
-                                        attach_files.append(_p)
-                                        _seen_dat.add(_p)
+                                if not (_fname.endswith('.dat') and _fname.startswith('(')):
+                                    continue
+                                if _dat_prefix and not _fname.startswith(_dat_prefix):
+                                    continue
+                                _p = os.path.join(_dat_folder, _fname)
+                                if _p not in attach_files and _p not in _seen_dat:
+                                    attach_files.append(_p)
+                                    _seen_dat.add(_p)
 
                 # --- Build ZIP in the reports folder ---
                 zip_path = os.path.join(reports_folder, report_stem + '.zip')

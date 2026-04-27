@@ -1111,6 +1111,36 @@ Examples: given `report_stem = "20250523_778_Theobalda"`:
 
 ---
 
+## Post-Report Success Dialog (`_show_report_success_dialog`)
+
+Internal helper in `main_gui.py` that displays the post-report success dialog after report
+generation completes.
+
+**Signature:**
+```python
+_show_report_success_dialog(
+    output_path,            # str: full path to the generated report file
+    tangra_csv_path,        # str|None: Tangra CSV path (for Gmail ZIP)
+    aota_report_path,       # str|None: AOTA Report .txt path (for Positive/Unsure ZIP)
+    obs_folder,             # str|None: observation folder (for AOTA PNGs, .dat scan)
+    observation_type=None   # str|None: 'Positive', 'Negative', 'Unsure'; controls ZIP contents
+)
+```
+
+**`observation_type` and the Gmail ZIP contents:**
+
+| `observation_type` | Files included in `{report_stem}.zip` |
+|---|---|
+| `'Negative'` or `None` | Excel report, Tangra CSV |
+| `'Positive'` or `'Unsure'` | Excel report, Tangra CSV, AOTA Report `.txt`, AOTA event graph PNGs (`_aota_` in filename), VizieR `.dat` (starts with `(` in obs/reports folder) |
+
+**Renamed-file awareness:** before adding a file to the ZIP, the helper calls `_resolve(path)`,
+which substitutes the file in the observation folder whose stem matches `{report_stem}{ext}` if
+such a file exists. This ensures renamed files (after using the Rename Files dialog) are
+preferred over the original input paths.
+
+---
+
 ## SharpCap COM API Reference
 
 The application interacts with SharpCap through COM automation. These are the key SharpCap objects used:
