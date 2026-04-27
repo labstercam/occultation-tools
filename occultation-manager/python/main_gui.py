@@ -2625,7 +2625,6 @@ class OccultationManagerGUI(Form):
                                 MessageBoxButtons.OK, MessageBoxIcon.Error)
 
         def _export_vizier(s, e):
-            dlg.Close()
             self._launch_vizier_export(tangra_csv_path, copy_folder, timing_data)
 
         def _open_rename_dialog(s, e):
