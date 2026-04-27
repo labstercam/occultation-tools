@@ -2453,6 +2453,7 @@ class OccultationManagerGUI(Form):
                     timing_data,
                     aota_file_path=aota_file_path,
                     aota_report_path=aota_report_path,
+                    observation_type=observation_type,
                 )
             else:
                 print(f"ERROR: Report generation failed (check log)")
@@ -2476,7 +2477,8 @@ class OccultationManagerGUI(Form):
     
     def _show_report_success_dialog(self, output_path, xml_output_path, copy_folder,
                                     tangra_csv_path, timing_data,
-                                    aota_file_path=None, aota_report_path=None):
+                                    aota_file_path=None, aota_report_path=None,
+                                    observation_type=None):
         """Show a post-report dialog with filenames, folder paths, and Open/Export buttons."""
         from System.Windows.Forms import (
             Form as _Form, Button as _Button, Label as _Label
@@ -2572,6 +2574,11 @@ class OccultationManagerGUI(Form):
         btn_rename.AutoSize = True
         dlg.Controls.Add(btn_rename)
 
+        btn_gmail = _Button()
+        btn_gmail.Text = "Send via Gmail\u2026"
+        btn_gmail.AutoSize = True
+        dlg.Controls.Add(btn_gmail)
+
         btn_close = _Button()
         btn_close.Text = "Close"
         btn_close.AutoSize = True
@@ -2603,8 +2610,9 @@ class OccultationManagerGUI(Form):
 
             btn_vizier.Location = Point(12, y)
             btn_rename.Location = Point(btn_vizier.Right + 8, y)
-            btn_close.Location = Point(btn_rename.Right + 8, y)
-            dlg.ClientSize = Size(dlg.ClientSize.Width, btn_close.Bottom + 16)
+            btn_gmail.Location = Point(btn_rename.Right + 8, y)
+            btn_close.Location = Point(btn_gmail.Right + 8, y)
+            dlg.ClientSize = Size(max(dlg.ClientSize.Width, btn_close.Right + 16), btn_close.Bottom + 16)
 
         dlg.Layout += _layout
 
@@ -2626,6 +2634,164 @@ class OccultationManagerGUI(Form):
 
         def _export_vizier(s, e):
             self._launch_vizier_export(tangra_csv_path, copy_folder, timing_data)
+
+        def _send_via_gmail(s, e):
+            try:
+                import subprocess
+                import zipfile
+                import System
+                from System.Windows.Forms import (
+                    Form as _AttForm, Button as _AttBtn, Label as _AttLbl,
+                )
+
+                report_stem = os.path.splitext(os.path.basename(output_path))[0]
+                reports_folder = os.path.dirname(output_path)
+
+                # Determine the primary observation folder (source of input files).
+                obs_folder = None
+                for _src in [tangra_csv_path, aota_file_path, aota_report_path]:
+                    if _src and os.path.isfile(_src):
+                        obs_folder = os.path.dirname(_src)
+                        break
+                if obs_folder is None and copy_folder:
+                    obs_folder = copy_folder
+
+                def _resolve(original_path):
+                    """Return renamed version if it exists in obs_folder, else original."""
+                    if original_path and obs_folder:
+                        ext = os.path.splitext(original_path)[1]
+                        renamed = os.path.join(obs_folder, report_stem + ext)
+                        if os.path.isfile(renamed):
+                            return renamed
+                    if original_path and os.path.isfile(original_path):
+                        return original_path
+                    return None
+
+                # --- Collect files to zip ---
+                attach_files = []
+
+                # Excel report — always
+                if output_path and os.path.isfile(output_path):
+                    attach_files.append(output_path)
+
+                # Tangra light curve CSV — always; prefer renamed version
+                csv_file = _resolve(tangra_csv_path)
+                if csv_file and csv_file not in attach_files:
+                    attach_files.append(csv_file)
+
+                is_positive = observation_type in ('Positive', 'Unsure')
+                if is_positive:
+                    # AOTA report text file — prefer renamed version
+                    aota_rep = _resolve(aota_report_path)
+                    if aota_rep and aota_rep not in attach_files:
+                        attach_files.append(aota_rep)
+
+                    # AOTA event graph PNGs in obs folder
+                    if obs_folder and os.path.isdir(obs_folder):
+                        for _fname in sorted(os.listdir(obs_folder)):
+                            if '_aota_' in _fname.lower() and _fname.lower().endswith('.png'):
+                                _p = os.path.join(obs_folder, _fname)
+                                if _p not in attach_files:
+                                    attach_files.append(_p)
+
+                    # VizieR .dat files — check reports folder then obs folder
+                    _seen_dat = set()
+                    for _dat_folder in [reports_folder, obs_folder]:
+                        if _dat_folder and os.path.isdir(_dat_folder):
+                            for _fname in sorted(os.listdir(_dat_folder)):
+                                if _fname.endswith('.dat') and _fname.startswith('('):
+                                    _p = os.path.join(_dat_folder, _fname)
+                                    if _p not in attach_files and _p not in _seen_dat:
+                                        attach_files.append(_p)
+                                        _seen_dat.add(_p)
+
+                # --- Build ZIP in the reports folder ---
+                zip_path = os.path.join(reports_folder, report_stem + '.zip')
+                zipped = []
+                zip_errors = []
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for _f in attach_files:
+                        try:
+                            zf.write(_f, os.path.basename(_f))
+                            zipped.append(os.path.basename(_f))
+                        except Exception as _ze:
+                            zip_errors.append("{0}: {1}".format(os.path.basename(_f), _ze))
+
+                # --- Open Gmail compose in Chrome ---
+                subject = report_stem
+                encoded_subject = System.Uri.EscapeDataString(subject)
+                gmail_url = (
+                    "https://mail.google.com/mail/?view=cm"
+                    "&to=mpobservations%40occultations.org.nz"
+                    "&cc=director%40occultations.org.nz"
+                    "&su={subject}"
+                ).format(subject=encoded_subject)
+                chrome_paths = [
+                    r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+                    r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+                ]
+                launched = False
+                for chrome_exe in chrome_paths:
+                    if os.path.isfile(chrome_exe):
+                        subprocess.Popen([chrome_exe, gmail_url])
+                        launched = True
+                        break
+                if not launched:
+                    System.Diagnostics.Process.Start(gmail_url)
+
+                # --- Select the ZIP in Explorer so user can drag it into Chrome ---
+                try:
+                    subprocess.Popen(['explorer', '/select,', zip_path])
+                except Exception:
+                    pass
+
+                # --- Small info dialog ---
+                attach_dlg = _AttForm()
+                attach_dlg.Text = "Attach ZIP to Gmail"
+                attach_dlg.FormBorderStyle = attach_dlg.FormBorderStyle.FixedDialog
+                attach_dlg.MaximizeBox = False
+                attach_dlg.MinimizeBox = False
+                attach_dlg.StartPosition = FormStartPosition.CenterScreen
+                attach_dlg.TopMost = True
+                attach_dlg.Width = 560
+
+                zip_name = os.path.basename(zip_path)
+                contents_text = "\n".join("  \u2022 " + n for n in zipped)
+                if zip_errors:
+                    contents_text += "\n\nWarning — could not add:\n" + "\n".join("  " + e for e in zip_errors)
+
+                lbl_msg = _AttLbl()
+                lbl_msg.Text = (
+                    "Gmail is open. A ZIP file has been created and selected in Explorer.\n\n"
+                    "{zip_name}\n\n"
+                    "Contents:\n{contents}\n\n"
+                    "Drag the ZIP from Explorer into the Gmail compose window, then send."
+                ).format(zip_name=zip_name, contents=contents_text)
+                lbl_msg.AutoSize = True
+                lbl_msg.MaximumSize = Size(524, 0)
+                lbl_msg.Location = Point(12, 12)
+                attach_dlg.Controls.Add(lbl_msg)
+
+                btn_ok = _AttBtn()
+                btn_ok.Text = "OK"
+                btn_ok.AutoSize = True
+                attach_dlg.Controls.Add(btn_ok)
+
+                def _att_layout(s2, e2):
+                    btn_ok.Location = Point(12, lbl_msg.Bottom + 10)
+                    attach_dlg.ClientSize = Size(attach_dlg.ClientSize.Width, btn_ok.Bottom + 14)
+
+                attach_dlg.Layout += _att_layout
+
+                def _att_ok(s2, e2):
+                    attach_dlg.Close()
+
+                btn_ok.Click += _att_ok
+                attach_dlg.Show()  # Non-modal — keep open while working in Chrome
+
+            except Exception as ex:
+                MessageBox.Show("Could not open Gmail:\n{0}".format(ex), "Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error)
 
         def _open_rename_dialog(s, e):
             # Always derive obs_folder from source file locations (not copy_folder which is
@@ -2651,6 +2817,7 @@ class OccultationManagerGUI(Form):
         if btn_open_user is not None:
             btn_open_user.Click += _open_user_folder
         btn_vizier.Click += _export_vizier
+        btn_gmail.Click += _send_via_gmail
         btn_rename.Click += _open_rename_dialog
         btn_close.Click += _close_dlg
 
