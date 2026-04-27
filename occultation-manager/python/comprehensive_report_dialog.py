@@ -507,7 +507,7 @@ class ComprehensiveReportDialog(Form):
         self._pnl_step_a4.Controls.Add(lbl_a4_csv_prefix)
 
         self._lbl_csv_delay = Label()
-        self._lbl_csv_delay.Text = "\u2014"
+        self._lbl_csv_delay.Text = "Rescan folder to load the Tangra CSV acquisition delay"
         self._lbl_csv_delay.Location = Point(222, 26)
         self._lbl_csv_delay.Size = Size(540, 20)
         self._lbl_csv_delay.ForeColor = Color.Gray
@@ -525,6 +525,7 @@ class ComprehensiveReportDialog(Form):
         self._rad_corrections_applied.Location = Point(8, 50)
         self._rad_corrections_applied.Size = Size(910, 22)
         self._rad_corrections_applied.CheckedChanged += self._on_timing_radio_changed
+        self._rad_corrections_applied.Enabled = False
         self._pnl_step_a4.Controls.Add(self._rad_corrections_applied)
 
         self._pnl_applied_confirm = Panel()
@@ -922,6 +923,8 @@ class ComprehensiveReportDialog(Form):
                 self.lbl_ts_minmax.Text = "Deviation: -"
             self.lbl_ts_minmax.ForeColor = Color.Gray
             self._check_event_in_window(summary)
+            delay_ms = self._calculate_camera_delay()
+            self._auto_detect_camera_delay(delay_ms)
         except Exception:
             self.csv_preview_label.Text = "Observing times: unable to extract"
             self._reset_timestamp_check()
@@ -1100,6 +1103,11 @@ class ComprehensiveReportDialog(Form):
     def _reset_timestamp_check(self):
         """Reset timestamp check labels and state"""
         self._ts_summary = None
+        if hasattr(self, '_rad_corrections_applied'):
+            self._rad_corrections_applied.Enabled = False
+        if hasattr(self, '_lbl_csv_delay'):
+            self._lbl_csv_delay.Text = 'Rescan folder to load the Tangra CSV acquisition delay'
+            self._lbl_csv_delay.ForeColor = Color.Gray
         self.lbl_ts_delayed.Text = "Delayed frames: -"
         self.lbl_ts_delayed.ForeColor = Color.Gray
         self.lbl_ts_late.Text = "Late frames: -"
@@ -2247,9 +2255,14 @@ class ComprehensiveReportDialog(Form):
         if not hasattr(self, '_lbl_csv_delay'):
             return
         if self._ts_summary is None:
-            self._lbl_csv_delay.Text = '\u2014'
+            self._lbl_csv_delay.Text = 'Rescan folder to load the Tangra CSV acquisition delay'
             self._lbl_csv_delay.ForeColor = Color.Gray
+            if hasattr(self, '_rad_corrections_applied'):
+                self._rad_corrections_applied.Enabled = False
             return
+        # CSV loaded — enable the Applied radio now that we have data to compare against
+        if hasattr(self, '_rad_corrections_applied'):
+            self._rad_corrections_applied.Enabled = True
         csv_delay = self._ts_summary.get('acquisition_delay')  # ms, float or None
         # Compare against Total Delay (cam acquisition + NTP offset)
         ntp_ms = getattr(self, '_ntp_offset_ms', 0.0)

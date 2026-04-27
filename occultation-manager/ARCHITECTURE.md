@@ -200,6 +200,12 @@ Bottom Panel:
 - `ManualCalibrationEntryDialog` - Dialog for manually entering a line delay calibration value (per-line delay and line 0 delay) when no automated capture is possible; validates numeric input and saves to `ConfigManager` via the standard calibration schema
 
 - `EventsDataGrid(DataGridView)` - Custom data grid for events with checkbox column
+  - Default sort: DateTime ascending on first load and after refresh
+  - Column-header click sort: toggles direction; sort glyph (▲/▼) shown on active column
+  - Sort state preserved across `update_events()` calls
+  - `AutoSizeMode = NotSet` on all text columns (prevents live remeasurement that caused a
+    spinning wait cursor on hover); `AutoResizeColumns(AllCells)` called once after population
+    then columns switched back to `NotSet` to freeze widths
 
 ---
 
@@ -496,6 +502,12 @@ Three specialized report generators create Excel-based observation reports by fi
 10. RenameFilesDialog opens (post-report): offers to rename observation input files
     (CSV, AOTA XML/Report, image files, .lc files) to match the report stem;
     proposed names are editable; _AOTA_… and _Bin{N} suffixes preserved automatically
+11. Post-report success dialog: buttons to open reports folder, open user folder,
+    Export VizieR .dat…, Rename Files…, Send via Gmail…, and Close
+    - "Send via Gmail…" creates {report_stem}.zip in reports folder, opens Gmail compose in
+      Chrome pre-addressed to RASNZ coordinators, selects ZIP in Explorer for attachment;
+      ZIP contains: Excel report + Tangra CSV (all); also AOTA report, AOTA graph PNGs, and
+      VizieR .dat for Positive/Unsure observations; renamed file versions preferred when present
 ```
 
 **Data Sources:**
@@ -520,6 +532,8 @@ Three specialized report generators create Excel-based observation reports by fi
 - Observation type radio buttons with tooltips (AOTA/PyOTE requirement per type)
 - Observing conditions section (clouds, stability, other)
 - **"Include Station Name in Filenames" checkbox** (unchecked by default) in PhaseBDialog (dialog 3); value exposed via `get_include_station_name()`; wired to `TTReportGeneratorOpenize._generate_filename()`
+- **Step A4 (camera delay from Tangra CSV)**: initial label shows hint text; "Applied" radio
+  button disabled until a Tangra CSV is loaded (re-enabled on CSV load; reset on folder rescan)
 - **Section 4 — Observation Files**: four file pickers loaded from the observation folder:
   - CSV light curve files (Tangra / R-OTE / Limovie; format shown in brackets)
   - AOTA XML files
@@ -664,6 +678,14 @@ thread.start()
 
 **Integration Note:**
 This module is distributed in both `occultation-manager/python/` (integrated workflow) and `gps-timing-analysis/python/` (standalone). The OM copy uses `_OM_CONFIG_AVAILABLE = True` to enable config persistence; the GPS standalone copy gracefully falls back when `config.py` is not present.
+
+#### NTP Clock Accuracy Analyzer (`analyze_ntp_timing_accuracy.py`)
+- Four live-drawn charts: delay, offset, jitter, dispersion
+- **Chart legend**: lists all servers seen in peerstats (not just active/selected peers)
+  - Selected (ever-active) peers listed first, remaining servers alphabetically
+  - Each server has a distinct assigned color; same color used for scatter dots and legend swatch
+  - Server distances (km) shown in parentheses in legend for all servers
+- Raw per-server peer scatter points (optional) colored by server for all peer servers
 
 ---
 

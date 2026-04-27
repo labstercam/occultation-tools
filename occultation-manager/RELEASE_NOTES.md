@@ -2,7 +2,7 @@
 
 ## Version 0.2.0-beta.9 (April 2026)
 
-**Report Generation Bug Fixes, File Rename Dialog, and UX Improvements**
+**Report Generation Bug Fixes, UX Improvements, Gmail Submission, and NTP Chart Enhancements**
 
 ### SNR Fix — AOTA Report Parser (Bug Fix)
 
@@ -20,6 +20,15 @@ decimal places, losing precision for delays calculated from the rolling-shutter 
 
 - `total_delay_s` and `delay_sec` in `tt_report_openize.py` now rounded to 4 decimal places
 - Consistent with the precision provided by Tangra's measurement parameters
+
+### Camera Acquisition Delay Source — Tangra CSV Priority (Bug Fix)
+
+Cell P26 of the TT report was being populated from the calculated total delay (camera + NTP),
+ignoring the `Acquisition Delay (ms)` value that the user had already entered in Tangra.
+
+- `tt_report_openize.py` now reads `acquisition_delay` from the Tangra CSV data first
+- Falls back to calculated `camera_delay_ms + ntp_offset_ms` only when no CSV value is present
+- Ensures the report records exactly what Tangra applied, not a recalculated approximation
 
 ### NTP Timing Comment — Correct Cell (Bug Fix)
 
@@ -39,6 +48,15 @@ When AOTA Report events are available in the D/R event combo of the Phase B repo
 they are now listed first (before AOTA XML events and PyOTE events), making the most commonly
 used source the default selection.
 
+### D/R Labels — Closer Together and Duration Display (UX)
+
+The D and R time labels in the "Select Event to Report" panel have been repositioned closer
+together, and a new duration label has been added on the right showing the chord duration.
+
+- `lbl_dr_d_info` width reduced, `lbl_dr_r_info` moved left to close the gap
+- New `lbl_dr_duration` label: `"Dur: Xs"` formatted to 1–2 significant figures (e.g. `Dur: 2.3s`)
+- Duration label is blank when only one of D or R is available, or when R − D is negative
+
 ### D/R Uncertainty — 1–2 Significant Figures (UX)
 
 The uncertainty shown next to D and R times in the "Select Event to Report" panel was
@@ -46,6 +64,47 @@ displaying excessive precision (e.g. `±0.2000001s`).
 
 - New `_fmt_unc()` static method in `PhaseBDialog` applies Python's `{:.2g}` format
 - Result is now `±0.2s`, `±0.04s`, `±1.1s` etc. — 1 or 2 significant figures
+
+### Step A4 — Hint Text and Applied Radio Gating (UX)
+
+In the Generate Report dialog, Step A4 (camera delay from Tangra CSV) had an unhelpful
+default label and allowed the "Applied" radio button to be selected before any CSV was loaded.
+
+- Initial label text changed to `"Rescan folder to load the Tangra CSV acquisition delay"`
+- "Applied" radio button is disabled at dialog open; re-enabled only when a CSV is loaded
+- Reset (folder rescan without valid CSV) restores the disabled state and hint text
+
+### VizieR Export — Returns to Post-Report Dialog (UX)
+
+Previously, clicking "Export VizieR .dat…" in the post-report dialog closed the dialog first,
+then opened the VizieR export form. This prevented returning to the other buttons.
+
+- VizieR export now opens modally on top of the post-report dialog
+- After VizieR closes, the user returns to the post-report dialog as expected
+
+### User Settings — Mag for 40 ms Exposure Formatted to 1 d.p. (UX)
+
+The magnitude reference for 40 ms exposure in User Settings was displayed with full float
+precision (e.g. `7.699999999999`). It is now formatted to 1 decimal place on both load and save.
+
+### Event Grid — Default Sort and Column-Click Sorting (New)
+
+The main event grid now supports interactive column sorting and has a sensible default order.
+
+- **Default sort**: DateTime ascending — events listed in chronological order on load/refresh
+- **Column-click sorting**: clicking any column header sorts by that column; clicking again reverses the direction; the active column shows a sort-direction glyph (▲/▼)
+- Sort state is preserved across grid refreshes (e.g. after downloading events)
+- Supported sort columns: DateTime, Event Name, Star Mag, Duration, Probability, Status
+
+### Event Grid — Spinning Cursor Fix (Bug Fix)
+
+The event grid showed a spinning wait cursor whenever the mouse hovered over it.
+
+- Root cause: `AutoSizeMode = AllCells` was set on every text column, causing the DataGridView
+  to continuously remeasure all cell content on every paint/mouse-move event
+- Fix: columns now use `NotSet` mode; `AutoResizeColumns(AllCells)` is called once in
+  `update_events()` after population then immediately switched back to `NotSet` to freeze widths
+- Columns remain correctly sized after each grid refresh; no live overhead during hover
 
 ### Rename Files Dialog — New Post-Report Workflow (New)
 
@@ -90,6 +149,43 @@ timing method (GPS, GPS-CMOS, or NTP) was selected has been removed.
   height of whichever timing sub-panel is visible
 - GPS-CMOS: 55 px, GPS-dumb: 45 px, Analog-VTI: 120 px, NTP: 4 px (no visible panel)
 - Sections 4 and 5 now sit immediately below section 3 as intended
+
+### Send via Gmail — Post-Report (New)
+
+A new **"Send via Gmail…"** button in the post-report success dialog compiles the relevant
+observation files into a ZIP and opens a Gmail compose window pre-addressed to the RASNZ
+occultation coordinators.
+
+**Button behaviour:**
+- Creates `{report_stem}.zip` in the reports folder containing the files for submission
+- Opens a Gmail compose window in Chrome (falls back to default browser) with:
+  - **To**: `mpobservations@occultations.org.nz`
+  - **CC**: `director@occultations.org.nz`
+  - **Subject**: the report base filename (e.g. `20260427_12345_Phaethon_TYC_1234_Smith`)
+- Opens Explorer with the ZIP selected for drag-and-drop into the Gmail compose window
+- Shows a non-modal info dialog listing the ZIP contents
+
+**Files included by observation type:**
+
+| Observation | Files in ZIP |
+|---|---|
+| Negative | Excel report, Tangra CSV |
+| Positive / Unsure | Excel report, Tangra CSV, AOTA report `.txt`, AOTA event graph PNGs, VizieR `.dat` |
+
+**Renamed file awareness:** if the user ran the Rename Files dialog before sending, the renamed
+versions (matched by `{report_stem}.*` in the observation folder) are preferred over the
+original paths.
+
+### NTP Chart — Legend Shows All Servers (Bug Fix / Improvement)
+
+The NTP analyzer delay/jitter/dispersion charts showed legend entries only for servers that
+were ever the *selected* (active) peer. Servers visible only as raw peer scatter dots had no
+color assignment and no legend entry, making their scatter points unidentifiable.
+
+- All servers seen in peerstats now receive a distinct color (via `get_server_color()`)
+- Legend lists: selected (ever-active) peers first, then all remaining peers alphabetically
+- Server distances (km) shown in legend for all servers, not just selected peers
+- Removed leftover `[legend debug]` print statements
 
 ---
 

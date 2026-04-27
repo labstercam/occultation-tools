@@ -164,13 +164,17 @@ occultation-manager/
 - Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
 - **Include Station Name in Filenames**: optional checkbox in the Generate Report dialog (unchecked by default) appends the station name to the TT report filename
 - **Rename Files dialog**: after report generation, optionally rename the observation files (CSV, AOTA XML/Report, image files, `.lc` files) to share the same stem as the report; proposed names are editable; `_AOTA_…` and `_Bin{N}` suffixes are preserved automatically
+- **Send via Gmail**: post-report button creates a submission ZIP (Excel + CSV for Negative; also AOTA report, AOTA event graphs, and VizieR `.dat` for Positive/Unsure) and opens a Gmail compose window pre-addressed to the RASNZ coordinators; Explorer opens with the ZIP selected for drag-and-drop attachment
 - **D/R uncertainty display**: uncertainty shown in the D/R event info panel is formatted to 1–2 significant figures
+- **D/R duration label**: chord duration (R − D) shown alongside the D and R times in the event info panel, formatted to 1–2 significant figures
+- **Event grid sorting**: default sort by DateTime ascending; click any column header to sort by that column; click again to reverse; sort-direction glyph shown on the active column; sort state preserved across grid refreshes
+- **Tangra CSV delay priority**: TT report cell P26 uses the `Acquisition Delay (ms)` recorded in the Tangra CSV (the value Tangra actually applied) rather than a recalculated total
 - Use with caution and verify all generated data before submission
 
 **Tools Menu**
 - **Camera Delay Calibration**: LED line delay calibration for rolling-shutter cameras (requires SharpCap live capture or ADV replay); results can be saved directly to the camera profile. An "Approximate Delays" option is available when no GPS flasher is available.
 - **Camera Delay Calculator**: Calculate the rolling-shutter acquisition delay for a given star Y pixel position using stored line delay calibrations; one-click copy to clipboard in TANGRA format
-- **NTP Clock Accuracy**: Full loopstats/peerstats offset, jitter, and delay charting with uncertainty estimate; launched as a separate non-blocking window
+- **NTP Clock Accuracy**: Full loopstats/peerstats offset, jitter, and delay charting with uncertainty estimate; launched as a separate non-blocking window; chart legend lists all servers seen in peerstats (selected peers first, then others alphabetically), each with a distinct color and distance in km
 - **GPS vs NTP Testing**: Measures UTC error of each internet NTP server relative to a GPS PPS refclock using the same NTP dataset; produces per-server uncertainty table, clock drift regression, and three charts (delay, UTC error, selected peer + trend)
 
 **Equipment Management**

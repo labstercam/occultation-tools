@@ -1131,6 +1131,12 @@ class AnalyzerForm(Form):
         if not server_to_color:
             get_server_color("", server_to_color)
 
+        # Assign a distinct colour to every server seen in peerstats (not just
+        # the ones that were ever the selected/active peer).  This ensures the
+        # raw-peer scatter dots are coloured and every server appears in the legend.
+        for _srv in sorted(delays_by_server.keys()):
+            get_server_color(_srv, server_to_color)
+
         def y_limits_ms(series_list):
             """Compute y_min, y_max, y_step in ms for a list of point series (values in seconds).
             Always spans zero; snapped to a nice tick interval."""
@@ -1183,23 +1189,20 @@ class AnalyzerForm(Form):
         raw_dl_flat = [(s, v) for s, v, _ in raw_peer_delay_pts]
         delay_min, delay_max, delay_step = y_limits_ms([delay_values_only] + ([raw_dl_flat] if raw_dl_flat else []))
 
-        # Get unique selected servers for legend
-        unique_servers = sorted(set([srv for _stamp, srv in peer_timeline]))
+        # Build legend server list: selected (ever-active) peers first so they
+        # appear at the left, then all remaining peers alphabetically.
+        _selected_server_set = set([srv for _stamp, srv in peer_timeline])
+        _all_server_set = set(server_to_color.keys())
+        unique_servers = sorted(_selected_server_set) + sorted(_all_server_set - _selected_server_set)
         if not unique_servers and delay_points:
             unique_servers = sorted(set([srv for _stamp, _value, srv in delay_points]))
         obs_lat, obs_lon = self._get_observer_coords()
-        print("[legend debug] obs_lat=%r obs_lon=%r" % (obs_lat, obs_lon))
-        print("[legend debug] known_servers count=%d" % len(self._known_servers))
-        print("[legend debug] server_to_color keys=%r" % list(server_to_color.keys()))
         server_to_km = {}
         for _srv in list(server_to_color.keys()):
             if _srv:
                 _loc = resolve_server_location(_srv, self._known_servers, obs_lat, obs_lon)
-                print("[legend debug] server=%r -> d_min_s=%r geo_km=%r note=%r" % (
-                    _srv, _loc["d_min_s"], _loc["geo_km"], _loc["location_note"]))
                 if _loc["geo_km"] is not None:
                     server_to_km[_srv] = _loc["geo_km"]
-        print("[legend debug] server_to_km=%r" % server_to_km)
         self.update_delay_header_legend(server_to_color, unique_servers, server_to_km)
 
         self._plot_data = {

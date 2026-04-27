@@ -396,14 +396,21 @@ class PhaseBDialog(Form):
         self.lbl_dr_d_info = Label()
         self.lbl_dr_d_info.Text = "D: -"
         self.lbl_dr_d_info.Location = Point(10, 52)
-        self.lbl_dr_d_info.Size = Size(440, 20)
+        self.lbl_dr_d_info.Size = Size(355, 20)
         grp_dr.Controls.Add(self.lbl_dr_d_info)
 
         self.lbl_dr_r_info = Label()
         self.lbl_dr_r_info.Text = "R: -"
-        self.lbl_dr_r_info.Location = Point(460, 52)
-        self.lbl_dr_r_info.Size = Size(440, 20)
+        self.lbl_dr_r_info.Location = Point(370, 52)
+        self.lbl_dr_r_info.Size = Size(340, 20)
         grp_dr.Controls.Add(self.lbl_dr_r_info)
+
+        self.lbl_dr_duration = Label()
+        self.lbl_dr_duration.Text = ""
+        self.lbl_dr_duration.Location = Point(716, 52)
+        self.lbl_dr_duration.Size = Size(188, 20)
+        self.lbl_dr_duration.ForeColor = Color.Gray
+        grp_dr.Controls.Add(self.lbl_dr_duration)
 
         if _is_ntp_timing:
             self.chk_ntp_uncertainty = CheckBox()
@@ -1205,6 +1212,8 @@ class PhaseBDialog(Form):
         if idx < 0 or idx >= len(self._dr_events):
             self.lbl_dr_d_info.Text = "D: -"
             self.lbl_dr_r_info.Text = "R: -"
+            if hasattr(self, 'lbl_dr_duration'):
+                self.lbl_dr_duration.Text = ""
             if hasattr(self, 'lbl_ntp_info'):
                 self.lbl_ntp_info.ForeColor = Color.Gray
             self.ntp_comment = None
@@ -1248,6 +1257,20 @@ class PhaseBDialog(Form):
             else:
                 self.lbl_dr_r_info.Text = "R: {0}".format(r_time)
             self.ntp_comment = None
+
+        # D/R duration
+        if hasattr(self, 'lbl_dr_duration'):
+            d_sec_val = rec.get('d_seconds')
+            r_sec_val = rec.get('r_seconds')
+            if d_sec_val is not None and r_sec_val is not None:
+                dur = r_sec_val - d_sec_val
+                if dur >= 0:
+                    self.lbl_dr_duration.Text = "Dur: {0}s".format('{:.2g}'.format(dur))
+                    self.lbl_dr_duration.ForeColor = Color.Gray
+                else:
+                    self.lbl_dr_duration.Text = ""
+            else:
+                self.lbl_dr_duration.Text = ""
 
         if hasattr(self, 'lbl_ntp_info'):
             if is_ntp and ntp_unc_ms > 0:

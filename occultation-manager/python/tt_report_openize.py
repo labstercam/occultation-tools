@@ -324,20 +324,20 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
                 self._set_cell(worksheet, "S25", "Seconds")
         
         # Camera delay / timing correction cell (P26)
-        # Use total delay (cam + ntp) so the value is non-zero even when both were applied in Tangra;
-        # fall back to tangra acquisition_delay when timing_data is not available.
-        if self._timing_data:
+        # Prefer the Tangra CSV acquisition_delay (what the user actually entered in Tangra).
+        # Fall back to the total delay calculated in the form (cam + NTP) when no CSV is available.
+        if self._tangra_data and 'acquisition_delay' in self._tangra_data:
+            delay_ms = self._tangra_data['acquisition_delay']
+            delay_sec = round(delay_ms / 1000.0, 4)
+            print(f"\nSetting camera delay from Tangra CSV: {delay_ms}ms = {delay_sec}s")
+            self._set_cell(worksheet, "P26", delay_sec)
+            self._set_cell(worksheet, "O26", "yes")
+        elif self._timing_data:
             cam_ms = self._timing_data.get('camera_delay_ms') or 0.0
             ntp_ms = self._timing_data.get('ntp_offset_ms') or 0.0
             total_delay_s = round((cam_ms + ntp_ms) / 1000.0, 4)
-            print(f"\nSetting timing correction (total delay): {cam_ms + ntp_ms:.3f} ms = {total_delay_s}s")
+            print(f"\nSetting timing correction (total delay fallback): {cam_ms + ntp_ms:.3f} ms = {total_delay_s}s")
             self._set_cell(worksheet, "P26", total_delay_s)
-            self._set_cell(worksheet, "O26", "yes")
-        elif self._tangra_data and 'acquisition_delay' in self._tangra_data:
-            delay_ms = self._tangra_data['acquisition_delay']
-            delay_sec = round(delay_ms / 1000.0, 4)
-            print(f"\nSetting camera delay: {delay_ms}ms = {delay_sec}s")
-            self._set_cell(worksheet, "P26", delay_sec)
             self._set_cell(worksheet, "O26", "yes")
         else:
             self._set_cell(worksheet, "O26", "No")

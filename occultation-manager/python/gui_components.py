@@ -3,12 +3,13 @@ clr.AddReference("System.Windows.Forms")
 clr.AddReference("System.Drawing")
 
 import webbrowser
+from datetime import datetime, timezone
 from System.Drawing import Font, FontStyle, SystemColors
-from datetime import timezone
 from System.Windows.Forms import (
     DataGridView, DataGridViewSelectionMode, DataGridViewCheckBoxColumn,
     DataGridViewLinkColumn, DataGridViewTextBoxColumn, MessageBox,
-    MessageBoxButtons, MessageBoxIcon, DataGridViewDataErrorContexts
+    MessageBoxButtons, MessageBoxIcon, DataGridViewDataErrorContexts, SortOrder,
+    DataGridViewAutoSizeColumnsMode
 )
 from System.Windows.Forms import DataGridViewAutoSizeColumnMode
 
@@ -18,6 +19,9 @@ class EventsDataGrid(DataGridView):
     def __init__(self):
         DataGridView.__init__(self)
         self.events = []
+        # Sort state: default is datetime ascending (oldest first)
+        self._sort_col_name = 'DateTime'
+        self._sort_ascending = True
         self.setup_grid()
     
     def setup_grid(self):
@@ -84,6 +88,9 @@ class EventsDataGrid(DataGridView):
             self.Columns.Add(col)
         # Set sensible per-column autosize modes so columns grow to fit their
         # content (headers + cell text) and respect DPI/font scaling.
+        # Note: AllCells mode causes a spinning wait cursor on hover because the
+        # grid continuously remeasures content during paint/mouse-move events.
+        # Instead we fix column widths in update_events() via AutoResizeColumns().
         try:
             for col in self.Columns:
                 try:
@@ -99,10 +106,9 @@ class EventsDataGrid(DataGridView):
                         # Keep the specified fixed width
                         col.Width = max(24, col.Width)
                     else:
-                        # For text columns, size to content so font scaling is respected
-                        col.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells
+                        # NotSet — let update_events() do a one-shot resize via AutoResizeColumns()
+                        col.AutoSizeMode = DataGridViewAutoSizeColumnMode.NotSet
                 except Exception:
-                    # If per-column property assignment fails, ignore
                     pass
         except Exception:
             pass
@@ -112,6 +118,8 @@ class EventsDataGrid(DataGridView):
         # Handle checkbox changes immediately
         self.CurrentCellDirtyStateChanged += self.current_cell_dirty_state_changed
         self.CellValueChanged += self.cell_value_changed
+        # Column-header click for user-driven sorting
+        self.ColumnHeaderMouseClick += self._on_column_header_click
         
     
     def cell_double_click(self, sender, e):
@@ -153,9 +161,71 @@ class EventsDataGrid(DataGridView):
                 if parent_form and hasattr(parent_form, 'update_selection_summary'):
                     parent_form.update_selection_summary()
     
+    def _on_column_header_click(self, sender, e):
+        """Sort by the clicked column; toggle direction if already sorted by that column."""
+        col = self.Columns[e.ColumnIndex]
+        if col.Name == 'Selected':
+            return  # checkbox column — not sortable
+        if self._sort_col_name == col.Name:
+            self._sort_ascending = not self._sort_ascending
+        else:
+            self._sort_col_name = col.Name
+            self._sort_ascending = True
+        self.update_events(self.events)
+
+    def _sort_key(self, ev):
+        """Return a sort key for the given event based on the current sort column."""
+        name = self._sort_col_name
+        if name == 'DateTime':
+            return ev.event_datetime if ev.event_datetime else datetime.min
+        if name == 'EventName':
+            return (ev.get_asteroid_display_name() or '').lower()
+        if name == 'StationName':
+            return (ev.station_name or '').lower()
+        if name == 'StarMag':
+            return ev.star_mag or 0
+        if name == 'CombMag':
+            return ev.comb_mag or 0
+        if name == 'MagDrop':
+            return ev.mag_drop or 0
+        if name == 'ExposureMs':
+            return ev.exposure_ms or 0
+        if name == 'Gain':
+            return ev.gain_value or 0
+        if name == 'RecordingTime':
+            return ev.recording_duration or 0
+        if name == 'MaxDuration':
+            return ev.max_duration_seconds or 0
+        if name == 'Altitude':
+            return ev.star_alt or 0
+        if name == 'Status':
+            return (ev.get_status_info() or '').lower()
+        return ''
+
+    def _apply_sort_glyphs(self):
+        """Update column header sort glyph arrows to match the current sort state."""
+        try:
+            none_sort = getattr(SortOrder, 'None')
+            for col in self.Columns:
+                try:
+                    if col.Name == self._sort_col_name:
+                        col.HeaderCell.SortGlyphDirection = (
+                            SortOrder.Ascending if self._sort_ascending else SortOrder.Descending)
+                    else:
+                        col.HeaderCell.SortGlyphDirection = none_sort
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     def update_events(self, events):
         """Update the grid with enhanced events data"""
         self.events = events
+        # Apply current sort order before populating
+        try:
+            sorted_events = sorted(events, key=self._sort_key, reverse=not self._sort_ascending)
+        except Exception:
+            sorted_events = list(events)
         self.Rows.Clear()
         # Determine display preference (UTC vs Local) from parent form config if available
         display_utc = True
@@ -175,7 +245,7 @@ class EventsDataGrid(DataGridView):
         except Exception:
             pass
 
-        for event in events:
+        for event in sorted_events:
             row = self.Rows[self.Rows.Add()]
             row.Cells["Selected"].Value = event.selected
             row.Cells["EventName"].Value = event.get_asteroid_display_name()  # Using enhanced name resolution
@@ -235,8 +305,25 @@ class EventsDataGrid(DataGridView):
         # After populating rows, perform an autosize pass so column widths are
         # adjusted based on the actual rendered text and current font (DPI-aware).
         try:
-            # Auto-resize columns based on content for displayed cells
-            self.AutoResizeColumns()
+            # Auto-resize columns based on content for displayed cells, then fix widths
+            # so the grid doesn't continuously remeasure (which causes a wait cursor).
+            self.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells)
+            # Freeze widths at their current measured size
+            try:
+                not_set = DataGridViewAutoSizeColumnMode.NotSet
+                none_mode = getattr(DataGridViewAutoSizeColumnMode, 'None')
+            except Exception:
+                not_set = None
+                none_mode = None
+            for col in self.Columns:
+                try:
+                    if col.Name == 'Selected':
+                        if none_mode is not None:
+                            col.AutoSizeMode = none_mode
+                    elif not_set is not None:
+                        col.AutoSizeMode = not_set
+                except Exception:
+                    pass
             # Some columns (like DateTime or EventName) may benefit from keeping
             # a little extra space; ensure a minimum width scaled by font height
             try:
@@ -245,15 +332,16 @@ class EventsDataGrid(DataGridView):
                 min_extra = 18
             for col in self.Columns:
                 try:
-                    # Give a bit of breathing room to text columns
-                    if getattr(col, 'AutoSizeMode', None) == DataGridViewAutoSizeColumnMode.AllCells:
-                        col.Width = max(col.Width + min_extra, col.Width)
+                    if col.Name != 'Selected':
+                        col.Width = col.Width + min_extra
                 except Exception:
                     pass
         except Exception:
             # Non-fatal if autosize fails in some environments
             pass
-    
+        # Update sort indicator arrows on column headers
+        self._apply_sort_glyphs()
+
     def get_selected_events(self):
         """Get list of selected events"""
         selected = []

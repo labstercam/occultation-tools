@@ -28,7 +28,7 @@ class ConfigManager:
             'goto_lead_time': 240,
             'mag_for_40ms_exposure': 12.0,
             'default_gain': 450,
-            'sync_mount': True,
+            'sync_mount': False,
             'display_utc': True,
             'output_debug_logs': False,
             

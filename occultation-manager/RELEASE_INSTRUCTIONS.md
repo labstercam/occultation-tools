@@ -142,16 +142,16 @@ occultation-manager/
 3. **Tag and title:**
    - Tag: `v0.2.0-beta.9`
    - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.9 - Bug Fixes, Rename Dialog, and UX Improvements`
+   - Release title: `Occultation Manager v0.2.0-beta.9 - Bug Fixes, Gmail Submission, Grid Sorting, and NTP Chart Improvements`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.9 - Bug Fixes, Rename Dialog, and UX Improvements
+   # Occultation Manager v0.2.0-beta.9 - Bug Fixes, Gmail Submission, Grid Sorting, and NTP Chart Improvements
    
-   **Report Generation Bug Fixes and new features** — SNR fix for AOTA Report parser, camera delay 4 d.p. in TT report, NTP comment written to correct Additional Comments cell, AOTA Report as default first entry in D/R combo, D/R uncertainty displayed to 1–2 sig fig, new Rename Files dialog, "Include Station Name in Filenames" checkbox, and layout fix for blank space in Generate Report dialog.
+   **Report Generation Bug Fixes and new features** — SNR fix, Tangra CSV delay priority fix, NTP comment cell fix, D/R label/duration improvements, Step A4 UX gating, VizieR post-report flow fix, mag 1 d.p., new Rename Files dialog, Include Station Name checkbox, Generate Report layout fix, event grid default sort + column-click sort, spinning cursor fix, Gmail submission with ZIP, and NTP chart legend showing all servers.
    
    SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
 
@@ -192,45 +192,74 @@ occultation-manager/
    ## ✨ What's New in Beta.9
    
    ### SNR Fix — AOTA Report Parser
-   
    SNR now correctly populates the TT report when an AOTA Report text file is the timing source.
    Regex updated to match both `Ave:` and `Average:` label variants (case-insensitive).
+
+   ### Camera Delay Source — Tangra CSV Priority
+   Cell P26 now uses the `Acquisition Delay (ms)` field from the Tangra CSV rather than
+   a recalculated cam+NTP total, ensuring the report matches exactly what Tangra applied.
    
    ### Camera Delay — 4 Decimal Places (TT Report)
-   
    Camera acquisition delay written to cell P26 of the TT report is now rounded to 4 d.p.,
    preserving the precision provided by the rolling-shutter calibration.
    
    ### NTP Comment — Written to Correct Cell
-   
    The NTP uncertainty note is now written to cell D44 (Additional Comments) in the TT report,
    not merged into the Other Conditions field.
    
    ### AOTA Report — Default First in Combo
-   
    When AOTA Report events are available, they appear first in the D/R event combo.
+
+   ### D/R Labels — Closer Together and Duration Display
+   D and R labels are now positioned closer together; a new duration label on the right shows
+   the chord duration (R − D) formatted to 1–2 significant figures.
    
    ### D/R Uncertainty — 1–2 Significant Figures
-   
    Uncertainty values in the event info panel now display as `±0.2s`, `±0.04s` etc.
    instead of `±0.2000001s`.
+
+   ### Step A4 — Hint Text and Applied Radio Gating
+   The Tangra CSV delay label now shows a helpful hint on open; the "Applied" radio button is
+   disabled until a CSV is loaded.
+
+   ### VizieR Export — Returns to Post-Report Dialog
+   After VizieR export closes, the post-report dialog remains open for access to other buttons.
+
+   ### User Settings — Mag for 40 ms Exposure to 1 d.p.
+   The magnitude reference field in User Settings is now displayed and saved to 1 decimal place.
    
    ### Rename Files Dialog (New)
-   
    After report generation a new dialog offers to rename the observation files (CSV, AOTA XML,
    AOTA Report, image files, `.lc` files) so they share the same stem as the generated report.
    Filenames are editable before confirming. `_AOTA_…` and `_Bin{N}` suffixes are preserved
    automatically.
    
    ### Include Station Name in Filenames (New)
-   
    A new checkbox in the Generate Report dialog (unchecked by default) appends the observer's
    station name to the TT report filename when checked.
    
    ### Generate Report Dialog — Layout Fix
-   
    The large blank space below section 3 when a compact timing method is selected has been
    removed. Sections 4 and 5 now follow immediately below section 3.
+
+   ### Event Grid — Default Sort and Column-Click Sorting (New)
+   Events default to DateTime ascending order. Click any column header to sort; click again to
+   reverse. Sort state is preserved across grid refreshes.
+
+   ### Event Grid — Spinning Cursor Fix
+   The wait cursor shown on grid hover has been eliminated by switching column AutoSizeMode
+   from `AllCells` (continuous live remeasurement) to `NotSet` (one-shot resize after populate).
+
+   ### Send via Gmail (New)
+   A new "Send via Gmail…" button in the post-report dialog creates a ZIP of all relevant
+   observation files, opens a Gmail compose window pre-addressed to the RASNZ coordinators
+   with the report filename as the subject, and selects the ZIP in Explorer for easy attachment.
+   Negative reports include the Excel report and Tangra CSV; Positive/Unsure also include the
+   AOTA report, AOTA event graphs, and VizieR `.dat`.
+
+   ### NTP Chart — Legend Shows All Servers
+   The NTP analyzer chart legend now lists all servers seen in peerstats (not just the
+   active selected peer), each with a distinct color and distance. Selected peers appear first.
    
    ## 🎯 Key Features
    

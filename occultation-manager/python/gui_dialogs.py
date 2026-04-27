@@ -1265,7 +1265,7 @@ class ConfigurationDialog(Form):
         self.txt_retention_days.Text = str(self.config.get_days_to_retain_events())
         self.txt_base_duration.Text = str(self.config.get_base_duration())
         self.txt_goto_lead.Text = str(self.config.get_goto_lead_time())
-        self.txt_mag_exposure.Text = str(self.config.get_mag_for_40ms_exposure())
+        self.txt_mag_exposure.Text = '{:.1f}'.format(self.config.get_mag_for_40ms_exposure())
         self.txt_default_gain.Text = str(self.config.get_default_gain())
         self.chk_sync_mount.Checked = self.config.get_sync_mount()
         self.display_utc.Checked = self.config.get_display_utc()
@@ -1308,7 +1308,7 @@ class ConfigurationDialog(Form):
             
             self.config.set_base_duration(int(self.txt_base_duration.Text))
             self.config.set_goto_lead_time(int(self.txt_goto_lead.Text))
-            self.config.set_mag_for_40ms_exposure(float(self.txt_mag_exposure.Text))
+            self.config.set_mag_for_40ms_exposure(round(float(self.txt_mag_exposure.Text), 1))
             self.config.set_default_gain(int(self.txt_default_gain.Text))
             self.config.set_sync_mount(self.chk_sync_mount.Checked)
             self.config.set_display_utc(self.display_utc.Checked)
