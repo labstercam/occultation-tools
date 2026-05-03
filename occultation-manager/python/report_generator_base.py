@@ -64,7 +64,34 @@ class ReportGeneratorBase:
             star_catalog = '1N    NOMAD1'
             star_number = star_name.replace('NOMAD ', '').replace('nomad ', '')
             return star_catalog, star_number
-        
+
+        # Hipparcos format: "HIP 80400" (4–6 digit number)
+        if star_name.upper().startswith('HIP ') or star_name.upper().startswith('HIP\t'):
+            import re as _re
+            m = _re.match(r'HIP\s+(\d{4,6})\b', star_name, _re.IGNORECASE)
+            if m:
+                star_catalog = '1H    Hipparcos'
+                star_number = m.group(1)
+                return star_catalog, star_number
+
+        # HD format: "HD 12345"
+        if star_name.upper().startswith('HD ') or star_name.upper().startswith('HD\t'):
+            import re as _re
+            m = _re.match(r'HD\s+(\d+)', star_name, _re.IGNORECASE)
+            if m:
+                star_catalog = '1D    HD'
+                star_number = m.group(1)
+                return star_catalog, star_number
+
+        # PPM format: "PPM 12345"
+        if star_name.upper().startswith('PPM ') or star_name.upper().startswith('PPM\t'):
+            import re as _re
+            m = _re.match(r'PPM\s+(\d+)', star_name, _re.IGNORECASE)
+            if m:
+                star_catalog = '1P    PPM'
+                star_number = m.group(1)
+                return star_catalog, star_number
+
         # Default fallback
         star_catalog = '1N    xxx - xxxxxxx'
         star_number = star_name.replace('1N ', '')

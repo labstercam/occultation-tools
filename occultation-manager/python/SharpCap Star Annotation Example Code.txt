@@ -1,0 +1,12 @@
+# SharpCap Star Annotation Example Code
+# Michael Camilleri
+
+# Star annotation to the catalog
+    RUN PYTHON CODE "import clr; clr.AddReference('System.Windows.Forms'); from System.Windows.Forms import Clipboard"
+    RUN PYTHON CODE "ann = '{event_time}|{object_name}| |' + f'{{float({ra}):.4f}}' + '|' + f'{{float({dec}):.4f}}' + '||||'; Clipboard.SetText(ann); SharpCap.DeepSkyAnnotation.PasteClipboardDataAsCustom()"
+
+# Turn on annotation. Suggest do this after the GOTO
+    DEEP SKY ANNOTATION ON PLATE SOLVE False
+
+# Suggest turn off annotation once recodring starts as it can obscure the star
+    DEEP SKY ANNOTATION OFF

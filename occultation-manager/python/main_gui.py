@@ -2633,7 +2633,19 @@ class OccultationManagerGUI(Form):
                                 MessageBoxButtons.OK, MessageBoxIcon.Error)
 
         def _export_vizier(s, e):
-            self._launch_vizier_export(tangra_csv_path, copy_folder, timing_data)
+            # Resolve the CSV path in case "Rename Files" was used before this button.
+            # If the original path no longer exists, look for {report_stem}.csv in
+            # copy_folder then the original directory.
+            _csv = tangra_csv_path
+            if _csv and not os.path.isfile(_csv):
+                _report_stem = os.path.splitext(os.path.basename(output_path))[0]
+                for _d in [copy_folder, os.path.dirname(_csv)]:
+                    if _d:
+                        _c = os.path.join(_d, _report_stem + '.csv')
+                        if os.path.isfile(_c):
+                            _csv = _c
+                            break
+            self._launch_vizier_export(_csv, copy_folder, timing_data)
 
         def _send_via_gmail(s, e):
             try:
@@ -2659,28 +2671,43 @@ class OccultationManagerGUI(Form):
                             break
 
                 def _resolve(original_path):
-                    """Return renamed version if it exists in obs_folder, else original.
+                    """Return the best available path for a file: the renamed version
+                    (matching report_stem) if it exists in obs_folder or the file's own
+                    directory, otherwise the original path.
 
+                    Handles the case where the CSV was renamed in-place (Rename Files button
+                    used before Send via Gmail) but was never copied to obs_folder/copy_folder.
                     Uses the same suffix-preservation logic as RenameFilesDialog so that
                     files like foo_AOTA_Report.txt are found as {report_stem}_AOTA_Report.txt.
                     """
-                    if original_path and obs_folder:
-                        import re as _re
-                        src_stem, ext = os.path.splitext(os.path.basename(original_path))
-                        # Build the expected renamed stem (mirrors _build_target_stem)
-                        aota_idx = src_stem.lower().find('_aota')
-                        if aota_idx != -1:
-                            aota_suffix  = src_stem[aota_idx:]   # e.g. _AOTA_Report
-                            before_aota  = src_stem[:aota_idx]
-                            bin_match    = _re.search(r'_[Bb]in\d+', before_aota)
-                            bin_suffix   = bin_match.group(0) if bin_match else ''
-                            target_stem  = report_stem + bin_suffix + aota_suffix
-                        else:
-                            target_stem  = report_stem
+                    if not original_path:
+                        return None
+                    import re as _re
+                    src_stem, ext = os.path.splitext(os.path.basename(original_path))
+                    # Build the expected renamed stem (mirrors _build_target_stem)
+                    aota_idx = src_stem.lower().find('_aota')
+                    if aota_idx != -1:
+                        aota_suffix  = src_stem[aota_idx:]   # e.g. _AOTA_Report
+                        before_aota  = src_stem[:aota_idx]
+                        bin_match    = _re.search(r'_[Bb]in\d+', before_aota)
+                        bin_suffix   = bin_match.group(0) if bin_match else ''
+                        target_stem  = report_stem + bin_suffix + aota_suffix
+                    else:
+                        target_stem  = report_stem
+                    # 1) Check obs_folder (= copy_folder when set)
+                    if obs_folder:
                         renamed = os.path.join(obs_folder, target_stem + ext)
                         if os.path.isfile(renamed):
                             return renamed
-                    if original_path and os.path.isfile(original_path):
+                    # 2) Check file's own directory — catches files renamed in-place
+                    #    (e.g. CSV renamed via Rename Files but never copied to obs_folder)
+                    src_dir = os.path.dirname(original_path)
+                    if src_dir:
+                        renamed_in_src = os.path.join(src_dir, target_stem + ext)
+                        if os.path.isfile(renamed_in_src):
+                            return renamed_in_src
+                    # 3) Fall back to the original (pre-rename) path
+                    if os.path.isfile(original_path):
                         return original_path
                     return None
 
@@ -2703,11 +2730,19 @@ class OccultationManagerGUI(Form):
                     if aota_rep and aota_rep not in attach_files:
                         attach_files.append(aota_rep)
 
-                    # AOTA event graph PNGs in obs folder
-                    if obs_folder and os.path.isdir(obs_folder):
-                        for _fname in sorted(os.listdir(obs_folder)):
+                    # AOTA event graph PNGs — check obs_folder (copy_folder) then the
+                    # directory the AOTA file came from (where PNGs actually live).
+                    _aota_src_dir = None
+                    for _af in [aota_file_path, aota_report_path]:
+                        if _af and os.path.dirname(_af):
+                            _aota_src_dir = os.path.dirname(_af)
+                            break
+                    for _png_folder in dict.fromkeys(
+                        [d for d in [obs_folder, _aota_src_dir] if d and os.path.isdir(d)]
+                    ):
+                        for _fname in sorted(os.listdir(_png_folder)):
                             if '_aota_' in _fname.lower() and _fname.lower().endswith('.png'):
-                                _p = os.path.join(obs_folder, _fname)
+                                _p = os.path.join(_png_folder, _fname)
                                 if _p not in attach_files:
                                     attach_files.append(_p)
 

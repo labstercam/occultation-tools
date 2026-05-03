@@ -114,46 +114,77 @@ def get_location_name_from_coordinates(latitude, longitude, timeout=10, verbose=
 
 def get_elevation_from_coordinates(latitude, longitude, timeout=10, verbose=True):
     """
-    Look up elevation for given coordinates using Open-Elevation API
-    Returns elevation in meters relative to WGS84 datum, or None if lookup fails
-    
+    Look up elevation for given coordinates.
+    Tries multiple free services in order; returns elevation in metres or None.
+
     Args:
         latitude: Latitude in decimal degrees
         longitude: Longitude in decimal degrees
         timeout: Request timeout in seconds
-    
+
     Returns:
-        float: Elevation in meters, or None if lookup fails
+        float: Elevation in meters, or None if all lookups fail
     """
-    try:
-        # Open-Elevation API - free, no API key required
-        url = "https://api.open-elevation.com/api/v1/lookup?locations={},{}".format(latitude, longitude)
-        
-        request = urllib.request.Request(url)
-        request.add_header('User-Agent', 'OccultationManager/1.0')
-        
-        response = urllib.request.urlopen(request, timeout=timeout)
-        data = json.loads(response.read().decode('utf-8'))
-        
-        if 'results' in data and len(data['results']) > 0:
-            elevation = data['results'][0].get('elevation')
-            if elevation is not None:
+    def _try_open_elevation(lat, lon, to):
+        """api.open-elevation.com"""
+        url = "https://api.open-elevation.com/api/v1/lookup?locations={},{}".format(lat, lon)
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'OccultationManager/1.0')
+        resp = urllib.request.urlopen(req, timeout=to)
+        data = json.loads(resp.read().decode('utf-8'))
+        if 'results' in data and data['results']:
+            elev = data['results'][0].get('elevation')
+            if elev is not None:
+                return float(elev)
+        return None
+
+    def _try_open_topo(lat, lon, to):
+        """api.opentopodata.org (SRTM 90 m dataset, no key required)"""
+        url = "https://api.opentopodata.org/v1/srtm90m?locations={},{}".format(lat, lon)
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'OccultationManager/1.0')
+        resp = urllib.request.urlopen(req, timeout=to)
+        data = json.loads(resp.read().decode('utf-8'))
+        results = data.get('results') or []
+        if results:
+            elev = results[0].get('elevation')
+            if elev is not None:
+                return float(elev)
+        return None
+
+    def _try_gpxz(lat, lon, to):
+        """open.mapquestapi / gpxz elevation (no-key public endpoint)"""
+        url = "https://gpxz.io/v1/elevation/point?lat={}&lon={}".format(lat, lon)
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', 'OccultationManager/1.0')
+        resp = urllib.request.urlopen(req, timeout=to)
+        data = json.loads(resp.read().decode('utf-8'))
+        elev = data.get('elevation')
+        if elev is not None:
+            return float(elev)
+        return None
+
+    services = [
+        ('open-elevation',  _try_open_elevation),
+        ('opentopodata',    _try_open_topo),
+        ('gpxz',            _try_gpxz),
+    ]
+
+    for name, fn in services:
+        try:
+            result = fn(latitude, longitude, timeout)
+            if result is not None:
                 if verbose:
-                    print("Elevation lookup successful: {} meters at {}, {}".format(elevation, latitude, longitude))
-                return float(elevation)
-        
-        if verbose:
-            print("No elevation data returned from API")
-        return None
-        
-    except urllib.error.URLError as e:
-        if verbose:
-            print("Network error during elevation lookup: {}".format(e))
-        return None
-    except Exception as e:
-        if verbose:
-            print("Error looking up elevation: {}".format(e))
-        return None
+                    print("Elevation lookup successful via {}: {} m at {}, {}".format(
+                        name, result, latitude, longitude))
+                return result
+            if verbose:
+                print("No elevation data from {}".format(name))
+        except Exception as e:
+            if verbose:
+                print("Elevation lookup failed for {}: {}".format(name, e))
+
+    return None
 
 
 def save_occultation_sequence(occ, template_path="", sequence_path=None, config=None):
