@@ -345,7 +345,17 @@ def read_light_curve(filepath):
         light_curve = tangra_obj.get('light_curve', [])
         frames = [r.get('frameno') for r in light_curve]
         times = [r.get('time_ut') for r in light_curve]
-        values = [r.get('signal_1') for r in light_curve]
+        # Tangra exports Signal (1) = raw aperture sum (including sky) and
+        # Background (1) = total sky background contribution for the aperture.
+        # Subtract background to match the background-corrected values that
+        # PyOTE/R-OTE export in their own CSV format.
+        def _net_signal(r):
+            sig = r.get('signal_1')
+            bg = r.get('background_1')
+            if sig is not None and bg is not None:
+                return sig - bg
+            return sig
+        values = [_net_signal(r) for r in light_curve]
         return frames, times, values
 
     elif fmt in ('PyOTE', 'R-OTE'):

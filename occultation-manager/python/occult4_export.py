@@ -145,7 +145,6 @@ class Occult4Exporter:
         """Build the complete Occult 4 XML structure"""
         
         lines = []
-        lines.append('<?xml version="1.0" encoding="UTF-8"?>')
         lines.append('<AsteroidOccultations>')
         lines.append(f'   <FileVersion>{self.FILE_VERSION}</FileVersion>')
         lines.append('   <Event>')
@@ -169,7 +168,6 @@ class Occult4Exporter:
         lines.append(self._build_observer_section(event, telescope_id, camera_id, 
                                                    observation_type, tangra_data, 
                                                    aota_report_data, observer_data))
-        lines.append(self._build_prediction_line(event))
         lines.append('       </Observations>')
         
         # Added and LastEdited dates
@@ -462,37 +460,37 @@ class Occult4Exporter:
         if 'motion_dx' in occelmnt_data and occelmnt_data['motion_dx']:
             try:
                 dx_val = float(occelmnt_data['motion_dx'])
-                dx = f'{dx_val:.6f}'  # 6 decimal precision for motion coefficients
+                dx = f'{dx_val:.7f}'  # 7 decimal precision to preserve small coefficients
             except (ValueError, TypeError):
                 pass
         if 'motion_dy' in occelmnt_data and occelmnt_data['motion_dy']:
             try:
                 dy_val = float(occelmnt_data['motion_dy'])
-                dy = f'{dy_val:.6f}'
+                dy = f'{dy_val:.7f}'
             except (ValueError, TypeError):
                 pass
         if 'motion_d2x' in occelmnt_data and occelmnt_data['motion_d2x']:
             try:
                 d2x_val = float(occelmnt_data['motion_d2x'])
-                d2x = f'{d2x_val:.6f}'
+                d2x = f'{d2x_val:.7f}'
             except (ValueError, TypeError):
                 pass
         if 'motion_d2y' in occelmnt_data and occelmnt_data['motion_d2y']:
             try:
                 d2y_val = float(occelmnt_data['motion_d2y'])
-                d2y = f'{d2y_val:.6f}'
+                d2y = f'{d2y_val:.7f}'
             except (ValueError, TypeError):
                 pass
         if 'motion_d3x' in occelmnt_data and occelmnt_data['motion_d3x']:
             try:
                 d3x_val = float(occelmnt_data['motion_d3x'])
-                d3x = f'{d3x_val:.6f}'
+                d3x = f'{d3x_val:.7f}'
             except (ValueError, TypeError):
                 pass
         if 'motion_d3y' in occelmnt_data and occelmnt_data['motion_d3y']:
             try:
                 d3y_val = float(occelmnt_data['motion_d3y'])
-                d3y = f'{d3y_val:.6f}'
+                d3y = f'{d3y_val:.7f}'
             except (ValueError, TypeError):
                 pass
         
@@ -517,12 +515,14 @@ class Occult4Exporter:
             except (ValueError, TypeError):
                 pass
         
-        # Visual magnitude from occelmnt_data (object_mag_v is V magnitude)
+        # Visual magnitude from occelmnt_data: use object_magnitude (object[2] = asteroid apparent V mag).
+        # object_mag_v (object[12]) is the negative magnitude drop, not the asteroid magnitude.
         mv = '0'
-        if 'object_mag_v' in occelmnt_data and occelmnt_data['object_mag_v']:
+        if 'object_magnitude' in occelmnt_data and occelmnt_data['object_magnitude']:
             try:
-                mv_val = float(occelmnt_data['object_mag_v'])
-                mv = f'{mv_val:.2f}'
+                mv_val = float(occelmnt_data['object_magnitude'])
+                if mv_val > 0:  # Asteroid apparent magnitudes are always positive
+                    mv = f'{mv_val:.2f}'
             except (ValueError, TypeError):
                 pass
         
@@ -613,14 +613,14 @@ class Occult4Exporter:
         seq_num = '1'
         
         # Observer names
-        observer1 = self.config.get_observer_name() if self.config else ''
+        observer1 = self._format_observer_name(self.config.get_observer_name() if self.config else '')
         observer2 = ''
         more_than_2 = '0'  # Default to 0, not empty
         
         # Override with observer_data if provided
         if observer_data:
-            observer1 = observer_data.get('observer1', observer1)
-            observer2 = observer_data.get('observer2', observer2)
+            observer1 = self._format_observer_name(observer_data.get('observer1', observer1))
+            observer2 = self._format_observer_name(observer_data.get('observer2', observer2))
             more_than_2_override = observer_data.get('more_than_2', '')
             if more_than_2_override:  # Only use if provided
                 more_than_2 = more_than_2_override
@@ -714,6 +714,18 @@ class Occult4Exporter:
         
         return id_line
     
+    def _format_observer_name(self, name):
+        """Format observer name to OBS.XML N Nnnnn format (initial + first 5 chars of surname)"""
+        if not name or not name.strip():
+            return name
+        parts = name.strip().split()
+        if len(parts) == 1:
+            # Single word - use first char as initial, rest truncated to 5
+            return parts[0][0].upper() + ' ' + parts[0][1:6]
+        initial = parts[0][0].upper()
+        surname = parts[-1][:5]
+        return initial + ' ' + surname
+
     def _get_telescope_data(self, telescope_id):
         """Get telescope data from configuration"""
         if not telescope_id or not self.config:
@@ -742,7 +754,7 @@ class Occult4Exporter:
         stability = '_'  # unstated
         transparency = '_'  # unstated
         sn = ''  # Signal-to-noise ratio
-        time_adjustment = '0'  # ±s.ss
+        time_adjustment = ''  # ±s.ss - leave blank; not applicable
         comment = ''
         
         # Get SNR from AOTA report data if available
@@ -782,8 +794,8 @@ class Occult4Exporter:
         # Accuracy
         accuracy = self._get_timing_accuracy(tangra_data, aota_report_data)
         
-        # PEqn (personal equation)
-        peqn = '0'
+        # PEqn (personal equation) - blank; not applicable for GPS/NTP timing
+        peqn = ''
         
         # Weight (blank for default)
         weight = ''
@@ -806,8 +818,8 @@ class Occult4Exporter:
         # Accuracy
         accuracy = self._get_timing_accuracy(tangra_data, aota_report_data)
         
-        # PEqn
-        peqn = '0'
+        # PEqn - blank; not applicable for GPS/NTP timing
+        peqn = ''
         
         # Weight
         weight = ''
@@ -822,8 +834,8 @@ class Occult4Exporter:
     def _get_d_time(self, tangra_data, aota_report_data, event):
         """Get disappearance time from available data sources"""
         def _format_hms(hours, minutes, seconds):
-            # OBS format requires zero-padded hh mm ss.ss
-            return f'{int(hours):02d} {int(minutes):02d} {float(seconds):05.2f}'
+            # OBS format: hour is space-padded (right-justified in 2 chars), minutes zero-padded
+            return f'{int(hours):2d} {int(minutes):02d} {float(seconds):05.2f}'
 
         # Try AOTA report data first (has d_hours, d_minutes, d_seconds)
         if aota_report_data and 'd_hours' in aota_report_data:
@@ -841,13 +853,13 @@ class Occult4Exporter:
             seconds_with_fraction = dt.second + dt.microsecond / 1000000.0
             return _format_hms(dt.hour, dt.minute, seconds_with_fraction)
         
-        return '00 00 00.00'
+        return ' 0 00 00.00'
     
     def _get_r_time(self, tangra_data, aota_report_data, event):
         """Get reappearance time from available data sources"""
         def _format_hms(hours, minutes, seconds):
-            # OBS format requires zero-padded hh mm ss.ss
-            return f'{int(hours):02d} {int(minutes):02d} {float(seconds):05.2f}'
+            # OBS format: hour is space-padded (right-justified in 2 chars), minutes zero-padded
+            return f'{int(hours):2d} {int(minutes):02d} {float(seconds):05.2f}'
 
         # Try AOTA report data first (has r_hours, r_minutes, r_seconds)
         if aota_report_data and 'r_hours' in aota_report_data:
@@ -865,7 +877,7 @@ class Occult4Exporter:
             seconds_with_fraction = dt.second + dt.microsecond / 1000000.0
             return _format_hms(dt.hour, dt.minute, seconds_with_fraction)
         
-        return '00 00 00.00'
+        return ' 0 00 00.00'
     
     def _format_time_hms(self, time_value):
         """Format time value to hh mm ss.ss format"""

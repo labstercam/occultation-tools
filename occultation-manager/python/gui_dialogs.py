@@ -76,6 +76,71 @@ def _autosize_button(btn, sf, padding=None, min_width=None, height=None):
         # Fallback to scaled default if measurement fails
         btn.Size = Size(int(round(75 * sf)), int(round(25 * sf)))
 
+
+def _compute_quick_gains(default_gain):
+    """Compute quick-gain button values based on default gain.
+
+    For default_gain <= 1000: linear range 0 to 2*default_gain.
+    For default_gain > 1000:  logarithmic range 100 to 100000 (fixed), log-spaced.
+
+    Returns a sorted list of distinct integers representing sensible round gain values.
+    """
+    import math
+
+    if default_gain <= 0:
+        return [0, 50, 100, 150, 200, 300]
+
+    if default_gain > 1000:
+        # Logarithmic / dB scale: fixed range 100 to 100000, log-spaced
+        low = 100.0
+        high = 100000.0
+        n = 6
+        log_low = math.log10(low)
+        log_high = math.log10(high)
+
+        def _round_log(v):
+            if v >= 10000:
+                return int(round(v / 1000.0)) * 1000
+            elif v >= 2000:
+                return int(round(v / 100.0)) * 100
+            else:
+                return int(round(v / 50.0)) * 50
+
+        raw = [10.0 ** (log_low + i * (log_high - log_low) / (n - 1)) for i in range(n)]
+        rounded = [_round_log(v) for v in raw]
+    else:
+        # Linear scale: cover 0 to 2*default_gain in ~6 sensible steps
+        high = 2 * default_gain
+        if high >= 4000:
+            unit = 1000
+        elif high >= 2000:
+            unit = 500
+        elif high >= 1000:
+            unit = 100
+        elif high >= 400:
+            unit = 50
+        else:
+            unit = 10
+
+        capped_high = int(round(float(high) / unit)) * unit
+        total_steps = capped_high // unit if unit > 0 else 1
+        skip = max(1, (total_steps + 4) // 5)  # ceiling division → target ~6 buttons
+
+        rounded = list(range(0, capped_high + unit, skip * unit))
+        rounded = [g for g in rounded if g <= high + unit // 2]
+        if capped_high not in rounded:
+            rounded.append(capped_high)
+
+    # Deduplicate while preserving order, then sort
+    seen = set()
+    result = []
+    for g in rounded:
+        if g not in seen:
+            seen.add(g)
+            result.append(g)
+    return sorted(result)
+
+
 class ExposureEditDialog(Form):
     """Dialog for editing event exposure and gain - DPI-aware version"""
     
@@ -167,7 +232,7 @@ class ExposureEditDialog(Form):
         
         # Gain input
         lbl_new_gain = Label()
-        lbl_new_gain.Text = "New Gain (0-600):"
+        lbl_new_gain.Text = "New Gain:"
         lbl_new_gain.Location = Point(int(20 * sf), int(170 * sf))
         lbl_new_gain.Size = Size(int(120 * sf), int(20 * sf))
         self.Controls.Add(lbl_new_gain)
@@ -224,7 +289,8 @@ class ExposureEditDialog(Form):
         lbl_quick_gain.Size = Size(int(100 * sf), int(20 * sf))
         self.Controls.Add(lbl_quick_gain)
         
-        quick_gains = [200, 300, 400, 450, 500, 550]
+        from config import ConfigManager as _CM_qg
+        quick_gains = _compute_quick_gains(_CM_qg().get_default_gain())
         x_pos = int(20 * sf)
         y_pos = y_pos + int(35 * sf)
         
@@ -336,8 +402,8 @@ class ExposureEditDialog(Form):
                 return
             
             gain_value = int(gain_text)
-            if gain_value < 0 or gain_value > 600:
-                MessageBox.Show("Gain must be between 0 and 600", "Invalid Gain", 
+            if gain_value < 0:
+                MessageBox.Show("Gain must be 0 or greater", "Invalid Gain",
                               MessageBoxButtons.OK, MessageBoxIcon.Warning)
                 return
             
@@ -923,7 +989,7 @@ class ConfigurationDialog(Form):
         tab.Controls.Add(btn_explain_mag_exposure)
 
         lbl_default_gain = Label()
-        lbl_default_gain.Text = "Default Gain (0-600):"
+        lbl_default_gain.Text = "Default Gain:"
         lbl_default_gain.Location = Point(int(20 * sf), int(110 * sf))
         lbl_default_gain.Size = Size(int(120 * sf), int(20 * sf))
         tab.Controls.Add(lbl_default_gain)
@@ -932,7 +998,7 @@ class ConfigurationDialog(Form):
         self.txt_default_gain.Location = Point(int(150 * sf), int(110 * sf))
         self.txt_default_gain.Size = Size(int(100 * sf), int(20 * sf))
         tab.Controls.Add(self.txt_default_gain)
-        self.tooltip.SetToolTip(self.txt_default_gain, "Default camera gain value (0-600) used for all events unless overridden per-event")
+        self.tooltip.SetToolTip(self.txt_default_gain, "Default camera gain value (integer, minimum 0, no upper limit). Used for all events unless overridden per-event.")
 
         btn_explain_default_gain = Button()
         btn_explain_default_gain.Text = "Explain"
@@ -1058,13 +1124,15 @@ class ConfigurationDialog(Form):
     def explain_default_gain_click(self, sender, e):
         """Show explanation for Default Gain setting"""
         explanation = ("Default Gain:\n\n"
-                      "This is the default camera gain value (0-600) used for all events\n"
-                      "unless overridden per-event.\n\n"
+                      "This is the default camera gain value used for all events\n"
+                      "unless overridden per-event. Minimum value is 0; there is no upper limit.\n\n"
                       "Higher gain values have slightly less read noise so give slightly better SNR.\n\n"
                       "Typical values:\n"
                       "  • 0-200: Low gain, low noise (very bright targets)\n"
                       "  • 350-450: Medium-high gain recommended for most occultations\n"
-                      "  • 450+: High gain. Not recommended - do test recordings and reductions first\n\n")
+                      "  • 450+: High gain. Not recommended - do test recordings and reductions first\n\n"
+                      "Note: Gain values above 1000 are interpreted as logarithmic (dB) gain.\n"
+                      "The Edit Settings quick gain buttons will automatically adapt to the dB scale.\n\n")
         MessageBox.Show(explanation, "Default Gain Explanation", 
                        MessageBoxButtons.OK, MessageBoxIcon.Information)
 

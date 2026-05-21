@@ -340,8 +340,10 @@ class EventProcessor:
                             # Index 0: Source/ephemeris string (e.g., "JPL#29:2025-02-13@2025-12-30[OWC]")
                             # Index 1: Duration in seconds
                             # Indices 2-5: Event date/time (year, month, day, hours)
-                            # Indices 6-11: Motion coefficients (dX, dY, d2X, d2Y, d3X, d3Y)
-                            # Indices 12-13: Unknown (possibly higher-order terms)
+                            # Indices 6-7: Shadow X, Y coordinates at closest approach (Earth radii)
+                            # Indices 8-9: First-order motion coefficients dX, dY (Earth radii/hr)
+                            # Indices 10-11: Second-order coefficients d2X, d2Y (Earth radii/hr²)
+                            # Indices 12-13: Third-order coefficients d3X, d3Y (Earth radii/hr³)
                             if len(elements) >= 14:
                                 occelmnt_data['event_ephemeris_source'] = elements[0]
                                 occelmnt_data['event_duration_sec'] = elements[1]
@@ -349,14 +351,14 @@ class EventProcessor:
                                 occelmnt_data['event_month'] = elements[3]
                                 occelmnt_data['event_day'] = elements[4]
                                 occelmnt_data['event_hours'] = elements[5]
-                                occelmnt_data['motion_dx'] = elements[6]
-                                occelmnt_data['motion_dy'] = elements[7]
-                                occelmnt_data['motion_d2x'] = elements[8]
-                                occelmnt_data['motion_d2y'] = elements[9]
-                                occelmnt_data['motion_d3x'] = elements[10]
-                                occelmnt_data['motion_d3y'] = elements[11]
-                                occelmnt_data['elements_unknown_12'] = elements[12]
-                                occelmnt_data['elements_unknown_13'] = elements[13]
+                                occelmnt_data['motion_x'] = elements[6]
+                                occelmnt_data['motion_y'] = elements[7]
+                                occelmnt_data['motion_dx'] = elements[8]
+                                occelmnt_data['motion_dy'] = elements[9]
+                                occelmnt_data['motion_d2x'] = elements[10]
+                                occelmnt_data['motion_d2y'] = elements[11]
+                                occelmnt_data['motion_d3x'] = elements[12]
+                                occelmnt_data['motion_d3y'] = elements[13]
                             
                             # Errors data (10 fields) - optional quality flags
                             try:
