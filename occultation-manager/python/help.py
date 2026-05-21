@@ -614,7 +614,7 @@ COORDINATES:
 
 CAMERA SETTINGS:
 {exposure} | Camera exposure time in seconds (3 decimals) | "0.120"
-{gain} | Camera gain value (0-600) | "450"
+{gain} | Camera gain value (integer, minimum 0, no upper limit) | "450"
 {recording_duration} | Total recording duration in seconds (integer) | "180"
 
 Notes: Exposure, gain, and recording_duration use calculated values or 

@@ -208,7 +208,7 @@ The Occultation Manager generates SharpCap Sequences that give you complete cont
 ### Template Variables
 Templates use Python string formatting with the following variables from each event:
 - **{exposure}**: Exposure time in seconds (calculated or custom override)
-- **{gain}**: Camera gain 0-600 (default 450 or custom override)
+- **{gain}**: Camera gain (minimum 0, no upper limit; default 450 or custom override)
 - **{recording_duration}**: Total recording duration in seconds (calculated or custom override)
 - Additional variables: start/end times, coordinates, event details
 
@@ -287,11 +287,11 @@ Double-click on an event's Exposure, Gain, or Recording Time column (or use the 
 - Override for specific camera sensitivity or event characteristics
 - Quick buttons: 40, 80, 120, 160, 200, 240, 320, 480 ms
 
-**Gain (0-600)**
+**Gain (minimum 0, no upper limit)**
 - Default value configurable in Tools → Configuration → User Settings
 - Standard default: 450
 - Override for specific camera or event requirements
-- Quick buttons: 200, 250, 300, 350, 450, 550
+- Quick buttons: automatically calculated from the configured default gain. For default gain ≤ 1000, buttons cover 0 to 2× the default on a linear scale. For default gain > 1000 (dB-scale cameras), buttons cover 100 to 100000 on a logarithmic scale.
 
 **Recording Duration (10-3600 seconds)**
 - Calculated as: (uncertainty × 8) + (max_duration × 2)
