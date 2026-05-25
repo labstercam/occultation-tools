@@ -406,6 +406,10 @@ class EventProcessor:
                             print(f"Warning: Error parsing Occelmnt data for event {eventId}: {e}")
                             # Keep default values (empty strings and dict)
 
+                    # Prefer star identifier from occelmnt over OWC StarName (fallback)
+                    if occelmnt_data.get('star_identifier'):
+                        star_id = occelmnt_data['star_identifier']
+
                     # Calculate exposure using config values
                     mag_ref = config.get_mag_for_40ms_exposure()
                     extinction_mag = min(2, -0.5 + 0.5/math.cos((90-starAlt)*2*math.pi/360))
