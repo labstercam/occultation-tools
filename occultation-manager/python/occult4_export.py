@@ -134,9 +134,13 @@ class Occult4Exporter:
         else:
             star = 'Unknown'
         
+        import re
         filename = f"{event_date_str}_{asteroid}_{star}_Occult4.xml"
-        # Clean up filename
-        filename = ''.join(c for c in filename if c.isalnum() or c in ['_', '-', '.'])
+        # Clean up filename — allow space for provisional designations (e.g. "2002 PR155")
+        filename = ''.join(c for c in filename if c.isalnum() or c in ['_', '-', '.', ' '])
+        # Restore space in provisional designations (e.g. 2002_PR155 -> 2002 PR155) in case
+        # spaces were collapsed by earlier char-filtering passes
+        filename = re.sub(r'(\d{4})_([A-Z]{1,2}\d)', r'\1 \2', filename)
         
         return filename
     

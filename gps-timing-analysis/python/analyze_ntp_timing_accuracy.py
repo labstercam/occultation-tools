@@ -1624,15 +1624,15 @@ class AnalyzerForm(Form):
         self.txt_pit_result.Text = "Offset: %.1f ms; Error: %.1f ms" % (offset_ms, error_ms)
 
     def get_pit_result(self):
-        """Return the currently displayed PIT result as (offset_ms, error_ms), or None."""
+        """Return the currently displayed PIT result as (offset_ms, error_ms, raw_pit), or None."""
         pit = self._current_pit_result
         if pit is None:
             return None
         alt_exp = pit.get("alt_u_expanded")
         primary_exp = pit["u_expanded"]
         if alt_exp is not None and alt_exp < primary_exp:
-            return (pit["alt_best_offset"] * 1000.0, alt_exp * 1000.0)
-        return (pit["best_offset"] * 1000.0, primary_exp * 1000.0)
+            return (pit["alt_best_offset"] * 1000.0, alt_exp * 1000.0, pit)
+        return (pit["best_offset"] * 1000.0, primary_exp * 1000.0, pit)
 
     def _show_combined_output(self, pit):
         """Compose and display PIT section (top) then the aggregate report (below)."""

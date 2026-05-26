@@ -335,8 +335,8 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         elif self._timing_data:
             cam_ms = self._timing_data.get('camera_delay_ms') or 0.0
             ntp_ms = self._timing_data.get('ntp_offset_ms') or 0.0
-            total_delay_s = round((cam_ms + ntp_ms) / 1000.0, 4)
-            print(f"\nSetting timing correction (total delay fallback): {cam_ms + ntp_ms:.3f} ms = {total_delay_s}s")
+            total_delay_s = round((cam_ms - ntp_ms) / 1000.0, 4)
+            print(f"\nSetting timing correction (total delay fallback): {cam_ms - ntp_ms:.3f} ms = {total_delay_s}s")
             self._set_cell(worksheet, "P26", total_delay_s)
             self._set_cell(worksheet, "O26", "yes")
         else:
@@ -599,6 +599,8 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
             asteroid_name = event.object_name
             asteroid_name = re.sub(r'^\(\d+\)\s*', '', asteroid_name).strip()
             asteroid_name = asteroid_name.replace(' ', '_')
+            # Restore space in provisional designations (e.g. 2002_PR155 -> 2002 PR155)
+            asteroid_name = re.sub(r'(\d{4})_([A-Z]{1,2}\d)', r'\1 \2', asteroid_name)
         else:
             asteroid_name = 'Unknown'
         

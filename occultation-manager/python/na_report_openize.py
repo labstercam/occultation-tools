@@ -547,6 +547,8 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         clean_name = re.sub(r'^\(\d+\)\s*', '', object_name).strip()
         clean_name = re.sub(r'[^\w\s-]', '', clean_name).strip()
         clean_name = re.sub(r'\s+', '_', clean_name)
+        # Restore space in provisional designations (e.g. 2002_PR155 -> 2002 PR155)
+        clean_name = re.sub(r'(\d{4})_([A-Z]{1,2}\d)', r'\1 \2', clean_name)
         
         # Get observer from config
         observer_name = self.config.get_observer_name()

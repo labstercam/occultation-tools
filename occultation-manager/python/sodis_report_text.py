@@ -241,6 +241,8 @@ class SODISReportGeneratorText(ReportGeneratorBase):
 
         # Normalize separators to underscores as requested
         object_no = re.sub(r'[^0-9A-Za-z]+', '_', object_no).strip('_') or 'unknown'
+        # Restore space in provisional designations (e.g. 2002_PR155 -> 2002 PR155)
+        object_no = re.sub(r'(\d{4})_([A-Z]{1,2}\d)', r'\1 \2', object_no)
         star_catalog = re.sub(r'[^0-9A-Za-z]+', '_', str(star_catalog)).strip('_') or 'UNKNOWN'
         star_number = re.sub(r'[^0-9A-Za-z]+', '_', str(star_number)).strip('_') or 'UNKNOWN'
 

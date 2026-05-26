@@ -34,9 +34,10 @@ IronPython 3.4 compatible (no pathlib, no typing, no numpy).
 #   net_correction_s < 0 -> event happened earlier than the raw timestamp indicates
 #                           (add to D/R, i.e. subtract the magnitude from the raw time)
 #   camera_delay: raw_timestamp = true_event_time + delay  =>  subtract delay
-#   ntp_offset:   true_UTC      = PC_time - best_offset    =>  subtract offset
-#   The addition of net_correction_s to D/R in apply_correction_to_dr correctly
-#   subtracts both because net_correction_s is negative when both terms are positive.
+#                 (positive camera_delay: timestamp is late, event happened earlier)
+#   ntp_offset:   true_UTC      = PC_time + best_offset    =>  add offset
+#                 (positive ntp_offset: PC clock is slow, timestamps are early)
+#   net = -camera_delay + ntp_offset  (confirmed: Tangra entry = camera_delay - ntp_offset)
 # ---------------------------------------------------------------------------
 
 
