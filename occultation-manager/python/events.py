@@ -78,12 +78,16 @@ class EventProcessor:
     
     @staticmethod    
     def get_owc_events(url, username, password, data=None):
-        """Get events from OW Cloud API"""
-        credentials = f"{username}:{password}"
+        """Get events from OW Cloud API using Basic Auth + apikey URL parameter.
+
+        This is the original v1 method.  It is preserved unchanged.
+        New code should prefer get_owc_events_v2() which uses the OW-ApiKey header.
+        """
+        credentials = '{0}:{1}'.format(username, password)
         encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
         
         request = urllib.request.Request(url)
-        request.add_header("Authorization", f"Basic {encoded_credentials}")
+        request.add_header("Authorization", "Basic {0}".format(encoded_credentials))
         request.add_header("Content-Type", "application/json")
         
         if data:
@@ -92,13 +96,136 @@ class EventProcessor:
         response = urllib.request.urlopen(request, timeout=20)
         return json.loads(response.read().decode('utf-8'))
 
+    @staticmethod
+    def get_owc_events_v2(url, api_key, data=None, method='GET'):
+        """Call an OWC API endpoint using the OW-ApiKey HTTP header (v2 auth).
+
+        This is the new preferred authentication method.  No credentials or
+        apikey parameter are included in the URL — the key is sent as a header.
+        The old get_owc_events() method is preserved and continues to work.
+
+        Args:
+            url:     Full endpoint URL (no ?apikey= suffix needed)
+            api_key: OWC API key string (from config.get_api_key())
+            data:    Optional dict to send as a JSON body
+            method:  HTTP method string.  Defaults to 'GET'; set to 'POST' for
+                     write operations such as report-observation.
+
+        Returns:
+            Parsed JSON response (dict or list)
+        """
+        req = urllib.request.Request(url)
+        req.get_method = lambda: method   # IronPython-safe; avoids method= kwarg
+        req.add_header('OW-ApiKey', api_key)
+        req.add_header('Content-Type', 'application/json')
+        if data is not None:
+            req.data = json.dumps(data).encode('utf-8')
+        response = urllib.request.urlopen(req, timeout=20)
+        body = response.read().decode('utf-8')
+        if not body.strip():
+            return None   # empty body (e.g. HTTP 204) — not an error
+        return json.loads(body)
+
+    @staticmethod
+    def submit_owc_report(config, event, observation_type,
+                          comment='', duration_s=None, update_location=False):
+        """Submit an observation result to OWC via the report-observation endpoint.
+
+        Args:
+            config:           ConfigManager instance
+            event:            OccultationEvent or dict — must have 'ow_eventid' and
+                              'owc_station_id' (populated by process_owc_events)
+            observation_type: One of 'Positive', 'Negative', 'Clouded', 'Failed',
+                              'NotObserved', 'NotReduced'
+            comment:          Optional free-text comment string
+            duration_s:       Optional float duration in seconds (Positive detections only)
+            update_location:  If True, include observer lat/lng/elevation in the payload
+
+        Returns:
+            dict with keys:
+                'success':  bool
+                'response': raw response dict/list from OWC, or None
+                'error':    error message string, or None
+        """
+        REPORT_CODES = {
+            'NotReported':  0,
+            'Miss':         1,
+            'Negative':     1,
+            'Clouded':      2,
+            'Failed':       3,
+            'Positive':     4,
+            'NotObserved':  5,
+            'NotReduced':   6,
+        }
+
+        # Accept both OccultationEvent objects and plain dicts
+        if isinstance(event, dict):
+            event_id   = event.get('ow_eventid')
+            station_id = event.get('owc_station_id')
+            latitude   = event.get('latitude')
+            longitude  = event.get('longitude')
+            elevation  = event.get('elevation')
+        else:
+            event_id   = getattr(event, 'ow_eventid',   None)
+            station_id = getattr(event, 'owc_station_id', None)
+            latitude   = getattr(event, 'latitude',     None)
+            longitude  = getattr(event, 'longitude',    None)
+            elevation  = getattr(event, 'elevation',    None)
+
+        if not event_id:
+            return {'success': False, 'response': None,
+                    'error': 'No ow_eventid on event'}
+        if station_id is None:
+            return {'success': False, 'response': None,
+                    'error': 'No owc_station_id on event — ensure events were downloaded with the current version'}
+
+        report_code = REPORT_CODES.get(observation_type)
+        if report_code is None:
+            return {'success': False, 'response': None,
+                    'error': 'Unknown observation_type: ' + str(observation_type)}
+
+        payload = {
+            'eventId':   str(event_id),
+            'stationId': int(station_id),
+            'report':    report_code,
+            'comment':   comment or '',
+        }
+
+        if observation_type == 'Positive' and duration_s is not None:
+            payload['duration'] = float(duration_s)
+
+        if update_location and latitude is not None and longitude is not None:
+            payload['updateLocation'] = True
+            payload['latDeg']         = round(float(latitude), 5)   # ~1 m accuracy
+            payload['lngDeg']         = round(float(longitude), 5)
+            if elevation is not None:
+                payload['altMslMeters'] = int(round(float(elevation)))  # nearest metre
+
+        url = config.get_report_observation_url()
+        try:
+            response = EventProcessor.get_owc_events_v2(
+                url, config.get_api_key(), data=payload, method='POST'
+            )
+            return {'success': True, 'response': response, 'error': None}
+        except urllib.error.HTTPError as ex:
+            # Read the response body — OWC often returns a JSON error description
+            try:
+                error_body = ex.read().decode('utf-8')
+            except Exception:
+                error_body = ''
+            msg = 'HTTP {0}: {1}'.format(ex.code, ex.reason)
+            if error_body.strip():
+                msg = msg + ' — ' + error_body.strip()
+            return {'success': False, 'response': None, 'error': msg}
+        except Exception as ex:
+            return {'success': False, 'response': None, 'error': str(ex)}
+
     def update_ow_cloud_events(self, progress_callback=None):
         """Get all your OWC announced events using configuration"""
         try:
-            result = EventProcessor.get_owc_events(
-                self.config.get_full_url(), 
-                self.config.get_owc_email(), 
-                self.config.get_owc_password()
+            result = EventProcessor.get_owc_events_v2(
+                self.config.get_base_url(),
+                self.config.get_api_key()
             )
         except urllib.error.HTTPError as e:
             raise RuntimeError(f"OW Cloud HTTP Error: {e.code} - {e.reason}")
@@ -240,6 +367,9 @@ class EventProcessor:
                     eventTime = station['EventTimeUtc']
                     eventUncertainty = station['ErrorInTimeSec']
                     stationName = station['StationName']
+                    # StationId arrives as a string (e.g. '1'); guard against 'None' sentinel
+                    _raw_sid = station.get('StationId')
+                    owc_station_id = int(_raw_sid) if _raw_sid not in (None, 'None', '') else None
                     latitude = station['Latitude']
                     longitude = station['Longitude']
                     starAz = station['StarAz']
@@ -268,12 +398,11 @@ class EventProcessor:
                     gotoTime = gotoTime.strftime("%Y-%m-%dT%H:%M:%S")
 
                     # Get the occelmnt
-                    occelmntUrl = config.get_occelmnt_url() % eventId
+                    occelmntUrl = config.get_occelmnt_base_url() % eventId
                     try:
-                        eventOccelmnt = EventProcessor.get_owc_events(
-                            occelmntUrl, 
-                            config.get_owc_email(), 
-                            config.get_owc_password()
+                        eventOccelmnt = EventProcessor.get_owc_events_v2(
+                            occelmntUrl,
+                            config.get_api_key()
                         )
                     except urllib.error.HTTPError as e:
                         print(f"HTTP Error: {e.code} - {e.reason}")
@@ -475,6 +604,7 @@ class EventProcessor:
                     occultation = {
                         'name': name + ' - ' + stationName, 
                         'station_name': stationName,
+                        'owc_station_id': owc_station_id,
                         'ow_eventid': eventId, 
                         'id': name + ' : ' + star_id + ' : ' + stationName,
                         'ra': ra, 'dec': dec,
@@ -548,6 +678,7 @@ class OccultationEvent:
         
         self.name = data.get('name', '')
         self.station_name = data.get('station_name', '')
+        self.owc_station_id = data.get('owc_station_id', None)
         self.ow_eventid = data.get('ow_eventid', '')
         self.event_id = data.get('id', '')
         self.object_name = data.get('object_name', '')
