@@ -819,7 +819,7 @@ def analyze_aperture_delays(tangra_obj, exposure_ms, flash_ms=100):
 
 
 def filter_flash_measurements(all_delays, min_frac_flux=0.1, max_frac_flux=0.9,
-                              min_offset=-80, max_offset=80):
+                              min_offset=-500, max_offset=500):
     """Filter out poor quality GPS flash measurements
     
     Removes transition frames where the flash is mostly in one frame (too dim or too bright),
@@ -830,8 +830,8 @@ def filter_flash_measurements(all_delays, min_frac_flux=0.1, max_frac_flux=0.9,
         all_delays: List of delay measurement dicts
         min_frac_flux: Minimum fraction of flux in first frame (default 0.1)
         max_frac_flux: Maximum fraction of flux in first frame (default 0.9)
-        min_offset: Minimum acceptable time offset in ms (default -80)
-        max_offset: Maximum acceptable time offset in ms (default 80)
+        min_offset: Minimum acceptable time offset in ms (default -500)
+        max_offset: Maximum acceptable time offset in ms (default 500)
         
     Returns:
         Filtered list of delay measurements and statistics dict

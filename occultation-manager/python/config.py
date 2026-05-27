@@ -439,7 +439,38 @@ class ConfigManager:
         sep = '&' if '?' in base_url else '?'
         #return base_url + sep + 'apikey=%s' % binascii.unhexlify(self.config['apiKey'].encode()).decode('ascii')
         return base_url + sep + 'apikey=%s' % self.config['apiKey']
-    
+
+    # ------------------------------------------------------------------
+    # v2 API URL helpers (OW-ApiKey header auth — no key in URL)
+    # The existing get_full_url() / get_occelmnt_url() are unchanged.
+    # ------------------------------------------------------------------
+
+    def get_base_url(self):
+        """Return the events-list URL without an apikey query parameter.
+
+        Used with get_owc_events_v2() which passes the key as an HTTP header.
+        """
+        return self.config['host'] + self.config['url_path']
+
+    def get_occelmnt_base_url(self):
+        """Return the occelmnt URL template without an apikey query parameter.
+
+        Call as  config.get_occelmnt_base_url() % event_id
+        Used with get_owc_events_v2().
+        """
+        return self.config['host'] + self.config['URL_OCCELMNT_ENDPOINT_PATH']
+
+    def get_report_observation_url(self):
+        """Return the POST endpoint for submitting an observation report to OWC."""
+        return self.config['host'] + '/api2/v1/owc/report-observation'
+
+    def get_event_by_id_url(self, event_id):
+        """Return the GET endpoint for fetching a single OWC event by its ID.
+
+        Used to retrieve station IDs (see Task 2 of owc_api_v2_plan.md).
+        """
+        return self.config['host'] + '/api2/v1/events/' + str(event_id)
+
     def get_full_file_path(self, filename):
         """Get full path for a file in the configured folder"""
         return os.path.join(self.get_events_folder(), filename)
