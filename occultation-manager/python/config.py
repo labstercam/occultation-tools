@@ -59,7 +59,8 @@ class ConfigManager:
             'last_report_folder': '',  # Parent folder of last AOTA/Tangra folder
             
             # API configuration
-            'host': 'https://www.occultwatcher.net:443',
+            #'host': 'https://www.occultwatcher.net:443',
+            'host': 'https://www.occultwatcher.net',
             'url_path': '/api2/v1/events/details-list',
             'apiKey': 'Go to https://cloud.occultwatcher.net/user-profile User Permssions to verify your email and get an API key',
             'URL_OCCELMNT_ENDPOINT_PATH': '/api2/v1/owc/event/my/%s/occelmnts',

@@ -258,18 +258,18 @@ class ComprehensiveReportDialog(Form):
         lbl_cam_section.Size = Size(350, 18)
         self._pnl_phase_a.Controls.Add(lbl_cam_section)
 
-        _btn_ntp_info = Button()
-        _btn_ntp_info.Text = "\u24d8  What is NTP correction?"
-        _btn_ntp_info.Location = Point(680, 32)
-        _btn_ntp_info.Size = Size(195, 26)
-        _btn_ntp_info.Click += self._on_ntp_info_click
-        self._pnl_phase_a.Controls.Add(_btn_ntp_info)
+        self._btn_ntp_info = Button()
+        self._btn_ntp_info.Text = "\u24d8  Timing correction help"
+        self._btn_ntp_info.Location = Point(680, 32)
+        self._btn_ntp_info.Size = Size(195, 26)
+        self._btn_ntp_info.Click += self._on_ntp_info_click
+        self._pnl_phase_a.Controls.Add(self._btn_ntp_info)
 
-        lbl_calib_run = Label()
-        lbl_calib_run.Text = "Calibration run:"
-        lbl_calib_run.Location = Point(8, 58)
-        lbl_calib_run.Size = Size(110, 22)
-        self._pnl_phase_a.Controls.Add(lbl_calib_run)
+        self._lbl_calib_run = Label()
+        self._lbl_calib_run.Text = "Calibration run:"
+        self._lbl_calib_run.Location = Point(8, 58)
+        self._lbl_calib_run.Size = Size(110, 22)
+        self._pnl_phase_a.Controls.Add(self._lbl_calib_run)
 
         self._combo_calib_run = ComboBox()
         self._combo_calib_run.Location = Point(120, 56)
@@ -278,12 +278,12 @@ class ComprehensiveReportDialog(Form):
         self._combo_calib_run.SelectedIndexChanged += self._on_calib_run_changed
         self._pnl_phase_a.Controls.Add(self._combo_calib_run)
 
-        _btn_calib_info = Button()
-        _btn_calib_info.Text = "?"
-        _btn_calib_info.Location = Point(479, 56)
-        _btn_calib_info.Size = Size(24, 26)
-        _btn_calib_info.Click += self._on_calib_info_click
-        self._pnl_phase_a.Controls.Add(_btn_calib_info)
+        self._btn_calib_info = Button()
+        self._btn_calib_info.Text = "?"
+        self._btn_calib_info.Location = Point(479, 56)
+        self._btn_calib_info.Size = Size(24, 26)
+        self._btn_calib_info.Click += self._on_calib_info_click
+        self._pnl_phase_a.Controls.Add(self._btn_calib_info)
 
         self._lbl_calib_match = Label()
         self._lbl_calib_match.Text = ""
@@ -293,11 +293,11 @@ class ComprehensiveReportDialog(Form):
         self._lbl_calib_match.ForeColor = Color.Gray
         self._pnl_phase_a.Controls.Add(self._lbl_calib_match)
 
-        lbl_y_line = Label()
-        lbl_y_line.Text = "Y line:"
-        lbl_y_line.Location = Point(8, 84)
-        lbl_y_line.Size = Size(55, 22)
-        self._pnl_phase_a.Controls.Add(lbl_y_line)
+        self._lbl_y_line = Label()
+        self._lbl_y_line.Text = "Y line:"
+        self._lbl_y_line.Location = Point(8, 84)
+        self._lbl_y_line.Size = Size(55, 22)
+        self._pnl_phase_a.Controls.Add(self._lbl_y_line)
 
         self._txt_y_line = TextBox()
         self._txt_y_line.Location = Point(66, 82)
@@ -306,24 +306,52 @@ class ComprehensiveReportDialog(Form):
         self._txt_y_line.TextChanged += self._on_y_line_changed
         self._pnl_phase_a.Controls.Add(self._txt_y_line)
 
-        _btn_y_line_info = Button()
-        _btn_y_line_info.Text = "?"
-        _btn_y_line_info.Location = Point(139, 82)
-        _btn_y_line_info.Size = Size(24, 26)
-        _btn_y_line_info.Click += self._on_y_line_info_click
-        self._pnl_phase_a.Controls.Add(_btn_y_line_info)
+        self._btn_y_line_info = Button()
+        self._btn_y_line_info.Text = "?"
+        self._btn_y_line_info.Location = Point(139, 82)
+        self._btn_y_line_info.Size = Size(24, 26)
+        self._btn_y_line_info.Click += self._on_y_line_info_click
+        self._pnl_phase_a.Controls.Add(self._btn_y_line_info)
 
-        lbl_calc_label = Label()
-        lbl_calc_label.Text = "Calculated delay:"
-        lbl_calc_label.Location = Point(167, 84)
-        lbl_calc_label.Size = Size(128, 22)
-        self._pnl_phase_a.Controls.Add(lbl_calc_label)
+        self._lbl_calc_label = Label()
+        self._lbl_calc_label.Text = "Calculated delay:"
+        self._lbl_calc_label.Location = Point(167, 84)
+        self._lbl_calc_label.Size = Size(128, 22)
+        self._pnl_phase_a.Controls.Add(self._lbl_calc_label)
 
         self._lbl_calc_delay = Label()
         self._lbl_calc_delay.Text = "\u2014"
         self._lbl_calc_delay.Location = Point(299, 84)
         self._lbl_calc_delay.Size = Size(200, 22)
         self._pnl_phase_a.Controls.Add(self._lbl_calc_delay)
+
+        # GPS flash (dumb) Step A1: manual camera delay entry panel.
+        # Visible only for GPS flash method; overlays calibration/Y-line controls.
+        self._pnl_gps_manual_delay = Panel()
+        self._pnl_gps_manual_delay.Location = Point(0, 56)
+        self._pnl_gps_manual_delay.Size = Size(930, 52)
+        self._pnl_gps_manual_delay.BackColor = Color.FromArgb(235, 244, 255)
+        self._pnl_gps_manual_delay.Visible = False
+        self._pnl_phase_a.Controls.Add(self._pnl_gps_manual_delay)
+
+        self._lbl_gps_delay = Label()
+        self._lbl_gps_delay.Text = "Camera Acquisition Delay (ms):"
+        self._lbl_gps_delay.Location = Point(8, 4)
+        self._lbl_gps_delay.Size = Size(230, 22)
+        self._pnl_gps_manual_delay.Controls.Add(self._lbl_gps_delay)
+
+        self._txt_gps_delay = TextBox()
+        self._txt_gps_delay.Location = Point(242, 2)
+        self._txt_gps_delay.Size = Size(90, 22)
+        self._txt_gps_delay.TextChanged += self._on_gps_delay_changed
+        self._pnl_gps_manual_delay.Controls.Add(self._txt_gps_delay)
+
+        self._lbl_gps_delay_hint = Label()
+        self._lbl_gps_delay_hint.Text = "Enter measured camera delay to 1 decimal place (e.g., 5.3 or -5.3)"
+        self._lbl_gps_delay_hint.Location = Point(8, 28)
+        self._lbl_gps_delay_hint.Size = Size(700, 20)
+        self._lbl_gps_delay_hint.ForeColor = Color.Gray
+        self._pnl_gps_manual_delay.Controls.Add(self._lbl_gps_delay_hint)
 
         # --- NTP analysis sub-section (hidden for GPS Flash) ---
         self._pnl_ntp_analyse = Panel()
@@ -428,14 +456,14 @@ class ComprehensiveReportDialog(Form):
         lbl_a3_head.Size = Size(500, 18)
         self._pnl_step_a3.Controls.Add(lbl_a3_head)
 
-        lbl_a3_instr = Label()
-        lbl_a3_instr.Text = (
+        self._lbl_a3_instr = Label()
+        self._lbl_a3_instr.Text = (
             "\u270e  Open Tangra \u2192 Camera and Timing Corrections, enter the Total Delay "
             "in the Acquisition Delay field only. Leave Reference Time unchecked.")
-        lbl_a3_instr.Location = Point(8, 24)
-        lbl_a3_instr.Size = Size(920, 18)
-        lbl_a3_instr.ForeColor = Color.Gray
-        self._pnl_step_a3.Controls.Add(lbl_a3_instr)
+        self._lbl_a3_instr.Location = Point(8, 24)
+        self._lbl_a3_instr.Size = Size(920, 18)
+        self._lbl_a3_instr.ForeColor = Color.Gray
+        self._pnl_step_a3.Controls.Add(self._lbl_a3_instr)
 
         lbl_total_delay_prefix = Label()
         lbl_total_delay_prefix.Text = "Total Delay for TANGRA:"
@@ -537,6 +565,14 @@ class ComprehensiveReportDialog(Form):
         self._lbl_csv_delay.Size = Size(540, 40)
         self._lbl_csv_delay.ForeColor = Color.Gray
         self._pnl_step_a4.Controls.Add(self._lbl_csv_delay)
+
+        self._lbl_csv_note = Label()
+        self._lbl_csv_note.Text = ''
+        self._lbl_csv_note.Location = Point(8, 48)
+        self._lbl_csv_note.Size = Size(900, 18)
+        self._lbl_csv_note.ForeColor = Color.OrangeRed
+        self._lbl_csv_note.Visible = False
+        self._pnl_step_a4.Controls.Add(self._lbl_csv_note)
 
         self._btn_rescan_guidance = Button()
         self._btn_rescan_guidance.Text = "\u21bb  Rescan Folder"
@@ -1234,14 +1270,18 @@ class ComprehensiveReportDialog(Form):
         if not has_camera:
             missing.append("camera")
 
-        # Block if NTP timing selected but corrections not yet applied in Tangra
-        if (hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
+        # Block if Tangra-correction methods are selected but corrections not yet applied in Tangra
+        timing_requires_tangra = (
+            (hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked)
+            or (hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked)
+        )
+        if (timing_requires_tangra
                 and hasattr(self, '_rad_corrections_not_applied')
                 and self._rad_corrections_not_applied.Checked):
             missing.append("timing corrections \u2014 apply in Tangra first (see Phase A guidance)")
 
         # Block if Applied selected but confirmation checkbox not ticked
-        if (hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
+        if (timing_requires_tangra
                 and hasattr(self, '_rad_corrections_applied')
                 and self._rad_corrections_applied.Checked):
             confirmed = hasattr(self, '_chk_confirm_total_delay') and self._chk_confirm_total_delay.Checked
@@ -1773,9 +1813,39 @@ class ComprehensiveReportDialog(Form):
         if hasattr(self, '_pnl_ntp_analyse'):
             self._pnl_ntp_analyse.Visible = is_ntp
 
+        # Step A1 input mode: NTP uses calibration/y-line; GPS flash uses manual delay entry.
+        if hasattr(self, '_pnl_gps_manual_delay'):
+            self._pnl_gps_manual_delay.Visible = is_gps
+            if is_gps:
+                self._pnl_gps_manual_delay.BringToFront()
+
+        # Legacy Step A1 controls are hidden for GPS flash manual-entry workflow.
+        for ctrl_name in (
+                '_lbl_calib_run', '_combo_calib_run', '_btn_calib_info', '_lbl_calib_match',
+                '_lbl_y_line', '_txt_y_line', '_btn_y_line_info',
+                '_lbl_calc_label', '_lbl_calc_delay'):
+            if hasattr(self, ctrl_name):
+                getattr(self, ctrl_name).Visible = not is_gps
+
+        if hasattr(self, '_btn_ntp_info'):
+            if is_gps:
+                self._btn_ntp_info.Text = "\u24d8  GPS flash timing help"
+            else:
+                self._btn_ntp_info.Text = "\u24d8  Timing correction help"
+
         if is_ntp:
             self._populate_calib_runs()
+        elif is_gps:
+            self._refresh_delay_label()
+        self._update_guidance_values()
         self.update_button_state()
+
+    def _on_gps_delay_changed(self, sender, e):
+        """Handle GPS flash (dumb) manual camera delay entry."""
+        is_gps = hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked
+        if not is_gps:
+            return
+        self._refresh_delay_label()
 
     def _on_analog_tool_changed(self, sender, e):
         """Handle AOTA/PyOTE radio change in the Analog+VTI timing panel."""
@@ -1837,15 +1907,15 @@ class ComprehensiveReportDialog(Form):
         """Refresh the Total Delay label and copy controls in Phase A."""
         if not hasattr(self, '_lbl_total_delay'):
             return
+        is_ntp = hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
+        is_gps = hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked
         delay_ms = self._calculate_camera_delay()
-        ntp_ms = getattr(self, '_ntp_offset_ms', 0.0)
+        ntp_ms = getattr(self, '_ntp_offset_ms', 0.0) if is_ntp else 0.0
         if delay_ms is not None:
-            delay_str = '{0:.1f} ms'.format(delay_ms)
             self._copy_cam_delay_value = '{0:.1f}'.format(delay_ms)
         else:
-            delay_str = None
             self._copy_cam_delay_value = None
-        ntp_copy = '{0:.1f}'.format(ntp_ms)
+        ntp_copy = '{0:.1f}'.format(ntp_ms if is_ntp else 0.0)
         self._copy_ntp_off_value = ntp_copy
 
         # Total Delay = camera_delay - ntp_offset:
@@ -1853,17 +1923,35 @@ class ComprehensiveReportDialog(Form):
         # positive NTP offset shifts Tangra timestamps later (subtract less).
         indiv_visible = False
         if delay_ms is not None:
-            total_ms = delay_ms - ntp_ms
+            total_ms = (delay_ms - ntp_ms) if is_ntp else delay_ms
             if total_ms >= 0:
                 self._lbl_total_delay.Text = '{0:.1f} ms'.format(total_ms)
                 self._lbl_total_delay.ForeColor = Color.DarkGreen
                 self._copy_total_delay_value = '{0:.1f}'.format(total_ms)
+                if hasattr(self, '_lbl_a3_instr'):
+                    if is_ntp:
+                        self._lbl_a3_instr.Text = (
+                            "\u270e  Open Tangra \u2192 Camera and Timing Corrections, enter the Total Delay "
+                            "in the Acquisition Delay field only. Leave Reference Time unchecked.")
+                    elif is_gps:
+                        self._lbl_a3_instr.Text = (
+                            "\u270e  Open Tangra \u2192 Camera and Timing Corrections, enter Camera Delay "
+                            "in Acquisition Delay. Leave Reference Time unchecked.")
             else:
-                # Negative total — must enter camera delay and NTP offset separately in Tangra
+                # Negative delay — Tangra cannot accept negative Acquisition Delay values.
                 self._lbl_total_delay.Text = '{0:.1f} ms'.format(total_ms)
                 self._lbl_total_delay.ForeColor = Color.OrangeRed
                 self._copy_total_delay_value = None
                 indiv_visible = True
+                if hasattr(self, '_lbl_a3_instr'):
+                    if is_ntp:
+                        self._lbl_a3_instr.Text = (
+                            "\u270e  Total Delay is negative. Enter camera delay in Acquisition Delay "
+                            "and NTP Offset in (Reference Time \u2212 UTC).")
+                    elif is_gps:
+                        self._lbl_a3_instr.Text = (
+                            "\u270e  Camera delay is negative. Enter Acquisition Delay = 0 and put "
+                            "the positive value into (Reference Time \u2212 UTC).")
         else:
             total_ms = None
             self._lbl_total_delay.Text = '\u2014'
@@ -1874,17 +1962,28 @@ class ComprehensiveReportDialog(Form):
         if hasattr(self, '_lbl_indiv_prefix'):
             self._lbl_indiv_prefix.Visible = indiv_visible
             if indiv_visible:
-                self._lbl_indiv_line1.Text = 'Acquisition Delay: {0:.1f} ms'.format(delay_ms)
-                self._lbl_indiv_line2.Text = '(Reference Time \u2212 UTC): {0:.1f} ms'.format(ntp_ms)
+                if is_gps:
+                    self._lbl_indiv_prefix.Text = 'Camera delay < 0 \u2014 enter values separately in Tangra:'
+                    self._lbl_indiv_line1.Text = 'Acquisition Delay: 0.0 ms'
+                    self._lbl_indiv_line2.Text = '(Reference Time \u2212 UTC): {0:.1f} ms'.format(abs(delay_ms))
+                else:
+                    self._lbl_indiv_prefix.Text = 'Total < 0 \u2014 enter delays separately in Tangra:'
+                    self._lbl_indiv_line1.Text = 'Acquisition Delay: {0:.1f} ms'.format(delay_ms)
+                    self._lbl_indiv_line2.Text = '(Reference Time \u2212 UTC): {0:.1f} ms'.format(ntp_ms)
             self._lbl_indiv_line1.Visible = indiv_visible
             self._lbl_indiv_line2.Visible = indiv_visible
         # Update confirmation checkbox with current total delay value;
         # uncheck if the value has changed since it was last confirmed.
         if hasattr(self, '_chk_confirm_total_delay'):
             if total_ms is not None and total_ms < 0:
-                new_chk_text = (
-                    'Camera Delay for TANGRA: {0:.1f} ms  \u2014 tick to confirm delays are correctly entered separately'
-                    .format(delay_ms))
+                if is_gps:
+                    new_chk_text = (
+                        'For TANGRA enter Acquisition Delay = 0.0 ms and (Reference Time \u2212 UTC) = {0:.1f} ms '
+                        '\u2014 tick to confirm values were entered correctly'.format(abs(delay_ms)))
+                else:
+                    new_chk_text = (
+                        'Camera Delay for TANGRA: {0:.1f} ms  \u2014 tick to confirm delays are correctly entered separately'
+                        .format(delay_ms))
             else:
                 new_chk_text = (
                     'Total Delay for TANGRA: {0:.1f} ms  \u2014 tick to confirm value is correctly entered'
@@ -1893,6 +1992,45 @@ class ComprehensiveReportDialog(Form):
             if self._chk_confirm_total_delay.Text != new_chk_text:
                 self._chk_confirm_total_delay.Checked = False
                 self._chk_confirm_total_delay.Text = new_chk_text
+            if hasattr(self, '_tooltip'):
+                if is_gps and total_ms is not None and total_ms < 0:
+                    self._tooltip.SetToolTip(
+                        self._chk_confirm_total_delay,
+                        "Confirm you entered Acquisition Delay=0.0 ms and (Reference Time \u2212 UTC)\n"
+                        "as the positive absolute camera-delay value in Tangra."
+                    )
+                else:
+                    self._tooltip.SetToolTip(
+                        self._chk_confirm_total_delay,
+                        "Confirm this is the exact Total Delay value you entered in Tangra\u2019s\n"
+                        "Camera and Timing Corrections dialog, Acquisition Delay field."
+                    )
+        if hasattr(self, '_rad_corrections_applied'):
+            if is_gps and total_ms is not None and total_ms < 0:
+                applied_text = (
+                    'Applied \u2014 I have entered Acquisition Delay = 0.0 ms and '
+                    '(Reference Time \u2212 UTC) in Tangra'
+                )
+            else:
+                applied_text = (
+                    'Applied \u2014 I have entered the delays into Tangra\u2019s '
+                    'Acquisition Delay field'
+                )
+            self._rad_corrections_applied.Text = applied_text
+        if hasattr(self, '_lbl_csv_note'):
+            if is_gps and total_ms is not None and total_ms < 0:
+                self._lbl_csv_note.Text = (
+                    'CSV can only verify Acquisition Delay = 0.0 ms; '
+                    '(Reference Time \u2212 UTC) must be confirmed manually.'
+                )
+                self._lbl_csv_note.Visible = True
+                if hasattr(self, '_lbl_csv_delay'):
+                    self._lbl_csv_delay.Size = Size(540, 20)
+            else:
+                self._lbl_csv_note.Text = ''
+                self._lbl_csv_note.Visible = False
+                if hasattr(self, '_lbl_csv_delay'):
+                    self._lbl_csv_delay.Size = Size(540, 40)
 
     def _on_copy_cam_delay_click(self, sender, e):
         """Copy calculated camera delay value to clipboard."""
@@ -1922,6 +2060,27 @@ class ComprehensiveReportDialog(Form):
 
     def _on_total_delay_info_click(self, sender, e):
         """Show information about entering the Total Delay into Tangra."""
+        is_gps = hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked
+        if is_gps:
+            delay_ms = self._calculate_camera_delay()
+            neg_note = ''
+            if delay_ms is not None and delay_ms < 0:
+                neg_note = (
+                    '\n\nFor negative camera delay (example -5.3 ms):\n'
+                    '  \u2022 Acquisition Delay = 0.0 ms\n'
+                    '  \u2022 (Reference Time \u2212 UTC) Offset = +5.3 ms\n'
+                    'Tangra accepts only positive Acquisition Delay values.'
+                )
+            MessageBox.Show(
+                'For GPS flash overlay (dumb), use the camera delay from Step A1.\n\n'
+                'If delay is positive, enter it in Acquisition Delay and leave '
+                '(Reference Time \u2212 UTC) unchecked.' + neg_note,
+                'Tangra GPS Flash Timing Entry',
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            )
+            return
+
         MessageBox.Show(
             'Copy the Total Delay into the Tangra "Camera and Timing Corrections" dialog.\n\n'
             'Enter it in the Acquisition Delay field only.\n'
@@ -2255,11 +2414,26 @@ class ComprehensiveReportDialog(Form):
     def _refresh_delay_label(self):
         """Validate Y-line text, compute delay, update the calc delay label."""
         normal_color = self.theme_manager.get_current_theme()['text_foreground']
+
+        # GPS flash (dumb): camera delay is entered manually (no line-delay calculation here).
+        if hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked:
+            delay_ms = self._calculate_camera_delay()
+            if delay_ms is None:
+                self._lbl_calc_delay.Text = '\u2014 (enter camera delay)'
+                self._lbl_calc_delay.ForeColor = Color.Gray
+            else:
+                self._lbl_calc_delay.Text = '{0:.1f} ms'.format(delay_ms)
+                self._lbl_calc_delay.ForeColor = normal_color
+            self._auto_detect_camera_delay(delay_ms)
+            self._update_guidance_values()
+            return
+
         text = self._txt_y_line.Text.strip()
         if not text:
             self._lbl_calc_delay.Text = '\u2014'
             self._lbl_calc_delay.ForeColor = normal_color
             self._auto_detect_camera_delay(None)
+            self._update_guidance_values()
             return
         try:
             y = float(text)
@@ -2267,6 +2441,7 @@ class ComprehensiveReportDialog(Form):
             self._lbl_calc_delay.Text = '\u2014 (not a valid number)'
             self._lbl_calc_delay.ForeColor = Color.OrangeRed
             self._auto_detect_camera_delay(None)
+            self._update_guidance_values()
             return
         y_max = self._get_y_line_max()
         if y < 0 or (y_max is not None and y > y_max):
@@ -2276,6 +2451,7 @@ class ComprehensiveReportDialog(Form):
                 self._lbl_calc_delay.Text = '\u2014 (must be \u22650)'
             self._lbl_calc_delay.ForeColor = Color.OrangeRed
             self._auto_detect_camera_delay(None)
+            self._update_guidance_values()
             return
         delay_ms = self._calculate_camera_delay()
         if delay_ms is not None:
@@ -2288,6 +2464,18 @@ class ComprehensiveReportDialog(Form):
 
     def _calculate_camera_delay(self):
         """Return camera_delay_ms from selected calibration run + Y line, or None."""
+        # GPS flash (dumb): user enters measured camera acquisition delay directly.
+        if hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked:
+            if not hasattr(self, '_txt_gps_delay'):
+                return None
+            text = self._txt_gps_delay.Text.strip()
+            if not text:
+                return None
+            try:
+                return round(float(text), 1)
+            except ValueError:
+                return None
+
         if not self._calib_runs:
             return None
         idx = self._combo_calib_run.SelectedIndex
@@ -2316,18 +2504,30 @@ class ComprehensiveReportDialog(Form):
         if hasattr(self, '_rad_corrections_applied'):
             self._rad_corrections_applied.Enabled = True
         csv_delay = self._ts_summary.get('acquisition_delay')  # ms, float or None
-        # When total delay (cam - ntp) is negative, Tangra requires separate entries;
-        # compare CSV only against camera delay in that case.
-        ntp_ms = getattr(self, '_ntp_offset_ms', 0.0)
-        total_is_negative = (calculated_ms is not None and (calculated_ms - ntp_ms) < 0)
-        if total_is_negative:
-            compare_ms = calculated_ms  # check camera delay only
+        is_ntp = hasattr(self, '_rad_timing_ntp') and self._rad_timing_ntp.Checked
+        is_gps = hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked
+
+        if is_ntp:
+            # When total delay (cam - ntp) is negative, Tangra requires separate entries;
+            # compare CSV only against camera delay in that case.
+            ntp_ms = getattr(self, '_ntp_offset_ms', 0.0)
+            total_is_negative = (calculated_ms is not None and (calculated_ms - ntp_ms) < 0)
+            if total_is_negative:
+                compare_ms = calculated_ms  # check camera delay only
+            else:
+                compare_ms = (calculated_ms - ntp_ms) if calculated_ms is not None else None
+            guidance_note = (
+                '\n\u26a0 Ensure you have applied the NTP Offset in TANGRA'
+                ' \u2014 this cannot be checked automatically'
+            ) if total_is_negative else ''
+            ref_label = 'camera delay' if total_is_negative else 'Total Delay'
         else:
-            compare_ms = (calculated_ms - ntp_ms) if calculated_ms is not None else None
-        ntp_note = (
-            '\n\u26a0 Ensure you have applied the NTP Offset in TANGRA'
-            ' \u2014 this cannot be checked automatically'
-        ) if total_is_negative else ''
+            # GPS flash (dumb): no NTP analyser offset. If camera delay is negative,
+            # Tangra requires Acquisition Delay=0 and positive (Reference Time-UTC).
+            total_is_negative = (calculated_ms is not None and calculated_ms < 0)
+            compare_ms = 0.0 if total_is_negative else calculated_ms
+            guidance_note = ''
+            ref_label = 'Acquisition Delay'
         if csv_delay is None:
             self._lbl_csv_delay.Text = 'not present in CSV'
             self._lbl_csv_delay.ForeColor = Color.Gray
@@ -2339,7 +2539,7 @@ class ComprehensiveReportDialog(Form):
         csv_val = float(csv_delay)
         if compare_ms is not None:
             diff = abs(csv_val - compare_ms)
-            if csv_val < 0.1:
+            if csv_val < 0.1 and not (is_gps and total_is_negative):
                 self._lbl_csv_delay.Text = '{0:.1f} ms (zero \u2014 not applied in Tangra)'.format(csv_val)
                 self._lbl_csv_delay.ForeColor = Color.Gray
                 if not self._correction_user_set:
@@ -2348,17 +2548,16 @@ class ComprehensiveReportDialog(Form):
                     self._suppress_correction_event = False
             elif diff <= 1.0:
                 self._lbl_csv_delay.Text = (
-                    '{0:.1f} ms \u2714 close match \u2014 delay was applied{1}'.format(csv_val, ntp_note))
+                    '{0:.1f} ms \u2714 close match \u2014 delay was applied{1}'.format(csv_val, guidance_note))
                 self._lbl_csv_delay.ForeColor = Color.Green
                 if not self._correction_user_set:
                     self._suppress_correction_event = True
                     self._rad_corrections_applied.Checked = True
                     self._suppress_correction_event = False
             else:
-                ref_label = 'camera delay' if total_is_negative else 'Total Delay'
                 self._lbl_csv_delay.Text = (
                     '{0:.1f} ms  \u26a0 differs from {1} by {2:.1f} ms \u2014 verify{3}'.format(
-                        csv_val, ref_label, diff, ntp_note))
+                        csv_val, ref_label, diff, guidance_note))
                 self._lbl_csv_delay.ForeColor = Color.OrangeRed
         else:
             self._lbl_csv_delay.Text = '{0:.1f} ms'.format(csv_val)
@@ -2381,6 +2580,12 @@ class ComprehensiveReportDialog(Form):
                 self._txt_y_line,
                 "The vertical pixel position of the star on the sensor in Tangra.\n"
                 "Right-click the aperture \u2192 Properties to read it."
+            )
+        if hasattr(self, '_txt_gps_delay'):
+            self._tooltip.SetToolTip(
+                self._txt_gps_delay,
+                "GPS flash (dumb): enter the measured camera acquisition delay in ms.\n"
+                "Use one decimal place; negative values are allowed."
             )
         if hasattr(self, '_chk_confirm_total_delay'):
             self._tooltip.SetToolTip(
@@ -2508,6 +2713,23 @@ class ComprehensiveReportDialog(Form):
         self.update_button_state()
 
     def _on_ntp_info_click(self, sender, e):
+        is_gps = hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked
+        if is_gps:
+            MessageBox.Show(
+                "GPS flash overlay (dumb) timing uses camera acquisition delay only.\n\n"
+                "There is no NTP analyser offset in this method.\n\n"
+                "If Camera Delay is positive:\n"
+                "  enter it in Tangra Acquisition Delay and leave Reference unchecked.\n\n"
+                "If Camera Delay is negative:\n"
+                "  Tangra cannot accept negative Acquisition Delay, so enter:\n"
+                "    Acquisition Delay = 0.0 ms\n"
+                "    (Reference Time \u2212 UTC) = abs(camera delay) as a positive value.",
+                "About GPS Flash Timing Corrections",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            )
+            return
+
         MessageBox.Show(
             "NTP timing corrections account for two sources of error in event timestamps:\n\n"
             "1.  Camera acquisition delay\n"
@@ -2566,6 +2788,27 @@ class ComprehensiveReportDialog(Form):
         )
 
     def _on_why_confirm_click(self, sender, e):
+        is_gps = hasattr(self, '_rad_timing_gps') and self._rad_timing_gps.Checked
+        if is_gps:
+            MessageBox.Show(
+                "OM calculates camera-delay guidance, but cannot verify whether\n"
+                "you actually entered the values in Tangra.\n\n"
+                "For GPS flash overlay (dumb), if camera delay is negative then Tangra\n"
+                "cannot accept it in Acquisition Delay. You must enter:\n"
+                "  \u2022  Acquisition Delay = 0.0 ms\n"
+                "  \u2022  (Reference Time \u2212 UTC) Offset = abs(camera delay)\n\n"
+                "If these are not entered correctly, exported times can be wrong.\n\n"
+                "HOW TO VERIFY\n"
+                "Open the Tangra CSV and check row 8.\n"
+                "For negative-delay workflow, \u2018Acquisition Delay (ms)\u2019 should be 0.0 ms.\n"
+                "CSV does not record the (Reference Time \u2212 UTC) value, so confirm it\n"
+                "from your Tangra entry notes.",
+                "Why is Confirmation Required?",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            )
+            return
+
         MessageBox.Show(
             "OM calculates what the corrections should be, but cannot verify whether\n"
             "you actually entered them in Tangra.\n\n"
@@ -2592,7 +2835,7 @@ class ComprehensiveReportDialog(Form):
 
     def _on_why_blocked_click(self, sender, e):
         text = getattr(self.status_label, 'Text', '')
-        if not text or text == "Ready to generate report":
+        if not text or text.startswith("Ready"):
             return
         MessageBox.Show(
             text,

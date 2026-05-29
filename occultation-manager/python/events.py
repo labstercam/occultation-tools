@@ -3,6 +3,7 @@ import json
 import binascii
 import base64
 import urllib.request
+import urllib.parse
 import math
 from datetime import datetime, timedelta
 
@@ -165,24 +166,33 @@ class EventProcessor:
             latitude   = event.get('latitude')
             longitude  = event.get('longitude')
             elevation  = event.get('elevation')
+            owcloudurl = event.get('owcloudurl')
         else:
             event_id   = getattr(event, 'ow_eventid',   None)
             station_id = getattr(event, 'owc_station_id', None)
             latitude   = getattr(event, 'latitude',     None)
             longitude  = getattr(event, 'longitude',    None)
             elevation  = getattr(event, 'elevation',    None)
+            owcloudurl = getattr(event, 'owcloudurl',   None)
 
         if not event_id:
             return {'success': False, 'response': None,
-                    'error': 'No ow_eventid on event'}
+                    'error': 'No ow_eventid on event',
+                    'auth_method': None,
+                    'endpoint_used': None}
         if station_id is None:
             return {'success': False, 'response': None,
-                    'error': 'No owc_station_id on event — ensure events were downloaded with the current version'}
+                    'error': 'No owc_station_id on event — ensure events were downloaded with the current version',
+                    'auth_method': None,
+                    'endpoint_used': None}
 
         report_code = REPORT_CODES.get(observation_type)
         if report_code is None:
             return {'success': False, 'response': None,
-                    'error': 'Unknown observation_type: ' + str(observation_type)}
+                    'error': 'Unknown observation_type: ' + str(observation_type),
+                    'auth_method': None,
+                    'endpoint_used': None,
+                    'attempted_calls': []}
 
         payload = {
             'eventId':   str(event_id),
@@ -201,24 +211,168 @@ class EventProcessor:
             if elevation is not None:
                 payload['altMslMeters'] = int(round(float(elevation)))  # nearest metre
 
+        attempted_calls = []
         url = config.get_report_observation_url()
+        attempted_calls.append({
+            'auth_method': 'api_key',
+            'endpoint_used': url,
+            'headers': {
+                'OW-ApiKey': str(config.get_api_key() or '')[:8] + '...',
+                'Content-Type': 'application/json',
+            },
+            'body': payload,
+            'outcome': 'pending',
+        })
         try:
             response = EventProcessor.get_owc_events_v2(
                 url, config.get_api_key(), data=payload, method='POST'
             )
-            return {'success': True, 'response': response, 'error': None}
+            attempted_calls[-1]['outcome'] = 'success'
+            return {
+                'success': True,
+                'response': response,
+                'error': None,
+                'auth_method': 'api_key',
+                'endpoint_used': url,
+                'attempted_calls': attempted_calls,
+            }
         except urllib.error.HTTPError as ex:
             # Read the response body — OWC often returns a JSON error description
             try:
                 error_body = ex.read().decode('utf-8')
             except Exception:
                 error_body = ''
+            attempted_calls[-1]['outcome'] = 'http_error'
+            attempted_calls[-1]['status'] = ex.code
+            attempted_calls[-1]['reason'] = ex.reason
+            attempted_calls[-1]['response_body'] = error_body
+
+            # Fallback: OWC planning endpoint expects the encoded event token and
+            # Basic auth, and is currently the server-side route that accepts report posts.
+            if ex.code in (404, 405) and ('Cannot locate event' in error_body or ex.code == 405):
+                token = None
+                if owcloudurl:
+                    try:
+                        parts = str(owcloudurl).split('/event/', 1)
+                        if len(parts) == 2:
+                            token = parts[1].split('/', 1)[0]
+                    except Exception:
+                        token = None
+
+                if token:
+                    try:
+                        report_duration = float(duration_s) if duration_s is not None else 0.0
+                        planning_query = {
+                            'stationId': int(station_id),
+                            'report': int(report_code),
+                            'duration': report_duration,
+                            'comment': comment or '',
+                        }
+                        planning_url = (
+                            config.get_host()
+                            + '/api2/v1/planning/' + str(token)
+                            + '/report-obs?'
+                            + urllib.parse.urlencode(planning_query)
+                        )
+
+                        credentials = '{0}:{1}'.format(
+                            config.get_owc_email(), config.get_owc_password())
+                        encoded_credentials = base64.b64encode(
+                            credentials.encode('utf-8')).decode('utf-8')
+
+                        attempted_calls.append({
+                            'auth_method': 'basic_auth_fallback',
+                            'endpoint_used': planning_url,
+                            'headers': {
+                                'Authorization': 'Basic ' + encoded_credentials[:8] + '...',
+                                'Content-Type': 'application/json',
+                            },
+                            'body': None,
+                            'outcome': 'pending',
+                        })
+
+                        req = urllib.request.Request(planning_url, data=b'')
+                        req.get_method = lambda: 'POST'
+                        req.add_header('Authorization', 'Basic {0}'.format(encoded_credentials))
+                        req.add_header('Content-Type', 'application/json')
+
+                        fallback_resp = urllib.request.urlopen(req, timeout=20)
+                        fallback_body = fallback_resp.read().decode('utf-8')
+                        attempted_calls[-1]['outcome'] = 'success'
+                        attempted_calls[-1]['status'] = getattr(fallback_resp, 'status', 200)
+                        attempted_calls[-1]['response_body'] = fallback_body
+                        try:
+                            parsed_fallback = json.loads(fallback_body) if fallback_body.strip() else None
+                        except Exception:
+                            parsed_fallback = fallback_body
+                        return {
+                            'success': True,
+                            'response': parsed_fallback,
+                            'error': None,
+                            'auth_method': 'basic_auth_fallback',
+                            'endpoint_used': planning_url,
+                            'attempted_calls': attempted_calls,
+                        }
+                    except urllib.error.HTTPError as ex2:
+                        try:
+                            error_body2 = ex2.read().decode('utf-8')
+                        except Exception:
+                            error_body2 = ''
+                        attempted_calls[-1]['outcome'] = 'http_error'
+                        attempted_calls[-1]['status'] = ex2.code
+                        attempted_calls[-1]['reason'] = ex2.reason
+                        attempted_calls[-1]['response_body'] = error_body2
+                        msg2 = 'HTTP {0}: {1}'.format(ex2.code, ex2.reason)
+                        if error_body2.strip():
+                            msg2 = msg2 + ' — ' + error_body2.strip()
+                        return {
+                            'success': False,
+                            'response': None,
+                            'error': (
+                                'Primary report-observation failed; fallback planning endpoint also failed. '
+                                + msg2
+                            ),
+                            'auth_method': 'basic_auth_fallback',
+                            'endpoint_used': planning_url,
+                            'attempted_calls': attempted_calls,
+                        }
+                    except Exception as ex2:
+                        attempted_calls[-1]['outcome'] = 'exception'
+                        attempted_calls[-1]['reason'] = str(ex2)
+                        return {
+                            'success': False,
+                            'response': None,
+                            'error': (
+                                'Primary report-observation failed; fallback planning endpoint error: '
+                                + str(ex2)
+                            ),
+                            'auth_method': 'basic_auth_fallback',
+                            'endpoint_used': planning_url,
+                            'attempted_calls': attempted_calls,
+                        }
+
             msg = 'HTTP {0}: {1}'.format(ex.code, ex.reason)
             if error_body.strip():
                 msg = msg + ' — ' + error_body.strip()
-            return {'success': False, 'response': None, 'error': msg}
+            return {
+                'success': False,
+                'response': None,
+                'error': msg,
+                'auth_method': 'api_key',
+                'endpoint_used': url,
+                'attempted_calls': attempted_calls,
+            }
         except Exception as ex:
-            return {'success': False, 'response': None, 'error': str(ex)}
+            attempted_calls[-1]['outcome'] = 'exception'
+            attempted_calls[-1]['reason'] = str(ex)
+            return {
+                'success': False,
+                'response': None,
+                'error': str(ex),
+                'auth_method': 'api_key',
+                'endpoint_used': url,
+                'attempted_calls': attempted_calls,
+            }
 
     def update_ow_cloud_events(self, progress_callback=None):
         """Get all your OWC announced events using configuration"""
