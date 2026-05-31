@@ -3,6 +3,7 @@ clr.AddReference("System.Windows.Forms")
 clr.AddReference("System.Drawing")
 
 import os
+import re
 import webbrowser
 from datetime import date
 from System.Drawing import Point, Size, Color, Font, FontStyle
@@ -1829,7 +1830,7 @@ class LocationConfirmDialog(Form):
         
         # Form properties
         self.Text = "Confirm Observation Location"
-        self.Size = Size(int(620 * sf), int(720 * sf))
+        self.Size = Size(int(620 * sf), int(850 * sf))
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.StartPosition = FormStartPosition.CenterParent
         self.MaximizeBox = False
@@ -1986,6 +1987,67 @@ class LocationConfirmDialog(Form):
         station_group.Controls.Add(lbl_info)
         
         y_pos += int(290 * sf)
+
+        # ===== STEP 1A: OPTIONAL OWC NO-OBS REPORT =====
+        no_obs_group = GroupBox()
+        no_obs_group.Text = "Step 1A: Optional - Report No Observation to Occult Watcher Cloud"
+        no_obs_group.Location = Point(int(10 * sf), y_pos)
+        no_obs_group.Size = Size(int(580 * sf), int(125 * sf))
+        panel.Controls.Add(no_obs_group)
+
+        self.lbl_no_obs_info = Label()
+        self.lbl_no_obs_info.Text = (
+            "Report no observation, failed or clouded out  to OWC. "
+            "Positive or miss will be reported after the full report is generated"
+        )
+        self.lbl_no_obs_info.Location = Point(int(15 * sf), int(22 * sf))
+        self.lbl_no_obs_info.Size = Size(int(550 * sf), int(30 * sf))
+        self.lbl_no_obs_info.ForeColor = Color.Gray
+        no_obs_group.Controls.Add(self.lbl_no_obs_info)
+
+        lbl_no_obs_type = Label()
+        lbl_no_obs_type.Text = "Observation type:"
+        lbl_no_obs_type.Location = Point(int(15 * sf), int(56 * sf))
+        lbl_no_obs_type.Size = Size(int(120 * sf), int(20 * sf))
+        no_obs_group.Controls.Add(lbl_no_obs_type)
+
+        self.cmb_no_obs_type = ComboBox()
+        self.cmb_no_obs_type.Location = Point(int(140 * sf), int(54 * sf))
+        self.cmb_no_obs_type.Size = Size(int(150 * sf), int(22 * sf))
+        self.cmb_no_obs_type.DropDownStyle = ComboBoxStyle.DropDownList
+        self.cmb_no_obs_type.Items.Add('NotObserved')
+        self.cmb_no_obs_type.Items.Add('Failed')
+        self.cmb_no_obs_type.Items.Add('Clouded')
+        self.cmb_no_obs_type.SelectedIndex = 1
+        no_obs_group.Controls.Add(self.cmb_no_obs_type)
+
+        lbl_no_obs_comment = Label()
+        lbl_no_obs_comment.Text = "Comment (max 30):"
+        lbl_no_obs_comment.Location = Point(int(300 * sf), int(56 * sf))
+        lbl_no_obs_comment.Size = Size(int(115 * sf), int(20 * sf))
+        no_obs_group.Controls.Add(lbl_no_obs_comment)
+
+        self.txt_no_obs_comment = TextBox()
+        self.txt_no_obs_comment.Location = Point(int(418 * sf), int(54 * sf))
+        self.txt_no_obs_comment.Size = Size(int(145 * sf), int(22 * sf))
+        self.txt_no_obs_comment.MaxLength = 30
+        no_obs_group.Controls.Add(self.txt_no_obs_comment)
+
+        self.btn_submit_no_obs = Button()
+        self.btn_submit_no_obs.Text = "Submit No Observation to OWC"
+        self.btn_submit_no_obs.Location = Point(int(350 * sf), int(84 * sf))
+        self.btn_submit_no_obs.Size = Size(int(215 * sf), int(27 * sf))
+        self.btn_submit_no_obs.Click += self.submit_no_obs_click
+        no_obs_group.Controls.Add(self.btn_submit_no_obs)
+
+        self.lbl_no_obs_status = Label()
+        self.lbl_no_obs_status.Text = ""
+        self.lbl_no_obs_status.Location = Point(int(15 * sf), int(88 * sf))
+        self.lbl_no_obs_status.Size = Size(int(330 * sf), int(22 * sf))
+        self.lbl_no_obs_status.ForeColor = Color.Gray
+        no_obs_group.Controls.Add(self.lbl_no_obs_status)
+
+        y_pos += int(135 * sf)
 
         # ===== STEP 2: REPORT FORMAT =====
         report_format_group = GroupBox()
@@ -2263,6 +2325,150 @@ class LocationConfirmDialog(Form):
         except ValueError:
             MessageBox.Show("Please enter valid numeric values for latitude, longitude and elevation.",
                           "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+
+    def submit_no_obs_click(self, sender, e):
+        """Submit optional NotObserved/Failed/Clouded result to OWC."""
+        if self.config is None:
+            self.lbl_no_obs_status.Text = 'Config unavailable.'
+            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            return
+
+        obs_type = None
+        try:
+            obs_type = str(self.cmb_no_obs_type.SelectedItem)
+        except Exception:
+            obs_type = None
+
+        if obs_type not in ('NotObserved', 'Failed', 'Clouded'):
+            self.lbl_no_obs_status.Text = 'Select an observation type.'
+            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            return
+
+        comment = (self.txt_no_obs_comment.Text or '').strip()
+        if len(comment) > 30:
+            self.lbl_no_obs_status.Text = 'Comment must be 30 characters or fewer.'
+            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            return
+
+        try:
+            comment.encode('ascii')
+        except Exception:
+            self.lbl_no_obs_status.Text = 'Comment must contain ASCII only.'
+            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            return
+
+        allowed = re.compile(r"^[A-Za-z0-9 .,;:!?\-_'()/]*$")
+        if comment and not allowed.match(comment):
+            self.lbl_no_obs_status.Text = 'Use letters/numbers and basic punctuation only.'
+            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            return
+
+        try:
+            from events import EventProcessor
+            self.btn_submit_no_obs.Enabled = False
+            self.lbl_no_obs_status.Text = 'Submitting to OWC...'
+            self.lbl_no_obs_status.ForeColor = Color.Gray
+
+            event_payload = {
+                'ow_eventid': getattr(self.event, 'ow_eventid', None),
+                'ow_api_eventid': getattr(self.event, 'ow_api_eventid', None),
+                'owc_station_id': getattr(self.event, 'owc_station_id', None),
+                'owcloudurl': getattr(self.event, 'owcloudurl', None),
+                'latitude': getattr(self.event, 'latitude', None),
+                'longitude': getattr(self.event, 'longitude', None),
+                'elevation': getattr(self.event, 'elevation', None),
+            }
+
+            result = EventProcessor.submit_owc_report(
+                self.config,
+                event_payload,
+                observation_type=obs_type,
+                comment=comment,
+                duration_s=None,
+                update_location=False,
+            )
+
+            if result.get('success'):
+                persisted_ok = self._persist_owc_status(obs_type)
+                if persisted_ok:
+                    self.lbl_no_obs_status.Text = 'Submitted to OWC successfully.'
+                    self.lbl_no_obs_status.ForeColor = Color.Green
+                else:
+                    self.lbl_no_obs_status.Text = 'Submitted to OWC. Warning: status could not be saved locally.'
+                    self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+
+                # Update the main grid status immediately when possible.
+                try:
+                    owner = self.Owner
+                    if owner and hasattr(owner, 'refresh_display'):
+                        owner.refresh_display()
+                except Exception:
+                    pass
+            else:
+                self.lbl_no_obs_status.Text = 'OWC submit failed: {0}'.format(result.get('error') or 'Unknown error')
+                self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+        except Exception as ex:
+            self.lbl_no_obs_status.Text = 'OWC submit exception: {0}'.format(str(ex))
+            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+        finally:
+            self.btn_submit_no_obs.Enabled = True
+
+    def _get_owc_status_display(self, obs_type):
+        """Return user-facing grid/status label for OWC report values."""
+        mapping = {
+            'Positive': 'Positive',
+            'Miss': 'Miss',
+            'Negative': 'Miss',
+            'NotObserved': 'Unsure No Obs',
+            'Failed': 'Failed',
+            'Clouded': 'Clouded',
+        }
+        return mapping.get(str(obs_type or ''), str(obs_type or ''))
+
+    def _persist_owc_status(self, obs_type):
+        """Persist OWC report status to the current event and JSON event stores."""
+        display_status = self._get_owc_status_display(obs_type)
+
+        # Update in-memory event immediately.
+        try:
+            self.event.owc_report_status = obs_type
+            self.event.status = display_status
+            if hasattr(self.event, 'original_data') and isinstance(self.event.original_data, dict):
+                self.event.original_data['owc_report_status'] = obs_type
+                self.event.original_data['status'] = display_status
+        except Exception:
+            pass
+
+        event_id = getattr(self.event, 'event_id', None)
+        if not event_id or self.config is None:
+            return False
+
+        try:
+            from events import EventProcessor
+            save_succeeded = False
+            for occ_file in (
+                self.config.get_occultations_file(),
+                self.config.get_latest_occultations_file(),
+            ):
+                try:
+                    events_data = EventProcessor.load_occultations(occ_file, self.config)
+                    if not events_data:
+                        continue
+                    changed = False
+                    for entry in events_data:
+                        if entry.get('id') == event_id:
+                            entry['owc_report_status'] = obs_type
+                            entry['status'] = display_status
+                            changed = True
+                            break
+                    if changed:
+                        if EventProcessor.save_occultations(events_data, occ_file, self.config):
+                            save_succeeded = True
+                except Exception:
+                    continue
+            return save_succeeded
+        except Exception:
+            return False
     
     def cancel_click(self, sender, e):
         """User cancelled"""

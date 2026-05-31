@@ -16,6 +16,7 @@ clr.AddReference("System.Drawing")
 clr.AddReference("System")
 
 import os
+import re
 import System
 from System import Array
 from System.Drawing import Point, Size, Color, Font, FontStyle
@@ -82,6 +83,9 @@ class PhaseBDialog(Form):
         self.other_conditions = None
         self.observation_type = None
         self.include_station_name = False
+        self._owc_type_user_override = False
+        self._suppress_owc_combo_event = False
+        self._last_submitted_owc_signature = None
 
         self._setup_ui()
 
@@ -542,13 +546,13 @@ class PhaseBDialog(Form):
         grp_obs_type = GroupBox()
         grp_obs_type.Text = "4. Observation Result"
         grp_obs_type.Location = Point(10, y_pos)
-        grp_obs_type.Size = Size(940, 120)
+        grp_obs_type.Size = Size(940, 165)
         main_panel.Controls.Add(grp_obs_type)
 
         self.rb_positive = RadioButton()
         self.rb_positive.Text = "Positive - Observed occultation (D/R source required)"
         self.rb_positive.Location = Point(20, 25)
-        self.rb_positive.Size = Size(500, 25)
+        self.rb_positive.Size = Size(480, 25)
         self.rb_positive.Checked = True
         self.rb_positive.CheckedChanged += self._obs_type_changed
         grp_obs_type.Controls.Add(self.rb_positive)
@@ -556,18 +560,91 @@ class PhaseBDialog(Form):
         self.rb_negative = RadioButton()
         self.rb_negative.Text = "Negative - No occultation occurred (D/R not required)"
         self.rb_negative.Location = Point(20, 50)
-        self.rb_negative.Size = Size(500, 25)
+        self.rb_negative.Size = Size(480, 25)
         self.rb_negative.CheckedChanged += self._obs_type_changed
         grp_obs_type.Controls.Add(self.rb_negative)
 
         self.rb_unsure = RadioButton()
         self.rb_unsure.Text = "Unsure - Possible event but uncertain (D/R source required)"
         self.rb_unsure.Location = Point(20, 75)
-        self.rb_unsure.Size = Size(500, 25)
+        self.rb_unsure.Size = Size(480, 25)
         self.rb_unsure.CheckedChanged += self._obs_type_changed
         grp_obs_type.Controls.Add(self.rb_unsure)
 
-        y_pos += 130
+        self.rb_not_observed = RadioButton()
+        self.rb_not_observed.Text = "Not observed, failed or clouded out (D/R not required)"
+        self.rb_not_observed.Location = Point(20, 100)
+        self.rb_not_observed.Size = Size(500, 25)
+        self.rb_not_observed.CheckedChanged += self._obs_type_changed
+        grp_obs_type.Controls.Add(self.rb_not_observed)
+
+        # RHS: Optional OWC report entry
+        self._lbl_owc_head = Label()
+        self._lbl_owc_head.Text = "Occult Watcher Cloud"
+        self._lbl_owc_head.Font = Font(self._lbl_owc_head.Font.FontFamily,
+                                       self._lbl_owc_head.Font.Size, FontStyle.Bold)
+        self._lbl_owc_head.Location = Point(530, 20)
+        self._lbl_owc_head.Size = Size(200, 20)
+        grp_obs_type.Controls.Add(self._lbl_owc_head)
+
+        lbl_owc_report = Label()
+        lbl_owc_report.Text = "Report Type:"
+        lbl_owc_report.Location = Point(530, 44)
+        lbl_owc_report.Size = Size(84, 20)
+        grp_obs_type.Controls.Add(lbl_owc_report)
+
+        self.cmb_owc_report_type = ComboBox()
+        self.cmb_owc_report_type.Location = Point(618, 42)
+        self.cmb_owc_report_type.Size = Size(160, 23)
+        self.cmb_owc_report_type.DropDownStyle = ComboBoxStyle.DropDownList
+        self.cmb_owc_report_type.Items.AddRange(Array[object]([
+            'Positive', 'Miss', 'Not Observed', 'Clouded Out', 'Failed'
+        ]))
+        self.cmb_owc_report_type.SelectedIndex = 0
+        self.cmb_owc_report_type.SelectedIndexChanged += self._on_owc_report_type_changed
+        grp_obs_type.Controls.Add(self.cmb_owc_report_type)
+
+        self.lbl_owc_duration = Label()
+        self.lbl_owc_duration.Text = "Duration (s):"
+        self.lbl_owc_duration.Location = Point(530, 70)
+        self.lbl_owc_duration.Size = Size(84, 20)
+        grp_obs_type.Controls.Add(self.lbl_owc_duration)
+
+        self.txt_owc_duration = TextBox()
+        self.txt_owc_duration.Location = Point(618, 68)
+        self.txt_owc_duration.Size = Size(85, 22)
+        grp_obs_type.Controls.Add(self.txt_owc_duration)
+
+        self.lbl_owc_comment = Label()
+        self.lbl_owc_comment.Text = "Comment (max 30):"
+        self.lbl_owc_comment.Location = Point(530, 96)
+        self.lbl_owc_comment.Size = Size(110, 20)
+        grp_obs_type.Controls.Add(self.lbl_owc_comment)
+
+        self.txt_owc_comment = TextBox()
+        self.txt_owc_comment.Location = Point(644, 94)
+        self.txt_owc_comment.Size = Size(166, 22)
+        self.txt_owc_comment.MaxLength = 30
+        grp_obs_type.Controls.Add(self.txt_owc_comment)
+
+        self.btn_submit_owc = Button()
+        self.btn_submit_owc.Text = "Submit to OWC"
+        self.btn_submit_owc.Location = Point(812, 92)
+        self.btn_submit_owc.Size = Size(112, 26)
+        self.btn_submit_owc.Click += self._submit_owc_click
+        grp_obs_type.Controls.Add(self.btn_submit_owc)
+
+        self.lbl_owc_status = Label()
+        self.lbl_owc_status.Text = ""
+        self.lbl_owc_status.Location = Point(530, 124)
+        self.lbl_owc_status.Size = Size(394, 34)
+        self.lbl_owc_status.ForeColor = Color.Gray
+        grp_obs_type.Controls.Add(self.lbl_owc_status)
+
+        self._sync_owc_report_type_from_observation_type(force=True)
+        self._refresh_owc_duration_ui()
+
+        y_pos += 175
 
         # ===== SECTION 6: CONDITIONS =====
         grp_conditions = GroupBox()
@@ -1194,11 +1271,13 @@ class PhaseBDialog(Form):
             self._d_time_seconds = None
             self._r_time_seconds = None
             self._update_dr_info_panel()
+            self._refresh_owc_duration_ui()
             return
         rec = self._dr_events[idx]
         self._d_time_seconds = rec.get('d_seconds')
         self._r_time_seconds = rec.get('r_seconds')
         self._update_dr_info_panel()
+        self._refresh_owc_duration_ui()
         self.update_button_state()
 
     def _on_ntp_uncertainty_changed(self, sender, e):
@@ -1393,7 +1472,285 @@ class PhaseBDialog(Form):
     # ------------------------------------------------------------------
 
     def _obs_type_changed(self, sender, e):
+        self._sync_owc_report_type_from_observation_type()
+        self._refresh_owc_duration_ui()
         self.update_button_state()
+
+    def _on_owc_report_type_changed(self, sender, e):
+        if not self._suppress_owc_combo_event:
+            self._owc_type_user_override = True
+        self._refresh_owc_duration_ui()
+
+    def _sync_owc_report_type_from_observation_type(self, force=False):
+        """Keep OWC type aligned with observation result unless user overrides."""
+        if not hasattr(self, 'cmb_owc_report_type'):
+            return
+        if self._owc_type_user_override and not force:
+            return
+
+        obs_type = self._get_obs_type()
+        target_ui = 'Positive'
+        if obs_type == 'Negative':
+            target_ui = 'Miss'
+        elif obs_type == 'Unsure':
+            # "Unsure" still indicates a potential positive with D/R timing.
+            target_ui = 'Positive'
+        elif obs_type == 'NotObserved':
+            target_ui = 'Not Observed'
+
+        try:
+            self._suppress_owc_combo_event = True
+            self.cmb_owc_report_type.SelectedItem = target_ui
+        finally:
+            self._suppress_owc_combo_event = False
+
+    def _is_owc_positive_selected(self):
+        if not hasattr(self, 'cmb_owc_report_type'):
+            return False
+        try:
+            return str(self.cmb_owc_report_type.SelectedItem) == 'Positive'
+        except Exception:
+            return False
+
+    def _get_selected_dr_duration(self):
+        idx = self.combo_dr_event.SelectedIndex
+        if idx < 0 or idx >= len(self._dr_events):
+            return None
+        rec = self._dr_events[idx]
+        d_sec = rec.get('d_seconds')
+        r_sec = rec.get('r_seconds')
+        if d_sec is None or r_sec is None:
+            return None
+        try:
+            dur = float(r_sec) - float(d_sec)
+            if dur < 0:
+                return None
+            return dur
+        except Exception:
+            return None
+
+    def _refresh_owc_duration_ui(self):
+        if not hasattr(self, 'lbl_owc_duration') or not hasattr(self, 'txt_owc_duration'):
+            return
+        is_positive = self._is_owc_positive_selected()
+        self.lbl_owc_duration.Visible = is_positive
+        self.txt_owc_duration.Visible = is_positive
+        if not is_positive:
+            self.txt_owc_duration.Text = ''
+            return
+
+        dur = self._get_selected_dr_duration()
+        if dur is None:
+            self.txt_owc_duration.Text = ''
+        else:
+            self.txt_owc_duration.Text = ('{0:.3f}'.format(float(dur))).rstrip('0').rstrip('.')
+
+    def _map_owc_report_type(self):
+        """Map UI labels to EventProcessor.submit_owc_report observation_type."""
+        try:
+            ui_value = str(self.cmb_owc_report_type.SelectedItem)
+        except Exception:
+            ui_value = ''
+        mapping = {
+            'Positive': 'Positive',
+            'Miss': 'Miss',
+            'Not Observed': 'NotObserved',
+            'Clouded Out': 'Clouded',
+            'Failed': 'Failed',
+        }
+        return mapping.get(ui_value)
+
+    def _validate_owc_submission_inputs(self):
+        """Validate current OWC inputs and return normalized values.
+
+        Returns:
+            tuple: (obs_type, duration_s, comment, error_message)
+        """
+        obs_type = self._map_owc_report_type()
+        if obs_type is None:
+            return None, None, None, 'Select an OWC report type.'
+
+        duration_s = None
+        if obs_type == 'Positive':
+            raw_duration = (self.txt_owc_duration.Text or '').strip()
+            if not raw_duration:
+                return None, None, None, 'Duration is required for Positive reports.'
+            try:
+                duration_s = float(raw_duration)
+                if duration_s <= 0:
+                    raise ValueError()
+            except Exception:
+                return None, None, None, 'Duration must be a positive number of seconds.'
+
+        comment = (self.txt_owc_comment.Text or '').strip()
+        if len(comment) > 30:
+            return None, None, None, 'Comment must be 30 characters or fewer.'
+
+        try:
+            comment.encode('ascii')
+        except Exception:
+            return None, None, None, 'Comment must contain ASCII only.'
+
+        allowed = re.compile(r"^[A-Za-z0-9 .,;:!?\-_'()/]*$")
+        if comment and not allowed.match(comment):
+            return None, None, None, 'Use letters/numbers and basic punctuation only.'
+
+        return obs_type, duration_s, comment, None
+
+    def _get_owc_submission_signature(self):
+        """Return a stable signature for current OWC submission inputs."""
+        obs_type, duration_s, comment, _ = self._validate_owc_submission_inputs()
+        if not obs_type:
+            return None
+        duration_token = ''
+        if duration_s is not None:
+            duration_token = '{0:.6f}'.format(float(duration_s))
+        return '{0}|{1}|{2}'.format(obs_type, duration_token, comment)
+
+    def _submit_owc_report(self, update_status_label=True):
+        """Submit to OWC using current RHS controls. Returns True on success."""
+        if self.config is None:
+            if update_status_label:
+                self.lbl_owc_status.Text = 'Config unavailable.'
+                self.lbl_owc_status.ForeColor = Color.OrangeRed
+            return False
+
+        obs_type, duration_s, comment, error_message = self._validate_owc_submission_inputs()
+        if error_message:
+            if update_status_label:
+                self.lbl_owc_status.Text = error_message
+                self.lbl_owc_status.ForeColor = Color.OrangeRed
+            return False
+
+        try:
+            from events import EventProcessor
+
+            self.btn_submit_owc.Enabled = False
+            if update_status_label:
+                self.lbl_owc_status.Text = 'Submitting to OWC...'
+                self.lbl_owc_status.ForeColor = Color.Gray
+
+            event_payload = {
+                'ow_eventid': getattr(self.event, 'ow_eventid', None),
+                'ow_api_eventid': getattr(self.event, 'ow_api_eventid', None),
+                'owc_station_id': getattr(self.event, 'owc_station_id', None),
+                'owcloudurl': getattr(self.event, 'owcloudurl', None),
+                'latitude': getattr(self.event, 'latitude', None),
+                'longitude': getattr(self.event, 'longitude', None),
+                'elevation': getattr(self.event, 'elevation', None),
+            }
+
+            result = EventProcessor.submit_owc_report(
+                self.config,
+                event_payload,
+                observation_type=obs_type,
+                comment=comment,
+                duration_s=duration_s,
+                update_location=False,
+            )
+
+            if result.get('success'):
+                persisted_ok = self._persist_owc_status(obs_type)
+                self._last_submitted_owc_signature = self._get_owc_submission_signature()
+                if update_status_label:
+                    if persisted_ok:
+                        self.lbl_owc_status.Text = 'Submitted to OWC successfully.'
+                        self.lbl_owc_status.ForeColor = Color.Green
+                    else:
+                        self.lbl_owc_status.Text = 'Submitted to OWC. Warning: status could not be saved locally.'
+                        self.lbl_owc_status.ForeColor = Color.OrangeRed
+                return True
+
+            if update_status_label:
+                self.lbl_owc_status.Text = 'OWC submit failed: {0}'.format(result.get('error') or 'Unknown error')
+                self.lbl_owc_status.ForeColor = Color.OrangeRed
+            return False
+        except Exception as ex:
+            if update_status_label:
+                self.lbl_owc_status.Text = 'OWC submit exception: {0}'.format(str(ex))
+                self.lbl_owc_status.ForeColor = Color.OrangeRed
+            return False
+        finally:
+            self.btn_submit_owc.Enabled = True
+
+    def _auto_submit_owc_if_needed(self):
+        """Submit OWC on Generate when never submitted or inputs changed since submit."""
+        current_signature = self._get_owc_submission_signature()
+        if current_signature and current_signature == self._last_submitted_owc_signature:
+            return True
+
+        ok = self._submit_owc_report(update_status_label=True)
+        if not ok:
+            MessageBox.Show(
+                'Could not submit the OWC report.\n\n'
+                'Fix the OWC values or press Submit to OWC and resolve the error before generating.',
+                'OWC Submit Failed',
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            )
+            return False
+        return True
+
+    def _get_owc_status_display(self, obs_type):
+        """Return user-facing grid/status label for OWC report values."""
+        mapping = {
+            'Positive': 'Positive',
+            'Miss': 'Miss',
+            'Negative': 'Miss',
+            'NotObserved': 'Unsure No Obs',
+            'Failed': 'Failed',
+            'Clouded': 'Clouded',
+        }
+        return mapping.get(str(obs_type or ''), str(obs_type or ''))
+
+    def _persist_owc_status(self, obs_type):
+        """Persist OWC report status to the current event and JSON event stores."""
+        display_status = self._get_owc_status_display(obs_type)
+
+        # Update in-memory event immediately so callers can refresh grid state.
+        try:
+            self.event.owc_report_status = obs_type
+            self.event.status = display_status
+            if hasattr(self.event, 'original_data') and isinstance(self.event.original_data, dict):
+                self.event.original_data['owc_report_status'] = obs_type
+                self.event.original_data['status'] = display_status
+        except Exception:
+            pass
+
+        event_id = getattr(self.event, 'event_id', None)
+        if not event_id or self.config is None:
+            return False
+
+        try:
+            from events import EventProcessor
+            save_succeeded = False
+            for occ_file in (
+                self.config.get_occultations_file(),
+                self.config.get_latest_occultations_file(),
+            ):
+                try:
+                    events_data = EventProcessor.load_occultations(occ_file, self.config)
+                    if not events_data:
+                        continue
+                    changed = False
+                    for entry in events_data:
+                        if entry.get('id') == event_id:
+                            entry['owc_report_status'] = obs_type
+                            entry['status'] = display_status
+                            changed = True
+                            break
+                    if changed:
+                        if EventProcessor.save_occultations(events_data, occ_file, self.config):
+                            save_succeeded = True
+                except Exception:
+                    continue
+            return save_succeeded
+        except Exception:
+            return False
+
+    def _submit_owc_click(self, sender, e):
+        """Submit selected OWC report type from the RHS Observation Result panel."""
+        self._submit_owc_report(update_status_label=True)
 
     def _get_obs_type(self):
         if self.rb_positive.Checked:
@@ -1402,6 +1759,8 @@ class PhaseBDialog(Form):
             return "Negative"
         if self.rb_unsure.Checked:
             return "Unsure"
+        if hasattr(self, 'rb_not_observed') and self.rb_not_observed.Checked:
+            return "NotObserved"
         return None
 
     # ------------------------------------------------------------------
@@ -1475,8 +1834,12 @@ class PhaseBDialog(Form):
         if self.combo_stability.SelectedIndex >= 0 and self.combo_stability.SelectedItem:
             self.stability = str(self.combo_stability.SelectedItem)
         self.other_conditions = self.txt_other_conditions.Text.strip() or None
-        self.observation_type = obs_type
+        # Keep report generator compatibility: use Negative for non-observed outcomes.
+        self.observation_type = 'Negative' if obs_type == 'NotObserved' else obs_type
         self.include_station_name = self.chk_include_station.Checked
+
+        if not self._auto_submit_owc_if_needed():
+            return
 
         if not self._check_analog_vti_before_generate():
             return
@@ -1541,3 +1904,6 @@ class PhaseBDialog(Form):
             "No occultation was detected.\nAOTA is optional; a light curve CSV is still required.")
         self._tooltip.SetToolTip(self.rb_unsure,
             "A possible event occurred but the result is uncertain.\nAOTA, AOTA Report, or PyOTE result required.")
+        self._tooltip.SetToolTip(self.rb_not_observed,
+            "No usable observation (not observed, failed, or clouded out).\n"
+            "Default OWC type is Not Observed; you can change it to Failed or Clouded Out.")
