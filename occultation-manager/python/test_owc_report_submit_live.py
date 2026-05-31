@@ -53,6 +53,10 @@ UPDATE_LOCATION = False
 
 LOG_FILE = os.path.join(_script_dir, 'owc_report_submit_live_test.log')
 
+# Set environment variable OWC_RESOLVE_ONLY=1 to log EventID resolution and
+# skip the live report POST.
+RESOLUTION_CHECK_ONLY = (os.environ.get('OWC_RESOLVE_ONLY', '0') == '1')
+
 # ---------------------------------------------------------------------------
 # Logging helper
 # ---------------------------------------------------------------------------
@@ -173,15 +177,30 @@ def run():
     _log('Step 3: Submitting report to OWC...')
     REPORT_CODES = {'NotReported':0,'Miss':1,'Negative':1,'Clouded':2,
                     'Failed':3,'Positive':4,'NotObserved':5,'NotReduced':6}
+    resolved_event_id, resolved_event_id_source = EventProcessor._resolve_ow_api_eventid(
+        config,
+        TEST_EVENT_ID,
+        ow_api_eventid=event.get('ow_api_eventid'),
+        owcloudurl=event.get('owcloudurl')
+    )
     _payload = {
-        'eventId':   TEST_EVENT_ID,
+        'eventId':   resolved_event_id,
         'stationId': TEST_STATION_ID,
         'report':    REPORT_CODES[TEST_OBS_TYPE],
         'comment':   TEST_COMMENT,
     }
+    _log('  Resolved EventID: {0}'.format(resolved_event_id))
+    _log('  EventID source:   {0}'.format(resolved_event_id_source))
     _log('  POST {0}'.format(config.get_report_observation_url()))
     _log('  Headers: OW-ApiKey: {0}...'.format(str(config.get_api_key())[:8]))
     _log('  Body: {0}'.format(json.dumps(_payload)))
+
+    if RESOLUTION_CHECK_ONLY:
+        _log('  RESOLUTION_CHECK_ONLY is enabled (OWC_RESOLVE_ONLY=1)')
+        _log('  Skipping live POST. Resolution dry-run complete.')
+        _save_log()
+        return
+
     try:
         result = EventProcessor.submit_owc_report(
             config,
@@ -211,6 +230,8 @@ def run():
             _log('    [{0}] auth_method:   {1}'.format(idx + 1, call.get('auth_method')))
             _log('    [{0}] endpoint_used: {1}'.format(idx + 1, call.get('endpoint_used')))
             _log('    [{0}] outcome:       {1}'.format(idx + 1, call.get('outcome')))
+            if call.get('event_id_source'):
+                _log('    [{0}] event_id_src:  {1}'.format(idx + 1, call.get('event_id_source')))
             if call.get('status') is not None:
                 _log('    [{0}] status:        {1}'.format(idx + 1, call.get('status')))
             if call.get('reason'):

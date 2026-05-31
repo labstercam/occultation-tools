@@ -121,11 +121,43 @@ class ComprehensiveReportDialog(Form):
         theme_colors = self.theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
 
-        # Re-apply custom panel highlights after theming (theme overwrites Panel BackColor)
+        # Re-apply custom timing guidance colors after theming.
+        self._apply_tangra_guidance_colors()
+
+    def _apply_tangra_guidance_colors(self):
+        """Set readable Step A1-A4 colors for both day and night themes."""
+        is_night = bool(getattr(self.theme_manager, 'is_night_mode', False))
+
         if hasattr(self, '_pnl_step_a3'):
-            self._pnl_step_a3.BackColor = Color.LightYellow
+            self._pnl_step_a3.BackColor = Color.FromArgb(26, 20, 14) if is_night else Color.LightYellow
         if hasattr(self, '_pnl_step_a4'):
-            self._pnl_step_a4.BackColor = Color.FromArgb(240, 255, 240)
+            self._pnl_step_a4.BackColor = Color.FromArgb(22, 17, 12) if is_night else Color.FromArgb(240, 255, 240)
+        if hasattr(self, '_pnl_gps_manual_delay'):
+            self._pnl_gps_manual_delay.BackColor = Color.FromArgb(28, 22, 16) if is_night else Color.FromArgb(235, 244, 255)
+
+        # Labels explicitly set to gray become hard to read in night mode.
+        if hasattr(self, '_lbl_calib_match'):
+            self._lbl_calib_match.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, '_lbl_gps_delay_hint'):
+            self._lbl_gps_delay_hint.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, 'lbl_ntp_analysing'):
+            self.lbl_ntp_analysing.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, 'lbl_ntp_offset_loc'):
+            self.lbl_ntp_offset_loc.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, 'lbl_ntp_uncertainty_loc'):
+            self.lbl_ntp_uncertainty_loc.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, 'lbl_ntp_age_loc'):
+            self.lbl_ntp_age_loc.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, 'lbl_ntp_server_loc'):
+            self.lbl_ntp_server_loc.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, '_lbl_a3_instr'):
+            self._lbl_a3_instr.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, '_lbl_total_delay'):
+            self._lbl_total_delay.ForeColor = Color.FromArgb(255, 236, 185) if is_night else Color.Gray
+        if hasattr(self, '_lbl_a4_csv_prefix'):
+            self._lbl_a4_csv_prefix.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        if hasattr(self, '_lbl_csv_delay'):
+            self._lbl_csv_delay.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
     
     def setup_ui(self):
         """Setup user interface"""
@@ -552,12 +584,12 @@ class ComprehensiveReportDialog(Form):
         lbl_a4_head.Size = Size(500, 18)
         self._pnl_step_a4.Controls.Add(lbl_a4_head)
 
-        lbl_a4_csv_prefix = Label()
-        lbl_a4_csv_prefix.Text = "Tangra CSV Acquisition Delay:"
-        lbl_a4_csv_prefix.Location = Point(8, 26)
-        lbl_a4_csv_prefix.Size = Size(210, 20)
-        lbl_a4_csv_prefix.ForeColor = Color.Gray
-        self._pnl_step_a4.Controls.Add(lbl_a4_csv_prefix)
+        self._lbl_a4_csv_prefix = Label()
+        self._lbl_a4_csv_prefix.Text = "Tangra CSV Acquisition Delay:"
+        self._lbl_a4_csv_prefix.Location = Point(8, 26)
+        self._lbl_a4_csv_prefix.Size = Size(210, 20)
+        self._lbl_a4_csv_prefix.ForeColor = Color.Gray
+        self._pnl_step_a4.Controls.Add(self._lbl_a4_csv_prefix)
 
         self._lbl_csv_delay = Label()
         self._lbl_csv_delay.Text = "Rescan folder to load the Tangra CSV acquisition delay"

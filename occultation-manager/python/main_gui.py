@@ -1951,7 +1951,7 @@ class OccultationManagerGUI(Form):
         
         # Show warning about report generation being under development
         warning_result = MessageBox.Show(
-            "Report generation is still under development and has not been approved by the NA, TT, or SODIS reporting coordinators. Use with caution.\nOnly TANGRA and AOTA outputs are currently supported\nDo you want to continue?",
+            "Report generation is still under development.\nCurrent Status:\n\nTANGRA and AOTA output are currently supported for the Trans Tasman report. TANGRA and AOTA should also work for SODIS reports but has not been fully tested or approved by the coordinators.\nPYOTE is not fully integrated and will have errors.\nThe North America report may not work properly with TANGA and AOTA outputs so do not use them together.\n\nUse with caution\nDo you want to continue?",
             "Report Generation Warning",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning)
@@ -2009,6 +2009,7 @@ class OccultationManagerGUI(Form):
             
             if comprehensive_dialog.ShowDialog() != DialogResult.OK:
                 print("User cancelled report generation")
+                self.refresh_display()
                 self.update_status("Report generation cancelled")
                 return
             
@@ -2455,6 +2456,7 @@ class OccultationManagerGUI(Form):
                     aota_report_path=aota_report_path,
                     observation_type=observation_type,
                 )
+                self.refresh_display()
             else:
                 print(f"ERROR: Report generation failed (check log)")
                 self.update_status("Report generation failed")

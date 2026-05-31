@@ -50,6 +50,7 @@ class EventProcessor:
         """Merge two lists of occultation dictionaries"""
         cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
         merged_dict = {}
+        status_fields = ('owc_report_status', 'status')
         
         # Add existing occultations
         for occ in existing:
@@ -65,6 +66,14 @@ class EventProcessor:
             if occ is None:
                 continue
             if occ[id_key] in merged_dict and datetime.strptime(occ['event_time'].split('T')[0], '%Y-%m-%d') > cutoff_date:
+                # Preserve locally persisted OWC status fields unless the new
+                # payload explicitly provides replacements.
+                existing_entry = merged_dict[occ[id_key]]
+                for field_name in status_fields:
+                    existing_value = existing_entry.get(field_name)
+                    incoming_value = occ.get(field_name)
+                    if existing_value and not incoming_value:
+                        occ[field_name] = existing_value
                 updated += 1
                 merged_dict[occ[id_key]] = occ
             if occ[id_key] not in merged_dict and datetime.strptime(occ['event_time'].split('T')[0], '%Y-%m-%d') > cutoff_date: 
@@ -128,6 +137,121 @@ class EventProcessor:
         return json.loads(body)
 
     @staticmethod
+    def _extract_owc_event_token_from_url(value):
+        """Extract OWC event token from URL path /event/<token>/... if present."""
+        if not value:
+            return None
+        try:
+            s = str(value).strip()
+            if '/event/' not in s:
+                return None
+            part = s.split('/event/', 1)[1]
+            token = part.split('/', 1)[0].strip()
+            return token or None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _is_uuid_like(value):
+        """True if value looks like a canonical UUID string."""
+        if not value:
+            return False
+        s = str(value).strip().lower()
+        if len(s) != 36:
+            return False
+        try:
+            parts = s.split('-')
+            if len(parts) != 5:
+                return False
+            sizes = [8, 4, 4, 4, 12]
+            for p, sz in zip(parts, sizes):
+                if len(p) != sz:
+                    return False
+                int(p, 16)
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def _extract_owc_style_event_id(value):
+        """Return OWC-style EventID token (e.g. 1970-...-U081512) when detectable."""
+        if value is None:
+            return None
+        s = str(value).strip()
+        if not s:
+            return None
+
+        from_url = EventProcessor._extract_owc_event_token_from_url(s)
+        if from_url:
+            s = from_url
+
+        # OWC-style IDs are dash-separated, typically include a 'U...' suffix,
+        # and are not UUID hex strings.
+        if '-' in s and not EventProcessor._is_uuid_like(s):
+            return s
+        return None
+
+    @staticmethod
+    def _find_owc_style_event_id_in_json(data):
+        """Search a JSON-like object recursively for an OWC-style EventID token."""
+        if data is None:
+            return None
+
+        if isinstance(data, dict):
+            preferred_keys = (
+                'EventID', 'eventID', 'eventId', 'EventId',
+                'owApiEventId', 'ow_api_eventid', 'OWC', 'Owc', 'owc'
+            )
+            for k in preferred_keys:
+                if k in data:
+                    candidate = EventProcessor._extract_owc_style_event_id(data.get(k))
+                    if candidate:
+                        return candidate
+            for v in data.values():
+                candidate = EventProcessor._find_owc_style_event_id_in_json(v)
+                if candidate:
+                    return candidate
+            return None
+
+        if isinstance(data, list):
+            for item in data:
+                candidate = EventProcessor._find_owc_style_event_id_in_json(item)
+                if candidate:
+                    return candidate
+            return None
+
+        return EventProcessor._extract_owc_style_event_id(data)
+
+    @staticmethod
+    def _resolve_ow_api_eventid(config, event_id, ow_api_eventid=None, owcloudurl=None):
+        """Resolve OWC-style EventID for report-observation API-key POST.
+
+        Resolution order:
+          1) event JSON field (ow_api_eventid)
+          2) token parsed from owcloudurl
+          3) GET /api2/v1/events/{ow_eventid} lookup and recursive parse
+          4) fallback to original ow_eventid
+        """
+        candidate = EventProcessor._extract_owc_style_event_id(ow_api_eventid)
+        if candidate:
+            return candidate, 'event_json'
+
+        candidate = EventProcessor._extract_owc_style_event_id(owcloudurl)
+        if candidate:
+            return candidate, 'owcloudurl'
+
+        try:
+            lookup_url = config.get_event_by_id_url(event_id)
+            lookup = EventProcessor.get_owc_events_v2(lookup_url, config.get_api_key(), method='GET')
+            candidate = EventProcessor._find_owc_style_event_id_in_json(lookup)
+            if candidate:
+                return candidate, 'event_by_id_lookup'
+        except Exception:
+            pass
+
+        return str(event_id), 'fallback_ow_eventid'
+
+    @staticmethod
     def submit_owc_report(config, event, observation_type,
                           comment='', duration_s=None, update_location=False):
         """Submit an observation result to OWC via the report-observation endpoint.
@@ -162,6 +286,7 @@ class EventProcessor:
         # Accept both OccultationEvent objects and plain dicts
         if isinstance(event, dict):
             event_id   = event.get('ow_eventid')
+            ow_api_eventid = event.get('ow_api_eventid')
             station_id = event.get('owc_station_id')
             latitude   = event.get('latitude')
             longitude  = event.get('longitude')
@@ -169,6 +294,7 @@ class EventProcessor:
             owcloudurl = event.get('owcloudurl')
         else:
             event_id   = getattr(event, 'ow_eventid',   None)
+            ow_api_eventid = getattr(event, 'ow_api_eventid', None)
             station_id = getattr(event, 'owc_station_id', None)
             latitude   = getattr(event, 'latitude',     None)
             longitude  = getattr(event, 'longitude',    None)
@@ -194,8 +320,17 @@ class EventProcessor:
                     'endpoint_used': None,
                     'attempted_calls': []}
 
+        resolved_event_id, resolved_event_id_source = EventProcessor._resolve_ow_api_eventid(
+            config,
+            event_id,
+            ow_api_eventid=ow_api_eventid,
+            owcloudurl=owcloudurl,
+        )
+        if isinstance(event, dict):
+            event['ow_api_eventid'] = resolved_event_id
+
         payload = {
-            'eventId':   str(event_id),
+            'eventId':   str(resolved_event_id),
             'stationId': int(station_id),
             'report':    report_code,
             'comment':   comment or '',
@@ -216,6 +351,7 @@ class EventProcessor:
         attempted_calls.append({
             'auth_method': 'api_key',
             'endpoint_used': url,
+            'event_id_source': resolved_event_id_source,
             'headers': {
                 'OW-ApiKey': str(config.get_api_key() or '')[:8] + '...',
                 'Content-Type': 'application/json',
@@ -777,6 +913,9 @@ class EventProcessor:
                     
                     if owcloudurl:
                         occultation['owcloudurl'] = owcloudurl
+                        token = EventProcessor._extract_owc_event_token_from_url(owcloudurl)
+                        if token:
+                            occultation['ow_api_eventid'] = token
 
                     occultations.append(occultation)
 
@@ -834,6 +973,7 @@ class OccultationEvent:
         self.station_name = data.get('station_name', '')
         self.owc_station_id = data.get('owc_station_id', None)
         self.ow_eventid = data.get('ow_eventid', '')
+        self.ow_api_eventid = data.get('ow_api_eventid', '')
         self.event_id = data.get('id', '')
         self.object_name = data.get('object_name', '')
         
@@ -885,6 +1025,8 @@ class OccultationEvent:
         
         self.source = data.get('source', '')
         self.owcloudurl = data.get('owcloudurl', '')
+        self.owc_report_status = data.get('owc_report_status', '')
+        self.status = data.get('status', '')
         
         self.event_date = self._extract_date_from_iso(self.event_time)
         self.event_time_utc = self._extract_time_from_iso(self.event_time)
@@ -1195,6 +1337,20 @@ class OccultationEvent:
     
     def get_status_info(self):
         """Get event status information"""
+        # If this event has been reported to OWC, show the reported result in the grid.
+        status_value = str(getattr(self, 'owc_report_status', '') or '').strip()
+        if status_value:
+            status_map = {
+                'Positive': 'Positive',
+                'Miss': 'Miss',
+                'Negative': 'Miss',
+                'NotObserved': 'Unsure No Obs',
+                'Failed': 'Failed',
+                'Clouded': 'Clouded',
+                'CloudedOut': 'Clouded',
+            }
+            return status_map.get(status_value, status_value)
+
         if not self.event_datetime:
             return "Invalid"
         
