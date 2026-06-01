@@ -97,6 +97,7 @@ $pythonFiles = @(
     "python\line_delay_dialogs.py",
     "python\main.py",
     "python\main_gui.py",
+    "python\pc_performance_testing.py",
     "python\na_report_openize.py",
     "python\pyote_metrics_reader.py",
     "python\occult4_export.py",
@@ -328,6 +329,7 @@ if (Test-Path $zipPath) {
     Write-Host "`nSuccess! Created $zipPath ($([math]::Round($size, 1)) KB)" -ForegroundColor Green
     Write-Host "`nZip structure:" -ForegroundColor Cyan
     Write-Host "  occultation-manager/app" -ForegroundColor Gray
+    Write-Host "    - pc_performance_testing.py" -ForegroundColor Gray
     Write-Host "  occultation-manager/resources/templates_master/sequencer" -ForegroundColor Gray
     Write-Host "  occultation-manager/resources/templates_master/reports" -ForegroundColor Gray
     Write-Host "  occultation-manager/data/{config,events,templates,sequences,reports}" -ForegroundColor Gray

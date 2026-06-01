@@ -146,6 +146,7 @@ class OccultationManagerGUI(Form):
         self._gps_flash_form = None
         self._gps_flash_module = None
         self._gps_pps_comp_form = None
+        self._pc_perf_form = None
         
         self.setup_ui()
         self.load_initial_data()
@@ -615,10 +616,22 @@ class OccultationManagerGUI(Form):
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Template Manager", None, self.show_template_manager_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
-        menu_tools.DropDownItems.Add(ToolStripMenuItem("Camera Delay Calibration", None, self.open_gps_flash_calibration_click))
+        menu_camera_delay = ToolStripMenuItem("Camera Delay Calibration")
+        menu_camera_delay.Enabled = False
+        menu_tools.DropDownItems.Add(menu_camera_delay)
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Open Calibration Tool", None, self.open_gps_flash_calibration_click))
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Camera Delay Calculator", None, self.open_line_delay_calculator_click))
+        menu_tools.DropDownItems.Add(ToolStripSeparator())
+        menu_time_testing = ToolStripMenuItem("NTP / GPS Time Testing")
+        menu_time_testing.Enabled = False
+        menu_tools.DropDownItems.Add(menu_time_testing)
         menu_tools.DropDownItems.Add(ToolStripMenuItem("NTP Clock Accuracy", None, self.open_ntp_timing_analysis_click))
         menu_tools.DropDownItems.Add(ToolStripMenuItem("GPS vs NTP Testing", None, self.open_gps_pps_comparison_click))
+        menu_tools.DropDownItems.Add(ToolStripSeparator())
+        menu_pc_perf = ToolStripMenuItem("PC Performance Testing")
+        menu_pc_perf.Enabled = False
+        menu_tools.DropDownItems.Add(menu_pc_perf)
+        menu_tools.DropDownItems.Add(ToolStripMenuItem("Open PC Performance Testing", None, self.open_pc_performance_testing_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
         menu_tools.DropDownItems.Add(ToolStripMenuItem("Export VizieR Light Curve\u2026", None, self.open_vizier_export_standalone_click))
         menu_tools.DropDownItems.Add(ToolStripSeparator())
@@ -3752,6 +3765,54 @@ class OccultationManagerGUI(Form):
             MessageBox.Show(
                 "Could not open the Camera Delay Calibration window.\n\n{0}".format(str(ex)),
                 "Camera Delay Calibration Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error,
+            )
+
+    def open_pc_performance_testing_click(self, sender, e):
+        """Open the PC Performance Testing GUI window."""
+        if getattr(self, '_pc_perf_form', None) is not None:
+            try:
+                if not self._pc_perf_form.IsDisposed:
+                    self._activate_tool_form(self._pc_perf_form)
+                    self.update_status("PC Performance Testing already open")
+                    return
+            except Exception:
+                pass
+
+        try:
+            import pc_performance_testing as pc_perf
+
+            existing_form = getattr(pc_perf, 'form', None)
+            try:
+                if existing_form is not None and not existing_form.IsDisposed:
+                    self._pc_perf_form = existing_form
+                    self._activate_tool_form(self._pc_perf_form)
+                    self.update_status("Opened PC Performance Testing")
+                    return
+            except Exception:
+                pass
+
+            self._pc_perf_form = pc_perf.PCPerformanceTestingForm(
+                sharpcap=self.sharpcap,
+                config=self.config,
+                theme_manager=self.theme_manager,
+            )
+            try:
+                self._pc_perf_form.StartPosition = FormStartPosition.CenterScreen
+            except Exception:
+                pass
+            pc_perf.form = self._pc_perf_form
+            try:
+                self._pc_perf_form.Show(self)
+            except Exception:
+                self._pc_perf_form.Show()
+            self._activate_tool_form(self._pc_perf_form)
+            self.update_status("Opened PC Performance Testing")
+        except Exception as ex:
+            MessageBox.Show(
+                "Could not open the PC Performance Testing window.\n\n{0}".format(str(ex)),
+                "PC Performance Testing Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error,
             )
