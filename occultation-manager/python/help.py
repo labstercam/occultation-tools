@@ -1321,13 +1321,17 @@ INTERPRETING THE CHARTS
 
     def get_timing_tools_content(self):
         return """TIMING & CALIBRATION TOOLS
-===========================
+      ===========================
 
-Four tools are available under the Tools menu for camera timing calibration
-and NTP/GPS clock verification.
+      The Tools menu groups timing-related utilities under flat headings so they are
+      easy to scan:
 
-CAMERA DELAY CALIBRATION  (Tools → Camera Delay Calibration)
--------------------------------------------------------------
+      • Camera Delay Calibration
+      • NTP / GPS Time Testing
+      • PC Performance Testing
+
+      CAMERA DELAY CALIBRATION  (Tools → Camera Delay Calibration → Open Calibration Tool)
+      --------------------------------------------------------------------------------------
 Measures the rolling-shutter line delay of your camera using GPS-timed LED
 flashes.  This is the primary calibration tool — it captures frames from two
 apertures (top and bottom of the frame), detects GPS PPS flashes, and fits a
@@ -1340,7 +1344,7 @@ Use this tool when:
 
 Workflow:
 1. Connect your GPS timing LED to the serial port
-2. Open Tools → Camera Delay Calibration in SharpCap
+2. Open Tools → Camera Delay Calibration → Open Calibration Tool in SharpCap
 3. Point camera at LED through two apertures (top and bottom of frame)
 4. Click Start Calibration and wait for data collection to complete
 5. Review the fit results (R², per-line delay, line-0 delay)
@@ -1355,8 +1359,8 @@ Camera Delay Calibration window.  This method:
 • Stores results as a synthetic calibration (R² shown as N/A)
 These values are approximate but usable when GPS timing is unavailable.
 
-CAMERA DELAY CALCULATOR  (Tools → Camera Delay Calculator)
------------------------------------------------------------
+CAMERA DELAY CALCULATOR  (Tools → Camera Delay Calibration → Camera Delay Calculator)
+--------------------------------------------------------------------------------------
 Calculates the rolling-shutter acquisition delay for a specific star Y pixel
 position using previously saved calibration data.
 
@@ -1365,7 +1369,7 @@ Use this tool when:
 • You need the per-event mid-line delay for Tangra or ROTE
 
 Workflow:
-1. Open Tools → Camera Delay Calculator
+1. Open Tools → Camera Delay Calibration → Camera Delay Calculator
 2. Select the camera from the drop-down
 3. The grid shows all saved calibration runs for that camera
 4. Select the calibration run that matches your recording settings
@@ -1374,31 +1378,45 @@ Workflow:
 6. The tool calculates and displays the acquisition delay
 7. Click Copy to Clipboard (TANGRA format) to copy the delay value
 
-NTP CLOCK ACCURACY  (Tools → NTP Clock Accuracy)
--------------------------------------------------
+NTP CLOCK ACCURACY  (Tools → NTP / GPS Time Testing → NTP Clock Accuracy)
+--------------------------------------------------------------------------
 Analyses NTP loopstats log files to show how accurately the computer clock
 is tracking UTC.  Use this after an observing session to verify that your
 clock was within acceptable limits during the recording.
 
 Workflow:
-1. Open Tools → NTP Clock Accuracy
+1. Open Tools → NTP / GPS Time Testing → NTP Clock Accuracy
 2. Browse to your NTP loopstats file (typically in C:\\NTP\\logs\\)
 3. Set the date/time range for the recording period
 4. Click Analyse to plot clock offset vs time
 5. Review offset statistics; offset should stay within ±5 ms for occultation timing
 
-GPS vs NTP TESTING  (Tools → GPS vs NTP Testing)
--------------------------------------------------
+GPS vs NTP TESTING  (Tools → NTP / GPS Time Testing → GPS vs NTP Testing)
+---------------------------------------------------------------------------
 Compares GPS PPS timestamps against the NTP-disciplined system clock to
 verify that NTP is correctly locked to GPS.  Use this tool when commissioning
 a new GPS/NTP timing setup or investigating timing discrepancies.
 
 Workflow:
 1. Connect your GPS device and ensure NTP is running
-2. Open Tools → GPS vs NTP Testing
+2. Open Tools → NTP / GPS Time Testing → GPS vs NTP Testing
 3. Select the GPS serial port and log file locations
 4. Click Start to begin comparison logging
 5. Review the offset plot; offsets should be consistently < 1 ms
+
+PC PERFORMANCE TESTING  (Tools → PC Performance Testing → Open PC Performance Testing)
+---------------------------------------------------------------------------------------
+Monitors frame-to-frame timestamp stability while SharpCap is acquiring video,
+and can also analyse an ADV recording after you load it manually. Use this when
+you suspect the PC, USB bus, storage, or background activity may be affecting
+timestamp consistency.
+
+Workflow:
+1. Open Tools → PC Performance Testing → Open PC Performance Testing
+2. Choose Live Mode to monitor timestamps during capture, or select Record to ADV File
+3. In ADV mode, manually record an ADV file, then load it for analysis
+4. Review the timestamp delta plots and PC load chart
+5. Save the workbook if you want the plots, summary, and raw data exported
 
 CALIBRATION DATA STORAGE
 -------------------------

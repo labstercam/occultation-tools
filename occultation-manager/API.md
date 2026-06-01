@@ -18,6 +18,7 @@ This document describes the public interfaces and reusable components for develo
 7. [Light Curve Reader API](#light-curve-reader-api)
 8. [PyOTE Metrics Reader API](#pyote-metrics-reader-api)
 9. [Rename Files Dialog API](#rename-files-dialog-api)
+10. [Tools Menu Entry Points](#tools-menu-entry-points)
 
 ---
 
@@ -1459,6 +1460,41 @@ def download_from_custom_source(api_url, params):
     
     return events
 ```
+
+---
+
+## Tools Menu Entry Points
+
+The main GUI exposes several standalone utilities through a flat grouped Tools menu
+in `main_gui.py`. The visible section headers are disabled menu items used only as
+group labels.
+
+**Current grouped layout:**
+
+- `Camera Delay Calibration`
+    - `Open Calibration Tool` → `open_gps_flash_calibration_click()`
+    - `Camera Delay Calculator` → `open_line_delay_calculator_click()`
+- `NTP / GPS Time Testing`
+    - `NTP Clock Accuracy` → `open_ntp_timing_analysis_click()`
+    - `GPS vs NTP Testing` → `open_gps_pps_comparison_click()`
+- `PC Performance Testing`
+    - `Open PC Performance Testing` → `open_pc_performance_testing_click()`
+
+**Other Tools menu items:**
+
+- `Configuration` → `show_configuration_click()`
+- `Manage Telescopes` → `show_telescope_manager_click()`
+- `Manage Cameras` → `show_camera_manager_click()`
+- `Template Manager` → `show_template_manager_click()`
+- `Export VizieR Light Curve…` → `open_vizier_export_standalone_click()`
+- `Night Mode` → `toggle_night_mode_click()`
+
+**Notes:**
+
+- The grouped headings are presentation-only and should remain disabled unless the
+    menu is redesigned into nested submenus.
+- Standalone tool windows are tracked by the GUI layer so reopening the same tool
+    reuses or focuses the existing form where practical.
 
 ---
 

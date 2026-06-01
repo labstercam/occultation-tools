@@ -108,6 +108,7 @@ occultation-manager/
 ├── app/                                           <-- SharpCap startup + Python modules
 │   ├── main.py                                    <-- SharpCap startup script target
 │   ├── *.py
+│   ├── pc_performance_testing.py                  <-- PC Performance Testing tool
 │   ├── moon_icon_178489.ico
 │   ├── ReadMe.md
 │   └── lib/
