@@ -158,6 +158,27 @@ class ComprehensiveReportDialog(Form):
             self._lbl_a4_csv_prefix.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
         if hasattr(self, '_lbl_csv_delay'):
             self._lbl_csv_delay.ForeColor = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+
+    def _status_color(self, kind):
+        """Return report-flow status colors tuned for day/night readability."""
+        is_night = bool(getattr(self.theme_manager, 'is_night_mode', False))
+        if is_night:
+            colors = {
+                'muted': Color.FromArgb(255, 214, 150),
+                'info': Color.FromArgb(255, 214, 150),
+                'warning': Color.FromArgb(255, 190, 90),
+                'success': Color.FromArgb(180, 255, 160),
+                'error': Color.FromArgb(255, 170, 150),
+            }
+        else:
+            colors = {
+                'muted': Color.Gray,
+                'info': Color.Gray,
+                'warning': Color.Orange,
+                'success': Color.Green,
+                'error': Color.Red,
+            }
+        return colors.get(kind, colors['info'])
     
     def setup_ui(self):
         """Setup user interface"""
@@ -216,7 +237,7 @@ class ComprehensiveReportDialog(Form):
         self._lbl_file_status.Text = "No folder selected"
         self._lbl_file_status.Location = Point(180, 47)
         self._lbl_file_status.Size = Size(730, 18)
-        self._lbl_file_status.ForeColor = Color.Gray
+        self._lbl_file_status.ForeColor = self._status_color('muted')
         grp_folder.Controls.Add(self._lbl_file_status)
 
         y_pos += 80
@@ -649,7 +670,7 @@ class ComprehensiveReportDialog(Form):
         self.status_label.Text = "Please complete all sections above"
         self.status_label.Location = Point(20, 790)
         self.status_label.Size = Size(700, 20)
-        self.status_label.ForeColor = Color.Gray
+        self.status_label.ForeColor = self._status_color('muted')
         self.Controls.Add(self.status_label)
 
         self._btn_why_blocked = Button()
@@ -989,20 +1010,20 @@ class ComprehensiveReportDialog(Form):
             self.lbl_ts_delayed.Text = "Delayed frames: {0}".format(n_delayed)
             self.lbl_ts_late.Text = "Late frames: {0}".format(n_late)
             if n_late > 0:
-                self.lbl_ts_delayed.ForeColor = Color.OrangeRed
-                self.lbl_ts_late.ForeColor = Color.OrangeRed
+                self.lbl_ts_delayed.ForeColor = self._status_color('error')
+                self.lbl_ts_late.ForeColor = self._status_color('error')
                 self.lbl_ts_status.Text = "Status: Issues detected"
-                self.lbl_ts_status.ForeColor = Color.OrangeRed
+                self.lbl_ts_status.ForeColor = self._status_color('error')
             elif n_delayed > 0:
-                self.lbl_ts_delayed.ForeColor = Color.Orange
-                self.lbl_ts_late.ForeColor = Color.Gray
+                self.lbl_ts_delayed.ForeColor = self._status_color('warning')
+                self.lbl_ts_late.ForeColor = self._status_color('muted')
                 self.lbl_ts_status.Text = "Status: Check"
-                self.lbl_ts_status.ForeColor = Color.Orange
+                self.lbl_ts_status.ForeColor = self._status_color('warning')
             else:
-                self.lbl_ts_delayed.ForeColor = Color.Gray
-                self.lbl_ts_late.ForeColor = Color.Gray
+                self.lbl_ts_delayed.ForeColor = self._status_color('muted')
+                self.lbl_ts_late.ForeColor = self._status_color('muted')
                 self.lbl_ts_status.Text = "Status: OK"
-                self.lbl_ts_status.ForeColor = Color.Green
+                self.lbl_ts_status.ForeColor = self._status_color('success')
             self.btn_ts_inspect.Enabled = True
             # Min/max deviation from median
             tdelta_min = summary.get('tdelta_min', None)
@@ -1014,7 +1035,7 @@ class ComprehensiveReportDialog(Form):
                 self.lbl_ts_minmax.Text = "Deviation: {0:+.1f} to {1:+.1f} ms".format(min_dev, max_dev)
             else:
                 self.lbl_ts_minmax.Text = "Deviation: -"
-            self.lbl_ts_minmax.ForeColor = Color.Gray
+            self.lbl_ts_minmax.ForeColor = self._status_color('muted')
             self._check_event_in_window(summary)
             delay_ms = self._calculate_camera_delay()
             self._auto_detect_camera_delay(delay_ms)
@@ -1277,7 +1298,13 @@ class ComprehensiveReportDialog(Form):
                     event_secs = int(p[0]) * 3600 + int(p[1]) * 60 + float(p[2])
             except Exception:
                 event_secs = None
-            form = TimestampInspectorForm(tangra_path, self._d_time_seconds, self._r_time_seconds, event_secs)
+            form = TimestampInspectorForm(
+                tangra_path,
+                self._d_time_seconds,
+                self._r_time_seconds,
+                event_secs,
+                theme_manager=self.theme_manager,
+            )
             form.ShowDialog(self)
         except Exception as ex:
             MessageBox.Show(
@@ -1322,13 +1349,13 @@ class ComprehensiveReportDialog(Form):
 
         if missing:
             self.status_label.Text = "Missing: " + ", ".join(missing)
-            self.status_label.ForeColor = Color.Red
+            self.status_label.ForeColor = self._status_color('error')
             self._btn_next.Enabled = False
             if hasattr(self, '_btn_why_blocked'):
                 self._btn_why_blocked.Visible = True
         else:
             self.status_label.Text = "Ready \u2014 click Next to select observation files"
-            self.status_label.ForeColor = Color.Green
+            self.status_label.ForeColor = self._status_color('success')
             self._btn_next.Enabled = True
             if hasattr(self, '_btn_why_blocked'):
                 self._btn_why_blocked.Visible = False
@@ -1503,6 +1530,10 @@ class ComprehensiveReportDialog(Form):
     def get_ntp_comment(self):
         d3 = self._d3()
         return d3.ntp_comment if d3 else None
+
+    def get_observation_comment(self):
+        d3 = self._d3()
+        return d3.observation_comment if d3 else None
 
     def get_include_station_name(self):
         d3 = self._d3()
@@ -1900,28 +1931,28 @@ class ComprehensiveReportDialog(Form):
                 "\u26a0  WARNING: The NA form automatically applies VTI corrections to D/R times. "
                 "Do NOT apply corrections inside AOTA \u2014 the times will be double-corrected."
             )
-            self._lbl_vti_info.ForeColor = Color.OrangeRed
+            self._lbl_vti_info.ForeColor = self._status_color('error')
         elif is_aota and is_tt_sodis:
             self._lbl_vti_info.Text = (
                 "\u24d8  TT and SODIS forms do not automatically apply VTI corrections. "
                 "Ensure VTI corrections (camera + VTI delay) are applied inside AOTA."
             )
-            self._lbl_vti_info.ForeColor = Color.DarkOrange
+            self._lbl_vti_info.ForeColor = self._status_color('warning')
         elif not is_aota and is_na:
             self._lbl_vti_info.Text = (
                 "\u2714  NA report form will automatically apply VTI corrections to D/R times."
             )
-            self._lbl_vti_info.ForeColor = Color.Green
+            self._lbl_vti_info.ForeColor = self._status_color('success')
         elif not is_aota and is_tt_sodis:
             self._lbl_vti_info.Text = (
                 "\u26d4  INCOMPATIBLE: PyOTE does not apply VTI corrections, and TT/SODIS forms "
                 "do not apply them automatically. D/R times will be uncorrected.\n"
                 "Use the NA report form, or use AOTA to analyse the light curve."
             )
-            self._lbl_vti_info.ForeColor = Color.Red
+            self._lbl_vti_info.ForeColor = self._status_color('error')
         else:
             self._lbl_vti_info.Text = "Report format was selected in Step 3 of the previous dialog."
-            self._lbl_vti_info.ForeColor = Color.Gray
+            self._lbl_vti_info.ForeColor = self._status_color('muted')
 
     def _update_file_status_labels(self):
         """Update folder status label in §1 Folder section."""
@@ -1930,10 +1961,10 @@ class ComprehensiveReportDialog(Form):
         folder = self.current_folder
         if not folder or not os.path.isdir(folder):
             self._lbl_file_status.Text = "No folder selected"
-            self._lbl_file_status.ForeColor = Color.Gray
+            self._lbl_file_status.ForeColor = self._status_color('muted')
             return
         self._lbl_file_status.Text = "Folder selected \u2014 files will be loaded in the next step"
-        self._lbl_file_status.ForeColor = Color.DarkGreen
+        self._lbl_file_status.ForeColor = self._status_color('success')
 
     def _update_guidance_values(self):
         """Refresh the Total Delay label and copy controls in Phase A."""
@@ -3001,14 +3032,34 @@ class VTIDoubleCorrectConfirmDialog(Form):
 class TimestampInspectorForm(Form):
     """Form for inspecting frame timing from a Tangra CSV file with OxyPlot charts"""
 
-    def __init__(self, tangra_path, d_time_seconds=None, r_time_seconds=None, event_time_seconds=None):
+    def __init__(self, tangra_path, d_time_seconds=None, r_time_seconds=None, event_time_seconds=None, theme_manager=None):
         Form.__init__(self)
         self.tangra_path = tangra_path
         self.d_time_seconds = d_time_seconds
         self.r_time_seconds = r_time_seconds
         self.event_time_seconds = event_time_seconds
+        self._theme_manager = theme_manager
         self._setup_ui()
+        self._apply_dialog_theme_non_chart()
         self._build_charts()
+
+    def _apply_dialog_theme_non_chart(self):
+        """Apply night/day theme to dialog controls without changing chart colors."""
+        if self._theme_manager is None:
+            return
+
+        try:
+            theme_colors = self._theme_manager.get_current_theme()
+            # Style the form and all non-plot controls. Keep PlotView controls
+            # untouched so chart background/series colors remain unchanged.
+            self.BackColor = theme_colors['background']
+            self.ForeColor = theme_colors['text_foreground']
+            for child in self.Controls:
+                if child == self._plot_interval or child == self._plot_signal:
+                    continue
+                apply_theme_to_control(child, theme_colors)
+        except Exception:
+            pass
 
     def _setup_ui(self):
         self.Text = "Timestamp Inspector"

@@ -83,6 +83,7 @@ class PhaseBDialog(Form):
         self.other_conditions = None
         self.observation_type = None
         self.include_station_name = False
+        self.observation_comment = None
         self._owc_type_user_override = False
         self._suppress_owc_combo_event = False
         self._last_submitted_owc_signature = None
@@ -99,13 +100,34 @@ class PhaseBDialog(Form):
         theme_colors = theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
 
+    def _status_color(self, kind):
+        """Return phase-B status colors tuned for day/night readability."""
+        is_night = bool(getattr(self.theme_manager, 'is_night_mode', False))
+        if is_night:
+            colors = {
+                'muted': Color.FromArgb(255, 214, 150),
+                'info': Color.FromArgb(255, 214, 150),
+                'warning': Color.FromArgb(255, 190, 90),
+                'success': Color.FromArgb(180, 255, 160),
+                'error': Color.FromArgb(255, 170, 150),
+            }
+        else:
+            colors = {
+                'muted': Color.Gray,
+                'info': Color.Gray,
+                'warning': Color.Orange,
+                'success': Color.Green,
+                'error': Color.Red,
+            }
+        return colors.get(kind, colors['info'])
+
     # ------------------------------------------------------------------
     # UI setup
     # ------------------------------------------------------------------
 
     def _setup_ui(self):
         self.Text = "Generate Report \u2014 Phase B"
-        self.Size = Size(1000, 1000)
+        self.Size = Size(1000, 960)
         self.StartPosition = FormStartPosition.CenterParent
         self.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -117,7 +139,7 @@ class PhaseBDialog(Form):
         main_panel.AutoScroll = True
         self.Controls.Add(main_panel)
 
-        y_pos = 10
+        y_pos = 5
 
         # ===== PHASE B SEPARATOR =====
         lbl_phase_b = Label()
@@ -133,7 +155,7 @@ class PhaseBDialog(Form):
         lbl_phase_b.Visible = is_ntp or is_gps
         main_panel.Controls.Add(lbl_phase_b)
         self._lbl_phase_b_separator = lbl_phase_b
-        y_pos += 28
+        y_pos += 22
 
         # ===== SECTION 3: OBSERVATION FILES & TIMESTAMP CHECK =====
         grp_files = GroupBox()
@@ -157,15 +179,15 @@ class PhaseBDialog(Form):
 
         self.csv_listbox = ListBox()
         self.csv_listbox.Location = Point(15, 112)
-        self.csv_listbox.Size = Size(285, 65)
+        self.csv_listbox.Size = Size(285, 40)
         self.csv_listbox.SelectionMode = SelectionMode.One
         self.csv_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.csv_listbox)
 
         self.csv_preview_label = Label()
         self.csv_preview_label.Text = "Observing times: -"
-        self.csv_preview_label.Location = Point(15, 180)
-        self.csv_preview_label.Size = Size(285, 40)
+        self.csv_preview_label.Location = Point(15, 155)
+        self.csv_preview_label.Size = Size(285, 30)
         self.csv_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.csv_preview_label)
 
@@ -184,15 +206,15 @@ class PhaseBDialog(Form):
 
         self.aota_listbox = ListBox()
         self.aota_listbox.Location = Point(315, 112)
-        self.aota_listbox.Size = Size(285, 65)
+        self.aota_listbox.Size = Size(285, 40)
         self.aota_listbox.SelectionMode = SelectionMode.One
         self.aota_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.aota_listbox)
 
         self.aota_preview_label = Label()
         self.aota_preview_label.Text = "D/R: -"
-        self.aota_preview_label.Location = Point(315, 180)
-        self.aota_preview_label.Size = Size(285, 40)
+        self.aota_preview_label.Location = Point(315, 155)
+        self.aota_preview_label.Size = Size(285, 30)
         self.aota_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.aota_preview_label)
 
@@ -211,78 +233,71 @@ class PhaseBDialog(Form):
 
         self.report_listbox = ListBox()
         self.report_listbox.Location = Point(615, 112)
-        self.report_listbox.Size = Size(305, 65)
+        self.report_listbox.Size = Size(305, 40)
         self.report_listbox.SelectionMode = SelectionMode.One
         self.report_listbox.SelectedIndexChanged += self.selection_changed
         grp_files.Controls.Add(self.report_listbox)
 
         self.report_preview_label = Label()
         self.report_preview_label.Text = "D/R: -"
-        self.report_preview_label.Location = Point(615, 180)
-        self.report_preview_label.Size = Size(305, 40)
+        self.report_preview_label.Location = Point(615, 155)
+        self.report_preview_label.Size = Size(305, 30)
         self.report_preview_label.ForeColor = Color.Gray
         grp_files.Controls.Add(self.report_preview_label)
 
         lbl_pyote = Label()
         lbl_pyote.Text = "PyOTE Metrics:"
-        lbl_pyote.Location = Point(15, 165)
+        lbl_pyote.Location = Point(15, 190)
         lbl_pyote.Size = Size(120, 20)
-        lbl_pyote.Visible = False
         grp_files.Controls.Add(lbl_pyote)
         self._lbl_pyote_header = lbl_pyote
 
         self.pyote_count_label = Label()
         self.pyote_count_label.Text = "No folder"
-        self.pyote_count_label.Location = Point(135, 165)
+        self.pyote_count_label.Location = Point(135, 190)
         self.pyote_count_label.Size = Size(200, 20)
         self.pyote_count_label.ForeColor = Color.Gray
-        self.pyote_count_label.Visible = False
         grp_files.Controls.Add(self.pyote_count_label)
 
         lbl_pyote_event = Label()
         lbl_pyote_event.Text = "Events:"
-        lbl_pyote_event.Location = Point(460, 165)
+        lbl_pyote_event.Location = Point(460, 190)
         lbl_pyote_event.Size = Size(60, 20)
-        lbl_pyote_event.Visible = False
         grp_files.Controls.Add(lbl_pyote_event)
         self._lbl_pyote_event_header = lbl_pyote_event
 
         self.pyote_event_count_label = Label()
         self.pyote_event_count_label.Text = "-"
-        self.pyote_event_count_label.Location = Point(525, 165)
+        self.pyote_event_count_label.Location = Point(525, 190)
         self.pyote_event_count_label.Size = Size(210, 20)
         self.pyote_event_count_label.ForeColor = Color.Gray
-        self.pyote_event_count_label.Visible = False
         grp_files.Controls.Add(self.pyote_event_count_label)
 
         self.pyote_listbox = ListBox()
-        self.pyote_listbox.Location = Point(15, 185)
-        self.pyote_listbox.Size = Size(430, 55)
+        self.pyote_listbox.Location = Point(15, 210)
+        self.pyote_listbox.Size = Size(430, 40)
         self.pyote_listbox.SelectionMode = SelectionMode.One
         self.pyote_listbox.SelectedIndexChanged += self._pyote_file_selection_changed
-        self.pyote_listbox.Visible = False
         grp_files.Controls.Add(self.pyote_listbox)
 
         self.pyote_event_listbox = ListBox()
-        self.pyote_event_listbox.Location = Point(460, 185)
-        self.pyote_event_listbox.Size = Size(460, 55)
+        self.pyote_event_listbox.Location = Point(460, 210)
+        self.pyote_event_listbox.Size = Size(460, 40)
         self.pyote_event_listbox.SelectionMode = SelectionMode.One
         self.pyote_event_listbox.SelectedIndexChanged += self._pyote_event_selection_changed
-        self.pyote_event_listbox.Visible = False
         grp_files.Controls.Add(self.pyote_event_listbox)
 
         self.pyote_preview_label = Label()
         self.pyote_preview_label.Text = "D/R: -"
-        self.pyote_preview_label.Location = Point(15, 244)
+        self.pyote_preview_label.Location = Point(15, 255)
         self.pyote_preview_label.Size = Size(905, 22)
         self.pyote_preview_label.ForeColor = Color.Gray
-        self.pyote_preview_label.Visible = False
         grp_files.Controls.Add(self.pyote_preview_label)
 
         # Timestamp Check sub-panel
         grp_ts_check = GroupBox()
         grp_ts_check.Text = "Timestamp Check"
-        grp_ts_check.Location = Point(15, 231)
+        grp_ts_check.Location = Point(15, 287)
         grp_ts_check.Size = Size(910, 105)
         grp_files.Controls.Add(grp_ts_check)
 
@@ -329,7 +344,7 @@ class PhaseBDialog(Form):
         self.lbl_ts_event_warning.Text = ""
         self.lbl_ts_event_warning.Location = Point(275, 52)
         self.lbl_ts_event_warning.Size = Size(620, 20)
-        self.lbl_ts_event_warning.ForeColor = Color.OrangeRed
+        self.lbl_ts_event_warning.ForeColor = self._status_color('error')
         self.lbl_ts_event_warning.Visible = False
         grp_ts_check.Controls.Add(self.lbl_ts_event_warning)
 
@@ -380,7 +395,7 @@ class PhaseBDialog(Form):
 
         grp_dr = GroupBox()
         grp_dr.Text = "Select Event to Report"
-        grp_dr.Location = Point(15, 346)
+        grp_dr.Location = Point(15, 402)
         grp_dr.Size = Size(910, _grp_dr_height)
         grp_files.Controls.Add(grp_dr)
 
@@ -431,8 +446,8 @@ class PhaseBDialog(Form):
             self.lbl_ntp_info.ForeColor = Color.Gray
             grp_dr.Controls.Add(self.lbl_ntp_info)
 
-        grp_files.Size = Size(940, 346 + _grp_dr_height + 10)
-        y_pos += 346 + _grp_dr_height + 20
+        grp_files.Size = Size(940, 402 + _grp_dr_height + 10)
+        y_pos += 402 + _grp_dr_height + 20
 
         # Compute the height consumed by the (mutually exclusive) section-4 timing info panel
         _tc = self.timing_ctx
@@ -546,7 +561,7 @@ class PhaseBDialog(Form):
         grp_obs_type = GroupBox()
         grp_obs_type.Text = "4. Observation Result"
         grp_obs_type.Location = Point(10, y_pos)
-        grp_obs_type.Size = Size(940, 165)
+        grp_obs_type.Size = Size(940, 180)
         main_panel.Controls.Add(grp_obs_type)
 
         self.rb_positive = RadioButton()
@@ -577,6 +592,19 @@ class PhaseBDialog(Form):
         self.rb_not_observed.Size = Size(500, 25)
         self.rb_not_observed.CheckedChanged += self._obs_type_changed
         grp_obs_type.Controls.Add(self.rb_not_observed)
+
+        # Comment (full-width, below radio buttons)
+        lbl_obs_comment = Label()
+        lbl_obs_comment.Text = "Comment:"
+        lbl_obs_comment.Location = Point(20, 135)
+        lbl_obs_comment.Size = Size(80, 20)
+        grp_obs_type.Controls.Add(lbl_obs_comment)
+
+        self.txt_observation_comment = TextBox()
+        self.txt_observation_comment.Location = Point(105, 133)
+        self.txt_observation_comment.Size = Size(810, 22)
+        self.txt_observation_comment.MaxLength = 90
+        grp_obs_type.Controls.Add(self.txt_observation_comment)
 
         # RHS: Optional OWC report entry
         self._lbl_owc_head = Label()
@@ -638,19 +666,19 @@ class PhaseBDialog(Form):
         self.lbl_owc_status.Text = ""
         self.lbl_owc_status.Location = Point(530, 124)
         self.lbl_owc_status.Size = Size(394, 34)
-        self.lbl_owc_status.ForeColor = Color.Gray
+        self.lbl_owc_status.ForeColor = self._status_color('muted')
         grp_obs_type.Controls.Add(self.lbl_owc_status)
 
         self._sync_owc_report_type_from_observation_type(force=True)
         self._refresh_owc_duration_ui()
 
-        y_pos += 175
+        y_pos += 190
 
         # ===== SECTION 6: CONDITIONS =====
         grp_conditions = GroupBox()
         grp_conditions.Text = "5. Conditions"
         grp_conditions.Location = Point(10, y_pos)
-        grp_conditions.Size = Size(940, 80)
+        grp_conditions.Size = Size(940, 70)
         main_panel.Controls.Add(grp_conditions)
 
         lbl_clouds = Label()
@@ -700,7 +728,7 @@ class PhaseBDialog(Form):
         self.status_label.Text = "Please complete all sections above"
         self.status_label.Location = Point(20, 880)
         self.status_label.Size = Size(475, 20)
-        self.status_label.ForeColor = Color.Gray
+        self.status_label.ForeColor = self._status_color('muted')
         self.Controls.Add(self.status_label)
 
         self.chk_include_station = CheckBox()
@@ -771,26 +799,26 @@ class PhaseBDialog(Form):
                 "\u26a0  WARNING: The NA form automatically applies VTI corrections to D/R times. "
                 "Do NOT apply corrections inside AOTA \u2014 the times will be double-corrected."
             )
-            self._lbl_vti_info.ForeColor = Color.OrangeRed
+            self._lbl_vti_info.ForeColor = self._status_color('error')
         elif is_aota and is_tt_sodis:
             self._lbl_vti_info.Text = (
                 "\u24d8  TT and SODIS forms do not automatically apply VTI corrections. "
                 "Ensure VTI corrections (camera + VTI delay) are applied inside AOTA."
             )
-            self._lbl_vti_info.ForeColor = Color.DarkOrange
+            self._lbl_vti_info.ForeColor = self._status_color('warning')
         elif not is_aota and is_na:
             self._lbl_vti_info.Text = "\u2714  NA report form will automatically apply VTI corrections to D/R times."
-            self._lbl_vti_info.ForeColor = Color.Green
+            self._lbl_vti_info.ForeColor = self._status_color('success')
         elif not is_aota and is_tt_sodis:
             self._lbl_vti_info.Text = (
                 "\u26d4  INCOMPATIBLE: PyOTE does not apply VTI corrections, and TT/SODIS forms "
                 "do not apply them automatically. D/R times will be uncorrected.\n"
                 "Use the NA report form, or use AOTA to analyse the light curve."
             )
-            self._lbl_vti_info.ForeColor = Color.Red
+            self._lbl_vti_info.ForeColor = self._status_color('error')
         else:
             self._lbl_vti_info.Text = "Report format was selected in the previous dialog."
-            self._lbl_vti_info.ForeColor = Color.Gray
+            self._lbl_vti_info.ForeColor = self._status_color('muted')
 
     # ------------------------------------------------------------------
     # Folder / scan
@@ -901,7 +929,7 @@ class PhaseBDialog(Form):
             self.scan_folder(self.current_folder)
         else:
             self.status_label.Text = "No folder selected — browse to your folder first"
-            self.status_label.ForeColor = Color.OrangeRed
+            self.status_label.ForeColor = self._status_color('error')
 
     # ------------------------------------------------------------------
     # File selection / previews
@@ -985,20 +1013,20 @@ class PhaseBDialog(Form):
             self.lbl_ts_delayed.Text = "Delayed frames: {0}".format(n_delayed)
             self.lbl_ts_late.Text = "Late frames: {0}".format(n_late)
             if n_late > 0:
-                self.lbl_ts_delayed.ForeColor = Color.OrangeRed
-                self.lbl_ts_late.ForeColor = Color.OrangeRed
+                self.lbl_ts_delayed.ForeColor = self._status_color('error')
+                self.lbl_ts_late.ForeColor = self._status_color('error')
                 self.lbl_ts_status.Text = "Status: Issues detected"
-                self.lbl_ts_status.ForeColor = Color.OrangeRed
+                self.lbl_ts_status.ForeColor = self._status_color('error')
             elif n_delayed > 0:
-                self.lbl_ts_delayed.ForeColor = Color.Orange
-                self.lbl_ts_late.ForeColor = Color.Gray
+                self.lbl_ts_delayed.ForeColor = self._status_color('warning')
+                self.lbl_ts_late.ForeColor = self._status_color('muted')
                 self.lbl_ts_status.Text = "Status: Check"
-                self.lbl_ts_status.ForeColor = Color.Orange
+                self.lbl_ts_status.ForeColor = self._status_color('warning')
             else:
-                self.lbl_ts_delayed.ForeColor = Color.Gray
-                self.lbl_ts_late.ForeColor = Color.Gray
+                self.lbl_ts_delayed.ForeColor = self._status_color('muted')
+                self.lbl_ts_late.ForeColor = self._status_color('muted')
                 self.lbl_ts_status.Text = "Status: OK"
-                self.lbl_ts_status.ForeColor = Color.Green
+                self.lbl_ts_status.ForeColor = self._status_color('success')
             self.btn_ts_inspect.Enabled = True
             tdelta_min = summary.get('tdelta_min', None)
             tdelta_max = summary.get('tdelta_max', None)
@@ -1009,7 +1037,7 @@ class PhaseBDialog(Form):
                 self.lbl_ts_minmax.Text = "Deviation: {0:+.1f} to {1:+.1f} ms".format(min_dev, max_dev)
             else:
                 self.lbl_ts_minmax.Text = "Deviation: -"
-            self.lbl_ts_minmax.ForeColor = Color.Gray
+            self.lbl_ts_minmax.ForeColor = self._status_color('muted')
             self._check_event_in_window(summary)
             self._update_delay_check(summary)
         except Exception:
@@ -1111,9 +1139,12 @@ class PhaseBDialog(Form):
         snr = record.get('DNR', None)
         preview = "D: {0}  R: {1}".format(d_time, r_time)
         if uncertainty is not None:
-            preview += "  \u00b1{0}s".format(uncertainty)
+            preview += "  \u00b1{0}s".format(self._fmt_unc(uncertainty))
         if snr is not None:
-            preview += "  SNR(DNR):{0}".format(snr)
+            try:
+                preview += "  SNR(DNR):{0:.1f}".format(float(snr))
+            except (TypeError, ValueError):
+                preview += "  SNR(DNR):{0}".format(snr)
         self.pyote_preview_label.Text = preview
 
     def _populate_dr_combo(self):
@@ -1235,11 +1266,16 @@ class PhaseBDialog(Form):
                         r_sec = int(parts[0]) * 3600.0 + int(parts[1]) * 60.0 + float(parts[2])
                 except Exception:
                     pass
-                display = 'PyOTE  D {0}  R {1}'.format(d_time, r_time)
+                unc_f = None
                 if uncertainty is not None:
-                    display += '  \u00b1{0}s'.format(uncertainty)
-                unc_f = float(uncertainty) if uncertainty is not None else None
-                unc_dp = self._count_dp(uncertainty)
+                    try:
+                        unc_f = round(float(uncertainty), 3)
+                    except (TypeError, ValueError):
+                        unc_f = None
+                display = 'PyOTE  D {0}  R {1}'.format(d_time, r_time)
+                if unc_f is not None:
+                    display += '  \u00b1{0}s'.format(self._fmt_unc(unc_f))
+                unc_dp = self._count_dp(unc_f)
                 # Strip brackets from PyOTE bracketed time strings for display in info panel
                 def _strip_brackets(t):
                     return str(t).strip().strip('[]')
@@ -1355,11 +1391,11 @@ class PhaseBDialog(Form):
             if is_ntp and ntp_unc_ms > 0:
                 self.lbl_ntp_info.Text = "NTP: {0:+.1f} ms  \u00b1{1:.1f} ms (95%)".format(
                     ntp_off_ms, ntp_unc_ms)
-                self.lbl_ntp_info.ForeColor = Color.Gray
+                self.lbl_ntp_info.ForeColor = self._status_color('muted')
                 self.chk_ntp_uncertainty.Enabled = True
             elif is_ntp:
                 self.lbl_ntp_info.Text = "NTP: not yet analysed \u2014 run NTP analysis in the previous dialog"
-                self.lbl_ntp_info.ForeColor = Color.OrangeRed
+                self.lbl_ntp_info.ForeColor = self._status_color('error')
                 self.chk_ntp_uncertainty.Enabled = False
                 self.chk_ntp_uncertainty.Checked = False
 
@@ -1370,17 +1406,17 @@ class PhaseBDialog(Form):
     def _reset_timestamp_check(self):
         self._ts_summary = None
         self.lbl_ts_delayed.Text = "Delayed frames: -"
-        self.lbl_ts_delayed.ForeColor = Color.Gray
+        self.lbl_ts_delayed.ForeColor = self._status_color('muted')
         self.lbl_ts_late.Text = "Late frames: -"
-        self.lbl_ts_late.ForeColor = Color.Gray
+        self.lbl_ts_late.ForeColor = self._status_color('muted')
         self.lbl_ts_status.Text = "Status: -"
-        self.lbl_ts_status.ForeColor = Color.Gray
+        self.lbl_ts_status.ForeColor = self._status_color('muted')
         self.btn_ts_inspect.Enabled = False
         self.lbl_ts_minmax.Text = "Deviation: -"
-        self.lbl_ts_minmax.ForeColor = Color.Gray
+        self.lbl_ts_minmax.ForeColor = self._status_color('muted')
         self.lbl_ts_event_warning.Visible = False
         self.lbl_delay_check.Text = "Tangra delay: -"
-        self.lbl_delay_check.ForeColor = Color.Gray
+        self.lbl_delay_check.ForeColor = self._status_color('muted')
 
     def _check_event_in_window(self, summary):
         try:
@@ -1414,25 +1450,25 @@ class PhaseBDialog(Form):
         expected_ms = self.timing_ctx.get('total_delay_ms', None)
         if not self.timing_ctx.get('is_ntp', False) or expected_ms is None:
             self.lbl_delay_check.Text = "Tangra delay: (not applicable for this timing method)"
-            self.lbl_delay_check.ForeColor = Color.Gray
+            self.lbl_delay_check.ForeColor = self._status_color('muted')
             return
         actual_ms = summary.get('acquisition_delay', None) if summary else None
         if actual_ms is None:
             self.lbl_delay_check.Text = (
                 "Tangra delay: NOT SET  \u2717  Expected: {0:.1f} ms"
                 " \u2014 enter this in Tangra \u2192 Camera and Timing Corrections".format(expected_ms))
-            self.lbl_delay_check.ForeColor = Color.Red
+            self.lbl_delay_check.ForeColor = self._status_color('error')
             return
         diff = expected_ms - actual_ms
         if abs(diff) < 1.0:
             self.lbl_delay_check.Text = (
                 "Tangra delay: {0:.1f} ms  \u2713  Matches calculated total delay".format(actual_ms))
-            self.lbl_delay_check.ForeColor = Color.Green
+            self.lbl_delay_check.ForeColor = self._status_color('success')
         else:
             self.lbl_delay_check.Text = (
                 "Tangra delay: {0:.1f} ms  \u2717  Expected: {1:.1f} ms"
                 "  (needs adjustment of {2:+.1f} ms)".format(actual_ms, expected_ms, diff))
-            self.lbl_delay_check.ForeColor = Color.Red
+            self.lbl_delay_check.ForeColor = self._status_color('error')
 
     def _ts_explain_click(self, sender, e):
         MessageBox.Show(
@@ -1460,7 +1496,13 @@ class PhaseBDialog(Form):
             except Exception:
                 event_secs = None
             from comprehensive_report_dialog import TimestampInspectorForm
-            form = TimestampInspectorForm(tangra_path, self._d_time_seconds, self._r_time_seconds, event_secs)
+            form = TimestampInspectorForm(
+                tangra_path,
+                self._d_time_seconds,
+                self._r_time_seconds,
+                event_secs,
+                theme_manager=self.theme_manager,
+            )
             form.ShowDialog(self)
         except Exception as ex:
             MessageBox.Show(
@@ -1612,14 +1654,14 @@ class PhaseBDialog(Form):
         if self.config is None:
             if update_status_label:
                 self.lbl_owc_status.Text = 'Config unavailable.'
-                self.lbl_owc_status.ForeColor = Color.OrangeRed
+                self.lbl_owc_status.ForeColor = self._status_color('error')
             return False
 
         obs_type, duration_s, comment, error_message = self._validate_owc_submission_inputs()
         if error_message:
             if update_status_label:
                 self.lbl_owc_status.Text = error_message
-                self.lbl_owc_status.ForeColor = Color.OrangeRed
+                self.lbl_owc_status.ForeColor = self._status_color('error')
             return False
 
         try:
@@ -1628,7 +1670,7 @@ class PhaseBDialog(Form):
             self.btn_submit_owc.Enabled = False
             if update_status_label:
                 self.lbl_owc_status.Text = 'Submitting to OWC...'
-                self.lbl_owc_status.ForeColor = Color.Gray
+                self.lbl_owc_status.ForeColor = self._status_color('muted')
 
             event_payload = {
                 'ow_eventid': getattr(self.event, 'ow_eventid', None),
@@ -1655,20 +1697,20 @@ class PhaseBDialog(Form):
                 if update_status_label:
                     if persisted_ok:
                         self.lbl_owc_status.Text = 'Submitted to OWC successfully.'
-                        self.lbl_owc_status.ForeColor = Color.Green
+                        self.lbl_owc_status.ForeColor = self._status_color('success')
                     else:
                         self.lbl_owc_status.Text = 'Submitted to OWC. Warning: status could not be saved locally.'
-                        self.lbl_owc_status.ForeColor = Color.OrangeRed
+                        self.lbl_owc_status.ForeColor = self._status_color('error')
                 return True
 
             if update_status_label:
                 self.lbl_owc_status.Text = 'OWC submit failed: {0}'.format(result.get('error') or 'Unknown error')
-                self.lbl_owc_status.ForeColor = Color.OrangeRed
+                self.lbl_owc_status.ForeColor = self._status_color('error')
             return False
         except Exception as ex:
             if update_status_label:
                 self.lbl_owc_status.Text = 'OWC submit exception: {0}'.format(str(ex))
-                self.lbl_owc_status.ForeColor = Color.OrangeRed
+                self.lbl_owc_status.ForeColor = self._status_color('error')
             return False
         finally:
             self.btn_submit_owc.Enabled = True
@@ -1697,7 +1739,7 @@ class PhaseBDialog(Form):
             'Positive': 'Positive',
             'Miss': 'Miss',
             'Negative': 'Miss',
-            'NotObserved': 'Unsure No Obs',
+            'NotObserved': 'No Obs',
             'Failed': 'Failed',
             'Clouded': 'Clouded',
         }
@@ -1780,12 +1822,12 @@ class PhaseBDialog(Form):
 
         if missing:
             self.status_label.Text = "Missing: " + ", ".join(missing)
-            self.status_label.ForeColor = Color.Red
+            self.status_label.ForeColor = self._status_color('error')
             self.btn_generate.Enabled = False
             self._btn_why_blocked.Visible = True
         else:
             self.status_label.Text = "Ready to generate report"
-            self.status_label.ForeColor = Color.Green
+            self.status_label.ForeColor = self._status_color('success')
             self.btn_generate.Enabled = True
             self._btn_why_blocked.Visible = False
 
@@ -1834,6 +1876,7 @@ class PhaseBDialog(Form):
         if self.combo_stability.SelectedIndex >= 0 and self.combo_stability.SelectedItem:
             self.stability = str(self.combo_stability.SelectedItem)
         self.other_conditions = self.txt_other_conditions.Text.strip() or None
+        self.observation_comment = self.txt_observation_comment.Text.strip() or None
         # Keep report generator compatibility: use Negative for non-observed outcomes.
         self.observation_type = 'Negative' if obs_type == 'NotObserved' else obs_type
         self.include_station_name = self.chk_include_station.Checked

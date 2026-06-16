@@ -150,14 +150,14 @@ This feature allows users to import timing data from AOTA (Asteroid Occultation 
 
 ### 6. gui_dialogs.py
 **Modified**:
-- `LocationConfirmDialog` button text changed from "Confirm & Generate Report" to "Next - event D/R"
+- `LocationConfirmDialog` button text changed from "Confirm & Report" to "Next - event D/R"
 
 ## User Workflow (Historical + Current Notes)
 
 ### Generating a Report with AOTA Data
 
 1. **Select Event**: Choose a past event from the event list
-2. **Click "Generate Report"**
+2. **Click "Report"**
 3. **Confirm Location** in the location dialog
 4. **Use Comprehensive Report Dialog** to choose report type, equipment, and observation type
 5. **Browse to folder** containing Tangra CSV and optional AOTA XML / AOTA Report files

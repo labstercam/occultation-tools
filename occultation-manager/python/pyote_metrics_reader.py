@@ -131,6 +131,14 @@ def record_to_aota_report_data(record):
     r_h, r_m, r_s = _parse_bracketed_time(record.get('R time', ''))
     uncertainty = record.get('time err +/-secs', None)
     snr = record.get('DNR', None)
+    try:
+        uncertainty = round(float(uncertainty), 3) if uncertainty is not None else None
+    except (TypeError, ValueError):
+        pass
+    try:
+        snr = round(float(snr), 1) if snr is not None else None
+    except (TypeError, ValueError):
+        pass
     return {
         'd_hours':       d_h if d_h is not None else '',
         'd_minutes':     d_m if d_m is not None else '',

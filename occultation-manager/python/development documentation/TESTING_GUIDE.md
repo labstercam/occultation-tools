@@ -208,7 +208,6 @@ occultation-manager/python/
 ├── testing/verify_openize_sharpcap.py    ← DLL verification
 ├── testing/test_openize_integration.py   ← Full integration test
 ├── testing/test_openize_tt_report.py     ← Openize POC test script
-├── testing/archive/                      ← Archived legacy/one-off tests
 └── OPENIZE_MIGRATION_POC.md              ← Historical migration notes
 ```
 

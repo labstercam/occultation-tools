@@ -434,5 +434,5 @@ Core event data model with automatic calculations and customizable overrides:
 
 **Development Files** (excluded from release):
 - `testing/` - Active verification scripts (`verify_openize_sharpcap.py`, `test_openize_integration.py`, `test_openize_tt_report.py`)
-- `testing/archive/` - Archived legacy/one-off test scripts kept for reference (not part of the active testing workflow)
+- `testing/` may also contain archived legacy/one-off scripts when retained for reference (not part of the active testing workflow)
 - `development documentation/` - Implementation notes, bug tracking, and technical specifications

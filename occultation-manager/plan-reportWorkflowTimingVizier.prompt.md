@@ -2,7 +2,7 @@
 
 ## Context
 
-This plan extends the Generate Report workflow to handle timestamp corrections (NTP offset, camera acquisition delay) explicitly, and integrates VizieR light curve export into the flow.
+This plan extends the Report workflow to handle timestamp corrections (NTP offset, camera acquisition delay) explicitly, and integrates VizieR light curve export into the flow.
 
 ---
 
@@ -78,7 +78,7 @@ OM timestamps corrections are scoped by **recording/timing method**, not by repo
 ## Current Workflow (as-is)
 
 ```
-Generate Report click
+Report click
   └─ LocationConfirmDialog       ← confirms lat/lon/elev, optional NTP analysis
   └─ ComprehensiveReportDialog   ← 5 sections:
         §1 Report type (NA / TT / SODIS)

@@ -31,7 +31,7 @@ Occultation Manager is a Windows desktop application that automates the workflow
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ Top Toolbar: Download | Refresh | Generate Dummy Events | Station Filter    │
 │              Event Details | Edit Settings | Create Sequences                │
-│              Run Sequences | Generate Report | Night Mode / Day Mode         │
+│              Run Sequences | Report | Night Mode / Day Mode                  │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ EventsDataGrid: [ ] Event | Station | Date/Time | Mag | Exp | Gain | Status │
 ├──────────────────────────────────────────────────────────────────────────────┤
@@ -51,7 +51,7 @@ SEQUENCE GENERATION WORKFLOW
     Generate Sequences -> TemplateSelectionDialog -> .scs files in data/sequences/
 
 REPORT GENERATION WORKFLOW
-    Generate Report -> LocationConfirmDialog -> ComprehensiveReportDialog
+  Report -> LocationConfirmDialog -> ComprehensiveReportDialog
     LocationConfirmDialog: Step 1 confirm location, optional Step 2 NTP analysis
     ComprehensiveReportDialog: report format, equipment, observation type,
     AOTA/Tangra import, optional AOTA event selection, and generate report
@@ -165,7 +165,7 @@ Top Toolbar (left-to-right):
 - Edit Settings
 - Create Sequences
 - Run Sequences
-- Generate Report
+- Report
 - Night Mode / Day Mode
 
 Bottom Panel:
@@ -441,11 +441,16 @@ Three specialized report generators create Excel-based observation reports by fi
 - `include_station_name` kwarg controls whether station name is appended to the generated filename
 - Uses Openize SDK for direct cell manipulation
 
-**Occult 4 XML Export (`occult4_export.py` - 944 lines):**
-- `Occult4Exporter` - Occult 4 XML format (Version 2.15)
-- Output: XML file for Occult 4 software analysis
-- Fields: Event details, observer info, timing, equipment
-- Note: EventFits section omitted (added by IOTA post-processing)
+**Occult 4 XML Export (`occult4_export.py`):**
+- `Occult4Exporter` — Occult 4 XML format output
+- `<Star>` and `<Asteroid>` elements contain only catalog/number and name; all detail fields
+  (astrometry, motion coefficients, magnitudes, diameter) are left blank for coordinators
+- `<StarIssues>` element is omitted entirely
+- Observer name formatted as *initial + full surname* (e.g. `M Camilleri`)
+- Longitude/latitude written to 3 decimal places
+- `<Conditions>` comment field populated from `observer_data['timing_comment']`
+- SNR written to 1 dp; blank when zero or absent
+- `FileVersion`, `Added`, and `LastEdited` elements omitted (coordinator fills these)
 
 **SODIS / IOTA-ES Text Reports (`sodis_report_text.py`):**
 - `SODISReportGeneratorText` - IOTA-ES plain-text report format
@@ -456,7 +461,7 @@ Three specialized report generators create Excel-based observation reports by fi
 **Report Generation Flow:**
 ```
 1. User selects event in grid
-2. Click "Generate Report"
+2. Click "Report"
 3. LocationConfirmDialog opens:
     a. Confirm observer location
     b. Optional: Step 2 NTP timing analysis
@@ -497,7 +502,10 @@ Three specialized report generators create Excel-based observation reports by fi
    d. Write timing note to comments cell via build_timing_note(timing_data)
    e. Save populated workbook
 7. Saves to data/reports/
-8. Generates matching Occult 4 XML file
+8. Generates matching Occult 4 XML file with same stem as the Excel report
+   - `<Star>` / `<Asteroid>`: number/name only; all detail fields blank
+   - `<Conditions>` comment: camera name + timing correction note from `timing_comment`
+   - Observer name: initial + full surname (e.g. `M Camilleri`); coordinates to 3 dp
 9. Opens report in Excel
 10. RenameFilesDialog opens (post-report): offers to rename observation input files
     (CSV, AOTA XML/Report, image files, .lc files) to match the report stem;
@@ -526,34 +534,38 @@ Three specialized report generators create Excel-based observation reports by fi
 - Templates loaded from `resources/templates_master/reports/`
 - Automatic Occult 4 XML export with matching filename
 
-#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` - ~2,760 lines)
-- Unified dialog for all report types
-- Equipment selection dropdowns
-- Observation type radio buttons with tooltips (AOTA/PyOTE requirement per type)
-- Observing conditions section (clouds, stability, other)
-- **"Include Station Name in Filenames" checkbox** (unchecked by default) in PhaseBDialog (dialog 3); value exposed via `get_include_station_name()`; wired to `TTReportGeneratorOpenize._generate_filename()`
-- **Step A4 (camera delay from Tangra CSV)**: initial label shows hint text; "Applied" radio
-  button disabled until a Tangra CSV is loaded (re-enabled on CSV load; reset on folder rescan)
-- **Section 4 — Observation Files**: four file pickers loaded from the observation folder:
+#### Comprehensive Report Dialog (`comprehensive_report_dialog.py` + `phase_b_dialog.py`)
+
+`ComprehensiveReportDialog` (Phase A, `comprehensive_report_dialog.py` - ~2,760 lines) handles
+report format selection, equipment, timing method, NTP correction workflow, and conditions.
+`PhaseBDialog` (Phase B, `phase_b_dialog.py`) handles observation file selection and the
+D/R event combo:
+
+- **Observation Files section** — four file pickers:
   - CSV light curve files (Tangra / R-OTE / Limovie; format shown in brackets)
   - AOTA XML files
   - AOTA Report `.txt` files
-  - PyOTE `fit_metrics.txt` files (detected by content, not filename); a second listbox lists the events/apertures inside the selected file
-- Timestamp check subpanel (colour-coded status, deviation range, event-time window warning, Explain… and Inspect Timestamps… buttons); Inspect Timestamps available for all light curve formats
-- **Section 5 — Timing** (NTP sub-panel):
-  - Calibration run selector and Y-line entry; calculates camera acquisition delay
-  - Inline `?` info buttons on calibration run (match requirements), Y-line (Tangra instructions), and NTP section header (concept explainer)
-  - CameraSettings.txt auto-match for calibration run
-  - NTP clock offset from LocationConfirmDialog analysis
-  - Correction status radio buttons: Applied in Tangra / Not yet applied / N/A
-  - "Applied in Tangra": confirmation checkboxes showing live correction values; stale-value detection (heading turns orange, checkboxes auto-clear if values change); "Why confirm?" info button
-  - "Not yet applied": step-by-step guidance panel with Copy buttons for entering values in Tangra
-  - Net correction preview with corrected D and R preview times
-  - D/R plausibility check: D ≥ R is blocking for Positive/Unsure events; net > 500 ms is a non-blocking warning; "What happened?" button appears alongside active warnings
-- **Status bar**: `?` button appears when Generate is blocked; shows the full blocking reason in a popup
-- `_setup_tooltips()` — configures all `ToolTip` instances after controls are built
-- `get_timing_data()` — returns timing_data dict (see `timing_utils.py`)
-- Validation and report generation coordination
+  - PyOTE `fit_metrics.txt` files (detected by content, not filename); second listbox
+    lists apertures/events within the selected file
+- **D/R event combo** (`combo_dr_event`) — unified selector populated from all three timing
+  sources; uncertainty displayed via `_fmt_unc()` (2 significant figures); SNR rounded to 1 dp
+- **Timestamp check subpanel** — colour-coded status, deviation range, event-time window
+  warning, Explain… and Inspect Timestamps… buttons
+- **"Include Station Name in Filenames" checkbox** (unchecked by default) — value exposed
+  via `get_include_station_name()`
+- **Step A4 (camera delay from Tangra CSV)**: hint label until CSV loaded; "Applied" radio
+  button disabled until a valid CSV is present
+
+Timing sub-panels in Phase A (NTP flow):
+- Calibration run selector + Y-line → camera acquisition delay
+- CameraSettings.txt auto-match for calibration run
+- NTP offset from `LocationConfirmDialog` analysis
+- Correction radio: Applied in Tangra / Not yet applied / N/A
+  - "Applied in Tangra": confirmation checkboxes with stale-value detection
+  - "Not yet applied": step-by-step guidance panel with Copy buttons
+- Net correction preview with corrected D/R times
+- D/R plausibility check (D ≥ R blocking; > 500 ms warning)
+- Status bar `?` button shows blocking reason in a popup
 
 #### Rename Files Dialog (`rename_files_dialog.py`)
 - `RenameFilesDialog` - Post-report dialog that offers to rename observation input files
@@ -762,7 +774,7 @@ User → Run Sequences Button → main_gui.run_sequences_click_async()
 
 ### Report Generation Flow
 ```
-User → Selects event → Generate Report Button
+User → Selects event → Report Button
     → comprehensive_report_dialog.ComprehensiveReportDialog opens
     → User selects:
         - Report type (NA, TT, or SODIS)
@@ -928,7 +940,7 @@ The tradeoff (a manual copy-paste step into Tangra's dialog) is mitigated by OM'
 
 ## Version History Context
 
-Current version: **0.2.0-beta.9** (Ninth Public Beta - April 2026)
+Current version: **0.3.0-alpha.1** (First Public Alpha - June 2026)
 
 Key capabilities implemented:
 - Automatic folder structure creation

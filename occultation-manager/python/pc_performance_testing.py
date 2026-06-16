@@ -230,8 +230,9 @@ class SimpleXlsxWriter:
 class PerformanceWindowDialog(Form):
     """Simple dialog for configuring the live chart window width."""
 
-    def __init__(self, current_width_seconds):
+    def __init__(self, current_width_seconds, theme_manager=None):
         Form.__init__(self)
+        self._theme_manager = theme_manager
         self.Text = 'Live Window Width'
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
@@ -265,6 +266,12 @@ class PerformanceWindowDialog(Form):
         btn_cancel.DialogResult = DialogResult.Cancel
         self.Controls.Add(btn_cancel)
         self.CancelButton = btn_cancel
+
+        if self._theme_manager is not None and _THEME_AVAILABLE:
+            try:
+                apply_theme_to_control(self, self._theme_manager.get_current_theme())
+            except Exception:
+                pass
 
     def get_value(self):
         try:
@@ -405,7 +412,7 @@ class PCPerformanceTestingForm(Form):
         info_label = Label()
         info_label.AutoSize = False
         info_label.Location = Point(12, 20)
-        info_label.Size = Size(416, 214)
+        info_label.Size = Size(416, 184)
         info_label.Text = (
             'PC Performance Testing shows live frame-to-frame\r\n'
             'timestamp stability while SharpCap is acquiring\r\n'
@@ -425,6 +432,13 @@ class PCPerformanceTestingForm(Form):
             '0-100%.'
         )
         info_group.Controls.Add(info_label)
+
+        btn_how_to = Button()
+        btn_how_to.Text = 'How to Interpret'
+        btn_how_to.Location = Point(12, 210)
+        btn_how_to.Size = Size(130, 26)
+        btn_how_to.Click += self._show_interpret_help
+        info_group.Controls.Add(btn_how_to)
 
         self.lbl_duration = Label()
         self.lbl_duration.Text = 'Capture Duration (seconds):'
@@ -1167,8 +1181,98 @@ class PCPerformanceTestingForm(Form):
             except Exception:
                 pass
 
+    def _show_interpret_help(self, sender, e):
+        """Show a scrollable dialog explaining how to interpret the test results."""
+        _INTERPRET_TEXT = (
+            "How to Interpret the PC Performance Testing Results\r\n"
+            "=====================================================\r\n"
+            "\r\n"
+            "If the PC is performing well and the camera settings are appropriate, "
+            "SharpCap will read each frame as it arrives with minimal delay and no "
+            "dropped frames. You should see 'Delta from nominal exposure (ms)' of 0 ms, "
+            "maybe with the odd +/- 1-2 ms.\r\n"
+            "\r\n"
+            "When the PC has competing loads or processes, the Delta may have much more "
+            "variation than +/- 1-2 ms and may have larger jumps of several to tens of ms. "
+            "If the Delta is longer than the exposure this can indicate a dropped frame.\r\n"
+            "\r\n"
+            "Sometimes there will be a small delta for one frame, say +7 ms, then the next "
+            "frame is -7 ms. This can happen when SharpCap processes a single frame a bit "
+            "late and then immediately recovers. If this only happens occasionally it is "
+            "not a problem.\r\n"
+            "\r\n"
+            "If the exposure time is too short then the exposure will be shorter than the "
+            "time it takes to read out the frame. If this happens the delta line will not "
+            "be at 0 but will be higher. So if the exposure time is 30 ms and the camera "
+            "can only run at max 25 fps (40 ms min exposure) then the delta line will be "
+            "at 10 ms. This shows you are running the camera too fast.\r\n"
+            "\r\n"
+            "The PC load shows the CPU, memory, disk and network loads. If these are too "
+            "high they will compete with SharpCap and you will get unstable timestamps "
+            "and dropped frames.\r\n"
+            "\r\n"
+            "Things you can do to reduce load and competition on the PC:\r\n"
+            "  1. Close programs that you do not need whilst recording. Chrome or other "
+            "browsers can eat a lot of memory. Stellarium or other astronomy programs "
+            "that have a live view may eat a lot of CPU.\r\n"
+            "  2. Avoid connecting or using other USB devices that are not needed. "
+            "Mouse movements can compete for USB traffic.\r\n"
+            "\r\n"
+            "Things you can do to improve PC performance:\r\n"
+            "  1. Enable High Performance under the Windows PC power settings.\r\n"
+            "  2. Disable USB power saving.\r\n"
+            "  3. Set the SharpCap priority to High in Task Manager.\r\n"
+            "  (A utility to help make these settings will be available in "
+            "Occultation Manager soon.)\r\n"
+            "\r\n"
+            "Things you can do to improve camera performance:\r\n"
+            "  1. Test various USB settings in SharpCap. There may be a turbo mode, "
+            "USB speed setting, etc. Try various combinations and see how they affect "
+            "performance.\r\n"
+            "  2. Ensure your camera exposure is not too short. Recommended not more "
+            "than 1/3 the max frame rate.\r\n"
+            "  3. Reduce the ROI.\r\n"
+            "  4. Use Binning, and enable Hardware Binning if your camera supports it.\r\n"
+            "  5. Only use the manufacturer's driver (listed under Cameras in SharpCap). "
+            "Do not use the DirectShow or ASCOM camera driver options.\r\n"
+        )
+
+        dlg = Form()
+        dlg.Text = 'How to Interpret PC Performance Testing Results'
+        dlg.Size = Size(620, 560)
+        dlg.MinimumSize = Size(400, 300)
+        dlg.StartPosition = FormStartPosition.CenterParent
+        dlg.FormBorderStyle = FormBorderStyle.Sizable
+
+        txt = RichTextBox()
+        txt.Dock = DockStyle.Fill
+        txt.ReadOnly = True
+        txt.ScrollBars = RichTextBoxScrollBars.Vertical
+        txt.WordWrap = True
+        txt.Text = _INTERPRET_TEXT
+        txt.BackColor = SystemColors.Window
+        txt.Font = Font("Segoe UI", 9)
+        dlg.Controls.Add(txt)
+
+        btn_close = Button()
+        btn_close.Text = 'Close'
+        btn_close.DialogResult = DialogResult.OK
+        btn_close.Dock = DockStyle.Bottom
+        btn_close.Height = 30
+        dlg.Controls.Add(btn_close)
+        dlg.AcceptButton = btn_close
+
+        try:
+            from theme import apply_theme_to_control
+            if hasattr(self, '_theme_manager') and self._theme_manager:
+                apply_theme_to_control(dlg, self._theme_manager.get_current_theme())
+        except Exception:
+            pass
+
+        dlg.ShowDialog(self)
+
     def configure_window_width_click(self, sender, e):
-        dlg = PerformanceWindowDialog(self._window_seconds)
+        dlg = PerformanceWindowDialog(self._window_seconds, theme_manager=self._theme_manager)
         if dlg.ShowDialog(self) == DialogResult.OK:
             value = dlg.get_value()
             if value is None:

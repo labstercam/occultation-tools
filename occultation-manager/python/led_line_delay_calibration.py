@@ -118,6 +118,14 @@ try:
 except Exception:
     _OM_THEME_AVAILABLE = False
 
+# NTP analysis core for calibration point-in-time clock offset estimation
+try:
+    import ntp_analysis_core as _ntp_core
+    _NTP_CORE_AVAILABLE = True
+except Exception:
+    _ntp_core = None
+    _NTP_CORE_AVAILABLE = False
+
 # SharpCap global — provided by SharpCap's IronPython console; None when run standalone
 try:
     _ = SharpCap
@@ -732,10 +740,12 @@ def calculate_delays_iron(lcv, peak_no, exposure_ms, flash_ms, y, y_lines):
     rolling_shutter_y_offset = exposure_ms / 2.0
     frame1_end = frame1_mid + timedelta(milliseconds=rolling_shutter_y_offset)
     
-    # The actual UT of the PPS flash (assumes timestamps accurate to <<1s)
-    total_seconds = (frame1_end - datetime(1900, 1, 1)).total_seconds()
-    pps_actual_seconds = round(total_seconds)
-    pps_actual_time = datetime(1900, 1, 1) + timedelta(seconds=pps_actual_seconds)
+    # The actual UT of the PPS flash (nearest whole second), preserving the
+    # real capture date/time. The previous 1900-based reconstruction produced
+    # invalid historical timestamps for long-term stability plots.
+    pps_actual_time = frame1_end.replace(microsecond=0)
+    if frame1_end.microsecond >= 500000:
+        pps_actual_time = pps_actual_time + timedelta(seconds=1)
     
     # The actual time of the end of the frame (pps_ms_in_frame1 after the PPS)
     frame1_end_actual = pps_actual_time + timedelta(milliseconds=pps_ms_in_frame1)
@@ -1233,6 +1243,10 @@ class _MinDelayDialog(Form):
     """Simple modal dialog prompting the user to enter a minimum line delay value."""
 
     def __init__(self, hint_text='', theme_manager=None):
+        Form.__init__(self)
+        is_night = bool(getattr(theme_manager, 'is_night_mode', False))
+        muted_color = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+
         self.min_delay_ms = None
         self.Text = "Enter Minimum Delay"
         self.ClientSize = Size(420, 160)
@@ -1258,7 +1272,7 @@ class _MinDelayDialog(Form):
         hint.Text = hint_text
         hint.Location = Point(20, 55)
         hint.Size = Size(380, 40)
-        hint.ForeColor = Color.Gray
+        hint.ForeColor = muted_color
         self.Controls.Add(hint)
 
         btn_ok = Button()
@@ -1297,6 +1311,12 @@ class SaveCalibrationDialog(Form):
     """Dialog to save a line delay calibration result to Occultation Manager config."""
 
     def __init__(self, fit_result, capture_settings, preselect_camera_id=None, config=None, theme_manager=None):
+        Form.__init__(self)
+        is_night = bool(getattr(theme_manager, 'is_night_mode', False))
+        self._muted_color = Color.FromArgb(255, 214, 150) if is_night else Color.Gray
+        self._subtle_color = Color.FromArgb(255, 214, 150) if is_night else Color.DimGray
+        self._result_color = Color.FromArgb(255, 236, 185) if is_night else Color.DarkBlue
+
         self._fit_result = fit_result
         self._capture_settings = dict(capture_settings) if capture_settings else {}
         self._config = config   # may be None; _load_cameras creates one if so
@@ -1310,7 +1330,6 @@ class SaveCalibrationDialog(Form):
 
     def InitializeComponent(self):
         self.Text = "Save Calibration to Camera"
-        self.ClientSize = Size(480, 455)
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.MaximizeBox = False
         self.MinimizeBox = False
@@ -1322,6 +1341,15 @@ class SaveCalibrationDialog(Form):
         intercept = s.get('intercept', 0.0)
         r2        = s.get('r_squared', 0.0)
         rowh = 28
+
+        # NTP correction info (if present in capture_settings)
+        ntp_offset_ms      = cs.get('ntp_offset_ms')
+        ntp_uncertainty_ms = cs.get('ntp_uncertainty_ms', 0.0)
+        ntp_midpoint_utc   = cs.get('ntp_midpoint_utc', '')
+        raw_intercept      = s.get('raw_intercept')
+        ntp_section_height = 40 if ntp_offset_ms is not None else 0
+
+        self.ClientSize = Size(480, 455 + ntp_section_height)
 
         # --- Calibration Result section ---
         lbl_title = Label()
@@ -1336,10 +1364,37 @@ class SaveCalibrationDialog(Form):
             slope, intercept, r2_str)
         lbl_result.Location = Point(20, 35)
         lbl_result.Size = Size(440, 18)
-        lbl_result.ForeColor = Color.DarkBlue
+        lbl_result.ForeColor = self._result_color
+
+        extra_controls = []
+        if ntp_offset_ms is not None:
+            ntp_title = Label()
+            ntp_title.Text = "NTP Clock Correction"
+            ntp_title.Font = Font(ntp_title.Font.FontFamily, 8, FontStyle.Bold)
+            ntp_title.Location = Point(20, 57)
+            ntp_title.AutoSize = True
+            extra_controls.append(ntp_title)
+
+            mid_str = ''
+            if ntp_midpoint_utc:
+                try:
+                    mid_str = ' (midpoint ' + ntp_midpoint_utc.replace('T', ' ').replace('Z', ' UTC') + ')'
+                except Exception:
+                    pass
+            raw_str = '  raw {0:.3f} ms'.format(raw_intercept) if raw_intercept is not None else ''
+            ntp_detail = Label()
+            ntp_detail.Text = (
+                "Offset: {0:+.2f} ms  \u00b1{1:.2f} ms (95%){2}"
+                "   \u2192 Line 0 adjusted:{3} {4:.3f} ms".format(
+                    ntp_offset_ms, ntp_uncertainty_ms, mid_str, raw_str, intercept)
+            )
+            ntp_detail.Location = Point(20, 74)
+            ntp_detail.Size = Size(440, 18)
+            ntp_detail.ForeColor = self._result_color
+            extra_controls.append(ntp_detail)
 
         # --- Camera & Label section ---
-        y = 68
+        y = 68 + ntp_section_height
         lbl_cam = Label()
         lbl_cam.Text = "Camera:"
         lbl_cam.Location = Point(20, y + 3)
@@ -1364,7 +1419,7 @@ class SaveCalibrationDialog(Form):
         lbl_label_hint.Text = "(e.g. A, B, C\u2026)"
         lbl_label_hint.Location = Point(188, y + 3)
         lbl_label_hint.AutoSize = True
-        lbl_label_hint.ForeColor = Color.Gray
+        lbl_label_hint.ForeColor = self._muted_color
 
         y += rowh
         lbl_method = Label()
@@ -1411,7 +1466,7 @@ class SaveCalibrationDialog(Form):
         lbl_settings_title.Text = "Camera Settings (auto-populated; edit if needed)"
         lbl_settings_title.Location = Point(20, y)
         lbl_settings_title.Size = Size(440, 16)
-        lbl_settings_title.ForeColor = Color.DimGray
+        lbl_settings_title.ForeColor = self._subtle_color
 
         y += 22
         lbl_cam_name = Label()
@@ -1563,7 +1618,7 @@ class SaveCalibrationDialog(Form):
             lbl_gain, self._txt_gain,
             lbl_notes, self._txt_notes,
             self._btn_save, btn_cancel,
-        ]:
+        ] + extra_controls:
             self.Controls.Add(ctrl)
 
     def _load_cameras(self):
@@ -1679,6 +1734,15 @@ class SaveCalibrationDialog(Form):
             'shutter_type':   shutter_type,
             'notes':          self._txt_notes.Text.strip(),
         }
+        cs = self._capture_settings
+        if cs.get('ntp_offset_ms') is not None:
+            run_dict['ntp_offset_ms']      = round(float(cs['ntp_offset_ms']), 4)
+            run_dict['ntp_uncertainty_ms'] = round(float(cs.get('ntp_uncertainty_ms', 0.0)), 4)
+            raw_ic = self._fit_result.get('raw_intercept')
+            if raw_ic is not None:
+                run_dict['line_0_delay_raw'] = round(float(raw_ic), 6)
+            if cs.get('ntp_midpoint_utc'):
+                run_dict['ntp_midpoint_utc'] = cs['ntp_midpoint_utc']
         try:
             self._config.add_line_delay_calibration(run_dict)
             self.DialogResult = DialogResult.OK
@@ -1701,6 +1765,7 @@ class LEDLineDelayCalibrationForm(Form):
     
     def __init__(self, sharpcap=None, config=None, theme_manager=None):
         """Initialize the calibration form"""
+        Form.__init__(self)
         self._sharpcap = sharpcap
         self._config = config
         self._theme_manager = theme_manager
@@ -1718,6 +1783,9 @@ class LEDLineDelayCalibrationForm(Form):
         self._calib_capture_settings = {}
         self._calib_saved = False
         self._active_shutter_type = 'Rolling'
+        # Calibration run UTC timestamps (for NTP point-in-time analysis on save)
+        self._calib_run_start_utc = None
+        self._calib_run_end_utc = None
         self.InitializeComponent()
         # Force handle creation to avoid invoke errors from background threads
         handle = self.Handle
@@ -1739,6 +1807,27 @@ class LEDLineDelayCalibrationForm(Form):
                 action()
             except:
                 print("Warning: Could not update UI: " + str(ex))
+
+    def _status_color(self, kind):
+        """Return status label colors tuned for day/night mode readability."""
+        is_night = bool(getattr(self._theme_manager, 'is_night_mode', False))
+        if is_night:
+            colors = {
+                'normal': Color.FromArgb(255, 236, 185),
+                'working': Color.FromArgb(255, 190, 90),
+                'success': Color.FromArgb(180, 255, 160),
+                'error': Color.FromArgb(255, 170, 150),
+                'muted': Color.FromArgb(255, 214, 150),
+            }
+        else:
+            colors = {
+                'normal': Color.Black,
+                'working': Color.Orange,
+                'success': Color.Green,
+                'error': Color.Red,
+                'muted': Color.Gray,
+            }
+        return colors.get(kind, colors['normal'])
     
     def set_and_refresh_plot(self, plot_view, plot_model):
         """Set plot model and force refresh"""
@@ -1911,7 +2000,7 @@ class LEDLineDelayCalibrationForm(Form):
         self.label_approx_delays.Text = "Alternative if no GPS flasher available:"
         self.label_approx_delays.Location = Point(20, 602)
         self.label_approx_delays.AutoSize = True
-        self.label_approx_delays.ForeColor = Color.Black
+        self.label_approx_delays.ForeColor = self._status_color('normal')
         self.label_approx_delays.Font = Font(self.label_approx_delays.Font.FontFamily,
                                              self.label_approx_delays.Font.Size, FontStyle.Bold)
 
@@ -2262,7 +2351,7 @@ class LEDLineDelayCalibrationForm(Form):
         self.button_start.Enabled = False
         self.button_stop.Enabled = True
         self.label_status.Text = "Starting..."
-        self.label_status.ForeColor = Color.Orange
+        self.label_status.ForeColor = self._status_color('working')
         
         # Run calibration in separate thread to avoid blocking UI
         thread = Thread(ParameterizedThreadStart(self.run_calibration_thread))
@@ -2305,7 +2394,7 @@ class LEDLineDelayCalibrationForm(Form):
             form.SafeInvoke(lambda: setattr(form.button_start, 'Enabled', True))
             form.SafeInvoke(lambda: setattr(form.button_stop, 'Enabled', False))
             form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Ready'))
-            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Black))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', form._status_color('normal')))
     
     def run_live_workflow(self, duration, flash_ms, camera):
         """Run calibration using live frame capture (original method)"""
@@ -2377,13 +2466,19 @@ class LEDLineDelayCalibrationForm(Form):
             self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 
                        'Capturing... ({0}s remaining)'.format(int(duration))))
             
+            # Record calibration run start time for NTP point-in-time analysis
+            self._calib_run_start_utc = datetime.utcnow()
+
             # Count down the duration
             for remaining in range(int(duration), 0, -1):
                 if remaining % 5 == 0 or remaining <= 3:
                     self.SafeInvoke(lambda r=remaining: setattr(self.label_status, 'Text', 
                                'Capturing... ({0}s remaining)'.format(r)))
                 time.sleep(1)
-            
+
+            # Record calibration run end time for NTP point-in-time analysis
+            self._calib_run_end_utc = datetime.utcnow()
+
             # 4. Stop frame capture
             self.capture_handler.stop_capture(camera)
             
@@ -2546,14 +2641,14 @@ class LEDLineDelayCalibrationForm(Form):
             
             # 9. Success
             self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Calibration complete'))
-            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Green))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', self._status_color('success')))
         
         except Exception as ex:
             # Handle errors
             error_msg = "Error occurred:\n" + str(ex)
             self.SafeInvoke(lambda: setattr(self.textbox_results, 'Text', error_msg))
             self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Error'))
-            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Red))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', self._status_color('error')))
             print("Calibration error: " + str(ex))
         
         finally:
@@ -2601,7 +2696,7 @@ class LEDLineDelayCalibrationForm(Form):
             # User cancelled file selection - exit gracefully
             print("ADV file selection cancelled by user")
             self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Cancelled'))
-            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Gray))
+            self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', self._status_color('muted')))
             return  # Exit gracefully without error
         
         # Process ADV file
@@ -2835,6 +2930,10 @@ class LEDLineDelayCalibrationForm(Form):
             measurement_method='GPS',
             shutter_type=self._active_shutter_type
         )
+        # Record run timing from ADV frame timestamps for NTP PIT analysis
+        if self.capture_handler.timestamps:
+            self._calib_run_start_utc = self.capture_handler.timestamps[0]
+            self._calib_run_end_utc = self.capture_handler.timestamps[-1]
 
         # Display results
         self.SafeInvoke(lambda: self.display_results(
@@ -2845,7 +2944,7 @@ class LEDLineDelayCalibrationForm(Form):
         
         # Success
         self.SafeInvoke(lambda: setattr(self.label_status, 'Text', 'Calibration complete'))
-        self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', Color.Green))
+        self.SafeInvoke(lambda: setattr(self.label_status, 'ForeColor', self._status_color('success')))
     
     def display_results(self, all_delays, fit_result, tangra_objects,
                        aperture_y_positions, frame_height, binning, 
@@ -2929,7 +3028,7 @@ class LEDLineDelayCalibrationForm(Form):
                     self.capture_handler.stop_capture(camera)
             
             self.label_status.Text = "Stopped by user"
-            self.label_status.ForeColor = Color.Orange
+            self.label_status.ForeColor = self._status_color('working')
             self.button_start.Enabled = True
             self.button_stop.Enabled = False
         except Exception as ex:
@@ -3000,7 +3099,7 @@ class LEDLineDelayCalibrationForm(Form):
                 for i in range(10, 0, -1):
                     msg = "Waiting for camera to stabilise: {0}s...".format(i)
                     form.SafeInvoke(lambda m=msg: setattr(form.label_status, 'Text', m))
-                    form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Orange))
+                    form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', form._status_color('working')))
                     time.sleep(1)
 
                 # Take 10 frame-rate measurements, one per second
@@ -3070,7 +3169,7 @@ class LEDLineDelayCalibrationForm(Form):
             min_delay = min_delay_holder[0]
             if min_delay is None:
                 form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Cancelled'))
-                form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Gray))
+                form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', form._status_color('muted')))
                 return
 
             # line_0_delay = min_delay + roi_height * (-1) * per_line_delay
@@ -3105,6 +3204,10 @@ class LEDLineDelayCalibrationForm(Form):
             form._calib_fit_result = fit_result
             form._calib_capture_settings = capture_settings
             form._calib_saved = False
+            # Record run time for NTP PIT analysis (use current time as midpoint)
+            _fps_now = datetime.utcnow()
+            form._calib_run_start_utc = _fps_now
+            form._calib_run_end_utc = _fps_now
 
             summary = result_text + (
                 "Min delay entered: {0:.3f} ms\r\n"
@@ -3112,14 +3215,14 @@ class LEDLineDelayCalibrationForm(Form):
             ).format(min_delay, line_0_delay)
             form.SafeInvoke(lambda: setattr(form.textbox_results, 'Text', summary))
             form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Approximate delays ready'))
-            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Green))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', form._status_color('success')))
             if hasattr(form, 'button_save_calibration'):
                 form.SafeInvoke(lambda: setattr(form.button_save_calibration, 'Enabled', True))
 
         except Exception as ex:
             err = str(ex)
             form.SafeInvoke(lambda: setattr(form.label_status, 'Text', 'Error'))
-            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', Color.Red))
+            form.SafeInvoke(lambda: setattr(form.label_status, 'ForeColor', form._status_color('error')))
             form.SafeInvoke(lambda: MessageBox.Show(
                 "Approximate delays failed:\n" + err,
                 "Error",
@@ -3130,8 +3233,153 @@ class LEDLineDelayCalibrationForm(Form):
             form.SafeInvoke(lambda: setattr(form.button_approx_delays, 'Enabled', True))
             form.SafeInvoke(lambda: setattr(form.button_start, 'Enabled', True))
 
+    def _ntp_pit_for_calibration(self):
+        """Perform NTP point-in-time analysis at the calibration run midpoint.
+
+        Returns a tuple (result_dict, data_spans_end, end_gap_s):
+          result_dict    -- dict from estimate_offset_at_time, plus '_midpoint_utc'
+                           and '_stats_folder' keys injected for the caller
+          data_spans_end -- True if loopstats has a record newer than calibration end
+          end_gap_s      -- seconds from calibration end to the most recent loopstats
+                           record (positive = data is older than calibration end;
+                           negative = data extends past end)
+        Raises RuntimeError when NTP data cannot be located or loaded.
+        """
+        from datetime import date as _date, timedelta as _td
+        start_utc = self._calib_run_start_utc
+        end_utc   = self._calib_run_end_utc or start_utc
+        if start_utc is None:
+            raise RuntimeError("No calibration run timing recorded.")
+        delta_s = (end_utc - start_utc).total_seconds()
+        midpoint_utc = start_utc + _td(seconds=delta_s / 2.0)
+
+        # Locate NTP stats folder
+        settings = _ntp_core.load_folder_settings()
+        stats_folder = (settings.get('log_folder') or '').strip()
+        if not stats_folder or not os.path.isdir(stats_folder):
+            candidates = _ntp_core.discover_candidate_dirs()
+            if not candidates:
+                raise RuntimeError(
+                    "Could not locate the NTP stats folder.\n"
+                    "Open NTP Analysis first to configure the folder, or set the "
+                    "NTP_LOG_DIR environment variable."
+                )
+            stats_folder = candidates[0]
+
+        options = _ntp_core.build_day_options(stats_folder)
+        if not options:
+            raise RuntimeError("No loopstats/peerstats data found in: " + stats_folder)
+
+        midpoint_mjd = (midpoint_utc.date() - _date(1858, 11, 17)).days
+        midpoint_sec = (midpoint_utc.hour * 3600.0 + midpoint_utc.minute * 60.0
+                        + midpoint_utc.second + midpoint_utc.microsecond / 1.0e6)
+        end_abs = ((end_utc.date() - _date(1858, 11, 17)).days * 86400.0
+                   + end_utc.hour * 3600.0 + end_utc.minute * 60.0
+                   + end_utc.second + end_utc.microsecond / 1.0e6)
+
+        def _loop_abs(row):
+            return row.mjd * 86400.0 + row.sec_of_day
+
+        # Find the dataset whose loopstats contains records for the calibration day
+        best_option = None
+        best_loop_rows = None
+        best_peer_rows = None
+        for option in options:
+            try:
+                lrows = _ntp_core.parse_loopstats(option.loop_path, option.target_mjd)
+            except Exception:
+                continue
+            day_rows = [r for r in lrows if r.mjd == midpoint_mjd]
+            if day_rows:
+                best_option = option
+                best_loop_rows = lrows
+                try:
+                    best_peer_rows = _ntp_core.parse_peerstats(
+                        option.peer_path, option.target_mjd)
+                except Exception:
+                    best_peer_rows = []
+                break
+
+        if best_option is None:
+            # Fall back to most-recent dataset
+            best_option = options[0]
+            best_loop_rows = _ntp_core.parse_loopstats(
+                best_option.loop_path, best_option.target_mjd)
+            try:
+                best_peer_rows = _ntp_core.parse_peerstats(
+                    best_option.peer_path, best_option.target_mjd)
+            except Exception:
+                best_peer_rows = []
+
+        if not best_loop_rows:
+            raise RuntimeError(
+                "No loopstats rows found for the calibration day in: " + stats_folder)
+
+        latest_abs = max(_loop_abs(r) for r in best_loop_rows)
+        data_spans_end = latest_abs >= end_abs
+        end_gap_s = end_abs - latest_abs  # positive = data is older than calib end
+
+        result = _ntp_core.estimate_offset_at_time(
+            midpoint_mjd, midpoint_sec, best_loop_rows, best_peer_rows or [])
+        result['_midpoint_utc'] = midpoint_utc
+        result['_stats_folder'] = stats_folder
+        return result, data_spans_end, end_gap_s
+
+    def _wait_for_ntp_log_update(self, stats_folder, end_abs, timeout_s=180):
+        """Block (with DoEvents) until a loopstats record newer than end_abs appears.
+
+        Updates label_status with a countdown while waiting.
+        Returns True if the update arrived before timeout, False otherwise.
+        """
+        import time as _time
+        try:
+            from System.Windows.Forms import Application as _WFApp
+        except Exception:
+            _WFApp = None
+
+        deadline = _time.time() + timeout_s
+        poll_interval = 12  # seconds between file-checks
+
+        def _loop_abs(row):
+            return row.mjd * 86400.0 + row.sec_of_day
+
+        def _check_updated():
+            try:
+                opts = _ntp_core.build_day_options(stats_folder)
+                for opt in opts:
+                    try:
+                        lrows = _ntp_core.parse_loopstats(opt.loop_path, opt.target_mjd)
+                        if lrows and max(_loop_abs(r) for r in lrows) >= end_abs:
+                            return True
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            return False
+
+        while _time.time() < deadline:
+            remaining = int(deadline - _time.time())
+            try:
+                self.label_status.Text = (
+                    'Waiting for NTP log update\u2026 ({0}s)'.format(remaining))
+                self.label_status.Refresh()
+            except Exception:
+                pass
+            for _ in range(poll_interval):
+                if _time.time() >= deadline:
+                    break
+                _time.sleep(1)
+                if _WFApp is not None:
+                    try:
+                        _WFApp.DoEvents()
+                    except Exception:
+                        pass
+            if _check_updated():
+                return True
+        return False
+
     def save_calibration_click(self, sender, event):
-        """Open the Save Result to Camera dialog."""
+        """Open the Save Result to Camera dialog, applying NTP PIT correction."""
         if self._calib_fit_result is None:
             MessageBox.Show(
                 "No calibration result to save.\n\nRun a calibration first.",
@@ -3140,7 +3388,68 @@ class LEDLineDelayCalibrationForm(Form):
                 MessageBoxIcon.Information
             )
             return
-        dlg = SaveCalibrationDialog(self._calib_fit_result, self._calib_capture_settings,
+
+        fit_result = dict(self._calib_fit_result)
+        capture_settings = dict(self._calib_capture_settings)
+
+        # --- NTP point-in-time analysis ---
+        if _NTP_CORE_AVAILABLE and self._calib_run_start_utc is not None:
+            try:
+                ntp_result, data_spans_end, end_gap_s = self._ntp_pit_for_calibration()
+
+                if not data_spans_end and end_gap_s > 30:
+                    ans = MessageBox.Show(
+                        "The NTP log has not yet updated since the calibration run ended "
+                        "({0:.0f}s ago).\n\nWaiting for an NTP log entry from after the "
+                        "run improves correction accuracy.\n\n"
+                        "This could take up to 3 minutes for the NTP log to update.\n\n"
+                        "Press Yes to wait for the NTP log to update\n"
+                        "or No to use the NTP offset as is (may be less acccurate).\n"
+                        .format(end_gap_s),
+                        "NTP Log Not Yet Updated",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question
+                    )
+                    if ans == DialogResult.Yes:
+                        from datetime import date as _date
+                        end_utc = self._calib_run_end_utc or self._calib_run_start_utc
+                        stats_folder = ntp_result.get('_stats_folder', '')
+                        end_abs = ((end_utc.date() - _date(1858, 11, 17)).days * 86400.0
+                                   + end_utc.hour * 3600.0 + end_utc.minute * 60.0
+                                   + end_utc.second + end_utc.microsecond / 1.0e6)
+                        updated = self._wait_for_ntp_log_update(stats_folder, end_abs)
+                        if updated:
+                            ntp_result, _, _ = self._ntp_pit_for_calibration()
+
+                offset_ms      = float(ntp_result.get('best_offset', 0.0)) * 1000.0
+                uncertainty_ms = float(ntp_result.get('u_expanded', 0.0)) * 1000.0
+                midpoint_utc   = ntp_result.get('_midpoint_utc')
+
+                raw_intercept = fit_result.get('intercept', 0.0)
+                fit_result['intercept']     = raw_intercept - offset_ms
+                fit_result['raw_intercept'] = raw_intercept
+
+                capture_settings['ntp_offset_ms']      = offset_ms
+                capture_settings['ntp_uncertainty_ms'] = uncertainty_ms
+                if midpoint_utc is not None:
+                    capture_settings['ntp_midpoint_utc'] = midpoint_utc.strftime(
+                        '%Y-%m-%dT%H:%M:%SZ')
+
+            except Exception as ntp_ex:
+                MessageBox.Show(
+                    "NTP point-in-time analysis failed:\n\n{0}\n\n"
+                    "Saving calibration without NTP adjustment.".format(str(ntp_ex)),
+                    "NTP Analysis Warning",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                )
+
+        try:
+            self.label_status.Text = 'Calibration complete'
+        except Exception:
+            pass
+
+        dlg = SaveCalibrationDialog(fit_result, capture_settings,
                                     config=self._config, theme_manager=self._theme_manager)
         dlg.StartPosition = FormStartPosition.CenterParent
         if dlg.ShowDialog(self) == DialogResult.OK:
@@ -3171,6 +3480,20 @@ class LEDLineDelayCalibrationForm(Form):
             # If user cancels, uncheck the box
             if result == DialogResult.Cancel:
                 self.checkbox_stab_invert.Checked = False
+
+    def _parse_stability_test_duration_hhmm(self):
+        """Parse the stability test duration textbox as HH:MM and return hours, minutes, seconds."""
+        test_duration_str = self.textbox_test_duration.Text.strip()
+        parts = test_duration_str.split(':')
+        if len(parts) != 2:
+            raise ValueError("Invalid format")
+
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        if hours < 0 or minutes < 0 or minutes >= 60:
+            raise ValueError("Invalid time values")
+
+        return hours, minutes, (hours * 3600) + (minutes * 60)
     
     def start_stability_test(self, sender, event):
         """Start long-term timing stability test"""
@@ -3185,15 +3508,8 @@ class LEDLineDelayCalibrationForm(Form):
             return
         
         # Validate test duration format
-        test_duration_str = self.textbox_test_duration.Text.strip()
         try:
-            parts = test_duration_str.split(':')
-            if len(parts) != 2:
-                raise ValueError("Invalid format")
-            hours = int(parts[0])
-            minutes = int(parts[1])
-            if hours < 0 or minutes < 0 or minutes >= 60:
-                raise ValueError("Invalid time values")
+            hours, minutes, _ = self._parse_stability_test_duration_hhmm()
         except:
             MessageBox.Show(
                 "Invalid Test Duration format.\n\nPlease use HH:MM format (e.g., 01:30 for 1 hour 30 minutes).",
@@ -3202,6 +3518,9 @@ class LEDLineDelayCalibrationForm(Form):
                 MessageBoxIcon.Error
             )
             return
+
+        # Normalize the UI value so the parsed HH:MM intent is explicit.
+        self.textbox_test_duration.Text = "{0:02d}:{1:02d}".format(hours, minutes)
         
         # Disable start button, enable stop
         self.button_stab_start.Enabled = False
@@ -3246,9 +3565,7 @@ class LEDLineDelayCalibrationForm(Form):
             # Get test parameters
             capture_duration = float(self.textbox_stab_duration.Text)
             flash_ms = float(self.textbox_stab_flash.Text)
-            test_duration_str = self.textbox_test_duration.Text.strip()
-            parts = test_duration_str.split(':')
-            test_duration_seconds = int(parts[0]) * 3600 + int(parts[1]) * 60
+            _, _, test_duration_seconds = self._parse_stability_test_duration_hhmm()
             do_invert = self.checkbox_stab_invert.Checked
 
             self.stop_requested = False

@@ -69,7 +69,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
                        clouds=None, stability=None, other_conditions=None, timing_data=None,
-                       ntp_comment=None, include_station_name=True):
+                       ntp_comment=None, observation_comment=None, include_station_name=True):
         """Generate a North American report using Openize SDK
         
         Args:
@@ -99,6 +99,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         self._stability = stability
         self._other_conditions = other_conditions
         self._timing_data = timing_data
+        self._observation_comment = observation_comment
         print("USING OPENIZE VERSION - NA Report Generator")
         print("Template: NorthAmerica_AstReportForm_V5.6.12r.xlsx")
         print("="*60 + "\n")
@@ -342,7 +343,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
             if len(comments) > 1:
                 self._set_cell(worksheet, "D43", comments[1])
         
-        self._set_cell(worksheet, "D44", "This report was pre-filled by Occultation Manager")
+        self._set_cell(worksheet, "D44", self._observation_comment or "This report was pre-filled by Occultation Manager")
         timing_note = self.build_timing_note(self._timing_data)
         if timing_note:
             self._set_cell(worksheet, "D45", timing_note)

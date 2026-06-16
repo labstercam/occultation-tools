@@ -578,7 +578,7 @@ from na_report_openize import NAReportGeneratorOpenize
 # Initialize
 generator = NAReportGeneratorOpenize(config)
 
-# Generate report
+# Create report file
 report_path = generator.generate_report(
     event=event_object,
     telescope_id='telescope_uuid',
@@ -629,7 +629,7 @@ from tt_report_openize import TTReportGeneratorOpenize
 # Initialize
 generator = TTReportGeneratorOpenize(config)
 
-# Generate report (same API as NAReportGeneratorOpenize)
+# Create report file (same API as NAReportGeneratorOpenize)
 report_path = generator.generate_report(
     event=event_object,
     telescope_id='telescope_uuid',
@@ -670,9 +670,12 @@ xml_path = exporter.export_observation(
     telescope_id='telescope_uuid',
     camera_id='camera_uuid',
     observation_type='Positive',
-    tangra_data=tangra_data,  # Optional
+    tangra_data=tangra_data,   # Optional
     aota_report_data=aota_data,  # Optional
-    observer_data={'notes': 'Additional info'}  # Optional
+    observer_data={
+        'timing_comment': 'asi462mm NTP timing corrections applied in Tangra: camera acq. delay 8.2 ms, NTP offset +0.0 ms (net +8.2 ms) \u2014 confirmed by observer'
+        # Other optional keys: 'stability', 'transparency', 'sn', 'time_adjustment', 'comment'
+    }
 )
 
 # Export to specific path
@@ -681,17 +684,37 @@ xml_path = exporter.export_observation_to_path(
     event=event_object,
     telescope_id='telescope_uuid',
     camera_id='camera_uuid',
-    observation_type='Positive'
+    observation_type='Positive',
+    tangra_data=tangra_data,
+    aota_report_data=aota_data,
+    observer_data=observer_data
 )
 ```
 
-**XML Output:**
-- Format: Occult 4 XML Version 2.15
-- Location: `{install_dir}/data/reports/` (via `get_file_folder()/Reports` compatibility path)
-- Filename: `YYYYMMDD_ObjectNumber_ObjectName_StarID_Occult4.xml`
-- Compatible with Occult 4 software for analysis
+**XML Output structure:**
+- Format: Occult 4 XML (no FileVersion, Added, or LastEdited elements)
+- Location: same folder and stem as the Excel report (`.xml` extension)
+- `<Star>` — catalog name and number only; all astrometric fields left blank for coordinators
+- `<Asteroid>` — number and name only; motion coefficients and physical data left blank
+- `<StarIssues>` — omitted entirely
+- `<Observer><ID>` — observer name formatted as *initial + full surname* (e.g. `M Camilleri`),
+  location, longitude/latitude to 3 decimal places, altitude, telescope, camera method, time source
+- `<Conditions>` — transparency, stability, SNR (capped at 20.0; blank if zero or absent),
+  timing comment from `observer_data['timing_comment']`
+- `<D>` / `<R>` — times, event codes, accuracy
 
-**Note:** EventFits section (elliptic fits, shape models) is omitted from exports and added by IOTA after processing.
+**`observer_data` keys:**
+
+| Key | Type | Description |
+|---|---|---|
+| `timing_comment` | str | Camera name + timing correction note written to `<Conditions>` comment field |
+| `stability` | str | Occult 4 stability code (`'1'`–`'3'`; `'_'` = unstated) |
+| `transparency` | str | Occult 4 transparency code (`'1'`–`'7'`; `'_'` = unstated) |
+| `sn` | str | SNR override (overrides `aota_report_data['snr']` when present) |
+| `time_adjustment` | str | Personal equation offset string |
+| `comment` | str | Freeform comment (appended before `timing_comment`) |
+
+**Note:** EventFits section (elliptic fits, shape models) is omitted from exports and added by IOTA/coordinators after processing.
 
 ---
 
@@ -705,7 +728,7 @@ from sodis_report_text import SODISReportGeneratorText
 # Initialize
 generator = SODISReportGeneratorText(config)
 
-# Generate report
+# Create report file
 report_path = generator.generate_report(
     event=event_object,
     telescope_id='telescope_uuid',
@@ -1012,8 +1035,8 @@ records = pmr.read_pyote_fit_metrics('path/to/fit_metrics.txt')
 # Returns list of dicts, one per event row. Example record:
 # {
 #   'aperture name': 'A0',
-#   'time err +/-secs': 0.04,
-#   'DNR': 12.5,
+#   'time err +/-secs': 0.031,   # rounded to 3 dp by record_to_aota_report_data
+#   'DNR': 12.5,                  # rounded to 1 dp by record_to_aota_report_data
 #   'D time': '[14:30:42.3456]',
 #   'R time': '[14:30:50.6789]',
 #   'duration (secs)': 8.333,
@@ -1027,10 +1050,10 @@ aota_data = pmr.record_to_aota_report_data(records[0])
 # Returns:
 # {
 #   'd_hours': '14', 'd_minutes': '30', 'd_seconds': '42.3456',
-#   'd_uncertainty': 0.04,
+#   'd_uncertainty': 0.031,  # rounded to 3 dp
 #   'r_hours': '14', 'r_minutes': '30', 'r_seconds': '50.6789',
-#   'r_uncertainty': 0.04,
-#   'snr': 12.5
+#   'r_uncertainty': 0.031,  # rounded to 3 dp
+#   'snr': 12.5               # rounded to 1 dp; None if absent or zero
 # }
 # Returns None if the record has no valid D or R time.
 
@@ -1265,7 +1288,7 @@ for event in manager.all_events[:5]:  # First 5 events
     print(f"Generated: {filename}")
 ```
 
-### Example 3: Generate Report
+### Example 3: Report
 
 ```python
 from config import ConfigManager
