@@ -141,9 +141,9 @@ occultation-manager/
 - Built-in templates: Full automation, minimal setup, and test recording
 - Sequences use calculated or custom exposure, gain, and duration values
 
-**Report Generation (Under Development)**
-- ⚠️ **Not Approved**: Report generation is still under development and has not been approved by the NA, TT, or SODIS reporting coordinators
-- ⚠️ Only TANGRA and AOTA outputs are currently supported
+**Report Generation**
+- Report generation has been tested and has been approved by the TT reporting coordinators
+- ⚠️ **Not Approved**: Report generation is still under development and has not been approved by the NA or SODIS reporting coordinators
 - Single comprehensive dialog for workflow efficiency
 - Report flow now includes **Confirm Observer Location** with optional **Step 2 NTP timing analysis**
 - Optional NTP actions:
@@ -151,7 +151,7 @@ occultation-manager/
    - **Analyze NTP** (quick in-flow offset/uncertainty estimate)
 - NTP quick analysis uses a single NTP stats folder input, auto-selects loopstats/peerstats for the event date/time, and remembers the last selected folder
 - Shared NTP resources are loaded from `gps-timing-analysis/resources/` (including `national_utc_ntp_servers.json` and `ip_location_cache.json`)
-- Supports Tangra, R-OTE, and Limovie CSV light curve formats; format is auto-detected from file content
+- Supports Tangra and PyOTE and Limovie CSV light curve formats; format is auto-detected from file content
 - Integrates AOTA timing data from AOTA XML, AOTA Report files, or PyOTE `fit_metrics.txt`
 - **PyOTE fit_metrics.txt**: auto-detected from the observation folder by file content; select aperture/event then import D/R times directly into the report
 - Camera timing calibration is now integrated: use **Tools → Camera Delay Calibration → Open Calibration Tool** to calibrate, save results to the camera profile via **Save Calibration to Camera**, and calculate per-event acquisition delays via **Tools → Camera Delay Calibration → Camera Delay Calculator**
@@ -164,7 +164,7 @@ occultation-manager/
 - Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
 - **Include Station Name in Filenames**: optional checkbox in the Report dialog (unchecked by default) appends the station name to the TT report filename
 - **Rename Files dialog**: after report generation, optionally rename the observation files (CSV, AOTA XML/Report, image files, `.lc` files) to share the same stem as the report; proposed names are editable; `_AOTA_…` and `_Bin{N}` suffixes are preserved automatically
-- **Send via Gmail**: post-report button creates a submission ZIP (Excel + CSV for Negative; also AOTA report, AOTA event graphs, and VizieR `.dat` for Positive/Unsure) and opens a Gmail compose window pre-addressed to the RASNZ coordinators; Explorer opens with the ZIP selected for drag-and-drop attachment
+- **Send via Gmail or email**: For Trans Tasman reports, post-report button creates a submission ZIP (Excel + CSV for Negative; also AOTA report, AOTA event graphs, and VizieR `.dat` for Positive/Unsure) and opens a Gmail compose window pre-addressed to the RASNZ coordinators; Explorer opens with the ZIP selected for drag-and-drop attachment
 - **D/R uncertainty display**: uncertainty shown in the D/R event info panel is formatted to 1–2 significant figures
 - **D/R duration label**: chord duration (R − D) shown alongside the D and R times in the event info panel, formatted to 1–2 significant figures
 - **Event grid sorting**: default sort by DateTime ascending; click any column header to sort by that column; click again to reverse; sort-direction glyph shown on the active column; sort state preserved across grid refreshes
@@ -198,7 +198,6 @@ occultation-manager/
 
 The Occultation Manager generates SharpCap Sequences that give you complete control over your recording workflow. By using sequences, you can customize the automation to match your equipment, observing style, and comfort level.
 
-**Why Use Sequences?**
 **Why Use Sequences?**
 - **Complete Control**: You decide what gets automated and what stays manual
 - **Equipment Specific**: Adapt to your exact telescope, mount, camera, and accessories
