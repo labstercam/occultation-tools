@@ -525,7 +525,7 @@ class OccultationManagerGUI(Form):
             pass
         
         btn_generate_report = Button()
-        btn_generate_report.Text = "Generate Report"
+        btn_generate_report.Text = "Report"
         btn_generate_report.Click += self.generate_report_click
         toolbar.Controls.Add(btn_generate_report)
         try:
@@ -578,7 +578,7 @@ class OccultationManagerGUI(Form):
         menu_events.DropDownItems.Add(ToolStripSeparator())
         menu_events.DropDownItems.Add(ToolStripMenuItem("Event Details", None, self.show_event_details_click))
         menu_events.DropDownItems.Add(ToolStripMenuItem("Edit Settings", None, self.edit_exposure_click))
-        menu_events.DropDownItems.Add(ToolStripMenuItem("Generate Report", None, self.generate_report_click))
+        menu_events.DropDownItems.Add(ToolStripMenuItem("Report", None, self.generate_report_click))
         menu_bar.Items.Add(menu_events)
 
         # Quick Filters menu
@@ -1964,7 +1964,7 @@ class OccultationManagerGUI(Form):
         
         # Show warning about report generation being under development
         warning_result = MessageBox.Show(
-            "Report generation is still under development.\nCurrent Status:\n\nTANGRA and AOTA output are currently supported for the Trans Tasman report. TANGRA and AOTA should also work for SODIS reports but has not been fully tested or approved by the coordinators.\nPYOTE is not fully integrated and will have errors.\nThe North America report may not work properly with TANGA and AOTA outputs so do not use them together.\n\nUse with caution\nDo you want to continue?",
+            "Report generation is still under development.\n\nCurrent Status:\n\nTANGRA and AOTA output are currently supported for the Trans Tasman report. TANGRA and AOTA should also work for SODIS reports but has not been fully tested or approved by the coordinators.\n\nPYOTE is not fully integrated and will have errors.\n\nThe North America report may not work properly with TANGRA and AOTA outputs so do not use them together.\n\nUse with caution\n\nDo you want to continue?",
             "Report Generation Warning",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning)
@@ -2043,6 +2043,7 @@ class OccultationManagerGUI(Form):
             other_conditions = comprehensive_dialog.get_other_conditions()
             timing_data = comprehensive_dialog.get_timing_data()
             ntp_comment = comprehensive_dialog.get_ntp_comment()
+            observation_comment = comprehensive_dialog.get_observation_comment()
             include_station_name = comprehensive_dialog.get_include_station_name()
             
             print(f"Report type: {report_type}")
@@ -2057,6 +2058,7 @@ class OccultationManagerGUI(Form):
             print(f"Clouds: {clouds if clouds else 'None'}")
             print(f"Stability: {stability if stability else 'None'}")
             print(f"Other conditions: {other_conditions if other_conditions else 'None'}")
+            print(f"Observation comment: {observation_comment if observation_comment else 'None'}")
             
             # Create appropriate report generator
             if report_type == 'north_america':
@@ -2358,6 +2360,7 @@ class OccultationManagerGUI(Form):
                                                           clouds, stability, other_conditions,
                                                           timing_data=timing_data,
                                                           ntp_comment=ntp_comment,
+                                                          observation_comment=observation_comment,
                                                           include_station_name=include_station_name)
             
             # If AOTA.xml data exists but AOTA Report wasn't used, add AOTA.xml data to the report
@@ -2395,7 +2398,7 @@ class OccultationManagerGUI(Form):
                     xml_path = os.path.join(report_dir, xml_filename)
                     
                     # Build observer_data with conditions
-                    observer_data = self._build_observer_data_for_xml(clouds, stability, other_conditions)
+                    observer_data = self._build_observer_data_for_xml(clouds, stability, other_conditions, observation_comment)
                     
                     # Export observation data using the proper public API
                     xml_output_path = occult4_exporter.export_observation_to_path(
@@ -2468,6 +2471,7 @@ class OccultationManagerGUI(Form):
                     aota_file_path=aota_file_path,
                     aota_report_path=aota_report_path,
                     observation_type=observation_type,
+                    report_type=report_type,
                 )
                 self.refresh_display()
             else:
@@ -2493,7 +2497,7 @@ class OccultationManagerGUI(Form):
     def _show_report_success_dialog(self, output_path, xml_output_path, copy_folder,
                                     tangra_csv_path, timing_data,
                                     aota_file_path=None, aota_report_path=None,
-                                    observation_type=None):
+                                    observation_type=None, report_type=None):
         """Show a post-report dialog with filenames, folder paths, and Open/Export buttons."""
         from System.Windows.Forms import (
             Form as _Form, Button as _Button, Label as _Label
@@ -2505,6 +2509,8 @@ class OccultationManagerGUI(Form):
             report_filenames.append(os.path.basename(xml_output_path))
 
         show_user = copy_folder is not None
+        # Trans-Tasman uses email buttons; NA and SODIS get "Create Zip file" only.
+        is_trans_tasman = (report_type == 'trans_tasman')
 
         dlg = _Form()
         dlg.Text = "Report Generated"
@@ -2590,9 +2596,15 @@ class OccultationManagerGUI(Form):
         dlg.Controls.Add(btn_rename)
 
         btn_gmail = _Button()
-        btn_gmail.Text = "Send via Gmail\u2026"
+        btn_gmail.Text = "Send via Gmail\u2026" if is_trans_tasman else "Create Zip file\u2026"
         btn_gmail.AutoSize = True
         dlg.Controls.Add(btn_gmail)
+
+        btn_mail = _Button() if is_trans_tasman else None
+        if btn_mail is not None:
+            btn_mail.Text = "Send via Mail App\u2026"
+            btn_mail.AutoSize = True
+            dlg.Controls.Add(btn_mail)
 
         btn_close = _Button()
         btn_close.Text = "Close"
@@ -2625,8 +2637,13 @@ class OccultationManagerGUI(Form):
 
             btn_vizier.Location = Point(12, y)
             btn_rename.Location = Point(btn_vizier.Right + 8, y)
-            btn_gmail.Location = Point(btn_rename.Right + 8, y)
-            btn_close.Location = Point(btn_gmail.Right + 8, y)
+            y += btn_vizier.Height + 6
+            btn_gmail.Location = Point(12, y)
+            if btn_mail is not None:
+                btn_mail.Location = Point(btn_gmail.Right + 8, y)
+                btn_close.Location = Point(btn_mail.Right + 8, y)
+            else:
+                btn_close.Location = Point(btn_gmail.Right + 8, y)
             dlg.ClientSize = Size(max(dlg.ClientSize.Width, btn_close.Right + 16), btn_close.Bottom + 16)
 
         dlg.Layout += _layout
@@ -2666,6 +2683,7 @@ class OccultationManagerGUI(Form):
             try:
                 import subprocess
                 import zipfile
+                import shutil
                 import System
                 from System.Windows.Forms import (
                     Form as _AttForm, Button as _AttBtn, Label as _AttLbl,
@@ -2738,6 +2756,14 @@ class OccultationManagerGUI(Form):
                 if csv_file and csv_file not in attach_files:
                     attach_files.append(csv_file)
 
+                # Tangra light curve .lc file — same stem as the CSV
+                if tangra_csv_path:
+                    _lc_candidate = os.path.splitext(tangra_csv_path)[0] + '.lc'
+                    if not os.path.isfile(_lc_candidate) and csv_file:
+                        _lc_candidate = os.path.splitext(csv_file)[0] + '.lc'
+                    if os.path.isfile(_lc_candidate) and _lc_candidate not in attach_files:
+                        attach_files.append(_lc_candidate)
+
                 is_positive = observation_type in ('Positive', 'Unsure')
                 if is_positive:
                     # AOTA report text file — prefer renamed version
@@ -2765,13 +2791,14 @@ class OccultationManagerGUI(Form):
                     # VizieR filenames: ({asteroid})_{yyyymmdd}_HHMMSS_FF.dat
                     # Filter to files matching this event's asteroid number and date so that
                     # .dat files from previous events in the same folder are not included.
+                    # Deduplicated by filename so the same .dat file is never added twice.
                     _stem_parts = report_stem.split('_')
                     _dat_prefix = None
                     if len(_stem_parts) >= 2:
                         _date_part   = _stem_parts[0]   # e.g. "20260427"
                         _ast_num     = _stem_parts[1]   # e.g. "778"
                         _dat_prefix  = '({0})_{1}'.format(_ast_num, _date_part)
-                    _seen_dat = set()
+                    _seen_dat_names = set()
                     for _dat_folder in [reports_folder, obs_folder]:
                         if _dat_folder and os.path.isdir(_dat_folder):
                             for _fname in sorted(os.listdir(_dat_folder)):
@@ -2779,46 +2806,315 @@ class OccultationManagerGUI(Form):
                                     continue
                                 if _dat_prefix and not _fname.startswith(_dat_prefix):
                                     continue
+                                if _fname in _seen_dat_names:
+                                    continue
                                 _p = os.path.join(_dat_folder, _fname)
-                                if _p not in attach_files and _p not in _seen_dat:
+                                if _p not in attach_files:
                                     attach_files.append(_p)
-                                    _seen_dat.add(_p)
+                                _seen_dat_names.add(_fname)
 
                 # --- Build ZIP in the reports folder ---
                 zip_path = os.path.join(reports_folder, report_stem + '.zip')
                 zipped = []
                 zip_errors = []
+                _seen_zip_names = set()
                 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
                     for _f in attach_files:
+                        _bn = os.path.basename(_f)
+                        if _bn in _seen_zip_names:
+                            continue  # skip duplicates by filename
+                        _seen_zip_names.add(_bn)
                         try:
-                            zf.write(_f, os.path.basename(_f))
-                            zipped.append(os.path.basename(_f))
+                            zf.write(_f, _bn)
+                            zipped.append(_bn)
                         except Exception as _ze:
-                            zip_errors.append("{0}: {1}".format(os.path.basename(_f), _ze))
+                            zip_errors.append("{0}: {1}".format(_bn, _ze))
 
-                # --- Open Gmail compose in Chrome ---
-                subject = report_stem
-                encoded_subject = System.Uri.EscapeDataString(subject)
-                gmail_url = (
-                    "https://mail.google.com/mail/?view=cm"
-                    "&to=mpobservations%40occultations.org.nz"
-                    "&cc=director%40occultations.org.nz"
-                    "&su={subject}"
+                # --- Copy ZIP to observation folder if different from reports folder ---
+                obs_zip_path = None
+                if obs_folder and os.path.isdir(obs_folder):
+                    try:
+                        _obs_norm = os.path.normcase(os.path.abspath(obs_folder))
+                        _rep_norm = os.path.normcase(os.path.abspath(reports_folder))
+                        if _obs_norm != _rep_norm:
+                            obs_zip_path = os.path.join(obs_folder, report_stem + '.zip')
+                            shutil.copy2(zip_path, obs_zip_path)
+                    except Exception:
+                        pass
+
+                zip_name = os.path.basename(zip_path)
+                contents_text = "\n".join("  \u2022 " + n for n in zipped)
+                if zip_errors:
+                    contents_text += "\n\nWarning \u2014 could not add:\n" + "\n".join("  " + e for e in zip_errors)
+
+                if is_trans_tasman:
+                    # --- Open Gmail compose in Chrome ---
+                    subject = report_stem
+                    encoded_subject = System.Uri.EscapeDataString(subject)
+                    owc_email = self.config.get_owc_email()
+                    authuser_param = ('&authuser=' + System.Uri.EscapeDataString(owc_email)
+                                      if owc_email and owc_email != 'your_owc_email' else '')
+                    gmail_url = (
+                        "https://mail.google.com/mail/?view=cm"
+                        "{authuser}"
+                        "&to=mpobservations%40occultations.org.nz"
+                        "&cc=director%40occultations.org.nz"
+                        "&su={subject}"
+                    ).format(authuser=authuser_param, subject=encoded_subject)
+                    chrome_paths = [
+                        r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+                        r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+                    ]
+                    launched = False
+                    for chrome_exe in chrome_paths:
+                        if os.path.isfile(chrome_exe):
+                            subprocess.Popen([chrome_exe, gmail_url])
+                            launched = True
+                            break
+                    if not launched:
+                        System.Diagnostics.Process.Start(gmail_url)
+
+                    # --- Select the ZIP in Explorer so user can drag it into Chrome ---
+                    try:
+                        subprocess.Popen(['explorer', '/select,', zip_path])
+                    except Exception:
+                        pass
+
+                    # --- Small info dialog ---
+                    attach_dlg = _AttForm()
+                    attach_dlg.Text = "Attach ZIP to Gmail"
+                    attach_dlg.FormBorderStyle = attach_dlg.FormBorderStyle.FixedDialog
+                    attach_dlg.MaximizeBox = False
+                    attach_dlg.MinimizeBox = False
+                    attach_dlg.StartPosition = FormStartPosition.CenterScreen
+                    attach_dlg.TopMost = True
+                    attach_dlg.Width = 560
+
+                    lbl_msg = _AttLbl()
+                    lbl_msg.Text = (
+                        "Gmail is open. A ZIP file has been created and selected in Explorer.\n\n"
+                        "{zip_name}\n\n"
+                        "Contents:\n{contents}\n\n"
+                        "Drag the ZIP from Explorer into the Gmail compose window, then send."
+                    ).format(zip_name=zip_name, contents=contents_text)
+                    lbl_msg.AutoSize = True
+                    lbl_msg.MaximumSize = Size(524, 0)
+                    lbl_msg.Location = Point(12, 12)
+                    attach_dlg.Controls.Add(lbl_msg)
+
+                    btn_ok = _AttBtn()
+                    btn_ok.Text = "OK"
+                    btn_ok.AutoSize = True
+                    attach_dlg.Controls.Add(btn_ok)
+
+                    def _att_layout(s2, e2):
+                        btn_ok.Location = Point(12, lbl_msg.Bottom + 10)
+                        attach_dlg.ClientSize = Size(attach_dlg.ClientSize.Width, btn_ok.Bottom + 14)
+
+                    attach_dlg.Layout += _att_layout
+
+                    def _att_ok(s2, e2):
+                        attach_dlg.Close()
+
+                    btn_ok.Click += _att_ok
+                    attach_dlg.Show()  # Non-modal — keep open while working in Chrome
+
+                else:
+                    # NA or SODIS: just create the ZIP and show a confirmation dialog.
+                    # Select the ZIP in Explorer so the user can find it easily.
+                    try:
+                        subprocess.Popen(['explorer', '/select,', zip_path])
+                    except Exception:
+                        pass
+
+                    zip_locations = "Reports folder: {0}".format(zip_path)
+                    if obs_zip_path:
+                        zip_locations += "\nObservation folder: {0}".format(obs_zip_path)
+
+                    attach_dlg = _AttForm()
+                    attach_dlg.Text = "ZIP File Created"
+                    attach_dlg.FormBorderStyle = attach_dlg.FormBorderStyle.FixedDialog
+                    attach_dlg.MaximizeBox = False
+                    attach_dlg.MinimizeBox = False
+                    attach_dlg.StartPosition = FormStartPosition.CenterScreen
+                    attach_dlg.TopMost = True
+                    attach_dlg.Width = 560
+
+                    lbl_msg = _AttLbl()
+                    lbl_msg.Text = (
+                        "A ZIP file has been created and selected in Explorer.\n\n"
+                        "{zip_name}\n\n"
+                        "Location(s):\n{locations}\n\n"
+                        "Contents:\n{contents}"
+                    ).format(zip_name=zip_name, locations=zip_locations, contents=contents_text)
+                    lbl_msg.AutoSize = True
+                    lbl_msg.MaximumSize = Size(524, 0)
+                    lbl_msg.Location = Point(12, 12)
+                    attach_dlg.Controls.Add(lbl_msg)
+
+                    btn_ok = _AttBtn()
+                    btn_ok.Text = "OK"
+                    btn_ok.AutoSize = True
+                    attach_dlg.Controls.Add(btn_ok)
+
+                    def _att_layout(s2, e2):
+                        btn_ok.Location = Point(12, lbl_msg.Bottom + 10)
+                        attach_dlg.ClientSize = Size(attach_dlg.ClientSize.Width, btn_ok.Bottom + 14)
+
+                    attach_dlg.Layout += _att_layout
+
+                    def _att_ok(s2, e2):
+                        attach_dlg.Close()
+
+                    btn_ok.Click += _att_ok
+                    attach_dlg.ShowDialog()
+
+            except Exception as ex:
+                MessageBox.Show("Could not create ZIP file:\n{0}".format(ex), "Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+        def _send_via_mail_app(s, e):
+            try:
+                import subprocess
+                import zipfile
+                import shutil
+                import System
+                from System.Windows.Forms import (
+                    Form as _AttForm, Button as _AttBtn, Label as _AttLbl,
+                )
+
+                report_stem = os.path.splitext(os.path.basename(output_path))[0]
+                reports_folder = os.path.dirname(output_path)
+
+                if copy_folder and os.path.isdir(copy_folder):
+                    obs_folder = copy_folder
+                else:
+                    obs_folder = None
+                    for _src in [tangra_csv_path, aota_file_path, aota_report_path]:
+                        if _src and os.path.isfile(_src):
+                            obs_folder = os.path.dirname(_src)
+                            break
+
+                def _resolve(original_path):
+                    if not original_path:
+                        return None
+                    import re as _re
+                    src_stem, ext = os.path.splitext(os.path.basename(original_path))
+                    aota_idx = src_stem.lower().find('_aota')
+                    if aota_idx != -1:
+                        aota_suffix  = src_stem[aota_idx:]
+                        before_aota  = src_stem[:aota_idx]
+                        bin_match    = _re.search(r'_[Bb]in\d+', before_aota)
+                        bin_suffix   = bin_match.group(0) if bin_match else ''
+                        target_stem  = report_stem + bin_suffix + aota_suffix
+                    else:
+                        target_stem  = report_stem
+                    if obs_folder:
+                        renamed = os.path.join(obs_folder, target_stem + ext)
+                        if os.path.isfile(renamed):
+                            return renamed
+                    src_dir = os.path.dirname(original_path)
+                    if src_dir:
+                        renamed_in_src = os.path.join(src_dir, target_stem + ext)
+                        if os.path.isfile(renamed_in_src):
+                            return renamed_in_src
+                    if os.path.isfile(original_path):
+                        return original_path
+                    return None
+
+                attach_files = []
+                if output_path and os.path.isfile(output_path):
+                    attach_files.append(output_path)
+                csv_file = _resolve(tangra_csv_path)
+                if csv_file and csv_file not in attach_files:
+                    attach_files.append(csv_file)
+
+                # Tangra light curve .lc file — same stem as the CSV
+                if tangra_csv_path:
+                    _lc_candidate = os.path.splitext(tangra_csv_path)[0] + '.lc'
+                    if not os.path.isfile(_lc_candidate) and csv_file:
+                        _lc_candidate = os.path.splitext(csv_file)[0] + '.lc'
+                    if os.path.isfile(_lc_candidate) and _lc_candidate not in attach_files:
+                        attach_files.append(_lc_candidate)
+
+                is_positive = observation_type in ('Positive', 'Unsure')
+                if is_positive:
+                    aota_rep = _resolve(aota_report_path)
+                    if aota_rep and aota_rep not in attach_files:
+                        attach_files.append(aota_rep)
+                    _aota_src_dir = None
+                    for _af in [aota_file_path, aota_report_path]:
+                        if _af and os.path.dirname(_af):
+                            _aota_src_dir = os.path.dirname(_af)
+                            break
+                    for _png_folder in dict.fromkeys(
+                        [d for d in [obs_folder, _aota_src_dir] if d and os.path.isdir(d)]
+                    ):
+                        for _fname in sorted(os.listdir(_png_folder)):
+                            if '_aota_' in _fname.lower() and _fname.lower().endswith('.png'):
+                                _p = os.path.join(_png_folder, _fname)
+                                if _p not in attach_files:
+                                    attach_files.append(_p)
+                    _stem_parts = report_stem.split('_')
+                    _dat_prefix = None
+                    if len(_stem_parts) >= 2:
+                        _date_part   = _stem_parts[0]
+                        _ast_num     = _stem_parts[1]
+                        _dat_prefix  = '({0})_{1}'.format(_ast_num, _date_part)
+                    _seen_dat_names = set()
+                    for _dat_folder in [reports_folder, obs_folder]:
+                        if _dat_folder and os.path.isdir(_dat_folder):
+                            for _fname in sorted(os.listdir(_dat_folder)):
+                                if not (_fname.endswith('.dat') and _fname.startswith('(')):
+                                    continue
+                                if _dat_prefix and not _fname.startswith(_dat_prefix):
+                                    continue
+                                if _fname in _seen_dat_names:
+                                    continue
+                                _p = os.path.join(_dat_folder, _fname)
+                                if _p not in attach_files:
+                                    attach_files.append(_p)
+                                _seen_dat_names.add(_fname)
+
+                zip_path = os.path.join(reports_folder, report_stem + '.zip')
+                zipped = []
+                zip_errors = []
+                _seen_zip_names = set()
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    for _f in attach_files:
+                        _bn = os.path.basename(_f)
+                        if _bn in _seen_zip_names:
+                            continue  # skip duplicates by filename
+                        _seen_zip_names.add(_bn)
+                        try:
+                            zf.write(_f, _bn)
+                            zipped.append(_bn)
+                        except Exception as _ze:
+                            zip_errors.append("{0}: {1}".format(_bn, _ze))
+
+                # Copy ZIP to observation folder if different from reports folder
+                obs_zip_path = None
+                if obs_folder and os.path.isdir(obs_folder):
+                    try:
+                        _obs_norm = os.path.normcase(os.path.abspath(obs_folder))
+                        _rep_norm = os.path.normcase(os.path.abspath(reports_folder))
+                        if _obs_norm != _rep_norm:
+                            obs_zip_path = os.path.join(obs_folder, report_stem + '.zip')
+                            shutil.copy2(zip_path, obs_zip_path)
+                    except Exception:
+                        pass
+
+                # --- Open default mail app with pre-filled to/subject ---
+                owc_email = self.config.get_owc_email()
+                encoded_subject = System.Uri.EscapeDataString(report_stem)
+                mailto_url = (
+                    "mailto:mpobservations@occultations.org.nz"
+                    "?cc=director%40occultations.org.nz"
+                    "&subject={subject}"
                 ).format(subject=encoded_subject)
-                chrome_paths = [
-                    r'C:\Program Files\Google\Chrome\Application\chrome.exe',
-                    r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-                ]
-                launched = False
-                for chrome_exe in chrome_paths:
-                    if os.path.isfile(chrome_exe):
-                        subprocess.Popen([chrome_exe, gmail_url])
-                        launched = True
-                        break
-                if not launched:
-                    System.Diagnostics.Process.Start(gmail_url)
+                System.Diagnostics.Process.Start(mailto_url)
 
-                # --- Select the ZIP in Explorer so user can drag it into Chrome ---
+                # --- Select the ZIP in Explorer so user can attach it ---
                 try:
                     subprocess.Popen(['explorer', '/select,', zip_path])
                 except Exception:
@@ -2826,7 +3122,7 @@ class OccultationManagerGUI(Form):
 
                 # --- Small info dialog ---
                 attach_dlg = _AttForm()
-                attach_dlg.Text = "Attach ZIP to Gmail"
+                attach_dlg.Text = "Attach ZIP to Email"
                 attach_dlg.FormBorderStyle = attach_dlg.FormBorderStyle.FixedDialog
                 attach_dlg.MaximizeBox = False
                 attach_dlg.MinimizeBox = False
@@ -2837,14 +3133,14 @@ class OccultationManagerGUI(Form):
                 zip_name = os.path.basename(zip_path)
                 contents_text = "\n".join("  \u2022 " + n for n in zipped)
                 if zip_errors:
-                    contents_text += "\n\nWarning — could not add:\n" + "\n".join("  " + e for e in zip_errors)
+                    contents_text += "\n\nWarning \u2014 could not add:\n" + "\n".join("  " + e for e in zip_errors)
 
                 lbl_msg = _AttLbl()
                 lbl_msg.Text = (
-                    "Gmail is open. A ZIP file has been created and selected in Explorer.\n\n"
+                    "Your mail app is open. A ZIP file has been created and selected in Explorer.\n\n"
                     "{zip_name}\n\n"
                     "Contents:\n{contents}\n\n"
-                    "Drag the ZIP from Explorer into the Gmail compose window, then send."
+                    "Attach the ZIP to the email compose window, then send."
                 ).format(zip_name=zip_name, contents=contents_text)
                 lbl_msg.AutoSize = True
                 lbl_msg.MaximumSize = Size(524, 0)
@@ -2866,10 +3162,10 @@ class OccultationManagerGUI(Form):
                     attach_dlg.Close()
 
                 btn_ok.Click += _att_ok
-                attach_dlg.Show()  # Non-modal — keep open while working in Chrome
+                attach_dlg.Show()  # Non-modal — keep open while working in mail app
 
             except Exception as ex:
-                MessageBox.Show("Could not open Gmail:\n{0}".format(ex), "Error",
+                MessageBox.Show("Could not open mail app:\n{0}".format(ex), "Error",
                                 MessageBoxButtons.OK, MessageBoxIcon.Error)
 
         def _open_rename_dialog(s, e):
@@ -2897,6 +3193,8 @@ class OccultationManagerGUI(Form):
             btn_open_user.Click += _open_user_folder
         btn_vizier.Click += _export_vizier
         btn_gmail.Click += _send_via_gmail
+        if btn_mail is not None:
+            btn_mail.Click += _send_via_mail_app
         btn_rename.Click += _open_rename_dialog
         btn_close.Click += _close_dlg
 
@@ -3025,13 +3323,14 @@ class OccultationManagerGUI(Form):
         dlg.ShowDialog()
         return _result[0]
 
-    def _build_observer_data_for_xml(self, clouds, stability, other_conditions):
+    def _build_observer_data_for_xml(self, clouds, stability, other_conditions, observation_comment=None):
         """Build observer_data dictionary for Occult XML export with conditions mapping
         
         Args:
             clouds: Cloud conditions from dialog (e.g., "Clear", "Fog", etc.)
             stability: Atmospheric stability from dialog (e.g., "Steady", etc.)
             other_conditions: Free text other conditions (not used in XML)
+            observation_comment: Free text observation comment (up to 90 chars) written to XML Conditions comment field
         
         Returns:
             Dictionary with mapped values for Occult XML format
@@ -3068,9 +3367,8 @@ class OccultationManagerGUI(Form):
         else:
             observer_data['stability'] = '_'  # unstated
         
-        # Note: other_conditions is not used in Occult XML format
-        # The XML format has a 'comment' field in Conditions, but it's typically
-        # used for technical timing adjustments, not general observing notes
+        if observation_comment:
+            observer_data['comment'] = observation_comment
         
         return observer_data
     

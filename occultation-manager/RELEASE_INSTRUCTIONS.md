@@ -1,4 +1,4 @@
-# Release Package Instructions - v0.2.0-beta.9
+# Release Package Instructions - v0.3.0-alpha.2
 
 ## Creating a GitHub Release for Occultation Manager
 
@@ -17,13 +17,14 @@ This script automatically:
 - Places master templates in `resources/templates_master/{sequencer,reports}/`
 - Pre-seeds `data/templates/` with working copies of the sequencer master templates
 - Seeds/creates data folders under `data/{config,events,templates,sequences,reports}/`
-- Generates `occultation-manager-v0.2.0-beta.9.zip`
+- Generates `occultation-manager-v0.3.0-alpha.2.zip`
 
 ### Manual File List (if needed)
 
 If you need to create the package manually, include these files from `occultation-manager/`:
 
 **Application Python Files (copied into `app/`):**
+- adv_helper.py
 - aota_dialogs.py
 - aota_parser.py
 - aota_report_parser.py
@@ -44,6 +45,8 @@ If you need to create the package manually, include these files from `occultatio
 - main_gui.py
 - na_report_openize.py
 - occult4_export.py
+- pc_performance_testing.py
+- phase_b_dialog.py
 - pyote_metrics_reader.py
 - rename_files_dialog.py
 - report_generator_base.py
@@ -127,7 +130,7 @@ occultation-manager/
 │   ├── sequences/
 │   └── reports/
 ├── ReadMe.md                                      <-- User documentation
-├── RELEASE_NOTES.md                               <-- Version 0.2.0-beta.9 features
+├── RELEASE_NOTES.md                               <-- Version 0.3.0-alpha.2 features
 └── RELEASE_INSTRUCTIONS.md
 ```
 
@@ -141,281 +144,95 @@ occultation-manager/
    - Click "Create a new release"
 
 3. **Tag and title:**
-   - Tag: `v0.2.0-beta.9`
-   - Target: `main` branch
-   - Release title: `Occultation Manager v0.2.0-beta.9 - Bug Fixes, Gmail Submission, Grid Sorting, and NTP Chart Improvements`
+   - Tag: `v0.3.0-alpha.2`
+   - Target: `alpha-release` branch
+   - Release title: `Occultation Manager v0.3.0-alpha.2 — Full Reporting with PyOTE, OBS XML, and NTP Timing`
 
 4. **Write release notes:**
    
    Copy the content from [RELEASE_NOTES.md](RELEASE_NOTES.md) or use this summary:
 
    ```markdown
-   # Occultation Manager v0.2.0-beta.9 - Bug Fixes, Gmail Submission, Grid Sorting, and NTP Chart Improvements
-   
-   **Report Generation Bug Fixes and new features** — SNR fix, Tangra CSV delay priority fix, NTP comment cell fix, D/R label/duration improvements, Step A4 UX gating, VizieR post-report flow fix, mag 1 d.p., new Rename Files dialog, Include Station Name checkbox, Generate Report layout fix, event grid default sort + column-click sort, spinning cursor fix, Gmail submission with ZIP, and NTP chart legend showing all servers.
-   
-   SharpCap automation tool for asteroid occultation observations with Occult Watcher Cloud integration.
+   # Occultation Manager v0.3.0-alpha.2
 
-   ## 🧹 Maintenance
+   Full reporting workflow alpha: AOTA XML, AOTA Report, and PyOTE fit_metrics.txt timing
+   sources; NA, TT, SODIS, and Occult 4 OBS XML output; NTP confirmation workflow; timestamp
+   inspector; post-report rename, Gmail submission, and VizieR export.
 
-   - Updated release-facing documentation and version references for Beta.9.
-   - Updated release packaging/version pointers (ZIP naming and instructions).
-   
-   ## 📦 Installation
-   
-   **Download:** [occultation-manager-v0.2.0-beta.9.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip)
-   
-   ### Quick Start:
-   1. Download and extract the ZIP file to a location with read/write access
-      - ⚠️ **Avoid Program Files** - Windows may restrict write access
-      - ✅ **Recommended**: `Documents\SharpCap`
-   2. Start SharpCap
-   3. Go to **File → SharpCap Settings → Startup Scripts**
-   4. Browse to the extracted `app` folder and select `app/main.py`
-   5. Restart SharpCap
-   6. Click the "Occultations" button in SharpCap toolbar
-   
-   **First Startup - Automatic Configuration:**
-   - Automatically detects installation directory
-   - Uses fixed folders under `data/` and `resources/templates_master/`
-   - Creates data folders: `data/config`, `data/events`, `data/templates`, `data/sequences`, `data/reports`
-   - Seeds missing working templates into `data/templates`
-   
-   **Initial Configuration:**
-   - Configure OWC credentials in **Tools → Configuration → Credentials**
-   - Set **Days to Retain** in the Credentials tab (default 14)
-   - Use **Tools → Configuration → File Paths** buttons to open `data/config`, `data/events`, `data/templates`, `data/sequences`, and `data/reports`
-   - Get API key from https://cloud.occultwatcher.net/user-profile
-   - All other settings are pre-configured and optional
-   
-   See [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) for complete documentation.
-   
-   ## ✨ What's New in Beta.9
-   
-   ### SNR Fix — AOTA Report Parser
-   SNR now correctly populates the TT report when an AOTA Report text file is the timing source.
-   Regex updated to match both `Ave:` and `Average:` label variants (case-insensitive).
-
-   ### Camera Delay Source — Tangra CSV Priority
-   Cell P26 now uses the `Acquisition Delay (ms)` field from the Tangra CSV rather than
-   a recalculated cam+NTP total, ensuring the report matches exactly what Tangra applied.
-   
-   ### Camera Delay — 4 Decimal Places (TT Report)
-   Camera acquisition delay written to cell P26 of the TT report is now rounded to 4 d.p.,
-   preserving the precision provided by the rolling-shutter calibration.
-   
-   ### NTP Comment — Written to Correct Cell
-   The NTP uncertainty note is now written to cell D44 (Additional Comments) in the TT report,
-   not merged into the Other Conditions field.
-   
-   ### AOTA Report — Default First in Combo
-   When AOTA Report events are available, they appear first in the D/R event combo.
-
-   ### D/R Labels — Closer Together and Duration Display
-   D and R labels are now positioned closer together; a new duration label on the right shows
-   the chord duration (R − D) formatted to 1–2 significant figures.
-   
-   ### D/R Uncertainty — 1–2 Significant Figures
-   Uncertainty values in the event info panel now display as `±0.2s`, `±0.04s` etc.
-   instead of `±0.2000001s`.
-
-   ### Step A4 — Hint Text and Applied Radio Gating
-   The Tangra CSV delay label now shows a helpful hint on open; the "Applied" radio button is
-   disabled until a CSV is loaded.
-
-   ### VizieR Export — Returns to Post-Report Dialog
-   After VizieR export closes, the post-report dialog remains open for access to other buttons.
-
-   ### User Settings — Mag for 40 ms Exposure to 1 d.p.
-   The magnitude reference field in User Settings is now displayed and saved to 1 decimal place.
-   
-   ### Rename Files Dialog (New)
-   After report generation a new dialog offers to rename the observation files (CSV, AOTA XML,
-   AOTA Report, image files, `.lc` files) so they share the same stem as the generated report.
-   Filenames are editable before confirming. `_AOTA_…` and `_Bin{N}` suffixes are preserved
-   automatically.
-   
-   ### Include Station Name in Filenames (New)
-   A new checkbox in the Generate Report dialog (unchecked by default) appends the observer's
-   station name to the TT report filename when checked.
-   
-   ### Generate Report Dialog — Layout Fix
-   The large blank space below section 3 when a compact timing method is selected has been
-   removed. Sections 4 and 5 now follow immediately below section 3.
-
-   ### Event Grid — Default Sort and Column-Click Sorting (New)
-   Events default to DateTime ascending order. Click any column header to sort; click again to
-   reverse. Sort state is preserved across grid refreshes.
-
-   ### Event Grid — Spinning Cursor Fix
-   The wait cursor shown on grid hover has been eliminated by switching column AutoSizeMode
-   from `AllCells` (continuous live remeasurement) to `NotSet` (one-shot resize after populate).
-
-   ### Send via Gmail (New)
-   A new "Send via Gmail…" button in the post-report dialog creates a ZIP of all relevant
-   observation files, opens a Gmail compose window pre-addressed to the RASNZ coordinators
-   with the report filename as the subject, and selects the ZIP in Explorer for easy attachment.
-   Negative reports include the Excel report and Tangra CSV; Positive/Unsure also include the
-   AOTA report, AOTA event graphs, and VizieR `.dat`.
-
-   ### NTP Chart — Legend Shows All Servers
-   The NTP analyzer chart legend now lists all servers seen in peerstats (not just the
-   active selected peer), each with a distinct color and distance. Selected peers appear first.
-   
-   ## 🎯 Key Features
-   
-   ### Event Management
-   - Downloads personal observations from Occult Watcher Cloud
-   - Event list with filtering by date, location, and probability
-   - Configurable event retention (1-400 days, default 14)
-   - Custom per-event settings (exposure, gain, recording duration)
-   
-   ### Sequence Execution
-   - **Run Sequences** button for direct multi-sequence execution
-   - **Test Recording** with automatic camera settings preservation
-   - SharpCap remains responsive during all operations
-   - **Stop button** with confirmation and automatic cleanup
-   - Asynchronous execution using SharpCap's RunAsync() API
-   
-   ### Observation Preparation
-   - Load event workflow with summary display
-   - GOTO integration for automatic telescope slewing
-   - Plate solve verification and target labeling
-   - Camera setup with exposure and coordinate configuration
-   - Test recording without disrupting settings
-   
-   ### Sequence Generation
-   - Automated SharpCap .scs file generation
-   - Customizable templates with event data substitution
-   - Combined sequences for multiple events
-   - Five provided templates (UTC, Local Time, Minimal, Test Recording)
-   - **UTC countdown functions** for reliable timing (24+ hour safe)
-   
-   ### Report Generation (Under Development - Not Approved)
-   ⚠️ **CRITICAL WARNING**: Report generation has **NOT** been approved by North America (IOTA), Trans-Tasman (RASNZ), or SODIS reporting coordinators. Verify all data before submission.
-   
-   - North America (IOTA) and Trans-Tasman (RASNZ) Excel formats, plus SODIS (IOTA-ES) text format
-   - AOTA timing data integration (D/R times)
-   - Tangra CSV light curve analysis (fully integrated)
-   - Automatic video format and exposure detection
-   - GPS flash timing analysis available via Tools → Camera Delay Calibration
-   
-   ### Equipment Management
-   - Multiple telescope and camera configurations
-   - Active equipment selection
-   - Comprehensive equipment details for reports
-   
-   ## ⚙️ Requirements
-   
-   - SharpCap Pro 4.0+
-   - Windows 10/11
-   - Internet connection for OWC event downloads
-   - (Optional) ASCOM-compatible mount for GOTO functionality
-   
-   ## 📝 Known Limitations
-   
-   - Cannot pause sequences (stop and restart only)
-   - Single sequence execution at a time
-   - Report generation not approved — only TANGRA and AOTA outputs supported; use with caution
-   
-   ## 📖 Documentation
-   
-   - [ReadMe.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/ReadMe.md) - Complete user guide
-   - [RELEASE_NOTES.md](https://github.com/labstercam/occultation-tools/blob/main/occultation-manager/RELEASE_NOTES.md) - Detailed feature list
-   - Built-in Help menu with comprehensive guides
-   - `countdown python for sequencer.scs` - Reference code for countdown functions
-   
-   ## 🐛 Reporting Issues
-   
-   This is a beta release. Please report issues through [GitHub Issues](https://github.com/labstercam/occultation-tools/issues).
-   
-   Include:
-   - SharpCap version
-   - Camera type and connection method
-   - Steps to reproduce
-   - Error messages
-   - Sequence file (if relevant)
+   See RELEASE_NOTES.md for the full capability overview.
    ```
 
 5. **Upload ZIP file:**
-   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.2.0-beta.9.zip`
+   - Run `create_release_zip.ps1` to generate `occultation-manager-v0.3.0-alpha.2.zip`
    - Drag and drop ZIP to "Attach binaries" section in GitHub release
-   - GitHub does **not** auto-update markdown links in release notes; paste this URL manually in the notes:
-     `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip`
+   - Paste the download URL manually in the release notes:
+     `https://github.com/labstercam/occultation-tools/releases/download/v0.3.0-alpha.2/occultation-manager-v0.3.0-alpha.2.zip`
 
 6. **Set release options:**
-   - ✅ Check "Set as a pre-release" (this is a beta version)
+   - ✅ Check "Set as a pre-release" (this is an alpha version)
    - ✅ Check "Set as the latest release"
    - Click "Publish release"
 
 ### After Publishing
 
 The release will be available at:
-- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.2.0-beta.9`
+- Direct link: `https://github.com/labstercam/occultation-tools/releases/tag/v0.3.0-alpha.2`
 - Latest release: `https://github.com/labstercam/occultation-tools/releases/latest`
 
-## Version Control Best Practices
+## Version Control
 
 ### Before Creating Release
 
 1. **Update version numbers** in all files:
-   - `RELEASE_NOTES.md` - Version header
-   - `create_release_zip.ps1` - `$version` variable
+   - `RELEASE_NOTES.md` — version header
+   - `create_release_zip.ps1` — `$version` variable
    - This file (`RELEASE_INSTRUCTIONS.md`)
-   - Release notes download URL (must match tag + ZIP filename)
 
 2. **Test the release ZIP**:
    - Run `create_release_zip.ps1`
-   - Extract to test location
-   - Install in SharpCap
+   - Extract to a test location
+   - Install in SharpCap and verify startup
    - Verify automatic folder creation
-   - Test basic functionality
+   - Test basic event download and report generation
 
 3. **Commit all changes**:
    ```bash
    git add .
-   git commit -m "Release v0.2.0-beta.9"
+   git commit -m "Release v0.3.0-alpha.2"
    git push
    ```
 
 4. **Create and push tag**:
    ```bash
-   git tag v0.2.0-beta.9
-   git push origin v0.2.0-beta.9
+   git tag v0.3.0-alpha.2
+   git push origin v0.3.0-alpha.2
    ```
 
 ### After Release
 
-1. **Verify download link** works in release notes
-2. **Test installation** from GitHub release ZIP
-3. **Update documentation** if any installation issues found
-- Direct link: `https://github.com/labstercam/occultation-tools/releases/latest`
-- Download link: `https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip`
-
-Update README.md with this download link.
+1. Verify download link works in release notes
+2. Test clean installation from the GitHub release ZIP
+3. Update ReadMe.md download link if needed
 
 ---
 
-## Release Checklist for v0.1.0
+## Release Checklist
 
-Before creating the release, verify:
+Before creating the release ZIP, verify:
 
-### Code Quality
-- [ ] All Python files have proper docstrings
+### Code
 - [ ] No debug print statements in production code (except intentional logging)
 - [ ] No hardcoded file paths (all use config)
-- [ ] Error handling implemented for critical operations
-- [ ] No test files included in release ZIP
+- [ ] No test or development files included in ZIP
 
-### Configuration
-- [ ] occultation_config.json has sensible defaults
-- [ ] Template files are included and functional
+### Assets
 - [ ] Report templates (Excel) are not corrupted
-- [ ] Icon file (moonstars_99404.ico) is present
+- [ ] Icon file (`moon_icon_178489.ico`) is present
+- [ ] Openize SDK DLLs are present in `python/lib/`
 
 ### SharpCap Integration
-- [ ] main.py registers button in SharpCap toolbar correctly
-- [ ] GUI launches without errors
+- [ ] `main.py` registers button in SharpCap toolbar correctly
+- [ ] GUI launches without errors on a clean extract
 - [ ] SharpCap remains responsive while GUI is open
 - [ ] Camera controls accessible from GUI
 
@@ -489,7 +306,7 @@ Before creating the release, verify:
 - [ ] About dialog shows correct information
 
 ### Documentation
-- [ ] README.md up to date with v0.2.0-beta.5 features
+- [ ] README.md up to date with v0.3.0-alpha.1 features
 - [ ] RELEASE_NOTES.md reflects current functionality
 - [ ] Installation instructions clear and accurate
 - [ ] Configuration steps documented

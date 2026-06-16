@@ -150,7 +150,6 @@ class Occult4Exporter:
         
         lines = []
         lines.append('<AsteroidOccultations>')
-        lines.append(f'   <FileVersion>{self.FILE_VERSION}</FileVersion>')
         lines.append('   <Event>')
         
         # Date line
@@ -159,7 +158,6 @@ class Occult4Exporter:
         # Details section
         lines.append('       <Details>')
         lines.append(self._build_star_line(event))
-        lines.append(self._build_star_issues_line(event))
         lines.append(self._build_asteroid_line(event))
         
         # EventFits section omitted - will be added by IOTA after report processing
@@ -173,12 +171,6 @@ class Occult4Exporter:
                                                    observation_type, tangra_data, 
                                                    aota_report_data, observer_data))
         lines.append('       </Observations>')
-        
-        # Added and LastEdited dates
-        today = datetime.now()
-        date_str = f'{today.year}|{today.month}|{today.day}'
-        lines.append(f'        <Added>{date_str}</Added>')
-        lines.append(f'        <LastEdited>{date_str}</LastEdited>')
         
         lines.append('   </Event>')
         lines.append('</AsteroidOccultations>')
@@ -336,14 +328,9 @@ class Occult4Exporter:
             star_mag = event.star_mag if hasattr(event, 'star_mag') else 0.0
             mag_r = f'{star_mag:.2f}'
         
-        # EPIC ID (not typically used - default to 0)
-        epic_id = '0'
-        
+        # All detail fields left empty — coordinators populate from their data
         star_line = (
-            f'           <Star>{star_catalog}|{star_number}|{gaia_version}|{gaia_id}|'
-            f'{ra_j2000}|{dec_j2000}|{ra_uncertainty}|{dec_uncertainty}|'
-            f'{star_diameter}|{issues_flag}|{ra_apparent}|{dec_apparent}|'
-            f'{mag_b}|{mag_g}|{mag_r}|{epic_id}</Star>'
+            f'           <Star>{star_catalog}|{star_number}||||||||||||||</Star>'
         )
         
         return star_line
@@ -530,9 +517,9 @@ class Occult4Exporter:
             except (ValueError, TypeError):
                 pass
         
+        # All detail fields left empty — coordinators populate from their data
         asteroid_line = (
-            f'           <Asteroid>{asteroid_number}|{asteroid_name}|{dx}|{dy}|{d2x}|{d2y}|'
-            f'{d3x}|{d3y}|{parallax}|{d_parallax}|{diameter}|{diameter_uncertainty}|{mv}</Asteroid>'
+            f'           <Asteroid>{asteroid_number}|{asteroid_name}||||||||||</Asteroid>'
         )
         
         return asteroid_line
@@ -590,12 +577,12 @@ class Occult4Exporter:
         
         sign = '-' if is_negative else '+'
         
-        # Occult 4 format: seconds with 1 decimal place
-        # Example: "+174 39 28.4" or "-36 50  7.4"
+        # Occult 4 format: seconds with 3 decimal places, no fixed width
+        # Example: "+174 39 28.440" or "-36 50 7.476"
         if is_longitude:
-            return f'{sign}{degrees:03d} {minutes:02d} {seconds:4.1f}'
+            return f'{sign}{degrees:03d} {minutes:02d} {seconds:.3f}'
         else:
-            return f'{sign}{degrees:02d} {minutes:02d} {seconds:4.1f}'
+            return f'{sign}{degrees:02d} {minutes:02d} {seconds:.3f}'
     
     def _build_observer_section(self, event, telescope_id, camera_id, 
                                observation_type, tangra_data, aota_report_data, 
@@ -719,15 +706,14 @@ class Occult4Exporter:
         return id_line
     
     def _format_observer_name(self, name):
-        """Format observer name to OBS.XML N Nnnnn format (initial + first 5 chars of surname)"""
+        """Format observer name to OBS.XML 'Initial Surname' format (e.g. 'J Smith')."""
         if not name or not name.strip():
             return name
         parts = name.strip().split()
         if len(parts) == 1:
-            # Single word - use first char as initial, rest truncated to 5
-            return parts[0][0].upper() + ' ' + parts[0][1:6]
+            return name.strip()
         initial = parts[0][0].upper()
-        surname = parts[-1][:5]
+        surname = parts[-1]
         return initial + ' ' + surname
 
     def _get_telescope_data(self, telescope_id):
@@ -764,9 +750,9 @@ class Occult4Exporter:
         # Get SNR from AOTA report data if available
         if aota_report_data and 'snr' in aota_report_data:
             snr_value = aota_report_data.get('snr')
-            if snr_value is not None:
+            if snr_value is not None and float(snr_value) > 0:
                 # Cap SNR at maximum value of 20.0 per Occult 4 specification
-                snr_value = min(snr_value, 20.0)
+                snr_value = min(float(snr_value), 20.0)
                 # Format to 1 decimal place
                 sn = f"{snr_value:.1f}"
         
@@ -779,6 +765,10 @@ class Occult4Exporter:
                 sn = observer_data.get('sn', sn)
             time_adjustment = observer_data.get('time_adjustment', time_adjustment)
             comment = observer_data.get('comment', comment)
+            # timing_comment: camera name + timing correction note
+            timing_comment = observer_data.get('timing_comment', '')
+            if timing_comment:
+                comment = timing_comment if not comment else comment + ' ' + timing_comment
         
         conditions_line = (
             f'               <Conditions>{stability}|{transparency}|{sn}|'

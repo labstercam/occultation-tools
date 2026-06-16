@@ -1344,7 +1344,7 @@ class OccultationEvent:
                 'Positive': 'Positive',
                 'Miss': 'Miss',
                 'Negative': 'Miss',
-                'NotObserved': 'Unsure No Obs',
+                'NotObserved': 'No Obs',
                 'Failed': 'Failed',
                 'Clouded': 'Clouded',
                 'CloudedOut': 'Clouded',

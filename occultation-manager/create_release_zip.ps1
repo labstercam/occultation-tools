@@ -1,6 +1,6 @@
 # Create release ZIP for Occultation Manager (folder-based layout)
 
-$version = "0.2.0-beta.9"
+$version = "0.3.0-alpha.2"
 $zipPath = "occultation-manager-v$version.zip"
 
 Write-Host "Creating $zipPath..." -ForegroundColor Green
@@ -333,7 +333,7 @@ if (Test-Path $zipPath) {
     Write-Host "  occultation-manager/resources/templates_master/sequencer" -ForegroundColor Gray
     Write-Host "  occultation-manager/resources/templates_master/reports" -ForegroundColor Gray
     Write-Host "  occultation-manager/data/{config,events,templates,sequences,reports}" -ForegroundColor Gray
-    Write-Host "  gps-timing-analysis/{python,resources,scripts,config,logs,lib}" -ForegroundColor Gray
+    Write-Host "  gps-timing-analysis/{python,resources,config,logs,lib}" -ForegroundColor Gray
 } else {
     Write-Host "`nERROR: Failed to create zip file" -ForegroundColor Red
 }

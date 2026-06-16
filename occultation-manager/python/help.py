@@ -226,7 +226,7 @@ Installation and first-time setup for Occultation Manager.
 
 INSTALLATION
 ------------
-1. Download occultation-manager-v0.2.0-beta.9.zip from GitHub
+1. Download occultation-manager-v0.3.0-alpha.1.zip from GitHub
 2. Extract to a folder with read/write access
    ⚠️ AVOID Program Files - Windows may restrict write access
    ✅ RECOMMENDED: Documents\\SharpCap
@@ -301,6 +301,7 @@ FIRST USE
 GETTING STARTED
 ---------------
 • Download: Syncs with OWC to get your station assignments
+• Refresh: Refreshes events in the grid (does not Download from OWC).\n Reapplies mag limit and recording duration to default
 • Generate Dummy Events: Create realistic test events for practice
   - Configure number, timing, location, and spacing
   - Events visible from your observatory
@@ -354,7 +355,7 @@ STEP 1: DOWNLOAD EVENTS
 ------------------------
 Click Download button (or File → Download)
 • Retrieves assigned events from Occult Watcher Cloud
-• Calculates optimal exposure times based on star magnitudes
+• Calculates optimal exposure times based on star magnitudes defined by user
 • Calculates recording durations with uncertainty buffers
 • Events appear in the grid with all calculated parameters
 
@@ -365,6 +366,7 @@ STEP 2: FILTER AND REVIEW
 • Click column headers to sort events
 • Double-click rows to see Event Details
 • Review: event time, star magnitude, exposure, recording duration
+• Click the link in the name to open OWC event page and star field
 
 STEP 3: CUSTOMIZE SETTINGS (OPTIONAL)
 --------------------------------------
@@ -374,6 +376,8 @@ STEP 3: CUSTOMIZE SETTINGS (OPTIONAL)
 • Adjust gain for brightness conditions
 • Modify recording duration for unusual uncertainties
 • Custom values marked with * in grid
+• Press 'Refresh' to restor all events in the grid to default values
+
 
 STEP 4: PREPARE FOR OBSERVATION (OPTIONAL - MANUAL TESTING)
 ------------------------------------------------------------
@@ -407,6 +411,7 @@ STEP 5: GENERATE SEQUENCES (PREFERRED METHOD)
      - Handles late starts and next-day events
      - Can be safely stopped and restarted
      - Full automation: GOTO, plate solve, recording, safe finish
+     - Modify to suit your equipment and workflow
   
   Other templates:
   - Local Time templates (simpler but has midnight issues)
@@ -455,7 +460,7 @@ Or use Test Recording for quick tests:
 • Non-blocking: SharpCap remains responsive during recording
 • Stop button available to cancel if needed
 
-STEP 6C: RUN SEQUENCES DIRECTLY (NEW ASYNC METHOD)
+STEP 6C: RUN SEQUENCES DIRECTLY
 ---------------------------------------------------
 Run multiple sequences directly from Occultation Manager:
 
@@ -490,15 +495,15 @@ After recording:
 • Generate light curve CSV
 • Use AOTA for timing analysis (optional)
 
-STEP 8: GENERATE REPORT (UNDER DEVELOPMENT - NOT APPROVED)
+STEP 8: REPORT
 ----------------------------------------------------------
 ⚠ CRITICAL WARNING: Report generation is still under development and 
 has NOT been approved by reporting coordinators. Only TANGRA and AOTA
-outputs are currently supported. All generated reports must be carefully
+outputs are currently fully supported. All generated reports must be carefully
 verified before submission.
 
 See the dedicated "Report Generation" help topic for full details of
-the Generate Report form, Timestamp Check tools, and Inspect Timestamps
+the Report form, Timestamp Check tools, and Inspect Timestamps
 chart viewer.
 
 WORKFLOW SUMMARY
@@ -885,7 +890,7 @@ Access both managers via the Tools menu.
 TELESCOPE MANAGER  (Tools → Manage Telescopes)
 -----------------------------------------------
 Maintains a list of telescope profiles.  The active telescope is
-pre-selected in the Generate Report form.
+pre-selected in the Report form.
 
 Fields:
   • Name         — A label you choose (e.g. "C11 Main")
@@ -910,7 +915,7 @@ CAMERA MANAGER  (Tools → Manage Cameras)
 ------------------------------------------
 Maintains a list of camera configurations including timing and
 Occult 4 classification fields.  The active camera is pre-selected
-in the Generate Report form.
+in the Report form.
 
 Report Type MUST be selected first when adding a new camera.
 The Report Type controls which timing options appear in the
@@ -979,7 +984,7 @@ WORKFLOW — FIRST TIME SETUP
    Occult 4 Method and Occult 4 Time are auto-populated — verify them
    Click Add New to save, then Set as Active
 
-4. These profiles are now available in Section 2 of the Generate Report form"""
+4. These profiles are now available in Section 2 of the Report form"""
 
     def get_report_generation_content(self):
         return """REPORT GENERATION
@@ -992,10 +997,10 @@ verified before submission. Do not submit without checking.
 
 OPENING THE FORM
 ----------------
-Events menu → Generate Report
+Events menu → Report
 
 The form is divided into five sections. All required sections must be
-complete before the Generate Report button becomes active.
+complete before the Report button becomes active.
 
 SECTION 1: REPORT FORMAT
 -------------------------
@@ -1091,7 +1096,7 @@ The selected method determines which sub-panel is shown.
 
 Tip: most fields and buttons in this section have contextual help. Hover
 over a field for a brief tooltip, or click the ? and \u24d8 buttons for a
-full explanation. If the Generate Report button is disabled, click the ?
+full explanation. If the Report button is disabled, click the ?
 button to the left of it to see exactly what is still required.
 
 NTP (Computer Clock)
@@ -1220,8 +1225,8 @@ Leave unchecked to generate filenames without the station suffix — the
 default behaviour and consistent with earlier releases. This checkbox has
 no effect on NA or SODIS report filenames.
 
-GENERATE REPORT BUTTON
------------------------
+REPORT BUTTON
+-------------
 Active when all required fields are complete. Click to generate the
 pre-filled Excel report and save it to data/reports/.
 
@@ -1333,31 +1338,57 @@ INTERPRETING THE CHARTS
       CAMERA DELAY CALIBRATION  (Tools → Camera Delay Calibration → Open Calibration Tool)
       --------------------------------------------------------------------------------------
 Measures the rolling-shutter line delay of your camera using GPS-timed LED
-flashes.  This is the primary calibration tool — it captures frames from two
-apertures (top and bottom of the frame), detects GPS PPS flashes, and fits a
+flashes.  This is the primary calibration tool — it captures frames from multiple
+apertures from the top to bottom of the frame, detects GPS PPS flashes and measures the delay for each aperture, and fits a
 linear model to calculate the time delay per sensor line.
 
 Use this tool when:
 • Setting up a new camera for occultation recording
-• Changing ROI, binning, or frame rate significantly
-• You have a GPS timing LED (e.g. IOTA GPS Timing Device)
+• Using camera settings you have not already calibrate, e.g. changing ROI, binning, MONO8 vs MON16
+• You have a GPS PPS timing LED available (e.g. GPS USB receiver, GPS flasher)
 
 Workflow:
-1. Connect your GPS timing LED to the serial port
-2. Open Tools → Camera Delay Calibration → Open Calibration Tool in SharpCap
-3. Point camera at LED through two apertures (top and bottom of frame)
-4. Click Start Calibration and wait for data collection to complete
-5. Review the fit results (R², per-line delay, line-0 delay)
-6. Click Save Calibration to Camera to store results in the camera profile
+A: Set up GPS timing LED and camera
+  1. Connect your GPS timing LED to the serial port and wait until it starts flashing (1 PPS)
+  2. Point the camera at the LED and try to get reasonably even illumination across the frame. Note that some GPS receiver might stop working if they are too close to the camera. You may need to adjust the position, or fit the camera to a lens or telescope to get sufficient distance.
+  3. Set the camera settings to the settings you want to use. Must EXACTLY match:
+     i.  Area (ROI), Tilt, Pan and binning (e.g. 1280x960, 1x1), hardware binning settings (if the camera has them)
+     ii. Colour Space and bit depth, e.g. MONO8 or MONO16
+     iii. USB mode and settings (max speed is not recommended)
+  4. Set the exposure to 40 to 80 ms
+  5. Examine the Histogram in SharpCap. See what the maximum level is over multiple flashes
+  6. Adjust the gain so that the maximum level is 1/3 to 1/2 of the histogram max
+
+B: Set up the calibration run
+  1. Open Tools → Camera Delay Calibration → Open Calibration Tool in SharpCap 
+  2. Choose Live Capture (preferred) or ADV file. If using ADV file then you will do a recording to ADV format and load it
+  3. Choose Rolling or Global shutter. Most CMOS astronomy cameras are rolling shutter. Check the manufacturers specs. Some models that are global shutter has the imx174, IMX426, IMX432 sensor. All Sony PREGIUS sensors are Global shutter. All Sonty STARVIS sensors are Rolling shutter.
+  4. Set the Capture duration. 30s is usually enough. Longer captures may give better results but take more time. If the calibration fit is poor using a longer duration may help.
+  5. Set the GPS flash duration. Default for a GPS USB receiver or the 1 PPS output for a generic flash is 100 ms. You can measure it by doing a test video recording with a very small ROI (use the smallest one) at 1 ms exposure. Either do a light curve reduction suing TANGRA/PyMovie or inspect the video frames to see how long the flash was
+  6. If you only have a GPS PPS Arduino module that flashes OFF for a short time than ON for a long time you can use that by selectin the 'Invert Signal' checkbox.
+  7. Check and adjust the expoures and gain if necessary
+  8. Check the max frame rate in the status bar of SharpCap. If you have a large frame camera (>2k resolution) and are calibrating a large ROI you may need to reduce the frame rate
+
+C: Run the calibration
+  1. Click Start to begin the capture and calibration process 
+  2. The tool captures frames and detects the GPS flashes, showing the detected flash times in the chart
+  3. The tool fits a linear model to the flash times across the frame and calculates the per-line delay and line-0 delay
+  4. The chart shows the fit and the R² value as a measure of fit quality. A good calibration should have an R² close to 1 (e.g. >0.98). If the fit is poor, check the flash detection points on the chart to see if they are consistent and adjust your setup or capture settings as needed.    
+  5. If using Live Capture, you can stop the capture at any time to review the results. If using ADV file, the capture will stop automatically when the file ends. You can then adjust the capture settings and re-run the calibration as needed to improve the fit.
+  6. Click Save Calibration to Camera to store results in the camera profile for this camera and settings. Make sure you have the camera name/ID correct and give it a unique name or reference ID (e.g. A, B, C, MONO89 bin2). You can save multiple calibrations for different settings (e.g. different ROIs or binning)
+  7. You will be prompted to measure the PC time offset to NTP. This is important to ensure the calibration timestamps are accurate. For this to work you have to have NTP installed on your PC with good NTP configuration, ideally with a GPS PPS time source. See the NTP-Installer.
 
 APPROXIMATE DELAYS (no GPS required):
 If you do not have a GPS flasher, use the "Approximate Delays" button in the
 Camera Delay Calibration window.  This method:
 • Sets the camera to 1 ms exposure and measures the actual frame rate
-• Asks you to enter an estimated minimum delay (2 ms is a reasonable default)
+• Asks you to enter an estimated minimum delay (2 ms is a reasonable default for a small planetary camera)
 • Calculates per-line and line-0 delays from the measured frame rate and ROI height
 • Stores results as a synthetic calibration (R² shown as N/A)
-These values are approximate but usable when GPS timing is unavailable.
+These values are approximate but usable when GPS timing is unavailable. Note that it is NOT suitable for large sensor DSO cameras - you must use a GPS flasher
+
+Follow the same workflow as above, but skip the GPS setup and camera exposure/gain setup. 
+Click Approximate Delays instead of Start. You can then save the approximate calibration to the camera profile and use it in the Camera Delay Calculator for your event.
 
 CAMERA DELAY CALCULATOR  (Tools → Camera Delay Calibration → Camera Delay Calculator)
 --------------------------------------------------------------------------------------
@@ -1366,7 +1397,9 @@ position using previously saved calibration data.
 
 Use this tool when:
 • Preparing a timing submission for a recorded occultation
-• You need the per-event mid-line delay for Tangra or ROTE
+• You need to calculate the  delay for Tangra or other light-curve software
+
+Note that the Report workflow has this calculation tool built in
 
 Workflow:
 1. Open Tools → Camera Delay Calibration → Camera Delay Calculator
@@ -1380,43 +1413,75 @@ Workflow:
 
 NTP CLOCK ACCURACY  (Tools → NTP / GPS Time Testing → NTP Clock Accuracy)
 --------------------------------------------------------------------------
-Analyses NTP loopstats log files to show how accurately the computer clock
-is tracking UTC.  Use this after an observing session to verify that your
-clock was within acceptable limits during the recording.
+Analyses NTP loopstats and peerstats log files to show how accurately the computer clock
+is tracking UTC.  Use this to check or test your NTP timing performance. These calculations are used automatically in the Reporting when using NTP/GPS disciplining timing methods.
+
+
+Note: You must have NTP installed and configured to log loopstats and peerstats data. See the NTP-Installer tool for setup instructions.
 
 Workflow:
 1. Open Tools → NTP / GPS Time Testing → NTP Clock Accuracy
-2. Browse to your NTP loopstats file (typically in C:\\NTP\\logs\\)
-3. Set the date/time range for the recording period
-4. Click Analyse to plot clock offset vs time
-5. Review offset statistics; offset should stay within ±5 ms for occultation timing
+2. Browse to your NTP loopstats file (typically in C:\\NTP\\logs\\) if it has not automatically found.
+3. Select the Day to analyse (24 hours of UTC)
+4. Click Analyse to plot clock offset vs time and other stats. It may take up to 30s to anlysis and update the plots
+5. Review the charts and statistics - a quick visual scan should alert to any major issues:
+  a. Delay Chart: Shows the round trip delay for the ping to the server that is actively used for the time offset. This may change between servers (colour coded). Ideally will be <20 ms. If using a local GPS PPS or NMEA time sourc the server port wil be 127.127.20.* or similar. The distance in km is how far the server is from your location
+  b. Offset Chart: Shows the offset of your computer clock from UTC over time. This is the most important chart for timing accuracy. Ideally, the offset should be stable and within ±10 ms or better during your recording session. Large spikes or a drifting offset may indicate timing issues that could affect your report.
+  c. Jitter Chart: Shows the variability in the offset measurements, indicating the stability of the NTP synchronization. Lower jitter values are preferable for accurate timing.
+  d. Dispersion: ANother measure of variability. It may be very large when the NTP starts up or is restared or if internet connection has been lost.
+6. Review the "Estimate error and offset to use". This inially gives the average offset and time error during the selected day, but you can adjust the time range to focus on a specific time.
+7. Calculate a "Point in Time" esimate of offset and accuracy. Enter the UTC time to estimate, in HH:MM:SS formate (e.g. 10:05:00). Press the 'Calculate PIT' button and it will calculate the offset and timing accurate for that Point in Time. This is the esimate ACTUAL accuracy for that time
+
+Note: Lat/Long needs to be your approciate location for the distance to server to be calculated correctly. You can set this in Tools → Configuration → Observer/Telescope tab or edit it here
+
 
 GPS vs NTP TESTING  (Tools → NTP / GPS Time Testing → GPS vs NTP Testing)
 ---------------------------------------------------------------------------
 Compares GPS PPS timestamps against the NTP-disciplined system clock to
-verify that NTP is correctly locked to GPS.  Use this tool when commissioning
-a new GPS/NTP timing setup or investigating timing discrepancies.
+evaluate how well NTP internet server time performs when it does not have a GPS PPS source.
+
+This enables a better understanding of the actual NTP performance which will usually be better thatn the calculated NTP Cloack Accuracy from the previous analysis method. THis is due to the fact that NTP assumes that the out and back time server ping is not symmteric, and makes worst case assumption. On moderm Fibre networks the out and back ping is usually very symmetric and the NTP timing accuracy can be much better.
+
+THere are three main ways of connecting to internet:
+1. Direct through a home/work router with fibre or cable internet. This is the most common setup and should give excellent NTP performance if the router is not overloaded and the distance to the NTP server is not too large (ideally <1000 km).
+2. Through a mobile phone hotspot. This can give very variable performance depending on the mobile signal strength and network congestion and is less accurate
+3. THrough a Satelite internet connection. This is the least accurate setup for NTP due to the long distance to the satellite and high latency, but it can still be used if no other options are available.
+
+Initial tests against GPS PPS have shown :
+1. NTP accuracy via high speed fibre network has accuracy of a few ms when servers are < 1000 km.
+2. NTP accuracy via mobile hotspot can give accuracy of 10 ms or better when the dealy is 20-50 ms
+3. Satellite via StarLink can give ~10 ms accuracy when the delays is 20-40 ms
 
 Workflow:
 1. Connect your GPS device and ensure NTP is running
-2. Open Tools → NTP / GPS Time Testing → GPS vs NTP Testing
-3. Select the GPS serial port and log file locations
-4. Click Start to begin comparison logging
-5. Review the offset plot; offsets should be consistently < 1 ms
+2. Edit your NTP COnfig file for the duration of the test. Change the server line for your GPS PPS source (127.127.20.*) remove the 'prefer' statement and replace with 'noselect'. This means that is will report teh GPS PPS time and offset but will not use it to set the PC time
+3. Leave your PC to run for the hours or days you want to test.
+4. Do the analysisL Open Tools → NTP / GPS Time Testing → GPS vs NTP Testing
+5. Select the Day to analyse and set the other options as required
+6. Press 'Run Comparison'
+
+The analysis will identify the periods when the GPS PPS was in 'noselect' and show the timing performance of teh NTP sources and the PC offset.
+The 'UTC Error' is the estimate offset and error in the offset for the NTP derived time. This will likely be 1/2 to 1/3 that of the NTP Clock Accuracy test.
+The 'Clock Drift' will show how much the PC drifred.
+
 
 PC PERFORMANCE TESTING  (Tools → PC Performance Testing → Open PC Performance Testing)
 ---------------------------------------------------------------------------------------
 Monitors frame-to-frame timestamp stability while SharpCap is acquiring video,
-and can also analyse an ADV recording after you load it manually. Use this when
-you suspect the PC, USB bus, storage, or background activity may be affecting
-timestamp consistency.
+and can also analyse an ADV recording after you load it manually. Use this to see how stable your timestamps are during recording and whether
+there might be PC, USB bus, storage, or background activity that could  be affecting timestamp consistency or causing dropped frames.
 
 Workflow:
 1. Open Tools → PC Performance Testing → Open PC Performance Testing
 2. Choose Live Mode to monitor timestamps during capture, or select Record to ADV File
-3. In ADV mode, manually record an ADV file, then load it for analysis
-4. Review the timestamp delta plots and PC load chart
-5. Save the workbook if you want the plots, summary, and raw data exported
+3. Set up your equipment and PC for the test, e.g. if you want to run a heavy process like Stellarium, set it running
+4. Set up your camera for the test, for the settings and exposure you want to check
+5. Run the test or record and analyse the ADV File
+6. Save the workbook if you want the plots, summary, and raw data exported
+
+Examine the charts and summary statistics to identify any timing irregularities, trends, or correlations with background activity.
+
+Press the 'How to Interpret' button for detailed guidance on what to look for in the charts and stats, and how to identify potential issues that could affect your occultation timing accuracy.
 
 CALIBRATION DATA STORAGE
 -------------------------
@@ -1448,14 +1513,14 @@ class HelpManager:
     def show_about(self):
         """Show about dialog with author information"""
         about_text = """OCCULTATION MANAGER FOR SHARPCAP
-Version 0.2.0-beta.9
+Version 0.3.0-alpha.2
 
 Author: Michael Camilleri
 
 https://github.com/labstercam/occultation-tools
 
 
-A tool for managing asteroid occultation observations through customizable SharpCap sequences.
+A tool for managing asteroid occultation observations with SharpCap with customisable SharpCap sequences and full automation.
 
 FEATURES:
 \u2022 Automated event download from OccultWatcher Cloud
@@ -1478,12 +1543,11 @@ Download \u2192 Filter \u2192 Prepare \u2192 Customize \u2192 Generate Sequence 
 
 OPTIONAL FEATURES:
 \u2022 Excel report generation (NA / Trans-Tasman / SODIS)
-  \u26a0 Experimental - Not approved by reporting coordinators
 \u2022 Tangra / R-OTE / Limovie CSV import with frame-timing analysis and Timestamp Inspector
 \u2022 AOTA XML and AOTA Report file import for D/R times in reports
 \u2022 PyOTE fit_metrics.txt import for D/R times in reports
 \u2022 Post-report Rename Files dialog to match observation files to report stem
-\u2022 Optional station name suffix in Trans-Tasman report filenames
+\u2022 Email or ZIP report outputs
 
 This tool emphasizes giving you complete control through SharpCap sequences.
 Customize templates to match your equipment and automate as much or as little

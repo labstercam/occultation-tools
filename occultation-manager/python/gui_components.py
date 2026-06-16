@@ -4,7 +4,7 @@ clr.AddReference("System.Drawing")
 
 import webbrowser
 from datetime import datetime, timezone
-from System.Drawing import Font, FontStyle, SystemColors
+from System.Drawing import Color, Font, FontStyle, SystemColors
 from System.Windows.Forms import (
     DataGridView, DataGridViewSelectionMode, DataGridViewCheckBoxColumn,
     DataGridViewLinkColumn, DataGridViewTextBoxColumn, MessageBox,
@@ -72,9 +72,9 @@ class EventsDataGrid(DataGridView):
                     col.LinkColor = SystemColors.MenuHighlight
                     col.ActiveLinkColor = SystemColors.Highlight
                     col.VisitedLinkColor = SystemColors.GrayText
-                    # Use the system highlight text color so the link text contrasts
-                    # with the selection background set by the OS/theme.
-                    col.DefaultCellStyle.SelectionForeColor = SystemColors.HighlightText
+                    # Use white so the link text contrasts with the selection
+                    # background (blue in light mode, dark orange in dark/night mode).
+                    col.DefaultCellStyle.SelectionForeColor = Color.White
                 except Exception:
                     # Defensive: ignore if any of these properties are unavailable
                     pass
@@ -120,8 +120,26 @@ class EventsDataGrid(DataGridView):
         self.CellValueChanged += self.cell_value_changed
         # Column-header click for user-driven sorting
         self.ColumnHeaderMouseClick += self._on_column_header_click
+        # Update EventName link color when row selection changes so the link
+        # text stays visible against the selection highlight background.
+        self.SelectionChanged += self._on_selection_changed
         
     
+    def _on_selection_changed(self, sender, e):
+        """Update EventName link color: white when row is selected, default otherwise."""
+        try:
+            default_color = SystemColors.MenuHighlight
+            for row in self.Rows:
+                try:
+                    cell = row.Cells["EventName"]
+                    color = Color.White if row.Selected else default_color
+                    cell.LinkColor = color
+                    cell.VisitedLinkColor = color
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     def cell_double_click(self, sender, e):
         """Handle cell double click for settings editing (exposure, gain, recording duration)"""
         if e.RowIndex >= 0 and e.ColumnIndex >= 0:
@@ -140,7 +158,17 @@ class EventsDataGrid(DataGridView):
                 event = self.Rows[e.RowIndex].Tag
                 if event and hasattr(event, 'owcloudurl') and event.owcloudurl:
                     try:
+                        # 1. Station-specific event page (original URL)
                         webbrowser.open(event.owcloudurl)
+                        # 2. General event page (remove station ID suffix)
+                        parent_url = event.owcloudurl.rsplit('/', 1)[0]
+                        if parent_url != event.owcloudurl:
+                            webbrowser.open_new_tab(parent_url)
+                        # 3. Aladin 0.5° FOV chart
+                        if event.ra and event.dec is not None:
+                            from gui_dialogs import _build_aladin_url
+                            aladin_url = _build_aladin_url(event.ra, event.dec, fov=0.5)
+                            webbrowser.open_new_tab(aladin_url)
                     except Exception as ex:
                         MessageBox.Show(f"Cannot open URL: {event.owcloudurl}\nError: {ex}", "Error", 
                                       MessageBoxButtons.OK, MessageBoxIcon.Error)

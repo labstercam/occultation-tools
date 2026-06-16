@@ -11,7 +11,7 @@ from System.Windows.Forms import (
     Form, Label, TextBox, Button, MessageBox, MessageBoxButtons, MessageBoxIcon,
     DialogResult, FormStartPosition, FormBorderStyle, Panel, GroupBox, LinkLabel,
     TabControl, TabPage, ListBox, ScrollBars, SelectionMode, AnchorStyles,
-    CheckBox, FolderBrowserDialog, DockStyle, ToolTip, ComboBox, ComboBoxStyle,
+    CheckBox, Clipboard, FolderBrowserDialog, DockStyle, ToolTip, ComboBox, ComboBoxStyle,
     RadioButton
 )
 from theme import apply_theme_to_control
@@ -444,6 +444,37 @@ class ExposureEditDialog(Form):
         """Get the new recording duration in seconds"""
         return self.new_recording_duration
 
+def _build_aladin_url(ra_hours, dec_degrees, fov=0.5):
+    """Build an OWC Aladin viewer URL from J2000 coordinates.
+
+    Parameters
+    ----------
+    ra_hours : float
+        Right ascension in decimal hours.
+    dec_degrees : float
+        Declination in decimal degrees (negative = south).
+    fov : float
+        Field of view in degrees (default 0.5).
+    """
+    h = int(ra_hours)
+    rem_m = (ra_hours - h) * 60.0
+    m = int(rem_m)
+    s = (rem_m - m) * 60.0
+    ra_str = "{0} {1:02d} {2:.3f}".format(h, m, s)
+
+    sign = '-' if dec_degrees < 0 else ''
+    abs_dec = abs(dec_degrees)
+    d = int(abs_dec)
+    rem_am = (abs_dec - d) * 60.0
+    am = int(rem_am)
+    as_ = (rem_am - am) * 60.0
+    dec_str = "{0}{1} {2:02d} {3:.2f}".format(sign, d, am, as_)
+
+    star_id = (ra_str + ' ' + dec_str).replace(' ', '%20')
+    return "https://cloud.occultwatcher.net/aladinViewer.html?starId={0}&fov={1}".format(
+        star_id, fov)
+
+
 class EventDetailsDialog(Form):
     """Dialog for displaying detailed event information with DPI scaling"""
     
@@ -492,11 +523,23 @@ class EventDetailsDialog(Form):
         
         # Add OWC link if available
         if hasattr(self.event, 'owcloudurl') and self.event.owcloudurl:
+            def _open_owc_links(s, e, ev=self.event):
+                # 1. Station-specific event page (original URL)
+                webbrowser.open(ev.owcloudurl)
+                # 2. General event page (remove station ID suffix)
+                parent_url = ev.owcloudurl.rsplit('/', 1)[0]
+                if parent_url != ev.owcloudurl:
+                    webbrowser.open_new_tab(parent_url)
+                # 3. Aladin 0.5° FOV chart (constructed from J2000 coordinates)
+                if ev.ra and ev.dec is not None:
+                    aladin_url = _build_aladin_url(ev.ra, ev.dec, fov=0.5)
+                    webbrowser.open_new_tab(aladin_url)
+
             link_label = LinkLabel()
             link_label.Text = "View on OWC"
             link_label.Location = Point(int(300 * sf), int(75 * sf))
             link_label.Size = Size(int(100 * sf), int(20 * sf))
-            link_label.LinkClicked += lambda s, e: webbrowser.open(self.event.owcloudurl)
+            link_label.LinkClicked += _open_owc_links
             grp_event.Controls.Add(link_label)
         
         # Timing Information Group
@@ -1690,6 +1733,25 @@ class TemplateSelectionDialog(Form):
 
         self.AcceptButton = btn_ok
         self.CancelButton = btn_cancel
+
+    def _resolve_selected_template_path(self):
+        """Resolve and cache selected template path even if selection events were missed."""
+        template_files, template_folder = TemplateManager.find_template_files(self.config.get_templates_folder())
+
+        if not template_files:
+            self.selected_template_path = ""
+            return ""
+
+        if self.lst_templates.SelectedIndex < 0 and self.lst_templates.Items.Count > 0:
+            self.lst_templates.SelectedIndex = 0
+
+        idx = self.lst_templates.SelectedIndex
+        if idx < 0 or idx >= len(template_files):
+            self.selected_template_path = ""
+            return ""
+
+        self.selected_template_path = os.path.join(template_folder, template_files[idx])
+        return self.selected_template_path
     
     def load_templates(self):
         """Load available templates into the list"""
@@ -1705,18 +1767,13 @@ class TemplateSelectionDialog(Form):
         # Select first item
         if self.lst_templates.Items.Count > 0:
             self.lst_templates.SelectedIndex = 0
+            self._resolve_selected_template_path()
     
     def template_selected(self, sender, e):
         """Handle template selection change with proper preview"""
         if self.lst_templates.SelectedIndex >= 0:
-            # Get the selected template file
-            template_files, template_folder = TemplateManager.find_template_files(self.config.get_templates_folder())
-            if self.lst_templates.SelectedIndex < len(template_files):
-                template_file = template_files[self.lst_templates.SelectedIndex]
-                self.selected_template_path = os.path.join(template_folder, template_file)
-                template_content = TemplateManager.load_template(self.selected_template_path, self.config)
-            else:
-                template_content = None
+            template_path = self._resolve_selected_template_path()
+            template_content = TemplateManager.load_template(template_path, self.config) if template_path else None
             
             # Show preview with proper line breaks
             if template_content:
@@ -1727,6 +1784,8 @@ class TemplateSelectionDialog(Form):
     
     def get_selected_template_path(self):
         """Get the selected template path"""
+        if not self.selected_template_path:
+            self._resolve_selected_template_path()
         return self.selected_template_path
     
     def open_templates_folder(self, sender, e):
@@ -1830,7 +1889,7 @@ class LocationConfirmDialog(Form):
         
         # Form properties
         self.Text = "Confirm Observation Location"
-        self.Size = Size(int(620 * sf), int(850 * sf))
+        self.Size = Size(int(620 * sf), int(900 * sf))
         self.FormBorderStyle = FormBorderStyle.FixedDialog
         self.StartPosition = FormStartPosition.CenterParent
         self.MaximizeBox = False
@@ -1871,7 +1930,7 @@ class LocationConfirmDialog(Form):
         station_group = GroupBox()
         station_group.Text = "Observation Location (editable)"
         station_group.Location = Point(int(10 * sf), y_pos)
-        station_group.Size = Size(int(510 * sf), int(280 * sf))
+        station_group.Size = Size(int(510 * sf), int(330 * sf))
         panel.Controls.Add(station_group)
         
         # Station name
@@ -1955,38 +2014,54 @@ class LocationConfirmDialog(Form):
         self._elevation_needs_lookup = (elevation is None)
         station_group.Controls.Add(self.txt_elevation)
         
-        # Google Maps link
-        lbl_maps_text = Label()
-        lbl_maps_text.Text = "View on map:"
-        lbl_maps_text.Location = Point(int(15 * sf), int(145 * sf))
-        lbl_maps_text.Size = Size(int(100 * sf), int(20 * sf))
-        station_group.Controls.Add(lbl_maps_text)
-        
+        # Lookup Elevation button - placed beside elevation field
+        self._btn_lookup_elev = Button()
+        self._btn_lookup_elev.Text = "Lookup Elevation"
+        self._btn_lookup_elev.Location = Point(int(250 * sf), int(108 * sf))
+        self._btn_lookup_elev.Size = Size(int(145 * sf), int(25 * sf))
+        self._btn_lookup_elev.Click += self.lookup_elevation_click
+        station_group.Controls.Add(self._btn_lookup_elev)
+
+        # Open Google Maps link
         link_maps = LinkLabel()
-        maps_url = f"https://www.google.com/maps?q={latitude},{longitude}"
         link_maps.Text = "Open Google Maps"
-        link_maps.Location = Point(int(120 * sf), int(145 * sf))
-        link_maps.Size = Size(int(150 * sf), int(20 * sf))
-        link_maps.LinkClicked += lambda s, e: webbrowser.open(maps_url)
+        link_maps.Location = Point(int(15 * sf), int(148 * sf))
+        link_maps.Size = Size(int(175 * sf), int(20 * sf))
+        link_maps.Font = Font(link_maps.Font.FontFamily, 9 * sf, FontStyle.Bold)
+        link_maps.LinkClicked += self._on_open_maps_click
         station_group.Controls.Add(link_maps)
-        
-        # Lookup Elevation button
-        btn_lookup_elev = Button()
-        btn_lookup_elev.Text = "Lookup Elevation"
-        btn_lookup_elev.Location = Point(int(285 * sf), int(142 * sf))
-        btn_lookup_elev.Size = Size(int(130 * sf), int(25 * sf))
-        btn_lookup_elev.Click += self.lookup_elevation_click
-        station_group.Controls.Add(btn_lookup_elev)
-        
+
+        # a/b/c instructions for the Google Maps pin workflow
+        lbl_instructions = Label()
+        lbl_instructions.Text = (
+            "   a. Drop a pin at your observing site\n"
+            "   b. Right-click the pin \u2192 click the coordinates at the top to copy them\n"
+            "   c. Return here and click \u2018Paste Coords\u2019"
+        )
+        lbl_instructions.Location = Point(int(15 * sf), int(173 * sf))
+        lbl_instructions.Size = Size(int(480 * sf), int(65 * sf))
+        lbl_instructions.Font = Font(lbl_instructions.Font, FontStyle.Italic)
+        lbl_instructions.ForeColor = Color.DarkBlue
+        station_group.Controls.Add(lbl_instructions)
+
+        # Paste Coords button
+        btn_paste_coords = Button()
+        btn_paste_coords.Text = "Paste Coords"
+        btn_paste_coords.Location = Point(int(15 * sf), int(243 * sf))
+        btn_paste_coords.Size = Size(int(130 * sf), int(27 * sf))
+        btn_paste_coords.Click += self._on_paste_coordinates
+        station_group.Controls.Add(btn_paste_coords)
+
         # Info label
         lbl_info = Label()
-        lbl_info.Text = "Enter/verify observation location and coordinates.\nUse 'Lookup' to find city/town name from coordinates.\nUse 'Lookup Elevation' to get elevation (WGS84 datum)."
-        lbl_info.Location = Point(int(15 * sf), int(180 * sf))
-        lbl_info.Size = Size(int(480 * sf), int(80 * sf))
+        lbl_info.Text = ("Use \u2018Lookup\u2019 for city/town from coordinates. "
+                         "\u2018Lookup Elevation\u2019 uses WGS84 datum.")
+        lbl_info.Location = Point(int(15 * sf), int(282 * sf))
+        lbl_info.Size = Size(int(480 * sf), int(35 * sf))
         lbl_info.ForeColor = Color.Gray
         station_group.Controls.Add(lbl_info)
-        
-        y_pos += int(290 * sf)
+
+        y_pos += int(340 * sf)
 
         # ===== STEP 1A: OPTIONAL OWC NO-OBS REPORT =====
         no_obs_group = GroupBox()
@@ -2044,7 +2119,7 @@ class LocationConfirmDialog(Form):
         self.lbl_no_obs_status.Text = ""
         self.lbl_no_obs_status.Location = Point(int(15 * sf), int(88 * sf))
         self.lbl_no_obs_status.Size = Size(int(330 * sf), int(22 * sf))
-        self.lbl_no_obs_status.ForeColor = Color.Gray
+        self.lbl_no_obs_status.ForeColor = self._status_color('muted')
         no_obs_group.Controls.Add(self.lbl_no_obs_status)
 
         y_pos += int(135 * sf)
@@ -2174,6 +2249,28 @@ class LocationConfirmDialog(Form):
         # Apply theme
         theme_colors = theme_manager.get_current_theme()
         apply_theme_to_control(self, theme_colors)
+
+        # Re-apply instruction label color AFTER theme, so it isn't overridden
+        lbl_instructions.ForeColor = self._status_color('muted')
+
+    def _status_color(self, kind):
+        """Return status colors that stay readable in day/night themes."""
+        is_night = bool(getattr(self.theme_manager, 'is_night_mode', False))
+        if is_night:
+            colors = {
+                'muted': Color.FromArgb(255, 214, 150),
+                'warning': Color.FromArgb(255, 190, 90),
+                'success': Color.FromArgb(180, 255, 160),
+                'error': Color.FromArgb(255, 170, 150),
+            }
+        else:
+            colors = {
+                'muted': Color.Gray,
+                'warning': Color.Orange,
+                'success': Color.Green,
+                'error': Color.Red,
+            }
+        return colors.get(kind, colors['muted'])
     
     def lookup_location_click(self, sender, e):
         """Look up city/town name from coordinates using reverse geocoding"""
@@ -2265,6 +2362,87 @@ class LocationConfirmDialog(Form):
             sender.Text = original_text
             sender.Enabled = True
     
+    def _on_open_maps_click(self, sender, e):
+        """Open Google Maps at the current coordinates from the text fields."""
+        try:
+            try:
+                lat = float(self.txt_latitude.Text)
+                lon = float(self.txt_longitude.Text)
+            except ValueError:
+                lat, lon = 0.0, 0.0
+            if lat == 0.0 and lon == 0.0:
+                maps_url = "https://www.google.com/maps"
+            else:
+                maps_url = "https://www.google.com/maps?q={0},{1}".format(lat, lon)
+            webbrowser.open(maps_url)
+        except Exception as ex:
+            MessageBox.Show("Error opening Google Maps: {0}".format(ex),
+                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+    def _on_paste_coordinates(self, sender, e):
+        """Paste lat/lon coordinates from clipboard into the latitude and longitude fields."""
+        try:
+            if not Clipboard.ContainsText():
+                MessageBox.Show(
+                    "No text found in clipboard.\n\n"
+                    "Copy coordinates from Google Maps first:\n"
+                    "Right-click your pin and click the coordinates at the top of the menu.",
+                    "No Text", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                return
+
+            clipboard_text = Clipboard.GetText().strip()
+
+            # Support comma-separated (Google Maps default), space- or tab-separated
+            coords = None
+            if ',' in clipboard_text:
+                parts = clipboard_text.split(',')
+                if len(parts) >= 2:
+                    coords = (parts[0].strip(), parts[1].strip())
+            elif ' ' in clipboard_text or '\t' in clipboard_text:
+                parts = clipboard_text.replace('\t', ' ').split()
+                if len(parts) >= 2:
+                    coords = (parts[0], parts[1])
+
+            if coords:
+                try:
+                    lat = float(coords[0])
+                    lon = float(coords[1])
+
+                    if lat < -90 or lat > 90:
+                        MessageBox.Show(
+                            "Latitude must be between -90 and +90 degrees.\nFound: {0}".format(lat),
+                            "Invalid Latitude", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                        return
+                    if lon < -180 or lon > 180:
+                        MessageBox.Show(
+                            "Longitude must be between -180 and +180 degrees.\nFound: {0}".format(lon),
+                            "Invalid Longitude", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                        return
+
+                    self.txt_latitude.Text = "{0:.6f}".format(lat)
+                    self.txt_longitude.Text = "{0:.6f}".format(lon)
+                    MessageBox.Show(
+                        "Coordinates pasted:\nLatitude: {0:.6f}\nLongitude: {1:.6f}".format(lat, lon),
+                        "Pasted", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    self.lookup_elevation_click(self._btn_lookup_elev, None)
+                except ValueError:
+                    MessageBox.Show(
+                        "Could not parse coordinates as numbers.\n\n"
+                        "Clipboard text: {0}\n\n"
+                        "Expected format: latitude, longitude\n"
+                        "Example: -36.8485, 174.7633".format(clipboard_text),
+                        "Parse Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            else:
+                MessageBox.Show(
+                    "Could not find coordinate values in clipboard.\n\n"
+                    "Clipboard text: {0}\n\n"
+                    "Expected format: latitude, longitude\n"
+                    "Example: -36.8485, 174.7633".format(clipboard_text),
+                    "Parse Error", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        except Exception as ex:
+            MessageBox.Show("Error pasting coordinates: {0}".format(ex),
+                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+
     def confirm_click(self, sender, e):
         """User confirmed the location, equipment, and report format"""
         try:
@@ -2330,7 +2508,7 @@ class LocationConfirmDialog(Form):
         """Submit optional NotObserved/Failed/Clouded result to OWC."""
         if self.config is None:
             self.lbl_no_obs_status.Text = 'Config unavailable.'
-            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            self.lbl_no_obs_status.ForeColor = self._status_color('error')
             return
 
         obs_type = None
@@ -2341,33 +2519,33 @@ class LocationConfirmDialog(Form):
 
         if obs_type not in ('NotObserved', 'Failed', 'Clouded'):
             self.lbl_no_obs_status.Text = 'Select an observation type.'
-            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            self.lbl_no_obs_status.ForeColor = self._status_color('error')
             return
 
         comment = (self.txt_no_obs_comment.Text or '').strip()
         if len(comment) > 30:
             self.lbl_no_obs_status.Text = 'Comment must be 30 characters or fewer.'
-            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            self.lbl_no_obs_status.ForeColor = self._status_color('error')
             return
 
         try:
             comment.encode('ascii')
         except Exception:
             self.lbl_no_obs_status.Text = 'Comment must contain ASCII only.'
-            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            self.lbl_no_obs_status.ForeColor = self._status_color('error')
             return
 
         allowed = re.compile(r"^[A-Za-z0-9 .,;:!?\-_'()/]*$")
         if comment and not allowed.match(comment):
             self.lbl_no_obs_status.Text = 'Use letters/numbers and basic punctuation only.'
-            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            self.lbl_no_obs_status.ForeColor = self._status_color('error')
             return
 
         try:
             from events import EventProcessor
             self.btn_submit_no_obs.Enabled = False
             self.lbl_no_obs_status.Text = 'Submitting to OWC...'
-            self.lbl_no_obs_status.ForeColor = Color.Gray
+            self.lbl_no_obs_status.ForeColor = self._status_color('muted')
 
             event_payload = {
                 'ow_eventid': getattr(self.event, 'ow_eventid', None),
@@ -2392,10 +2570,10 @@ class LocationConfirmDialog(Form):
                 persisted_ok = self._persist_owc_status(obs_type)
                 if persisted_ok:
                     self.lbl_no_obs_status.Text = 'Submitted to OWC successfully.'
-                    self.lbl_no_obs_status.ForeColor = Color.Green
+                    self.lbl_no_obs_status.ForeColor = self._status_color('success')
                 else:
                     self.lbl_no_obs_status.Text = 'Submitted to OWC. Warning: status could not be saved locally.'
-                    self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+                    self.lbl_no_obs_status.ForeColor = self._status_color('warning')
 
                 # Update the main grid status immediately when possible.
                 try:
@@ -2406,10 +2584,10 @@ class LocationConfirmDialog(Form):
                     pass
             else:
                 self.lbl_no_obs_status.Text = 'OWC submit failed: {0}'.format(result.get('error') or 'Unknown error')
-                self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+                self.lbl_no_obs_status.ForeColor = self._status_color('error')
         except Exception as ex:
             self.lbl_no_obs_status.Text = 'OWC submit exception: {0}'.format(str(ex))
-            self.lbl_no_obs_status.ForeColor = Color.OrangeRed
+            self.lbl_no_obs_status.ForeColor = self._status_color('error')
         finally:
             self.btn_submit_no_obs.Enabled = True
 
@@ -2419,7 +2597,7 @@ class LocationConfirmDialog(Form):
             'Positive': 'Positive',
             'Miss': 'Miss',
             'Negative': 'Miss',
-            'NotObserved': 'Unsure No Obs',
+            'NotObserved': 'No Obs',
             'Failed': 'Failed',
             'Clouded': 'Clouded',
         }

@@ -1,6 +1,6 @@
 # Occultation Manager
 
-**Version 0.2.0-beta.9** - SharpCap add-in for automated occultation observations
+**Version 0.3.0-alpha.1** - SharpCap add-in for automated occultation observations
 
 SharpCap Occultation Manager streamlines your occultation observation workflow by automating event management and generating customizable SharpCap sequences. It downloads your announced observations from Occult Watcher Cloud and creates sequences tailored to your equipment and recording preferences. Sequences can be run interactively or unattended for fully automated recordings for an entire nights observations. The sequences can be run on remote PCs without internet connection for multiple station deployments.
 
@@ -24,17 +24,17 @@ The workflow can be as simple as announce stations in Occult Watcher Cloud, open
 <img width="391" height="248" alt="image" src="https://github.com/user-attachments/assets/f503a43f-d610-46d1-a69a-a4895ca93c05" />
 
 6. **Run Sequences**: Run the sequence(s) to record the occultation from occultation-manager, or use the SharpCap Sequencer separately
-7. **Generate Reports**: Confirm observer location, optionally run NTP analysis, then load Tangra/AOTA analysis and generate reports for North America, Australasia or SODIS reporting systems (working prototypes)
+7. **Report**: Confirm observer location, optionally run NTP analysis, then load Tangra/AOTA analysis and generate reports for North America, Australasia or SODIS reporting systems (working prototypes)
 <img width="494" height="407" alt="image" src="https://github.com/user-attachments/assets/6720113f-5cf5-4e08-a689-7588f370cdeb" />
   
-8. **Validate Timing (optional)**: Use **Tools → NTP Clock Accuracy** or **Tools → GPS vs NTP Testing** for independent UTC accuracy verification
+8. **Validate Timing (optional)**: Use **Tools → NTP / GPS Time Testing → NTP Clock Accuracy** or **Tools → NTP / GPS Time Testing → GPS vs NTP Testing** for independent UTC accuracy verification
   
 
 ## 📦 Installation
 
 ### Quick Start
 
-1. **Download**: Get the latest release `occultation-manager-v0.2.0-beta.9.zip` [https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.2.0-beta.9/occultation-manager-v0.2.0-beta.9.zip)
+1. **Download**: Get the latest release `occultation-manager-v0.3.0-alpha.1.zip` [https://github.com/labstercam/occultation-tools/releases/download/v0.3.0-alpha.1/occultation-manager-v0.3.0-alpha.1.zip](https://github.com/labstercam/occultation-tools/releases/download/v0.3.0-alpha.1/occultation-manager-v0.3.0-alpha.1.zip)
 2. **Extract**: Unzip to a location with read/write access (e.g., `Documents\SharpCap`)
    - ⚠️ **Avoid Program Files** - Windows may restrict write access
    - ✅ **Recommended**: `Documents\SharpCap`
@@ -154,7 +154,7 @@ occultation-manager/
 - Supports Tangra, R-OTE, and Limovie CSV light curve formats; format is auto-detected from file content
 - Integrates AOTA timing data from AOTA XML, AOTA Report files, or PyOTE `fit_metrics.txt`
 - **PyOTE fit_metrics.txt**: auto-detected from the observation folder by file content; select aperture/event then import D/R times directly into the report
-- Camera timing calibration is now integrated: use **Tools → Camera Delay Calibration** to calibrate, save results to the camera profile via **Save Calibration to Camera**, and calculate per-event acquisition delays via **Tools → Camera Delay Calculator**
+- Camera timing calibration is now integrated: use **Tools → Camera Delay Calibration → Open Calibration Tool** to calibrate, save results to the camera profile via **Save Calibration to Camera**, and calculate per-event acquisition delays via **Tools → Camera Delay Calibration → Camera Delay Calculator**
 - GPS timestamp offset and advanced timing analysis remain available as standalone tools in `gps-timing-analysis`
 - Uses Openize SDK for direct Excel cell manipulation (NA/TT)
 - Supports SODIS/IOTA-ES plain-text report generation (Form 2.03)
@@ -162,7 +162,7 @@ occultation-manager/
 - Automatic Occult 4 XML export with matching filename
 - Observing conditions capture (clouds, stability, other notes)
 - Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
-- **Include Station Name in Filenames**: optional checkbox in the Generate Report dialog (unchecked by default) appends the station name to the TT report filename
+- **Include Station Name in Filenames**: optional checkbox in the Report dialog (unchecked by default) appends the station name to the TT report filename
 - **Rename Files dialog**: after report generation, optionally rename the observation files (CSV, AOTA XML/Report, image files, `.lc` files) to share the same stem as the report; proposed names are editable; `_AOTA_…` and `_Bin{N}` suffixes are preserved automatically
 - **Send via Gmail**: post-report button creates a submission ZIP (Excel + CSV for Negative; also AOTA report, AOTA event graphs, and VizieR `.dat` for Positive/Unsure) and opens a Gmail compose window pre-addressed to the RASNZ coordinators; Explorer opens with the ZIP selected for drag-and-drop attachment
 - **D/R uncertainty display**: uncertainty shown in the D/R event info panel is formatted to 1–2 significant figures
@@ -176,6 +176,7 @@ occultation-manager/
 - **Camera Delay Calculator**: Calculate the rolling-shutter acquisition delay for a given star Y pixel position using stored line delay calibrations; one-click copy to clipboard in TANGRA format
 - **NTP Clock Accuracy**: Full loopstats/peerstats offset, jitter, and delay charting with uncertainty estimate; launched as a separate non-blocking window; chart legend lists all servers seen in peerstats (selected peers first, then others alphabetically), each with a distinct color and distance in km
 - **GPS vs NTP Testing**: Measures UTC error of each internet NTP server relative to a GPS PPS refclock using the same NTP dataset; produces per-server uncertainty table, clock drift regression, and three charts (delay, UTC error, selected peer + trend)
+- **PC Performance Testing**: Analyze timestamp deltas and host-PC load while manually recording an ADV file, or load an ADV recording afterward for timing and performance review
 
 **Equipment Management**
 - Multiple telescope and camera configurations

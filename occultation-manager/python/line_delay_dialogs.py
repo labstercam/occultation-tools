@@ -44,6 +44,7 @@ class LineDelayCalibrationManagerDialog(Form):
         camera_id   : if provided, show only runs for this camera; None = all
         camera_name : display name for the title bar (optional)
         """
+        Form.__init__(self)
         self._config = config
         self._camera_id = camera_id
         self._camera_name = camera_name or 'All Cameras'
@@ -62,6 +63,9 @@ class LineDelayCalibrationManagerDialog(Form):
     # ------------------------------------------------------------------
 
     def InitializeComponent(self):
+        is_night = bool(getattr(self._theme_manager, 'is_night_mode', False))
+        muted_color = Color.FromArgb(255, 214, 150) if is_night else Color.DimGray
+
         self.Text = 'Calibration Runs \u2014 ' + self._camera_name
         self.Size = Size(1050, 570)
         self.MinimumSize = Size(800, 440)
@@ -79,7 +83,7 @@ class LineDelayCalibrationManagerDialog(Form):
         )
         self._lbl_hint.Location = Point(10, 10)
         self._lbl_hint.Size = Size(1000, 18)
-        self._lbl_hint.ForeColor = Color.DimGray
+        self._lbl_hint.ForeColor = muted_color
         self._lbl_hint.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
 
         # DataGridView
@@ -155,7 +159,7 @@ class LineDelayCalibrationManagerDialog(Form):
         self._lbl_count.Location = Point(312, 483)
         self._lbl_count.Size = Size(300, 18)
         self._lbl_count.Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-        self._lbl_count.ForeColor = Color.DimGray
+        self._lbl_count.ForeColor = muted_color
 
         # Close button — bottom-right
         self._btn_close = Button()
@@ -325,6 +329,7 @@ class LineDelayCalculatorDialog(Form):
     """
 
     def __init__(self, config, theme_manager=None):
+        Form.__init__(self)
         self._config = config
         self._theme_manager = theme_manager
         self._calib_data = []   # run dicts for the selected camera
@@ -340,6 +345,11 @@ class LineDelayCalculatorDialog(Form):
     # ------------------------------------------------------------------
 
     def InitializeComponent(self):
+        is_night = bool(getattr(self._theme_manager, 'is_night_mode', False))
+        muted_color = Color.FromArgb(255, 214, 150) if is_night else Color.DimGray
+        warning_color = Color.FromArgb(255, 170, 120) if is_night else Color.DarkRed
+        result_color = Color.FromArgb(255, 236, 185) if is_night else Color.DarkBlue
+
         self.Text = 'Camera Delay Calculator'
         self.ClientSize = Size(460, 362)
         self.FormBorderStyle = FormBorderStyle.FixedDialog
@@ -385,7 +395,7 @@ class LineDelayCalculatorDialog(Form):
         )
         self._lbl_no_calib.Location = Point(145, y)
         self._lbl_no_calib.Size = Size(295, 32)
-        self._lbl_no_calib.ForeColor = Color.DarkRed
+        self._lbl_no_calib.ForeColor = warning_color
         self._lbl_no_calib.Visible = False
 
         y += 36
@@ -405,7 +415,7 @@ class LineDelayCalculatorDialog(Form):
         lbl_px.Text = 'pixels'
         lbl_px.Location = Point(263, y + 3)
         lbl_px.AutoSize = True
-        lbl_px.ForeColor = Color.DimGray
+        lbl_px.ForeColor = muted_color
 
         y += 42
 
@@ -414,7 +424,7 @@ class LineDelayCalculatorDialog(Form):
         lbl_result_title.Text = 'Calculated Acquisition Delay'
         lbl_result_title.Location = Point(15, y)
         lbl_result_title.AutoSize = True
-        lbl_result_title.ForeColor = Color.DimGray
+        lbl_result_title.ForeColor = muted_color
 
         y += 22
 
@@ -424,7 +434,7 @@ class LineDelayCalculatorDialog(Form):
         self._lbl_result.Size = Size(430, 42)
         self._lbl_result.Font = Font(
             self._lbl_result.Font.FontFamily, 22, FontStyle.Bold)
-        self._lbl_result.ForeColor = Color.DarkBlue
+        self._lbl_result.ForeColor = result_color
 
         y += 48
 
@@ -432,7 +442,7 @@ class LineDelayCalculatorDialog(Form):
         self._lbl_formula.Text = 'Per Line Delay \u00d7 Y + Line 0 Delay'
         self._lbl_formula.Location = Point(15, y)
         self._lbl_formula.AutoSize = True
-        self._lbl_formula.ForeColor = Color.DimGray
+        self._lbl_formula.ForeColor = muted_color
 
         y += 22
 
@@ -440,7 +450,7 @@ class LineDelayCalculatorDialog(Form):
         self._lbl_formula_vals.Text = ''
         self._lbl_formula_vals.Location = Point(15, y)
         self._lbl_formula_vals.Size = Size(430, 17)
-        self._lbl_formula_vals.ForeColor = Color.DimGray
+        self._lbl_formula_vals.ForeColor = muted_color
 
         y += 34
 
@@ -640,6 +650,7 @@ class ManualCalibrationEntryDialog(Form):
     """
 
     def __init__(self, config, camera_id, camera_name, theme_manager=None):
+        Form.__init__(self)
         self._config = config
         self._camera_id = camera_id
         self._camera_name = camera_name
@@ -653,6 +664,9 @@ class ManualCalibrationEntryDialog(Form):
     # ------------------------------------------------------------------
 
     def InitializeComponent(self):
+        is_night = bool(getattr(self._theme_manager, 'is_night_mode', False))
+        muted_color = Color.FromArgb(255, 214, 150) if is_night else Color.DimGray
+
         self.Text = 'Add Manual Calibration \u2014 ' + self._camera_name
         self.ClientSize = Size(450, 500)
         self.FormBorderStyle = FormBorderStyle.FixedDialog
@@ -671,7 +685,7 @@ class ManualCalibrationEntryDialog(Form):
         lbl_cam.Text = 'Camera: ' + self._camera_name
         lbl_cam.Location = Point(LX, y)
         lbl_cam.AutoSize = True
-        lbl_cam.ForeColor = Color.DimGray
+        lbl_cam.ForeColor = muted_color
         y += RH
 
         # --- Calibration Results (required) ---

@@ -1,17 +1,153 @@
 # Occultation Manager - Release Notes
 
-## Version 0.2.0-beta.9 (April 2026)
+## Version 0.3.0-alpha.2 (June 2026)
 
-**Report Generation Bug Fixes, UX Improvements, Gmail Submission, and NTP Chart Enhancements**
+**Public Alpha — Full Reporting Workflow with TANGRA/AOTA, OBS XML, and NTP/GPS PPS Timing Support**
+
+Occultation Manager is a SharpCap add-in that automates the complete asteroid occultation
+workflow: event management, sequence recording, multi-format report generation, and submission.
+
+---
+
+### Event Management
+
+- Downloads your announced observations from Occult Watcher Cloud
+- Sortable event grid (column-click sorting, DateTime ascending default)
+- Configurable event retention (1–400 days)
+- Filters by date, location, and probability
+
+### Observation Preparation
+
+- **GOTO** — slew mount to event coordinates
+- **Plate Solve** — verify pointing and label target star
+- **Camera Setup** — configure exposure and coordinates from the event
+- **Test Recording** — short recording for setup verification without disturbing settings
+
+### Sequence Generation
+
+- Generates SharpCap `.scs` files from five provided templates (UTC, Local Time, Minimal,
+  Just Record, Test Recording)
+- Templates perform event data substitution automatically
+- Combined sequences for multiple events in one night
+- UTC countdown functions safe for 24+ hour pre-staging
+- Sequences can run on remote PCs without internet access
+- Users can adapt or design templates for their own equipment and usage
+
+### Report Generation
+
+The two-phase report dialog covers timing confirmation (Phase A) and file selection (Phase B).
+
+**Timing sources supported:**
+
+| Source | Format |
+|--------|--------|
+| AOTA XML | `.aota.xml` — D/R times and errors |
+| AOTA Report | `_aota_report.txt` — D/R times, errors, and SNR |
+| PyOTE metrics | `fit_metrics.txt` — auto-detected by content; aperture/event selection |
+
+**Light curve formats supported:**
+
+| Format | Detection |
+|--------|-----------|
+| Tangra | Standard IOTA CSV |
+| R-OTE / PyOTE | CSV with PyOTE header |
+| Limovie | Limovie CSV export |
+
+**Timestamp Check** — frame interval deviation analysis, delayed/late frame count, event-time
+window check against OWC prediction. **Inspect Timestamps** button opens a dedicated chart
+window with deviation trace, signal trace, and D/R reference lines.
+
+**Output formats:**
+
+| Report | Notes |
+|--------|-------|
+| Trans-Tasman / RASNZ (TT) | RASNZ Excel report (`.xlsx`) |
+| SODIS | IOTA-ES plain-text report |
+| Occult 4 OBS XML | `.xml` for submission to Occult 4 coordinators |
+| North America (NA) | IOTA Excel report (`.xlsx`)  - not fully tested yet|
+
+**NTP timing workflow:**
+- Confirmation checkboxes gate the Generate button until camera delay and NTP offset are
+  verified against what was entered in Tangra
+- Stale correction warning re-opens checkboxes if any input changes after confirmation
+- D ≥ R plausibility check (blocking) and large-correction warning (non-blocking)
+- NTP uncertainty checkbox adds offset error in quadrature to D/R uncertainties
+- Timing note written to report comments section for all three report formats
+
+### Occult 4 OBS XML Export
+
+The XML export produces a submission-ready file for Occult 4 coordinators:
+
+- **`<Star>`** — catalog name and number; all astrometric detail fields left blank for
+  coordinators to populate
+- **`<Asteroid>`** — number and name; motion coefficients and physical data left blank
+- **`<Observer><ID>`** — observer name (initial + full surname), location, coordinates
+  (longitude/latitude to 3 dp), altitude, telescope, camera method, time source
+- **`<Conditions>`** — transparency, stability, SNR (capped at 20.0; blank if zero or
+  absent), timing comment (camera name + correction note passed from the report dialog)
+- **`<D>` / `<R>`** — times, event codes, accuracy
+
+### Post-Report Workflow
+
+- **Rename Files** — renames observation files (CSV, AOTA XML/Report, PyOTE metrics,
+  images, `.lc`) to share the report filename stem; editable target names; `_AOTA_…` and
+  `_Bin{N}` suffixes preserved automatically
+- **Send via Gmail** — creates a submission ZIP and opens Gmail compose pre-addressed to
+  RASNZ coordinators with report filename as subject; opens Explorer with ZIP selected
+- **VizieR Export** — exports processed light curve in VizieR 5-line `.dat` format;
+  opens modally so the post-report dialog remains accessible
+
+### Occult Watcher Cloud Submission
+
+The Observation Result section includes an **OWC Report** panel for submitting positive/miss/
+clouded-out/failed results directly to Occult Watcher Cloud from within the report dialog.
+
+### Tools
+
+| Tool | Location |
+|------|----------|
+| NTP Clock Accuracy | Tools → NTP / GPS Time Testing |
+| GPS vs NTP Testing | Tools → NTP / GPS Time Testing |
+| PC Performance Testing | Tools → PC Performance Testing |
+| Camera Delay Calibration | Tools → Camera Delay Calibration |
+| Line Delay Calculator | Tools → Camera Delay Calibration |
+
+---
+
+## Version 0.3.0-alpha.1 (June 2026)
+
+**First Public Alpha Release - PC Performance Testing, Timing Workflow Refinement, and Release Packaging Alignment**
+
+This first public alpha rolls up the report-generation, UX, and NTP improvements from the late
+beta builds and adds the first packaged pass of the new PC Performance Testing workflow.
+
+### PC Performance Testing Tool (New)
+
+A new **PC Performance Testing** tool is now available from the Tools menu for measuring host-PC
+timing and acquisition behaviour alongside manual ADV recordings or imported ADV files.
+
+- Supports live monitoring while or  manually record an ADV file
+- Supports post-capture ADV analysis without stale PC load chart data carrying over
+- Adds explicit color keys for PC performance chart traces for reliable legend visibility
+- Refines left-panel workflow text and layout for live-recording and ADV-analysis modes
+
+### Timing Tools Menu Reorganization (New)
+
+The Tools menu now groups timing-related workflows more clearly.
+
+- **Camera Delay Calibration** section groups the calibration tool and delay calculator
+- **NTP / GPS Time Testing** section groups NTP Clock Accuracy and GPS vs NTP Testing
+- **PC Performance Testing** now appears as its own grouped entry
+
+### Release and Documentation Alignment
+
+The release package script, in-app help, README, API docs, and release instructions have been
+updated for the `0.3.0-alpha.1` release line.
 
 ### SNR Fix — AOTA Report Parser (Bug Fix)
 
 The SNR (Signal-to-Noise Ratio) field was not populating in the TT Excel report when an AOTA
-Report text file was used as the timing source. The parser's regex was matching only `Ave:` but
-some AOTA Report versions label the average as `Average:`.
-
-- Regex updated from `r'Ave:\s*([\d.]+)'` to `r'(?:Ave|Average)\s*:\s*([\d.]+)'` with `re.IGNORECASE`
-- SNR now correctly populates cell W40 in the RASNZ TT report for both label variants
+Report text file was used as the timing source. 
 
 ### Camera Acquisition Delay — 4 Decimal Places (Bug Fix)
 

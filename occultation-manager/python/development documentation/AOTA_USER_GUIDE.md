@@ -15,10 +15,10 @@ AOTA (Asteroid Occultation Timing Analysis) is a tool that analyzes your occulta
 2. AOTA will create a file like: `eventname.aota.xml`
 3. Save this file somewhere you can find it
 
-### Step 2: Generate Report in Occultation Manager
+### Step 2: Open Report in Occultation Manager
 1. Open Occultation Manager in SharpCap
 2. Select a **past event** from the event list
-3. Click **"Generate Report"** button
+3. Click **"Report"** button
 
 ### Step 3: Follow the Report Generation Flow
 The current flow uses a **Comprehensive Report Dialog**:

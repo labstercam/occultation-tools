@@ -70,7 +70,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
     def generate_report(self, event, telescope_id=None, camera_id=None, observation_type=None, 
                        tangra_data=None, aota_report_data=None, aota_xml_used=False,
                        clouds=None, stability=None, other_conditions=None, timing_data=None,
-                       ntp_comment=None, include_station_name=True):
+                       ntp_comment=None, observation_comment=None, include_station_name=True):
         """Generate a Trans-Tasman report using Openize SDK
         
         Args:
@@ -101,6 +101,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         self._other_conditions = other_conditions
         self._timing_data = timing_data
         self._ntp_comment = ntp_comment
+        self._observation_comment = observation_comment
         self._include_station_name = include_station_name
         
         print("\n" + "="*60)
@@ -393,8 +394,10 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         timing_note = self.build_timing_note(self._timing_data)
         if timing_note:
             self._set_cell(worksheet, "D43", timing_note)
+        if self._observation_comment:
+            self._set_cell(worksheet, "D44", self._observation_comment)
         if self._ntp_comment:
-            self._set_cell(worksheet, "D44", self._ntp_comment)
+            self._set_cell(worksheet, "D45", self._ntp_comment)
 
         # AOTA TIMING DATA - populate if available from AOTA Report
         if self._aota_report_data:
