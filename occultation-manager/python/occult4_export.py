@@ -203,6 +203,9 @@ class Occult4Exporter:
         elif 'Gaia DR1' in str(star_catalog):
             gaia_version = 1
             gaia_id = star_number
+        elif 'Gaia DR4' in str(star_catalog):
+            gaia_version = 4
+            gaia_id = star_number
         
         # Get occelmnt_data if available (preferred source)
         occelmnt_data = event.original_data.get('occelmnt_data', {}) if hasattr(event, 'original_data') else {}
@@ -336,32 +339,43 @@ class Occult4Exporter:
         return star_line
     
     def _parse_star_catalog(self, star_name):
-        """Parse star name to determine catalog and number"""
-        if not star_name:
-            return 'Unknown', '0'
+            """Parse star name to determine catalog and number"""
+            if not star_name:
+                return 'Unknown', '0'
+            
+            star_name = star_name.upper().strip()
+
+            # Gaia DR3 format
+            if 'GAIA DR3' in star_name:
+                return 'Gaia DR3', star_name.replace('GAIA DR3 ', '').strip()
         
-        # Gaia DR3 format
-        if 'Gaia DR3' in star_name:
-            return 'Gaia DR3', star_name.replace('Gaia DR3 ', '').strip()
+            # Gaia DR2 format
+            if 'GAIA DR2' in star_name:
+                return 'Gaia DR2', star_name.replace('GAIA DR2 ', '').strip()
         
-        # Gaia DR2 format
-        if 'Gaia DR2' in star_name:
-            return 'Gaia DR2', star_name.replace('Gaia DR2 ', '').strip()
+            # Gaia DR1 format
+            if 'GAIA DR1' in star_name:
+                return 'Gaia DR1', star_name.replace('GAIA DR1 ', '').strip()
         
-        # UCAC4 format
-        if star_name.startswith('UCAC4'):
-            return 'UCAC4', star_name.replace('UCAC4 ', '').strip()
+            # Handle raw GAIA ID starting with 'J'
+            if star_name.startswith('J'):
+                # Raw GAIA ID (e.g., "J1234567890123456789")
+                return 'Gaia DR3', star_name.strip()
         
-        # Tycho format
-        if star_name.startswith('TYC'):
-            return 'Tycho2', star_name.replace('TYC ', '').strip()
+            # UCAC4 format
+            if star_name.startswith('UCAC4'):
+                return 'UCAC4', star_name.replace('UCAC4 ', '').strip()
         
-        # NOMAD format
-        if star_name.upper().startswith('NOMAD'):
-            return 'NOMAD', star_name.replace('NOMAD ', '').replace('nomad ', '').strip()
+            # Tycho format
+            if star_name.startswith('TYC'):
+                return 'Tycho2', star_name.replace('TYC ', '').strip()
         
-        # Default fallback
-        return 'Unknown', star_name
+            # NOMAD format
+            if star_name.upper().startswith('NOMAD'):
+                return 'NOMAD', star_name.replace('NOMAD ', '').replace('nomad ', '').strip()
+        
+            # Default fallback
+            return 'Unknown', star_name
     
     def _build_star_issues_line(self, event):
         """Build the StarIssues line with reliability and quality indicators"""

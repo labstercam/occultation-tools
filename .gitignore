@@ -1,4 +1,6 @@
-# Python
+# ==============================================================================
+# 1. PYTHON RUNTIMES & ENVIRONMENT EXCLUSIONS
+# ==============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -6,6 +8,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 build/
 develop-eggs/
@@ -22,41 +25,71 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.pyc
 
-# Log files
+# ==============================================================================
+# 2. BINARY EXECUTABLES & PRE-COMPILED DYNAMIC LIBRARIES (THE FREEZE CULPRITS)
+# ==============================================================================
+*.dll
+*.exe
+*.bin
+*.dylib
+
+# ==============================================================================
+# 3. COMPRESSED ARCHIVES & RELEASE CONFIGURATIONS
+# ==============================================================================
+# Ignore all zip files by default
+*.zip
+# FORCE tracking of your specific PowerShell release script (Added slash for root precision)
+!/create_release_zip.ps1
+
+# ==============================================================================
+# 4. MASSIVE ASTRONOMICAL DATA, MEDIA & LOGS
+# ==============================================================================
+*.fits
+*.fit
+*.ser
+*.avi
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.ico
 *.log
-
-# Debug files
 *_debug.log
 debug.log
 owc_data_debug.log
 
-# IDE
+# ==============================================================================
+# 5. DOCUMENTATION & PROPRIETARY OFFICE FORMATS
+# ==============================================================================
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.csv
+
+# ==============================================================================
+# 6. IDE, TEMPORARY SYSTEM FILES & DATA HOARDS
+# ==============================================================================
 .vscode/
 .idea/
+.project
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Test outputs
 test_output/
-*.zip
-!create_release_zip.ps1
+
+# ==============================================================================
+# 7. PROJECT-SPECIFIC LOCAL RUNTIME DATA & REPORTS
+# ==============================================================================
 occultation-manager/temp_release/
-
-# Config files with sensitive data (if any)
-# config_local.json
-
-# Occultation Manager runtime data (generated locally)
 occultation-manager/data/config/occultation_config.json
 occultation-manager/data/events/occultations.json
 occultation-manager/data/events/occultations_latest.json
 occultation-manager/data/reports/
-
-# Legacy local runtime locations (kept for compatibility)
 occultation-manager/python/files/
 occultation-manager/python/Reports/

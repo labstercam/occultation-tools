@@ -34,6 +34,7 @@ def parse_star_id(star_id):
         'TYC 1234-5678-1'   -> tycho2='1234-5678-1'
         'HIP 12345'         -> hipparcos='12345'
         'Gaia DR3 ...'      -> all empty  (must not be placed in hipparcos)
+        'J1234567890123456789' -> all empty (raw GAIA ID starting with 'J')
         Anything unrecognised -> all empty
 
     Returns a dict with keys 'ucac4', 'tycho2', 'hipparcos'; values are
@@ -46,6 +47,11 @@ def parse_star_id(star_id):
 
     star_id = star_id.strip()
     upper = star_id.upper()
+
+    # Check for raw GAIA ID starting with 'J' (e.g., "J1234567890123456789")
+    if upper.startswith('J'):
+        # Raw GAIA ID - must NOT go into any VizieR field
+        return result
 
     if upper.startswith('UCAC4 ') or upper.startswith('UCAC4-') or upper.startswith('UCAC4_'):
         # e.g. 'UCAC4 361-199861'

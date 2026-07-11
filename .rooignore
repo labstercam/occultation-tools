@@ -1,0 +1,35 @@
+# --- Virtual Environments & Runtimes ---
+.venv/
+venv/
+env/
+__pycache__/
+
+# --- Editor & Version Control Metadata ---
+.git/
+.vscode/
+
+# --- Massive Astronomical Data Files & Media ---
+*.fits
+*.fit
+*.ser
+*.avi
+*.mp4
+*.png
+*.jpg
+*.jpeg
+*.ico
+
+# --- Proprietary & Compiled Binary Formats ---
+*.dll
+*.exe
+*.zip
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+
+# --- Logs & Loose Data Tables ---
+*.log
+*.csv
+*.txt

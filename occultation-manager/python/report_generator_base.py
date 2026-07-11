@@ -41,24 +41,36 @@ class ReportGeneratorBase:
         if not star_name:
             return None, None
         
+        star_name = star_name.upper().strip()
+
         # Gaia DR3 format: "Gaia DR3 4691443935057297792"
-        if star_name.startswith('Gaia DR3'):
+        if star_name.startswith('GAIA DR3') or star_name.startswith('GAIA') or star_name.startswith('J'):
             star_catalog = '1G    Gaia - DR3'
-            star_number = star_name.replace('Gaia DR3 ', '')
+            # Extract star number based on prefix
+            if star_name.startswith('GAIA DR3 '):
+                star_number = star_name.replace('GAIA DR3 ', '').strip()
+            elif star_name.startswith('GAIA '):
+                star_number = star_name.replace('GAIA ', '').strip()
+            elif star_name.startswith('J'):
+                # Handle raw GAIA ID that starts with 'J' (e.g., "J1234567890123456789")
+                star_number = star_name.strip()
+            else:
+                # Fallback - just use the name
+                star_number = star_name.strip()
             return star_catalog, star_number
-        
+
         # UCAC4 format: "UCAC4 123-456789" 
         if star_name.startswith('UCAC4'):
             star_catalog = '1U    UCAC4'
             star_number = star_name.replace('UCAC4 ', '')
             return star_catalog, star_number
-        
+
         # Tycho format: "TYC 1234-5678-1"
         if star_name.startswith('TYC'):
             star_catalog = '1T    Tycho2'
             star_number = star_name.replace('TYC ', '')
             return star_catalog, star_number
-        
+
         # Nomad format: "NOMAD 0123-4567890"
         if star_name.upper().startswith('NOMAD'):
             star_catalog = '1N    NOMAD1'
@@ -95,7 +107,7 @@ class ReportGeneratorBase:
         # Default fallback
         star_catalog = '1N    xxx - xxxxxxx'
         star_number = star_name.replace('1N ', '')
-        
+
         return star_catalog, star_number
     
     def generate_report(self, event, telescope_id=None, camera_id=None):
