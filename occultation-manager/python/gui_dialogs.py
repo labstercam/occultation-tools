@@ -921,9 +921,29 @@ class ConfigurationDialog(Form):
         btn_open_templates.Click += self.open_templates_folder_click
         tab.Controls.Add(btn_open_templates)
 
+        # Folder for Recordings
+        lbl_recordings = Label()
+        lbl_recordings.Text = "Folder for Recordings:"
+        lbl_recordings.Location = Point(int(20 * sf), int(180 * sf))
+        lbl_recordings.Size = Size(int(150 * sf), int(20 * sf))
+        tab.Controls.Add(lbl_recordings)
+
+        self.txt_recordings_folder = TextBox()
+        self.txt_recordings_folder.Location = Point(int(180 * sf), int(178 * sf))
+        self.txt_recordings_folder.Size = Size(int(300 * sf), int(22 * sf))
+        self.txt_recordings_folder.ReadOnly = True
+        tab.Controls.Add(self.txt_recordings_folder)
+
+        btn_browse_recordings = Button()
+        btn_browse_recordings.Text = "Browse..."
+        btn_browse_recordings.Location = Point(int(490 * sf), int(176 * sf))
+        _autosize_button(btn_browse_recordings, sf, min_width=int(80 * sf))
+        btn_browse_recordings.Click += self.browse_recordings_folder_click
+        tab.Controls.Add(btn_browse_recordings)
+
         lbl_path_note = Label()
         lbl_path_note.Text = "Folders are fixed under the installation data directory."
-        lbl_path_note.Location = Point(int(20 * sf), int(190 * sf))
+        lbl_path_note.Location = Point(int(20 * sf), int(220 * sf))
         lbl_path_note.Size = Size(int(500 * sf), int(20 * sf))
         lbl_path_note.ForeColor = Color.Gray
         tab.Controls.Add(lbl_path_note)
@@ -960,6 +980,21 @@ class ConfigurationDialog(Form):
 
     def open_templates_folder_click(self, sender, e):
         self._open_folder_in_explorer(self.config.get_templates_folder())
+
+    def browse_recordings_folder_click(self, sender, e):
+        """Browse for recordings folder"""
+        dialog = FolderBrowserDialog()
+        dialog.Description = "Select default root folder for recordings"
+        
+        # Start from current recordings folder if set
+        current_folder = self.config.get_recordings_folder()
+        if current_folder and os.path.exists(current_folder):
+            dialog.SelectedPath = current_folder
+        
+        if dialog.ShowDialog() == DialogResult.OK:
+            folder_path = dialog.SelectedPath
+            self.txt_recordings_folder.Text = folder_path
+            self.config.set_recordings_folder(folder_path)
 
     def open_debug_logs_folder_click(self, sender, e):
         """Open folder containing debug log files."""
@@ -1394,6 +1429,9 @@ class ConfigurationDialog(Form):
         self.txt_observer_country.Text = self.config.get_observer_country()
         self.txt_observer_phone.Text = self.config.get_observer_phone()
         self.txt_observer_fax.Text = self.config.get_observer_fax()
+        
+        # Recordings folder
+        self.txt_recordings_folder.Text = self.config.get_recordings_folder()
     
     def browse_file_folder_click(self, sender, e):
         """Open fixed events folder"""

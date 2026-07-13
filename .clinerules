@@ -1,0 +1,75 @@
+# ==============================================================================
+# 1. FILE ACCESS RESTRICTIONS & AGENT BEHAVIOUR
+# ==============================================================================
+- Never read files inside .venv/, venv/, env/, or __pycache__/.
+- Do not read raw astronomical video or image data files (.fits, .ser, .avi, .png) unless explicitly asked.
+- Do not read binary files such as .pdf, .docx, or .xlsx unless explicitly asked.
+- Do not read the contents of .zip files unless explicitly asked.
+- Do not read .dll or .exe files under any circumstances.
+- Prioritize reading documentation files (e.g., API.md and ARCHITECTURE.md) before reading raw .py files.
+- Prioritize reading .py file headers and class definitions before reading whole multi-thousand-line files.
+- Always assume complex prompts may contain ambiguity: propose a clear implementation outline and ask for user confirmation before executing massive code modifications.
+- Do not read entire files unless explicitly requested. Use the `view_source_code_by_line_number` tool to target edits.
+- If tests are required prompt the user asking if they want a test to run in the IronPython console within SharpCap.
+- Do not attempt to run Python tests or IronPython tests from within Visual Studio Code or the terminal unless specificially asked to.
+
+
+# ==============================================================================
+# 2. RUNTIME SYSTEM CONTEXT & CONSTRAINTS
+# ==============================================================================
+CONTEXT: This is an IronPython codebase running inside the SharpCap Astronomy application.
+CONSTRAINTS:
+1. Target IronPython 3.4.x syntax rules. This requires strict Python 3 compliance (e.g., print() with parentheses, absolute imports, and modern try/except syntax). 
+2. Be aware that IronPython 3.4 runs on top of the .NET Common Language Runtime (CLR) via .NET Framework 4.6.2+, .NET 6, or .NET 8.
+3. NEVER suggest CPython binary extensions (e.g., standard numpy, scipy, cv2, pandas) utilizing compiled .pyd wheels. They will crash the host.
+4. For Windows UI/UX, use System.Windows.Forms or WPF via native .NET CLR imports (e.g., 'import System.Windows.Forms as WinForms').
+5. For high-precision microsecond timing or serial ports, leverage native .NET classes: System.Diagnostics.Stopwatch, System.IO.Ports.SerialPort, and System.DateTime.UtcNow.
+6. SharpCap API specifics: Always remember the primary application entry point is the global 'SharpCap' object and its properties (e.g., SharpCap.SelectedCamera).
+7. f-strings work fine for this codebase. 
+
+# ==============================================================================
+# 3. CPYTHON BINARY EXTENSION ALTERNATIVES (CRITICAL)
+# ==============================================================================
+1. For Data Math & Arrays: Instead of NumPy, use native .NET Numeric vectors (import System.Numerics) or loop over pure-Python lists/arrays using math, json, and datetime standard libraries.
+2. For Native C++ C-style Windows DLLs: If custom high-performance astronomy algorithms or external C-compiled DLLs must be called, use the pure-Python 'ctypes' module.
+   - Example Pattern: 
+     import ctypes
+     my_astro_dll = ctypes.windll.LoadLibrary("path/to/astrometry_helper.dll")
+3. For C#/.NET Compiled Assembly DLLs: To bring in robust mathematical, image manipulation, or hardware libraries, use the 'clr' module to bind Windows Assemblies.
+   - Example Pattern:
+     import clr
+     clr.AddReference("System.Numerics")
+     clr.AddReference("path/to/CustomAstroNet.dll")
+4. When writing high-speed buffer algorithms (e.g., GPS PPS time stamp arrays or SharpCap frame-handling), force the model to look for existing .NET framework namespaces (like System.Collections.Generic) or pure-Python array.array structures rather than standard pip-installed binary wheels.
+
+# ==============================================================================
+# 4. GUIDELINES FOR EXTERNAL WINDOWS DLL SEARCHES & SELECTION
+# ==============================================================================
+1. When proposing external .dll solutions (for C++ or .NET), NEVER search or recommend generic "DLL download" aggregator websites (e.g., dll-files, dllme). They are security risks and unreliable.
+2. For High-Performance Math, LinAlg, or Signal Processing: Instruct the user to source native Windows binaries from trusted, open-source scientific repositories:
+   - Intel oneAPI Math Kernel Library (MKL) via official Intel distributions.
+   - OpenBLAS or LAPACK via their official GitHub releases or well-maintained MSVC builds.
+3. For Astronomy, Ephemerides, and Coordinate Conversions: Restrict recommendations to recognized, verified astronomical software repositories:
+   - ASCOM Platform COM/.NET DLLs (for telescope, focuser, and dome control).
+   - USNO NOVAS (Naval Observatory Vector Astrometry Software) C/C++ source compiled into a standard Windows DLL.
+   - SOFA (Standards of Fundamental Astronomy) official ANSI C libraries.
+4. For Hardware Interfacing & Time Sync (NTP/PTP/GPS):
+   - Rely strictly on standard Windows System DLLs (e.g., kernel32.dll for high-resolution performance counters via QueryPerformanceCounter) rather than third-party wrappers.
+   - Use official vendor-provided .NET Interop Assemblies or C++ DLLs (e.g., FTDI, Prolific, or GPS manufacturer SDKs).
+5. When instructing the user to implement an external .dll, always output a clear checklist including:
+   - The verified, official source URL (GitHub repository or official institution domain).
+   - Architecture validation (Must be 64-bit to match SharpCap 4.x x64 runtimes).
+   - The exact 'ctypes' or 'clr' wrapper code structure to interface with it safely.
+
+# ==============================================================================
+# 5. SHARPCAP ASYNCHRONOUS API & THREADING RULES
+# ==============================================================================
+1. Avoid Async Methods: SharpCap methods returning a .NET 'Task' object (e.g., RunCaptureAsync) run asynchronously. Prefer the non-async blocking alternatives (e.g., RunCapture) to keep script workflows reliable and simple.
+2. If an Async method must be used, enforce .Wait() or .Result extensions immediately following the call to avoid race conditions.
+3. Live View Frames: When attaching custom math or serial logging events to incoming frames, instruct the agent to safely tap into the 'SharpCap.SelectedCamera.FrameCaptured' event handler using .NET delegate patterns.
+
+# ==============================================================================
+# 6. SHARPCAP WINDOWS UX & THEME COMPLIANCE
+# ==============================================================================
+1. Always use the project's internal 'theme_manager' class for setting visual colour schemes.
+2. Ensure UI controls query SharpCap's current theme state (such as checking for Night Mode) so that UI windows dynamically shift to a red-light scheme and do not blind astronomers in the field.

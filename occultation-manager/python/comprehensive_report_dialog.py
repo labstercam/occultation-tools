@@ -710,8 +710,50 @@ class ComprehensiveReportDialog(Form):
         else:
             self.remembered_folder = None
 
+        # Try to auto-populate folder from recordings folder
+        self._auto_populate_folder_from_recordings()
+
         # Pre-select timing method from camera config
         self._init_timing_section()
+    
+    def _auto_populate_folder_from_recordings(self):
+        """Auto-populate folder textbox from recordings folder if asteroid folder found."""
+        # Check if recordings folder is configured and exists
+        recordings_folder = self.config.get_recordings_folder()
+        if not recordings_folder or not os.path.exists(recordings_folder):
+            return
+        
+        # Get asteroid name from event
+        asteroid_name = self.event.get_asteroid_display_name()
+        if not asteroid_name:
+            return
+        
+        try:
+            # Search immediate subfolders for asteroid name (case-insensitive)
+            matching_folders = []
+            for item in os.listdir(recordings_folder):
+                item_path = os.path.join(recordings_folder, item)
+                if os.path.isdir(item_path) and asteroid_name.lower() in item.lower():
+                    matching_folders.append(item_path)
+            
+            # If exactly one match found, auto-populate the folder
+            if len(matching_folders) == 1:
+                folder_path = matching_folders[0]
+                self.current_folder = folder_path
+                self.folder_textbox.Text = folder_path
+                
+                # Save parent folder for next time (one level up from selected folder)
+                parent_folder = os.path.dirname(folder_path)
+                self.config.set_last_report_folder(parent_folder)
+                
+                # Update file status labels
+                self._update_file_status_labels()
+                self.update_button_state()
+                
+                print(f"Auto-populated folder from recordings: {folder_path}")
+        except Exception as ex:
+            # Log error but continue normally
+            print(f"Error auto-populating folder from recordings: {ex}")
     
     def _rebuild_equipment_proxies(self, telescope_id, camera_id, report_type):
         """Build proxy objects from pre-selected Dialog 1 values.
@@ -800,14 +842,36 @@ class ComprehensiveReportDialog(Form):
         dialog = FolderBrowserDialog()
         dialog.Description = "Select folder containing AOTA and light curve CSV files"
         
-        # Start in remembered folder if available
-        if hasattr(self, 'remembered_folder') and self.remembered_folder and os.path.exists(self.remembered_folder):
-            dialog.SelectedPath = self.remembered_folder
-        else:
-            # Default to Reports folder
-            reports_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Reports')
-            if os.path.exists(reports_folder):
-                dialog.SelectedPath = reports_folder
+        # Check if recordings folder is configured and exists
+        recordings_folder = self.config.get_recordings_folder()
+        if recordings_folder and os.path.exists(recordings_folder):
+            # Get asteroid name from event
+            asteroid_name = self.event.get_asteroid_display_name()
+            if asteroid_name:
+                try:
+                    # Search immediate subfolders for asteroid name (case-insensitive)
+                    matching_folders = []
+                    for item in os.listdir(recordings_folder):
+                        item_path = os.path.join(recordings_folder, item)
+                        if os.path.isdir(item_path) and asteroid_name.lower() in item.lower():
+                            matching_folders.append(item_path)
+                    
+                    # If exactly one match found, pre-select that folder
+                    if len(matching_folders) == 1:
+                        dialog.SelectedPath = matching_folders[0]
+                except Exception as ex:
+                    # Log error but continue normally
+                    print(f"Error searching for asteroid folder: {ex}")
+        
+        # If no auto-selection or error, use remembered folder
+        if not dialog.SelectedPath or not os.path.exists(dialog.SelectedPath):
+            if hasattr(self, 'remembered_folder') and self.remembered_folder and os.path.exists(self.remembered_folder):
+                dialog.SelectedPath = self.remembered_folder
+            else:
+                # Default to Reports folder
+                reports_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Reports')
+                if os.path.exists(reports_folder):
+                    dialog.SelectedPath = reports_folder
         
         if dialog.ShowDialog() == DialogResult.OK:
             folder_path = dialog.SelectedPath
