@@ -45,7 +45,37 @@ class EventProcessor:
             print(f"Error saving occultations: {ex}")
             return False
     
-    @staticmethod
+    @staticmethod    
+    def filter_out_existing_events(existing_events, new_events):
+        """Return only events that don't exist in existing_events"""
+        if not existing_events:
+            return new_events
+        
+        # Build set of existing IDs - check both ow_eventid and id fields
+        existing_ids = set()
+        for event in existing_events:
+            if event:
+                # Try ow_eventid first (actual OW Cloud ID)
+                ow_eventid = event.get('ow_eventid')
+                if ow_eventid:
+                    existing_ids.add(ow_eventid)
+                # Also check the constructed id field as fallback
+                constructed_id = event.get('id')
+                if constructed_id:
+                    existing_ids.add(constructed_id)
+        
+        filtered = []
+        
+        for event in new_events:
+            # For raw OW Cloud data, the event ID is in 'Id' field (capital I)
+            # For processed events, it's in 'ow_eventid' or 'id' fields
+            event_id = event.get('ow_eventid') or event.get('id') or event.get('Id')
+            if event_id and event_id not in existing_ids:
+                filtered.append(event)
+        
+        return filtered
+    
+    @staticmethod    
     def merge_occultation_lists(existing, new, id_key='unique_id', retention_days=14):
         """Merge two lists of occultation dictionaries"""
         cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
@@ -510,7 +540,7 @@ class EventProcessor:
                 'attempted_calls': attempted_calls,
             }
 
-    def update_ow_cloud_events(self, progress_callback=None):
+    def update_ow_cloud_events(self, progress_callback=None, skip_existing=False):
         """Get all your OWC announced events using configuration"""
         try:
             result = EventProcessor.get_owc_events_v2(
@@ -524,6 +554,15 @@ class EventProcessor:
             raise RuntimeError(f"OW Cloud Connection Error: {reason}")
         except Exception as e:
             raise RuntimeError(f"OW Cloud Connection Error: {e}")
+
+        # If skip_existing is True, filter out events we already have before processing
+        if skip_existing:
+            existing_occultations = EventProcessor.load_occultations(self.config.get_occultations_file(), self.config)
+            if existing_occultations:
+                original_count = len(result)
+                print(f"Before filtering: {original_count} events from OW Cloud, {len(existing_occultations)} existing events")
+                result = EventProcessor.filter_out_existing_events(existing_occultations, result)
+                print(f"Filtered: {len(result)} new of {original_count} total events")
 
         # Build geocode cache from existing saved events so repeated downloads
         # can reuse elevation/location by coordinates instead of API calls.
@@ -1445,11 +1484,14 @@ class OccultationManager:
             return True
         return False
     
-    def download_events_from_cloud(self, progress_callback=None):
+    def download_events_from_cloud(self, progress_callback=None, skip_existing=False):
         """Download events from OW Cloud"""
         try:
             # This downloads, merges with existing, and saves to occultations.json
-            events_data = self.event_processor.update_ow_cloud_events(progress_callback=progress_callback)
+            events_data = self.event_processor.update_ow_cloud_events(
+                progress_callback=progress_callback,
+                skip_existing=skip_existing
+            )
             if events_data:
                 # Load the merged file (occultations.json) instead of just the latest
                 # This ensures retention policy has been applied

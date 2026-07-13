@@ -57,6 +57,7 @@ class ConfigManager:
             # Report generation preferences
             'last_report_type': 'north_america',  # 'north_america' or 'trans_tasman'
             'last_report_folder': '',  # Parent folder of last AOTA/Tangra folder
+            'recordings_folder': '',  # Default root folder for recordings
             
             # API configuration
             #'host': 'https://www.occultwatcher.net:443',
@@ -66,7 +67,10 @@ class ConfigManager:
             'URL_OCCELMNT_ENDPOINT_PATH': '/api2/v1/owc/event/my/%s/occelmnts',
 
             # Night mode
-            'night_mode': False
+            'night_mode': False,
+            
+            # Warning dialogs
+            'show_report_warning': True  # Show report generation warning dialog
         }
         
         # Set config folder
@@ -814,4 +818,23 @@ class ConfigManager:
     def set_last_report_folder(self, folder_path):
         """Set the parent folder of last selected AOTA/Tangra folder"""
         self.config['last_report_folder'] = os.path.normpath(folder_path) if folder_path else ''
+        self.save_config()
+    
+    def get_recordings_folder(self):
+        """Get the default root folder for recordings"""
+        return self.config.get('recordings_folder', '')
+    
+    def set_recordings_folder(self, folder_path):
+        """Set the default root folder for recordings"""
+        self.config['recordings_folder'] = os.path.normpath(folder_path) if folder_path else ''
+        self.save_config()
+    
+    # Warning dialogs
+    def get_show_report_warning(self):
+        """Get whether to show report generation warning dialog"""
+        return self.config.get('show_report_warning', True)
+    
+    def set_show_report_warning(self, show):
+        """Set whether to show report generation warning dialog"""
+        self.config['show_report_warning'] = bool(show)
         self.save_config()

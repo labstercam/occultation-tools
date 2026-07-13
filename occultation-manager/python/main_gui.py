@@ -16,9 +16,10 @@ from System.Windows.Forms import (
     Form, Panel, MenuStrip, Button, Label, ComboBox, ComboBoxStyle,
     ToolStripMenuItem, ToolStripSeparator, FolderBrowserDialog, GroupBox,
     TextBox, DataGridView, AnchorStyles, DockStyle, Padding, Application,
-    MessageBox, MessageBoxButtons, MessageBoxIcon, DialogResult, FormStartPosition, Clipboard,
-    LinkLabel
+    MessageBox, MessageBoxButtons, MessageBoxIcon, DialogResult, FormStartPosition, FormBorderStyle, Clipboard,
+    LinkLabel, CheckBox, PictureBox, PictureBoxSizeMode, FormWindowState
 )
+from System.Drawing import SystemIcons
 from System.Diagnostics import Process
 import System
 
@@ -1007,7 +1008,36 @@ class OccultationManagerGUI(Form):
 
         def run_in_background():
             try:
-                result = self.manager.download_events_from_cloud(progress_callback=progress_callback)
+                # Check if we have existing events and ask user if they want to download only new events
+                skip_existing = False
+                existing_count = len(self.manager.all_events)
+                
+                if existing_count > 0:
+                    # Show MessageBox prompt
+                    result = MessageBox.Show(
+                        f"You have {existing_count} events already downloaded.\n\n" +
+                        "Do you want to download only NEW events for faster download?\n\n" +
+                        "• Yes: Download only new events (faster)\n" +
+                        "• No: Download all events (slower, updates existing)",
+                        "Download Events",
+                        MessageBoxButtons.YesNoCancel,
+                        MessageBoxIcon.Question
+                    )
+                    
+                    if result == DialogResult.Cancel:
+                        def on_cancel():
+                            self.update_status("Download cancelled")
+                            finalize_download(sender)
+                        self.Invoke(System.Action(on_cancel))
+                        return
+                    
+                    skip_existing = (result == DialogResult.Yes)
+                
+                # Download events with skip_existing parameter
+                result = self.manager.download_events_from_cloud(
+                    progress_callback=progress_callback,
+                    skip_existing=skip_existing
+                )
 
                 def on_complete():
                     try:
@@ -1962,16 +1992,23 @@ class OccultationManagerGUI(Form):
                         "Event Not Yet Occurred", MessageBoxButtons.OK, MessageBoxIcon.Information)
             return
         
-        # Show warning about report generation being under development
-        warning_result = MessageBox.Show(
-            "Report generation is still under development.\n\nCurrent Status:\n\nTANGRA and AOTA output are currently supported for the Trans Tasman report. TANGRA and AOTA should also work for SODIS reports but has not been fully tested or approved by the coordinators.\n\nPYOTE is not fully integrated and will have errors.\n\nThe North America report may not work properly with TANGRA and AOTA outputs so do not use them together.\n\nUse with caution\n\nDo you want to continue?",
-            "Report Generation Warning",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Warning)
-        
-        if warning_result != DialogResult.Yes:
-            self.update_status("Report generation cancelled")
-            return
+        # Check if user has previously chosen to skip the warning
+        if not self.config.get_show_report_warning():
+            # User has chosen to skip warning, proceed directly
+            pass
+        else:
+            # Show custom warning dialog with "Do not show again" option
+            warning_dialog = ReportWarningDialog(self.theme_manager)
+            warning_result = warning_dialog.ShowDialog()
+            
+            if warning_result != DialogResult.Yes:
+                self.update_status("Report generation cancelled")
+                return
+            
+            # Check if user wants to skip future warnings
+            if warning_dialog.get_do_not_show_again():
+                self.config.set_show_report_warning(False)
+                self.config.save_config()
         
         # Generate report
         try:
@@ -2516,7 +2553,7 @@ class OccultationManagerGUI(Form):
         dlg.Text = "Report Generated"
         dlg.Width = 600
         dlg.Height = 300
-        dlg.FormBorderStyle = dlg.FormBorderStyle.FixedDialog
+        dlg.FormBorderStyle = FormBorderStyle.FixedDialog
         dlg.MaximizeBox = False
         dlg.MinimizeBox = False
         dlg.StartPosition = FormStartPosition.CenterParent
@@ -2883,7 +2920,7 @@ class OccultationManagerGUI(Form):
                     # --- Small info dialog ---
                     attach_dlg = _AttForm()
                     attach_dlg.Text = "Attach ZIP to Gmail"
-                    attach_dlg.FormBorderStyle = attach_dlg.FormBorderStyle.FixedDialog
+                    attach_dlg.FormBorderStyle = FormBorderStyle.FixedDialog
                     attach_dlg.MaximizeBox = False
                     attach_dlg.MinimizeBox = False
                     attach_dlg.StartPosition = FormStartPosition.CenterScreen
@@ -2933,7 +2970,7 @@ class OccultationManagerGUI(Form):
 
                     attach_dlg = _AttForm()
                     attach_dlg.Text = "ZIP File Created"
-                    attach_dlg.FormBorderStyle = attach_dlg.FormBorderStyle.FixedDialog
+                    attach_dlg.FormBorderStyle = FormBorderStyle.FixedDialog
                     attach_dlg.MaximizeBox = False
                     attach_dlg.MinimizeBox = False
                     attach_dlg.StartPosition = FormStartPosition.CenterScreen
@@ -3123,7 +3160,7 @@ class OccultationManagerGUI(Form):
                 # --- Small info dialog ---
                 attach_dlg = _AttForm()
                 attach_dlg.Text = "Attach ZIP to Email"
-                attach_dlg.FormBorderStyle = attach_dlg.FormBorderStyle.FixedDialog
+                attach_dlg.FormBorderStyle = FormBorderStyle.FixedDialog
                 attach_dlg.MaximizeBox = False
                 attach_dlg.MinimizeBox = False
                 attach_dlg.StartPosition = FormStartPosition.CenterScreen
@@ -5179,3 +5216,71 @@ class OccultationManagerGUI(Form):
         self.sharpcap.DeepSkyAnnotation.PasteClipboardDataAsCustom()
         self.update_status("Annotation applied")
         return True
+
+
+class ReportWarningDialog(Form):
+    """Custom dialog for report generation warning with 'Do not show again' option"""
+    
+    def __init__(self, theme_manager=None):
+        Form.__init__(self)
+        self.theme_manager = theme_manager
+        self.do_not_show_again = False
+        self._setup_ui()
+        if theme_manager:
+            from theme import apply_theme_to_control
+            theme_colors = theme_manager.get_current_theme()
+            apply_theme_to_control(self, theme_colors)
+    
+    def _setup_ui(self):
+        self.Text = "Report Generation Warning"
+        self.Size = Size(600, 400)
+        self.StartPosition = FormStartPosition.CenterParent
+        self.FormBorderStyle = FormBorderStyle.FixedDialog
+        self.MaximizeBox = False
+        self.MinimizeBox = False
+        
+        # Warning icon
+        warning_picture = PictureBox()
+        warning_picture.Image = SystemIcons.Warning.ToBitmap()
+        warning_picture.SizeMode = PictureBoxSizeMode.Zoom
+        warning_picture.Size = Size(48, 48)
+        warning_picture.Location = Point(20, 20)
+        self.Controls.Add(warning_picture)
+        
+        # Warning text
+        warning_label = Label()
+        warning_label.Text = "⚠ CRITICAL WARNING: Report generation is still under development and\nhas NOT been approved by reporting coordinators. Only TANGRA and AOTA\noutputs have been tested for Trans Tasman reports.\n\nCurrent Status:\n\n• TANGRA and AOTA output are currently supported for the Trans Tasman report.\n• TANGRA and AOTA should also work for SODIS reports but has not been fully tested or approved by the coordinators.\n• PYOTE is not fully integrated and will have errors.\n• The North America report may not work properly with TANGRA and AOTA outputs so do not use them together.\n\nUse with caution!"
+        warning_label.Location = Point(80, 20)
+        warning_label.Size = Size(480, 200)
+        warning_label.Font = Font(warning_label.Font.FontFamily, 9)
+        self.Controls.Add(warning_label)
+        
+        # "Do not show again" checkbox
+        self.chk_do_not_show = CheckBox()
+        self.chk_do_not_show.Text = "Do not show this warning again"
+        self.chk_do_not_show.Location = Point(20, 240)
+        self.chk_do_not_show.Size = Size(300, 24)
+        self.Controls.Add(self.chk_do_not_show)
+        
+        # Continue button
+        btn_continue = Button()
+        btn_continue.Text = "Continue"
+        btn_continue.DialogResult = DialogResult.Yes
+        btn_continue.Location = Point(400, 320)
+        btn_continue.Size = Size(80, 30)
+        self.Controls.Add(btn_continue)
+        
+        # Cancel button
+        btn_cancel = Button()
+        btn_cancel.Text = "Cancel"
+        btn_cancel.DialogResult = DialogResult.No
+        btn_cancel.Location = Point(490, 320)
+        btn_cancel.Size = Size(80, 30)
+        self.Controls.Add(btn_cancel)
+        
+        self.AcceptButton = btn_continue
+        self.CancelButton = btn_cancel
+    
+    def get_do_not_show_again(self):
+        """Return whether the user checked 'Do not show again'"""
+        return self.chk_do_not_show.Checked
