@@ -551,7 +551,7 @@ D/R event combo:
   sources; uncertainty displayed via `_fmt_unc()` (2 significant figures); SNR rounded to 1 dp
 - **Timestamp check subpanel** — colour-coded status, deviation range, event-time window
   warning, Explain… and Inspect Timestamps… buttons
-- **"Include Station Name in Filenames" checkbox** (unchecked by default) — value exposed
+- **"Include station no. in Filenames" checkbox** (unchecked by default) — value exposed
   via `get_include_station_name()`
 - **Step A4 (camera delay from Tangra CSV)**: hint label until CSV loaded; "Applied" radio
   button disabled until a valid CSV is present
@@ -952,7 +952,7 @@ Key capabilities implemented:
 - AOTA/Tangra integration
 - D/R uncertainty displayed to 1–2 significant figures
 - Rename Files dialog for post-report file organisation
-- "Include Station Name in Filenames" checkbox in TT report workflow
+- "Include station no. in Filenames" checkbox in TT report workflow
 - NTP timing analysis and GPS PPS comparison tools
 - GPS flash line delay calibration with integrated save, manage, and calculate workflow
 

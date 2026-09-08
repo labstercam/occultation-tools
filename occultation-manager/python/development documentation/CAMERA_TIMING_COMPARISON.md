@@ -52,7 +52,7 @@ This comparison reflects current NA/TT Openize generators and current OBS.XML ex
 - `exposure_integration` - Other, Integration, Exposure
 
 **Additional TT-specific Fields:**
-- `timing_method` - Always set to "Video Recording"
+- `timing_method` - Always set to "Video with frame analysis" as most other methods are obsolete or rarely used
 
 **Default Values:**
 - Timing: "GPS - other linking"

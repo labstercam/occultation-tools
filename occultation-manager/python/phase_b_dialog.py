@@ -603,7 +603,7 @@ class PhaseBDialog(Form):
         self.txt_observation_comment = TextBox()
         self.txt_observation_comment.Location = Point(105, 133)
         self.txt_observation_comment.Size = Size(810, 22)
-        self.txt_observation_comment.MaxLength = 90
+        self.txt_observation_comment.MaxLength = 160
         grp_obs_type.Controls.Add(self.txt_observation_comment)
 
         # RHS: Optional OWC report entry
@@ -644,7 +644,7 @@ class PhaseBDialog(Form):
         grp_obs_type.Controls.Add(self.txt_owc_duration)
 
         self.lbl_owc_comment = Label()
-        self.lbl_owc_comment.Text = "Comment (max 30):"
+        self.lbl_owc_comment.Text = "Comment (max 160):"
         self.lbl_owc_comment.Location = Point(530, 96)
         self.lbl_owc_comment.Size = Size(110, 20)
         grp_obs_type.Controls.Add(self.lbl_owc_comment)
@@ -652,7 +652,7 @@ class PhaseBDialog(Form):
         self.txt_owc_comment = TextBox()
         self.txt_owc_comment.Location = Point(644, 94)
         self.txt_owc_comment.Size = Size(166, 22)
-        self.txt_owc_comment.MaxLength = 30
+        self.txt_owc_comment.MaxLength = 90
         grp_obs_type.Controls.Add(self.txt_owc_comment)
 
         self.btn_submit_owc = Button()
@@ -732,7 +732,7 @@ class PhaseBDialog(Form):
         self.Controls.Add(self.status_label)
 
         self.chk_include_station = CheckBox()
-        self.chk_include_station.Text = "Include Station Name in Filenames"
+        self.chk_include_station.Text = "Include station no. in Filenames"
         self.chk_include_station.Location = Point(500, 882)
         self.chk_include_station.Size = Size(215, 20)
         self.chk_include_station.Checked = False
@@ -1625,8 +1625,8 @@ class PhaseBDialog(Form):
                 return None, None, None, 'Duration must be a positive number of seconds.'
 
         comment = (self.txt_owc_comment.Text or '').strip()
-        if len(comment) > 30:
-            return None, None, None, 'Comment must be 30 characters or fewer.'
+        if len(comment) > 160:
+            return None, None, None, 'Comment must be 160 characters or fewer.'
 
         try:
             comment.encode('ascii')

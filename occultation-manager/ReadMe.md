@@ -162,7 +162,7 @@ occultation-manager/
 - Automatic Occult 4 XML export with matching filename
 - Observing conditions capture (clouds, stability, other notes)
 - Supports North America (IOTA), Trans-Tasman (RASNZ), and SODIS (IOTA-ES) formats
-- **Include Station Name in Filenames**: optional checkbox in the Report dialog (unchecked by default) appends the station name to the TT report filename
+- **Include station no. in Filenames**: optional checkbox in the Report dialog (unchecked by default) appends the station name to the TT report filename
 - **Rename Files dialog**: after report generation, optionally rename the observation files (CSV, AOTA XML/Report, image files, `.lc` files) to share the same stem as the report; proposed names are editable; `_AOTA_…` and `_Bin{N}` suffixes are preserved automatically
 - **Send via Gmail or email**: For Trans Tasman reports, post-report button creates a submission ZIP (Excel + CSV for Negative; also AOTA report, AOTA event graphs, and VizieR `.dat` for Positive/Unsure) and opens a Gmail compose window pre-addressed to the RASNZ coordinators; Explorer opens with the ZIP selected for drag-and-drop attachment
 - **D/R uncertainty display**: uncertainty shown in the D/R event info panel is formatted to 1–2 significant figures

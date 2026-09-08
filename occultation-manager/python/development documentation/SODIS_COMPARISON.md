@@ -83,7 +83,7 @@ Legend:
 | `Telescope` | coded enum in SODIS template | NA/TT write telescope type string (`T20`) and not a SODIS numeric code | Telescope profile | Partial |
 | `Aperture` | cm | NA/TT convert aperture mm->cm and write (`E20`) | Telescope profile | Mapped |
 | `FocalLength` | cm | NA/TT write focal ratio (`L20`), not focal length cm | Telescope profile | Partial |
-| `ObservingMethod` | coded enum (`a..g`) | TT writes `O22` = `Video Recording`; NA writes timing-related fields (`E22`, etc.), not SODIS enum code | Camera profile + fixed strings | Partial |
+| `ObservingMethod` | coded enum (`a..g`) | TT writes `O22` = `Video with frame analysis`; NA writes timing-related fields (`E22`, etc.), not SODIS enum code | Camera profile + fixed strings | Partial |
 | `StartObs` | hh:mm:ss.s... | NA/TT write from Tangra start time (`F31`,`H31`,`J31`) | Tangra CSV parsed in main flow | Mapped |
 | `D` | event code + time or `M` | NA writes D components from `aota_report_data` to (`F32`,`H32`,`J32`); TT writes to (`F33`,`H33`,`J33`) | AOTA Report or converted AOTA XML | Partial (time components mapped; SODIS code prefix semantics not represented) |
 | `Acc_D` | uncertainty | NA `M33`; TT `M33` from `d_uncertainty` | AOTA Report or converted AOTA XML | Mapped |
@@ -92,7 +92,7 @@ Legend:
 | `EndObs` | hh:mm:ss.s... | NA/TT write from Tangra end time (`F37`,`H37`,`J37`) | Tangra CSV parsed in main flow | Mapped |
 | `Duration` | numeric or blank | No explicit duration write found in reviewed NA/TT openize code | Not directly collected in dialog | Not mapped |
 | `Exp_Time` | numeric | NA derives integration info into comment area (`V25`) and sets method (`P25=Other`); TT writes exposure seconds to `P25` and units `S25` | Tangra CSV parsed | Partial |
-| `Timesource` | coded enum (`a..g`) | NA writes camera timing strings (`E22`, `E23`); TT writes timing and `O22=Video Recording` | Camera profile fields | Partial |
+| `Timesource` | coded enum (`a..g`) | NA writes camera timing strings (`E22`, `E23`); TT writes timing and `O22=Video with frame analysis` | Camera profile fields | Partial |
 | `Camera` | camera name/model text | NA comments include `Camera: <name>` in `D43`; TT writes detector field `E25` and camera other_info comments | Camera profile | Partial |
 | `Signal/Noise` | value/blank | NA/TT write SNR from AOTA data to `W40` when available | AOTA Report parser | Mapped |
 | `Wind` | value/blank | No explicit wind write in reviewed NA/TT code | Not collected in report dialog | Not mapped |

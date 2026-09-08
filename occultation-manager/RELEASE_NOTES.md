@@ -262,9 +262,9 @@ generation, offering to rename the observation files so they share the same stem
 - Existing target names that would collide are skipped and reported
 - The **Rename** button is disabled until at least one file is checked
 
-### Include Station Name in Filenames (New)
+### Include station no. in Filenames (New)
 
-A new **"Include Station Name in Filenames"** checkbox (unchecked by default) has been added
+A new **"Include station no. in Filenames"** checkbox (unchecked by default) has been added
 to the lower-right area of the Generate Report dialog (dialog 3).
 
 - When checked, the observer's station name is appended to the TT report filename

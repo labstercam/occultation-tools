@@ -101,6 +101,8 @@ $pythonFiles = @(
     "python\na_report_openize.py",
     "python\pyote_metrics_reader.py",
     "python\occult4_export.py",
+    "python\prepoint_dialog.py",
+    "python\prepoint_manager.py",
     "python\report_generator_base.py",
     "python\sequence_runner.py",
     "python\sodis_report_text.py",

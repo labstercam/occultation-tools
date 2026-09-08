@@ -148,6 +148,7 @@ class OccultationManagerGUI(Form):
         self._gps_flash_module = None
         self._gps_pps_comp_form = None
         self._pc_perf_form = None
+        self._prepoint_form = None
         
         self.setup_ui()
         self.load_initial_data()
@@ -808,6 +809,13 @@ class OccultationManagerGUI(Form):
         btn_test_recording.BackColor = Color.LightSalmon
         obs_group.Controls.Add(btn_test_recording)
         
+        # Prepoint button for telescope pointing without tracking
+        btn_prepoint = Button()
+        btn_prepoint.Text = "Prepoint"
+        btn_prepoint.Click += self.prepoint_click
+        btn_prepoint.BackColor = Color.LightGoldenrodYellow
+        obs_group.Controls.Add(btn_prepoint)
+        
         # Stop button for stopping test recording
         self.btn_stop_sequence = Button()
         self.btn_stop_sequence.Text = "Stop"
@@ -821,7 +829,7 @@ class OccultationManagerGUI(Form):
         try:
             # Use the same Y offset as quick filters so rows align; apply scale
             sf = getattr(self, '_scale_factor', 1.0)
-            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording, self.btn_stop_sequence], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording, btn_prepoint, self.btn_stop_sequence], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
         
@@ -5216,6 +5224,48 @@ class OccultationManagerGUI(Form):
         self.sharpcap.DeepSkyAnnotation.PasteClipboardDataAsCustom()
         self.update_status("Annotation applied")
         return True
+
+    def prepoint_click(self, sender, e):
+        """Handle Prepoint button click - opens non-modal Prepoint calculator window"""
+        if not self._preparation_event:
+            MessageBox.Show("Please load an event first using 'Load Event' button", "No Event Loaded", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            return
+        
+        event = self._preparation_event
+        
+        # If prepoint window is already open, just bring it to front
+        if self._prepoint_form is not None:
+            try:
+                if not self._prepoint_form.IsDisposed:
+                    self._activate_tool_form(self._prepoint_form)
+                    self.update_status("Prepoint calculator already open")
+                    return
+            except Exception:
+                pass
+        
+        try:
+            self.update_status(f"Opening Prepoint calculator for {event.get_asteroid_display_name()}...")
+            
+            # Open the Prepoint dialog as non-modal window
+            from prepoint_dialog import PrepointDialog
+            self._prepoint_form = PrepointDialog(self.config, self.theme_manager, self.sharpcap, event)
+            
+            # Handle dialog close event to clean up reference
+            def on_prepoint_closed(sender, e):
+                self._prepoint_form = None
+                self.update_status("Prepoint calculator closed")
+            
+            self._prepoint_form.FormClosed += on_prepoint_closed
+            self._prepoint_form.Show(self)
+            self._activate_tool_form(self._prepoint_form)
+            self.update_status("Prepoint calculator opened")
+                
+        except Exception as ex:
+            self._prepoint_form = None
+            self.update_status(f"Prepoint error: {ex}")
+            MessageBox.Show(f"Error during prepoint calculation: {ex}", "Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error)
 
 
 class ReportWarningDialog(Form):

@@ -1,0 +1,129 @@
+{
+    "generated_at_utc":  "2026-03-13T06:05:19Z",
+    "source":  "https://www.ntppool.org/",
+    "notes":  [
+                  "Counts are parsed from each zone page at generation time.",
+                  "listed_active is the country count shown on the region zone page, when available.",
+                  "ipv4_active and ipv6_active are parsed from zone details pages."
+              ],
+    "regions":  [
+                    {
+                        "zone":  "africa",
+                        "name":  "Africa",
+                        "pool_hostnames":  [
+                                               "africa.pool.ntp.org",
+                                               "0.africa.pool.ntp.org",
+                                               "1.africa.pool.ntp.org",
+                                               "2.africa.pool.ntp.org",
+                                               "3.africa.pool.ntp.org"
+                                           ],
+                        "counts":  {
+                                       "ipv4_active":  null,
+                                       "ipv6_active":  null
+                                   },
+                        "source_url":  "https://www.ntppool.org/zone/africa"
+                    },
+                    {
+                        "zone":  "antarctica",
+                        "name":  "Antarctica",
+                        "pool_hostnames":  [
+                                               "antarctica.pool.ntp.org",
+                                               "0.antarctica.pool.ntp.org",
+                                               "1.antarctica.pool.ntp.org",
+                                               "2.antarctica.pool.ntp.org",
+                                               "3.antarctica.pool.ntp.org"
+                                           ],
+                        "counts":  {
+                                       "ipv4_active":  null,
+                                       "ipv6_active":  null
+                                   },
+                        "source_url":  "https://www.ntppool.org/zone/antarctica"
+                    },
+                    {
+                        "zone":  "asia",
+                        "name":  "Asia",
+                        "pool_hostnames":  [
+                                               "asia.pool.ntp.org",
+                                               "0.asia.pool.ntp.org",
+                                               "1.asia.pool.ntp.org",
+                                               "2.asia.pool.ntp.org",
+                                               "3.asia.pool.ntp.org"
+                                           ],
+                        "counts":  {
+                                       "ipv4_active":  null,
+                                       "ipv6_active":  null
+                                   },
+                        "source_url":  "https://www.ntppool.org/zone/asia"
+                    },
+                    {
+                        "zone":  "europe",
+                        "name":  "Europe",
+                        "pool_hostnames":  [
+                                               "europe.pool.ntp.org",
+                                               "0.europe.pool.ntp.org",
+                                               "1.europe.pool.ntp.org",
+                                               "2.europe.pool.ntp.org",
+                                               "3.europe.pool.ntp.org"
+                                           ],
+                        "counts":  {
+                                       "ipv4_active":  null,
+                                       "ipv6_active":  null
+                                   },
+                        "source_url":  "https://www.ntppool.org/zone/europe"
+                    },
+                    {
+                        "zone":  "north-america",
+                        "name":  "North America",
+                        "pool_hostnames":  [
+                                               "north-america.pool.ntp.org",
+                                               "0.north-america.pool.ntp.org",
+                                               "1.north-america.pool.ntp.org",
+                                               "2.north-america.pool.ntp.org",
+                                               "3.north-america.pool.ntp.org"
+                                           ],
+                        "counts":  {
+                                       "ipv4_active":  null,
+                                       "ipv6_active":  null
+                                   },
+                        "source_url":  "https://www.ntppool.org/zone/north-america"
+                    },
+                    {
+                        "zone":  "oceania",
+                        "name":  "Oceania",
+                        "pool_hostnames":  [
+                                               "oceania.pool.ntp.org",
+                                               "0.oceania.pool.ntp.org",
+                                               "1.oceania.pool.ntp.org",
+                                               "2.oceania.pool.ntp.org",
+                                               "3.oceania.pool.ntp.org"
+                                           ],
+                        "counts":  {
+                                       "ipv4_active":  null,
+                                       "ipv6_active":  null
+                                   },
+                        "source_url":  "https://www.ntppool.org/zone/oceania"
+                    },
+                    {
+                        "zone":  "south-america",
+                        "name":  "South America",
+                        "pool_hostnames":  [
+                                               "south-america.pool.ntp.org",
+                                               "0.south-america.pool.ntp.org",
+                                               "1.south-america.pool.ntp.org",
+                                               "2.south-america.pool.ntp.org",
+                                               "3.south-america.pool.ntp.org"
+                                           ],
+                        "counts":  {
+                                       "ipv4_active":  null,
+                                       "ipv6_active":  null
+                                   },
+                        "source_url":  "https://www.ntppool.org/zone/south-america"
+                    }
+                ],
+    "countries":  [
+
+                  ],
+    "country_to_region":  {
+
+                          }
+}

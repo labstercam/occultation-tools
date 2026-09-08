@@ -73,7 +73,7 @@ Cell P25: {{EXPOSURE_INTEGRATION}}     (Exposure/integration method, e.g., "Othe
 
 ADDITIONAL FIELDS:
 ------------------
-{{TIMING_METHOD}}                      (Timing method description, e.g., "Video Recording")
+{{TIMING_METHOD}}                      (Timing method description, e.g., "Video with frame analysis")
 {{ASTEROID_VISIBLE}}                   (Was asteroid visible, e.g., "Yes")
 
 COMMENTS:
