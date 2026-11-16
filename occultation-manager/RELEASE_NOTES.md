@@ -1,5 +1,14 @@
 # Occultation Manager - Release Notes
 
+## Unreleased
+
+### OWC API Update
+- Migrated all OWC API calls from `/api2/v1/` to `/api/v1/`.
+- Authentication now uses only the `OW-ApiKey` HTTP header (email/password Basic
+  Auth and `?apikey=` URLs are no longer used).
+- Requests now identify themselves with `User-Agent: OccultationManager/<version>`.
+- Existing configuration files are migrated automatically on load.
+
 ## Version 0.3.0-alpha.2 (June 2026)
 
 **Public Alpha — Full Reporting Workflow with TANGRA/AOTA, OBS XML, and NTP/GPS PPS Timing Support**

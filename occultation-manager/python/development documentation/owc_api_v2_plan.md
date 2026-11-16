@@ -1,5 +1,11 @@
 # OWC API v2 — Development Plan
 
+> **Superseded (2026-11):** The API now lives under `/api/v1/` and uses only the
+> `OW-ApiKey` header for authentication. Basic Auth and `?apikey=` URLs have been
+> removed from Occultation Manager, and every request sends
+> `User-Agent: OccultationManager/<version>`. This document is retained as a
+> historical design record; see `occultation-manager/API.md` for current usage.
+
 **Date:** 2026-05-26  
 **Source:** Emails from Hristo (see `owc_new_endpoints.md`)  
 **Scope:** Three changes — header-based auth, submit report, retrieve event by EventID  

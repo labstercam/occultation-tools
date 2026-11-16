@@ -5,6 +5,20 @@ All notable changes to the Occultation Manager project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- OWC API calls now target the `/api/v1/` endpoints (`events/details-list`,
+  `owc/event/my/{id}/occelmnts`, `events/{id}`, `owc/report-observation`);
+  legacy `/api2/v1/` paths in existing config files are migrated on load.
+- Authentication is now sent only via the `OW-ApiKey` HTTP header. Removed the
+  legacy Basic Auth path, the `?apikey=` URL helpers, and the Basic Auth
+  planning-endpoint fallback for observation reports.
+- Every OWC request sends `User-Agent: OccultationManager/<version>` so server
+  operators can identify add-in traffic and its version.
+- Added `python/version.py` as the single source of truth for the application
+  version.
+
 ## [0.2.0-beta.4] - 2026-04
 
 ### Added

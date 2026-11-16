@@ -224,7 +224,7 @@ Bottom Panel:
 - `load_occultations()` - Load events from JSON cache
 - `save_occultations()` - Save events to JSON cache
 - `merge_occultation_lists()` - Merge and deduplicate event lists
-- `get_owc_events()` - HTTP request to OWCloud API with auth
+- `get_owc_events()` - HTTP request to OWCloud API (OW-ApiKey header + User-Agent)
 - `update_ow_cloud_events()` - Fetch user's announced events
 
 **`OccultationEvent`** - Data model for a single occultation event
@@ -243,8 +243,9 @@ Bottom Panel:
 
 **OWCloud API Integration:**
 ```python
-# Endpoint: https://www.occultwatcher.net:443/api2/v1/events/details-list
-# Authentication: Basic Auth (email:password)
+# Endpoint: https://www.occultwatcher.net/api/v1/events/details-list
+# Authentication: OW-ApiKey HTTP header (no Basic Auth, no ?apikey= URL param)
+# User-Agent: OccultationManager/<version>
 # Parameters: lat, lon, radius_km, days_ahead, min_alt, max_sun_alt
 # Returns: JSON array of event predictions
 ```
@@ -740,7 +741,7 @@ This module is distributed in both `occultation-manager/python/` (integrated wor
 User → Download Button → gui_dialogs.LocationConfirmDialog
     → user enters lat/lon/radius
     → events.OccultationManager.download_events()
-    → events.EventProcessor.get_owc_events() [HTTP to OWCloud API]
+    → events.EventProcessor.get_owc_events() [HTTP to OWCloud API, OW-ApiKey header]
     → events.EventProcessor.merge_occultation_lists()
     → events.EventProcessor.save_occultations() [JSON cache]
     → main_gui.populate_event_table() [display in grid]
@@ -853,8 +854,9 @@ The tradeoff (a manual copy-paste step into Tangra's dialog) is mitigated by OM'
 
 ### External APIs
 - **OccultWatcher Cloud REST API**
-  - Endpoint: `https://www.occultwatcher.net:443/api2/v1/events/details-list`
-  - Auth: Basic Auth
+  - Endpoint: `https://www.occultwatcher.net/api/v1/events/details-list`
+  - Auth: `OW-ApiKey` HTTP header
+  - User-Agent: `OccultationManager/<version>`
   - Returns: JSON event predictions
 
 ### External Applications

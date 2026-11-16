@@ -16,7 +16,7 @@ class ConfigManager:
         self.default_config = {
             # User credentials
             'owc_user_email': 'your_owc_email',
-            'owc_user_password': 'your_owc_password',
+            'owc_user_password': 'Not required anymore - uses API Key instead',
             
             # File names and retention
             'my_occultations_file': 'occultations.json',
@@ -62,9 +62,9 @@ class ConfigManager:
             # API configuration
             #'host': 'https://www.occultwatcher.net:443',
             'host': 'https://www.occultwatcher.net',
-            'url_path': '/api2/v1/events/details-list',
+            'url_path': '/api/v1/events/details-list',
             'apiKey': 'Go to https://cloud.occultwatcher.net/user-profile User Permssions to verify your email and get an API key',
-            'URL_OCCELMNT_ENDPOINT_PATH': '/api2/v1/owc/event/my/%s/occelmnts',
+            'URL_OCCELMNT_ENDPOINT_PATH': '/api/v1/owc/event/my/%s/occelmnts',
 
             # Night mode
             'night_mode': False,
@@ -228,6 +228,11 @@ class ConfigManager:
                     if key in self.default_config:
                         self.config[key] = value
                 
+                # Migrate legacy OWC API paths (pre-0.3.0) to the current
+                # /api/v1/ prefix. Existing installs persist the old
+                # /api2/v1/ paths in their config file, so rewrite on load.
+                self._migrate_legacy_api_paths()
+
                 print(f"Configuration loaded from: {config_path}")
             else:
                 print(f"No configuration file found. Using defaults.")
@@ -236,6 +241,18 @@ class ConfigManager:
             print(f"Error loading configuration: {e}")
             print("Using default configuration")
     
+    def _migrate_legacy_api_paths(self):
+        """Rewrite legacy /api2/v1/ endpoint paths to /api/v1/.
+
+        Idempotent: only affects the two API URL keys and only when they
+        still contain the retired /api2/ prefix.
+        """
+        for key in ('url_path', 'URL_OCCELMNT_ENDPOINT_PATH'):
+            value = self.config.get(key)
+            if isinstance(value, str) and '/api2/v1/' in value:
+                self.config[key] = value.replace('/api2/v1/', '/api/v1/')
+                print(f"Migrated {key} to /api/v1/: {self.config[key]}")
+
     def save_config(self):
         """Save current configuration to file"""
         config_path = self.get_config_path()
@@ -429,52 +446,33 @@ class ConfigManager:
     def set_api_key(self, key):
         self.config['apiKey'] = key
     
-    def get_full_url(self):
-        """Get the complete API URL with key"""
-        import binascii
-        base_url = self.config['host'] + self.config['url_path']
-        sep = '&' if '?' in base_url else '?'
-        #return base_url + sep + 'apikey=%s' % binascii.unhexlify(self.config['apiKey'].encode()).decode('ascii')
-        return base_url + sep + 'apikey=%s' % self.config['apiKey']
-    
-    def get_occelmnt_url(self):
-        """Get the complete occelmnt URL with key"""
-        import binascii
-        base_url = self.config['host'] + self.config['URL_OCCELMNT_ENDPOINT_PATH']
-        sep = '&' if '?' in base_url else '?'
-        #return base_url + sep + 'apikey=%s' % binascii.unhexlify(self.config['apiKey'].encode()).decode('ascii')
-        return base_url + sep + 'apikey=%s' % self.config['apiKey']
-
     # ------------------------------------------------------------------
-    # v2 API URL helpers (OW-ApiKey header auth — no key in URL)
-    # The existing get_full_url() / get_occelmnt_url() are unchanged.
+    # OWC API URL helpers
+    # Authentication is sent with the OW-ApiKey HTTP header; the key is
+    # never appended to the URL.
     # ------------------------------------------------------------------
 
     def get_base_url(self):
-        """Return the events-list URL without an apikey query parameter.
-
-        Used with get_owc_events_v2() which passes the key as an HTTP header.
-        """
+        """Return the events-list URL (no API key in the URL)."""
         return self.config['host'] + self.config['url_path']
 
     def get_occelmnt_base_url(self):
-        """Return the occelmnt URL template without an apikey query parameter.
+        """Return the occelmnt URL template (no API key in the URL).
 
         Call as  config.get_occelmnt_base_url() % event_id
-        Used with get_owc_events_v2().
         """
         return self.config['host'] + self.config['URL_OCCELMNT_ENDPOINT_PATH']
 
     def get_report_observation_url(self):
         """Return the POST endpoint for submitting an observation report to OWC."""
-        return self.config['host'] + '/api2/v1/owc/report-observation'
+        return self.config['host'] + '/api/v1/owc/report-observation'
 
     def get_event_by_id_url(self, event_id):
         """Return the GET endpoint for fetching a single OWC event by its ID.
 
-        Used to retrieve station IDs (see Task 2 of owc_api_v2_plan.md).
+        Used to retrieve station IDs.
         """
-        return self.config['host'] + '/api2/v1/events/' + str(event_id)
+        return self.config['host'] + '/api/v1/events/' + str(event_id)
 
     def get_full_file_path(self, filename):
         """Get full path for a file in the configured folder"""
@@ -489,7 +487,7 @@ class ConfigManager:
             errors.append("OWC email is required")
         
         if not self.config['owc_user_password']:
-            errors.append("OWC password is required")
+            errors.append("OWC password is missing but is not required")
         
         # Check paths exist or can be created
         try:

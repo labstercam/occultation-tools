@@ -1,11 +1,15 @@
 import os
 import json
-import binascii
-import base64
 import urllib.request
-import urllib.parse
+import urllib.error
 import math
 from datetime import datetime, timedelta
+
+# Application version (used for the OWC User-Agent header)
+try:
+    from version import __version__ as VERSION
+except ImportError:
+    VERSION = 'unknown'
 
 # Import location lookup function for use during event download
 try:
@@ -116,33 +120,42 @@ class EventProcessor:
         
         return result
     
-    @staticmethod    
-    def get_owc_events(url, username, password, data=None):
-        """Get events from OW Cloud API using Basic Auth + apikey URL parameter.
+    @staticmethod
+    def _build_owc_request(url, api_key, data=None, method='GET'):
+        """Build a urllib Request for an OWC API endpoint.
 
-        This is the original v1 method.  It is preserved unchanged.
-        New code should prefer get_owc_events_v2() which uses the OW-ApiKey header.
+        Authentication is sent only via the OW-ApiKey HTTP header.  The URL
+        must not contain an ?apikey= query parameter, and no Basic auth
+        credentials are included.  A User-Agent identifying Occultation
+        Manager and its version is attached so OWC can distinguish add-in
+        traffic from generic scripts.
+
+        Args:
+            url:     Full endpoint URL (no ?apikey= suffix)
+            api_key: OWC API key string (from config.get_api_key())
+            data:    Optional dict to send as a JSON body
+            method:  HTTP method string.  Defaults to 'GET'; set to 'POST' for
+                     write operations such as report-observation.
+
+        Returns:
+            urllib.request.Request ready to pass to urlopen()
         """
-        credentials = '{0}:{1}'.format(username, password)
-        encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
-        
-        request = urllib.request.Request(url)
-        request.add_header("Authorization", "Basic {0}".format(encoded_credentials))
-        request.add_header("Content-Type", "application/json")
-        
-        if data:
-            request.data = json.dumps(data).encode('utf-8')
-        
-        response = urllib.request.urlopen(request, timeout=20)
-        return json.loads(response.read().decode('utf-8'))
+        req = urllib.request.Request(url)
+        req.get_method = lambda: method   # IronPython-safe; avoids method= kwarg
+        req.add_header('OW-ApiKey', str(api_key or ''))
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('User-Agent', 'OccultationManager/%s' % VERSION)
+        if data is not None:
+            req.data = json.dumps(data).encode('utf-8')
+        return req
 
     @staticmethod
-    def get_owc_events_v2(url, api_key, data=None, method='GET'):
-        """Call an OWC API endpoint using the OW-ApiKey HTTP header (v2 auth).
+    def get_owc_events(url, api_key, data=None, method='GET'):
+        """Call an OWC API endpoint using the OW-ApiKey HTTP header.
 
-        This is the new preferred authentication method.  No credentials or
-        apikey parameter are included in the URL — the key is sent as a header.
-        The old get_owc_events() method is preserved and continues to work.
+        This is the only authentication method used by Occultation Manager.
+        No credentials or apikey parameter are included in the URL — the key
+        is sent as a header.
 
         Args:
             url:     Full endpoint URL (no ?apikey= suffix needed)
@@ -154,12 +167,7 @@ class EventProcessor:
         Returns:
             Parsed JSON response (dict or list)
         """
-        req = urllib.request.Request(url)
-        req.get_method = lambda: method   # IronPython-safe; avoids method= kwarg
-        req.add_header('OW-ApiKey', api_key)
-        req.add_header('Content-Type', 'application/json')
-        if data is not None:
-            req.data = json.dumps(data).encode('utf-8')
+        req = EventProcessor._build_owc_request(url, api_key, data=data, method=method)
         response = urllib.request.urlopen(req, timeout=20)
         body = response.read().decode('utf-8')
         if not body.strip():
@@ -259,7 +267,7 @@ class EventProcessor:
         Resolution order:
           1) event JSON field (ow_api_eventid)
           2) token parsed from owcloudurl
-          3) GET /api2/v1/events/{ow_eventid} lookup and recursive parse
+          3) GET /api/v1/events/{ow_eventid} lookup and recursive parse
           4) fallback to original ow_eventid
         """
         candidate = EventProcessor._extract_owc_style_event_id(ow_api_eventid)
@@ -272,7 +280,7 @@ class EventProcessor:
 
         try:
             lookup_url = config.get_event_by_id_url(event_id)
-            lookup = EventProcessor.get_owc_events_v2(lookup_url, config.get_api_key(), method='GET')
+            lookup = EventProcessor.get_owc_events(lookup_url, config.get_api_key(), method='GET')
             candidate = EventProcessor._find_owc_style_event_id_in_json(lookup)
             if candidate:
                 return candidate, 'event_by_id_lookup'
@@ -390,7 +398,7 @@ class EventProcessor:
             'outcome': 'pending',
         })
         try:
-            response = EventProcessor.get_owc_events_v2(
+            response = EventProcessor.get_owc_events(
                 url, config.get_api_key(), data=payload, method='POST'
             )
             attempted_calls[-1]['outcome'] = 'success'
@@ -412,110 +420,6 @@ class EventProcessor:
             attempted_calls[-1]['status'] = ex.code
             attempted_calls[-1]['reason'] = ex.reason
             attempted_calls[-1]['response_body'] = error_body
-
-            # Fallback: OWC planning endpoint expects the encoded event token and
-            # Basic auth, and is currently the server-side route that accepts report posts.
-            if ex.code in (404, 405) and ('Cannot locate event' in error_body or ex.code == 405):
-                token = None
-                if owcloudurl:
-                    try:
-                        parts = str(owcloudurl).split('/event/', 1)
-                        if len(parts) == 2:
-                            token = parts[1].split('/', 1)[0]
-                    except Exception:
-                        token = None
-
-                if token:
-                    try:
-                        report_duration = float(duration_s) if duration_s is not None else 0.0
-                        planning_query = {
-                            'stationId': int(station_id),
-                            'report': int(report_code),
-                            'duration': report_duration,
-                            'comment': comment or '',
-                        }
-                        planning_url = (
-                            config.get_host()
-                            + '/api2/v1/planning/' + str(token)
-                            + '/report-obs?'
-                            + urllib.parse.urlencode(planning_query)
-                        )
-
-                        credentials = '{0}:{1}'.format(
-                            config.get_owc_email(), config.get_owc_password())
-                        encoded_credentials = base64.b64encode(
-                            credentials.encode('utf-8')).decode('utf-8')
-
-                        attempted_calls.append({
-                            'auth_method': 'basic_auth_fallback',
-                            'endpoint_used': planning_url,
-                            'headers': {
-                                'Authorization': 'Basic ' + encoded_credentials[:8] + '...',
-                                'Content-Type': 'application/json',
-                            },
-                            'body': None,
-                            'outcome': 'pending',
-                        })
-
-                        req = urllib.request.Request(planning_url, data=b'')
-                        req.get_method = lambda: 'POST'
-                        req.add_header('Authorization', 'Basic {0}'.format(encoded_credentials))
-                        req.add_header('Content-Type', 'application/json')
-
-                        fallback_resp = urllib.request.urlopen(req, timeout=20)
-                        fallback_body = fallback_resp.read().decode('utf-8')
-                        attempted_calls[-1]['outcome'] = 'success'
-                        attempted_calls[-1]['status'] = getattr(fallback_resp, 'status', 200)
-                        attempted_calls[-1]['response_body'] = fallback_body
-                        try:
-                            parsed_fallback = json.loads(fallback_body) if fallback_body.strip() else None
-                        except Exception:
-                            parsed_fallback = fallback_body
-                        return {
-                            'success': True,
-                            'response': parsed_fallback,
-                            'error': None,
-                            'auth_method': 'basic_auth_fallback',
-                            'endpoint_used': planning_url,
-                            'attempted_calls': attempted_calls,
-                        }
-                    except urllib.error.HTTPError as ex2:
-                        try:
-                            error_body2 = ex2.read().decode('utf-8')
-                        except Exception:
-                            error_body2 = ''
-                        attempted_calls[-1]['outcome'] = 'http_error'
-                        attempted_calls[-1]['status'] = ex2.code
-                        attempted_calls[-1]['reason'] = ex2.reason
-                        attempted_calls[-1]['response_body'] = error_body2
-                        msg2 = 'HTTP {0}: {1}'.format(ex2.code, ex2.reason)
-                        if error_body2.strip():
-                            msg2 = msg2 + ' — ' + error_body2.strip()
-                        return {
-                            'success': False,
-                            'response': None,
-                            'error': (
-                                'Primary report-observation failed; fallback planning endpoint also failed. '
-                                + msg2
-                            ),
-                            'auth_method': 'basic_auth_fallback',
-                            'endpoint_used': planning_url,
-                            'attempted_calls': attempted_calls,
-                        }
-                    except Exception as ex2:
-                        attempted_calls[-1]['outcome'] = 'exception'
-                        attempted_calls[-1]['reason'] = str(ex2)
-                        return {
-                            'success': False,
-                            'response': None,
-                            'error': (
-                                'Primary report-observation failed; fallback planning endpoint error: '
-                                + str(ex2)
-                            ),
-                            'auth_method': 'basic_auth_fallback',
-                            'endpoint_used': planning_url,
-                            'attempted_calls': attempted_calls,
-                        }
 
             msg = 'HTTP {0}: {1}'.format(ex.code, ex.reason)
             if error_body.strip():
@@ -543,7 +447,7 @@ class EventProcessor:
     def update_ow_cloud_events(self, progress_callback=None, skip_existing=False):
         """Get all your OWC announced events using configuration"""
         try:
-            result = EventProcessor.get_owc_events_v2(
+            result = EventProcessor.get_owc_events(
                 self.config.get_base_url(),
                 self.config.get_api_key()
             )
@@ -554,6 +458,11 @@ class EventProcessor:
             raise RuntimeError(f"OW Cloud Connection Error: {reason}")
         except Exception as e:
             raise RuntimeError(f"OW Cloud Connection Error: {e}")
+
+        # A 204/empty response yields None; treat it as an empty event list so
+        # downstream filtering and processing do not fail on len()/iteration.
+        if result is None:
+            result = []
 
         # If skip_existing is True, filter out events we already have before processing
         if skip_existing:
@@ -729,7 +638,7 @@ class EventProcessor:
                     # Get the occelmnt
                     occelmntUrl = config.get_occelmnt_base_url() % eventId
                     try:
-                        eventOccelmnt = EventProcessor.get_owc_events_v2(
+                        eventOccelmnt = EventProcessor.get_owc_events(
                             occelmntUrl,
                             config.get_api_key()
                         )

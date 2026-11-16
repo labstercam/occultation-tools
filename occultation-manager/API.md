@@ -92,10 +92,10 @@ Static utility methods for low-level event operations.
 from events import EventProcessor
 
 # Download raw events from OWCloud API
+# Authentication: OW-ApiKey HTTP header (no email/password, no ?apikey= in URL)
 raw_events = EventProcessor.get_owc_events(
-    url="https://www.occultwatcher.net:443/api2/v1/events/details-list",
-    username="your@email.com",
-    password="your_password",
+    url="https://www.occultwatcher.net/api/v1/events/details-list",
+    api_key="your_api_key",
     data={
         'latitude': -37.8,
         'longitude': 144.9,
@@ -127,7 +127,8 @@ merged = EventProcessor.merge_occultation_lists(
 ```
 
 **Key Features:**
-- HTTP requests with Basic Auth
+- HTTP requests with `OW-ApiKey` header authentication (no Basic Auth, no URL key)
+- Sends `User-Agent: OccultationManager/<version>` on every request
 - Automatic event deduplication by unique_id
 - Retention policy (removes old events)
 - Merges preserve newest version of each event

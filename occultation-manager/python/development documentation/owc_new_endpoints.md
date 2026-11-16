@@ -1,5 +1,9 @@
-Emails from Hristo on the new endpoints
+# Emails from Hristo on the new endpoints
 
+> **Superseded (2026-11):** Endpoints described here under `/api2/v1/` are now
+> served under `/api/v1/`. Authentication is header-only (`OW-ApiKey`) and
+> requests carry `User-Agent: OccultationManager/<version>`. Retained as a
+> historical record.
 
 Hi Michael,
 
