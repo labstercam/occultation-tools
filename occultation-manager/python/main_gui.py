@@ -148,6 +148,7 @@ class OccultationManagerGUI(Form):
         self._gps_flash_module = None
         self._gps_pps_comp_form = None
         self._pc_perf_form = None
+        # Prepoint currently disabled as not properly implemented yet
         self._prepoint_form = None
         
         self.setup_ui()
@@ -810,11 +811,12 @@ class OccultationManagerGUI(Form):
         obs_group.Controls.Add(btn_test_recording)
         
         # Prepoint button for telescope pointing without tracking
-        btn_prepoint = Button()
-        btn_prepoint.Text = "Prepoint"
-        btn_prepoint.Click += self.prepoint_click
-        btn_prepoint.BackColor = Color.LightGoldenrodYellow
-        obs_group.Controls.Add(btn_prepoint)
+        # Disabled until prepointing feature is fully implemented
+        # btn_prepoint = Button()
+        # btn_prepoint.Text = "Prepoint"
+        # btn_prepoint.Click += self.prepoint_click
+        # btn_prepoint.BackColor = Color.LightGoldenrodYellow
+        # obs_group.Controls.Add(btn_prepoint)
         
         # Stop button for stopping test recording
         self.btn_stop_sequence = Button()
@@ -829,7 +831,9 @@ class OccultationManagerGUI(Form):
         try:
             # Use the same Y offset as quick filters so rows align; apply scale
             sf = getattr(self, '_scale_factor', 1.0)
-            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording, btn_prepoint, self.btn_stop_sequence], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
+            # Temporarily removed prepoint button
+            # self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording, btn_prepoint, self.btn_stop_sequence], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
+            self._layout_row(obs_group, [btn_load_event, btn_goto_target, btn_plate_solve, btn_setup_event, btn_test_recording, self.btn_stop_sequence], start_x=10, y=int(round(15 * sf)) + 1, gap=4)
         except Exception:
             pass
         

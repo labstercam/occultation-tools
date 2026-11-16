@@ -2,6 +2,8 @@
 Prepoint Dialog for Occultation Manager
 Simple UI for prepoint calculations and mount control
 """
+# Currently does not work properly and the implementation is incomplete, so do not use
+# If attempting to implement then don't trust the prepoint calculations until verified with test cases and real observations
 
 import clr
 import math

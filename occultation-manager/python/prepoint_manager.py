@@ -4,6 +4,9 @@ IronPython-compatible implementation of prepoint calculations
 Simplified formulas based on spherical trigonometry without AstroPy dependency
 """
 
+# Currently does not work properly and the implementation is incomplete, so do not use
+# If attempting to implement then don't trust the prepoint calculations until verified with test cases and real observations
+
 import clr
 import math
 from datetime import datetime, timedelta

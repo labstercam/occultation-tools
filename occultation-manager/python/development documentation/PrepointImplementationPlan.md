@@ -1,5 +1,8 @@
 # Prepoint Implementation Plan for Occultation Manager
 
+## Current Stats - Not Iplememented
+Implementation of prepoint has currenctly stalled. Need more input from potential users, and a lot more testing of the code and actual prepointing to stars
+
 ## Overview
 
 This document provides a comprehensive plan for implementing Astrid's prepoint functionality in an Occultation Manager tool using IronPython in SharpCap. The prepoint system calculates where to point a telescope so that a target will drift into the field of view at a specific future time, which is crucial for occultation timing.
