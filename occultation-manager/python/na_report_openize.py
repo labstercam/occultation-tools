@@ -100,6 +100,7 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         self._other_conditions = other_conditions
         self._timing_data = timing_data
         self._observation_comment = observation_comment
+        self._include_station_name = include_station_name
         print("USING OPENIZE VERSION - NA Report Generator")
         print("Template: NorthAmerica_AstReportForm_V5.6.12r.xlsx")
         print("="*60 + "\n")
@@ -562,8 +563,12 @@ class NAReportGeneratorOpenize(ReportGeneratorBase):
         
         # Get observation type
         obs_type_short = self._observation_type[:3].upper() if self._observation_type else 'POS'
+        # Station No.
+        station_name = ''
+        if self._include_station_name and hasattr(event, 'owc_station_id') and event.owc_station_id:
+            station_name = f'_{event.owc_station_id:.0f}'
         
         # Format: YYYYMMDD_objectno_objectname_observer_TYPE.xlsx
-        filename = f"{event_date_str}_{object_no}_{clean_name}_{observer_short}_{obs_type_short}.xlsx"
+        filename = f"{event_date_str}_{object_no}_{clean_name}_{observer_short}_{obs_type_short}{station_name}.xlsx"
         
         return filename

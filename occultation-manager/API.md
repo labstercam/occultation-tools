@@ -875,7 +875,7 @@ result = dlg.ShowDialog()
 
 - `get_report_type()` → str: `'NA'` | `'TT'` | `'SODIS'`
 - `get_selected_aota_report_path()` → str | None: full path to selected AOTA XML/Report file
-- `get_include_station_name()` → bool: value of the "Include Station Name in Filenames" checkbox in PhaseBDialog; `False` if dialog not shown
+- `get_include_station_name()` → bool: value of the "Include station no. in Filenames" checkbox in PhaseBDialog; `False` if dialog not shown
 - `get_timing_data()` → dict: timing_data dict (see schema above); includes `corrections_confirmed`
 
 **`get_timing_data()` — Generate button preconditions for NTP:**

@@ -296,7 +296,7 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
             if timing_device:
                 self._set_cell(worksheet, "E23", timing_device)
         
-        self._set_cell(worksheet, "O22", "Video Recording")  # TIMING_METHOD
+        self._set_cell(worksheet, "O22", "Video with frame analysis")  # analysis TIMING_METHOD. Defaults to this as most others are obsolete or rare
         self._set_cell(worksheet, "AA22", "No")  # ASTEROID_VISIBLE
         
         # OTE (Occultation Timing Extraction)
@@ -638,20 +638,25 @@ class TTReportGeneratorOpenize(ReportGeneratorBase):
         else:
             result_sign = '-'  # Negative or Unsure
         
-        # Station name
+        # Station name - deprecated
+        # station_name = ''
+        # if self._include_station_name and hasattr(event, 'station_name') and event.station_name:
+        #     station_name_raw = event.station_name
+        #     # Remove observer surname prefix if present
+        #     if station_name_raw.startswith(observer_surname + ' '):
+        #         station_name_raw = station_name_raw[len(observer_surname)+1:]
+        #     # Remove PC/machine name suffix
+        #     if '-' in station_name_raw:
+        #         parts = station_name_raw.split('-')
+        #         station_name_raw = parts[0].strip()
+        #     # Format for filename
+        #     station_name = '_' + station_name_raw.replace(' ', '_').replace(',', '_')
+
+        # Station No.
         station_name = ''
-        if self._include_station_name and hasattr(event, 'station_name') and event.station_name:
-            station_name_raw = event.station_name
-            # Remove observer surname prefix if present
-            if station_name_raw.startswith(observer_surname + ' '):
-                station_name_raw = station_name_raw[len(observer_surname)+1:]
-            # Remove PC/machine name suffix
-            if '-' in station_name_raw:
-                parts = station_name_raw.split('-')
-                station_name_raw = parts[0].strip()
-            # Format for filename
-            station_name = '_' + station_name_raw.replace(' ', '_').replace(',', '_')
-        
+        if self._include_station_name and hasattr(event, 'owc_station_id') and event.owc_station_id:
+            station_name = f'_{event.owc_station_id:.0f}'
+
         # Build filename
         filename = f"{event_date_str}_{asteroid_number}_{asteroid_name}_{star_catalog}_{star_number}{result_sign}{observer_surname}{station_name}.xlsx"
         return filename

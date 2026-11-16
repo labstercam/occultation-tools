@@ -271,54 +271,49 @@ class DummyEventGenerator:
     """Generates realistic dummy occultation events"""
     
     @staticmethod
-    def calculate_sidereal_time(utc_time, longitude):
+    def calculate_sidereal_time(dt_utc, longitude):
         """
-        Calculate Local Sidereal Time (LST) in hours
+        Calculates Local Mean Sidereal Time (LST) in decimal hours.
         
-        Args:
-            utc_time: datetime object in UTC
-            longitude: observer longitude in degrees (East positive)
-        
-        Returns:
-            LST in hours (0-24)
+        Parameters:
+        dt_utc (datetime): A naive datetime object representing UTC time.
+        longitude (float): East longitude is positive, West longitude is negative. In degrees
         """
-        # Julian Date (UTC) with fractional day
-        year = utc_time.year
-        month = utc_time.month
-        day_fraction = (
-            utc_time.day
-            + utc_time.hour / 24.0
-            + utc_time.minute / 1440.0
-            + (utc_time.second + utc_time.microsecond / 1e6) / 86400.0
-        )
+        # 1. Calculate Julian Date (JD)
+        Y, M, D = dt_utc.year, dt_utc.month, dt_utc.day
+        if M <= 2:
+            Y -= 1
+            M += 12
+            
+        A = int(Y / 100)
+        B = 2 - A + int(A / 4)
+        
+        # Julian Date at 0h UTC
+        jd_0h = int(365.25 * (Y + 4716)) + int(30.6001 * (M + 1)) + D + B - 1524.5
+        
+        # Decimal hours UT
+        ut_hours = dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0
+        
+        # 2. Days elapsed since J2000.0 Epoch (at 12h UT on Jan 1, 2000)
+        d = (jd_0h - 2451545.0) + (ut_hours / 24.0)
+        
+        # 3. Calculate GMST in degrees, then reduce to [0, 360)
+        gmst_degrees = (100.46061837 + 0.98564736629 * d + 15.0410671786 * ut_hours) % 360
+        
+        # 4. Add Longitude to find LST in degrees (East positive)
+        lst_degrees = (gmst_degrees + longitude) % 360
+        
+        # 5. Convert degrees to decimal hours (15 degrees = 1 hour)
+        lst_hours = lst_degrees / 15.0
 
-        if month <= 2:
-            year -= 1
-            month += 12
+        # DEBUG: Print intermediate values for troubleshooting
+        # print(f"[Sidereal Debug] JD: {jd_0h:.6f}, d: {d:.6f} days")
+        # print(f"[Sidereal Debug] GMST: {gmst_degrees:.6f}° ({gmst_degrees/15.0:.6f}h)")
+        # print(f"[Sidereal Debug] Longitude: {longitude:.6f}° ({longitude/15.0:.6f}h)")
+        # print(f"[Sidereal Debug] LST (GMST + longitude): {lst_degrees:.6f}° ({lst_degrees/15.0:.6f}h)")
+        return lst_hours
 
-        a = int(year / 100)
-        b = 2 - a + int(a / 4)
-        jd = (
-            int(365.25 * (year + 4716))
-            + int(30.6001 * (month + 1))
-            + day_fraction
-            + b
-            - 1524.5
-        )
 
-        t = (jd - 2451545.0) / 36525.0
-
-        # Greenwich Mean Sidereal Time (degrees)
-        gmst_deg = (
-            280.46061837
-            + 360.98564736629 * (jd - 2451545.0)
-            + 0.000387933 * t * t
-            - (t * t * t) / 38710000.0
-        )
-
-        # Local Sidereal Time (hours), longitude positive east
-        lst_deg = (gmst_deg + longitude) % 360.0
-        return lst_deg / 15.0
 
     @staticmethod
     def calculate_local_zenith(utc_time, latitude, longitude):

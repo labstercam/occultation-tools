@@ -1214,7 +1214,7 @@ SECTION 6: CONDITIONS
   • Stability: atmospheric seeing (Steady / Flickering)
   • Other Conditions: free-text field for additional notes
 
-INCLUDE STATION NAME IN FILENAMES
+INCLUDE STATION NO. IN FILENAMES
 ----------------------------------
 A checkbox at the bottom-right of the dialog (unchecked by default).
 When checked, the observer's station name is appended to the Trans-Tasman

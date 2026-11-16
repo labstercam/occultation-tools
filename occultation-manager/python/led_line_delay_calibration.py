@@ -2976,6 +2976,30 @@ class LEDLineDelayCalibrationForm(Form):
         else:
             results_text += "Very poor or failed calibration. Please redo with better flash illumination.\r\n\r\n"
         
+        # Check smallest delay vs exposure time
+        if all_delays and tangra_objects:
+            # Find smallest delay (absolute value)
+            smallest_delay = min(abs(d['time_offset']) for d in all_delays)
+            
+            # Get exposure time from first tangra object
+            exposure_ms = tangra_objects[0].get('exposure_ms', 50.0)
+            half_exposure = exposure_ms / 2.0
+            
+            # Check if smallest delay is more than half the exposure time
+            if smallest_delay > half_exposure:
+                warning_text = (
+                    "WARNING: The minimum delay ({0:.1f} ms) is more than half the exposure time ({1:.1f} ms).\r\n"
+                    "It should only be a few ms for a small sensor camera and should not be comparable to the exposure time.\r\n"
+                    "Suggest that you close Occultation Manager and SharpCap and restart and try again."
+                ).format(smallest_delay, exposure_ms)
+                results_text += "\r\n" + "=" * 50 + "\r\n"
+                results_text += warning_text + "\r\n"
+                results_text += "=" * 50 + "\r\n"
+                
+                # Set status label to RED
+                self.label_status.Text = "Warning: Minimum delay too large"
+                self.label_status.ForeColor = self._status_color('error')
+        
         # Show CSV file path if available
         if csv_path:
             results_text += "TANGRA CSV saved: {0}\r\n".format(os.path.basename(csv_path))
