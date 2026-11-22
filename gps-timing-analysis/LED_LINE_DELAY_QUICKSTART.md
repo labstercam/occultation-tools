@@ -4,7 +4,13 @@
 
 The GPS LED Line Delay Calibration tool measures rolling shutter line delays using GPS timing LED flashes. It captures frames from multiple apertures over the height of the frame, analyzes GPS PPS flashes, and calculates the time delay per sensor line using linear regression.
 
-## Installation
+## Recommended Usage from within Occultation Manager SharpCap Add-in
+
+The strong recommendation is to use the line delay calibration functionality in the **Occultation Manager SharpCap Add-in**. This is fully integrated into the analysis and reporting workflow, and will store and manage camera calibrations and details, and allow easy calculation of line and acquisition delays directly usable with Tangra. It is available here [Occultation Manager](https://github.com/labstercam/occultation-tools)
+
+You can also follow the directions below to use it in SharpCap without Occultation Manager.
+
+## Installation without Occultation Manager
 
 **No installation needed!** The tool is a single Python file located at:
 ```
